@@ -64,10 +64,12 @@ export default function ImpersonationBanner() {
         window.location.href = '/signin'
         return
       }
-      // Hard reload back to the admin user-detail page so the rest
-      // of the app picks up the restored admin session immediately.
-      const targetId = status?.target?.id
-      window.location.href = targetId ? `/admin/users/${targetId}` : '/admin'
+      // Hard reload back to the admin dashboard so the restored admin
+      // session is unambiguous. We deliberately do NOT return to
+      // /admin/users/<targetId> — landing on the client's own detail
+      // record made it look like the admin was still "inside" the
+      // customer's view. The main dashboard is a clean admin surface.
+      window.location.href = '/admin'
     } catch {
       setStopping(false)
     }

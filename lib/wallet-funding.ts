@@ -155,6 +155,28 @@ export async function finalizeWalletFunding({
     console.error('[finalizeWalletFunding] email failed', err)
   }
 
+  // In-app notification (bell + push). Previously a successful funding
+  // only produced an email — nothing landed on the in-app bell, so a
+  // customer who never opens their inbox had no signal their money
+  // arrived. We fire it here, inside the "first caller" branch, so
+  // webhook retries / the verify redirect can't duplicate it. The
+  // deep-link opens the receipt for this exact funding reference.
+  try {
+    const { notifyUser } = await import('./notifications')
+    await notifyUser({
+      userId: String(userId),
+      title: 'Wallet funded',
+      message: `Your wallet was funded with \u20A6${amount.toLocaleString('en-NG')} via ${channelLabel}. New balance: \u20A6${newBalance.toLocaleString('en-NG')}.`,
+      type: 'status_update',
+      referenceType: 'transaction',
+      referenceId: paymentReference,
+      actionUrl: `/dashboard/transactions/${paymentReference}`,
+      priority: 'normal',
+    })
+  } catch (err) {
+    console.error('[finalizeWalletFunding] notify failed', err)
+  }
+
   // Clear any abandoned-payment recovery row for this user/funding so
   // they don't get a "you left money on the table" reminder after
   // they've actually paid. Best effort.

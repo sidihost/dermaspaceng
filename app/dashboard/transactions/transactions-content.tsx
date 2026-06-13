@@ -130,12 +130,41 @@ function statusBadge(status: Transaction['status']) {
 
 export default function TransactionsContent() {
   const [filter, setFilter] = React.useState<FilterKey>('all')
-  const { data, error, isLoading } = useSWR<
+  const { data, error, isLoading, mutate } = useSWR<
     { success: boolean; transactions: Transaction[] } | { unauthenticated: true }
   >('/api/wallet/transactions?limit=200', fetcher, {
     revalidateOnFocus: true,
     dedupingInterval: 30_000,
   })
+
+  // Self-heal stuck "Pending" fundings.
+  // ------------------------------------------------------------------
+  // If Paystack's webhook was missed (or never configured), a wallet
+  // funding can sit at "pending" forever — which is exactly what the
+  // history screen showed: rows of "Wallet funding via Paystack …
+  // Pending" that never resolved. When we detect any pending rows on
+  // load we hit /api/wallet/reconcile ONCE (it re-checks each pending
+  // funding directly with Paystack, then credits / fails / cancels it
+  // via the shared idempotent finaliser) and re-fetch the list so the
+  // statuses flip without the customer doing anything. Guarded by a
+  // ref so it only fires once per mount, never in a loop.
+  const reconciledRef = React.useRef(false)
+  const hasPending =
+    !!data &&
+    'transactions' in data &&
+    data.transactions.some((t) => t.status === 'pending')
+  React.useEffect(() => {
+    if (reconciledRef.current || !hasPending) return
+    reconciledRef.current = true
+    ;(async () => {
+      try {
+        await fetch('/api/wallet/reconcile', { credentials: 'include' })
+        await mutate()
+      } catch {
+        /* best-effort — the cron sweep is the backstop */
+      }
+    })()
+  }, [hasPending, mutate])
 
   // Use a real ellipsis character (…) instead of `\u2026`. JSX
   // double-quoted attributes are parsed as HTML attribute values,

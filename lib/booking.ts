@@ -639,7 +639,8 @@ export async function confirmBookingPayment(args: {
 }): Promise<{ confirmed: boolean; bookingId: string | null }> {
   const rows = (await sql`
     SELECT id, status, payment_status, voucher_id, voucher_code,
-           subtotal_kobo, discount_kobo, user_id, customer_email, booking_reference
+           subtotal_kobo, discount_kobo, total_price_kobo,
+           user_id, customer_email, booking_reference
     FROM bookings
     WHERE payment_reference = ${args.paymentReference}
     LIMIT 1
@@ -673,6 +674,52 @@ export async function confirmBookingPayment(args: {
   if (claimed.length === 0) {
     // Someone else won the race and is handling the side-effects.
     return { confirmed: false, bookingId: row.id }
+  }
+
+  // Ledger entry for card payments.
+  // ------------------------------------------------------------------
+  // The wallet booking path already inserts its own 'debit' row inside
+  // /api/bookings/initiate (transactionally with the balance deduction),
+  // so we must NOT insert a second one here for wallet payments. But the
+  // Paystack path never recorded anything in the `transactions` ledger —
+  // which is why card-paid bookings were completely missing from the
+  // customer's Transaction history AND why opening the booking reference
+  // on /dashboard/transactions/<ref> showed "Transaction not found".
+  //
+  // We insert a 'completed' debit keyed on the booking's payment
+  // reference. `reference` is UNIQUE, so Paystack's aggressive webhook
+  // retries (and the verify-redirect racing the webhook) can call this
+  // many times without ever double-inserting — the ON CONFLICT DO
+  // NOTHING makes the write idempotent. This does NOT touch the wallet
+  // balance (a card payment never debits the wallet); it's purely the
+  // historical record so the money the customer paid is visible and the
+  // transaction-detail page resolves.
+  if (args.paymentMethod === 'paystack') {
+    try {
+      const amountKobo = Number(row.total_price_kobo ?? 0)
+      if (amountKobo > 0) {
+        const naira = koboToNaira(amountKobo)
+        const walletRows = (await sql`
+          SELECT id FROM wallets WHERE user_id = ${row.user_id} LIMIT 1
+        `) as any[]
+        const walletId = walletRows[0]?.id ?? null
+        await sql`
+          INSERT INTO transactions (
+            user_id, wallet_id, reference, paystack_reference, type, status,
+            amount, currency, payment_method, description, metadata
+          ) VALUES (
+            ${row.user_id}, ${walletId}, ${args.paymentReference},
+            ${args.paymentReference}, 'debit', 'completed',
+            ${naira}, 'NGN', 'paystack',
+            ${`Booking payment ${row.booking_reference}`},
+            ${JSON.stringify({ type: 'booking', booking_id: row.id, booking_reference: row.booking_reference })}
+          )
+          ON CONFLICT (reference) DO NOTHING
+        `
+      }
+    } catch (err) {
+      console.error('[confirmBookingPayment] ledger insert failed', err)
+    }
   }
 
   // Voucher redemption is the very last step on the success path —

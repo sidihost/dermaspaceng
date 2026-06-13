@@ -129,6 +129,60 @@ const initials = (first: string | null, last: string | null, email: string) => {
   return email.slice(0, 2).toUpperCase()
 }
 
+/**
+ * Client avatar — renders the customer's uploaded photo when present
+ * and falls back to brand-coloured initials otherwise. The list and
+ * drawer previously hard-coded the initials circle and never used the
+ * `avatarUrl` the API already returns, so staff never saw a face.
+ *
+ * `imgError` flips to the initials fallback if the photo URL 404s, so
+ * a broken/expired blob never leaves an empty grey circle.
+ */
+function ClientAvatar({
+  url,
+  first,
+  last,
+  email,
+  size = 36,
+}: {
+  url: string | null
+  first: string | null
+  last: string | null
+  email: string
+  size?: number
+}) {
+  const [imgError, setImgError] = useState(false)
+  const dimension = { width: size, height: size }
+  const fontSize = size <= 36 ? "text-[11px]" : "text-sm"
+
+  if (url && !imgError) {
+    return (
+      <img
+        src={url || "/placeholder.svg"}
+        alt={[first, last].filter(Boolean).join(" ") || email}
+        width={size}
+        height={size}
+        style={dimension}
+        onError={() => setImgError(true)}
+        className="flex-shrink-0 rounded-full object-cover ring-1 ring-[#7B2D8E]/10"
+        crossOrigin="anonymous"
+      />
+    )
+  }
+
+  return (
+    <span
+      style={dimension}
+      className={cn(
+        "flex flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 font-bold uppercase text-[#7B2D8E]",
+        fontSize
+      )}
+    >
+      {initials(first, last, email)}
+    </span>
+  )
+}
+
 export default function StaffClientsPage() {
   const [q, setQ] = useState("")
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -244,9 +298,13 @@ export default function StaffClientsPage() {
                     onClick={() => setActiveId(c.id)}
                   >
                     <div className="col-span-12 sm:col-span-5 flex items-center gap-3 min-w-0">
-                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[11px] font-bold uppercase text-[#7B2D8E]">
-                        {initials(c.firstName, c.lastName, c.email)}
-                      </span>
+                      <ClientAvatar
+                        url={c.avatarUrl}
+                        first={c.firstName}
+                        last={c.lastName}
+                        email={c.email}
+                        size={36}
+                      />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium text-gray-900">{name}</p>
                         <p className="truncate text-[11.5px] text-gray-500">{c.email}</p>
@@ -418,9 +476,13 @@ function ClientDetailDrawer({
             {/* Identity row */}
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
-                <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-sm font-bold uppercase text-[#7B2D8E]">
-                  {initials(client.firstName, client.lastName, client.email)}
-                </span>
+                <ClientAvatar
+                  url={client.avatarUrl}
+                  first={client.firstName}
+                  last={client.lastName}
+                  email={client.email}
+                  size={48}
+                />
                 <div className="min-w-0">
                   <p className="truncate text-lg font-semibold text-gray-900">
                     {[client.firstName, client.lastName].filter(Boolean).join(" ") || client.email}
