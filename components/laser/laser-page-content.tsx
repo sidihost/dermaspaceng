@@ -36,11 +36,8 @@ import {
   Phone,
   Shield,
   Timer,
-  Heart,
   Droplets,
-  Focus,
   Crown,
-  Fingerprint,
   Feather,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -55,44 +52,35 @@ import SkinCareTips from '@/components/services/skin-care-tips'
 // ───────────────────────────────────────────────────────────────────
 
 const laserHairRemoval = [
-  { treatment: 'Chin / Cheeks', female: '40,000', male: '50,000', duration: '30MINS' },
-  { treatment: 'Neck', female: '30,000', male: '40,000', duration: '30MINS' },
+  { treatment: 'Chin / Cheeks', female: '45,000', male: '55,000', duration: '30MINS' },
+  { treatment: 'Neck', female: '20,000', male: '40,000', duration: '30MINS' },
   { treatment: 'Upper Lip', female: '20,000', male: '30,000', duration: '20MINS' },
-  { treatment: 'Nostrils', female: '20,000', male: '20,000', duration: '20MINS' },
-  { treatment: 'Half Face', female: '55,000', male: '65,000', duration: '30MINS' },
-  { treatment: 'Full Face', female: '70,000', male: '70,000', duration: '45MINS' },
-  { treatment: 'Full Arm', female: '100,000', male: '100,000', duration: '1HR' },
-  { treatment: 'Half Arm', female: '50,000', male: '60,000', duration: '45MINS' },
-  { treatment: 'Under Arm', female: '40,000', male: '40,000', duration: '30MINS' },
-  { treatment: 'Chest', female: '40,000', male: '50,000', duration: '30MINS' },
-  { treatment: 'Nipples', female: '30,000', male: '40,000', duration: '30MINS' },
+  { treatment: 'Nostrils', female: '10,000', male: '20,000', duration: '20MINS' },
+  { treatment: 'Half Face / Full Face', female: '20,000', male: '70,000', duration: '30MINS' },
+  { treatment: 'Uni Brow', female: '10,000', male: '90,000', duration: '20MINS' },
+  { treatment: 'Full Arm', female: '80,000', male: '120,000', duration: '1HR' },
+  { treatment: 'Half Arm', female: '45,000', male: '60,000', duration: '20MINS' },
+  { treatment: 'Under Arm', female: '30,000', male: '120,000', duration: '30MINS' },
+  { treatment: 'Chest', female: '100,000', male: '120,000', duration: '30MINS' },
+  { treatment: 'Nipples', female: '45,000', male: '50,000', duration: '30MINS' },
   { treatment: 'Full Back', female: '100,000', male: '120,000', duration: '45MINS' },
-  { treatment: 'Half Back', female: '60,000', male: '70,000', duration: '45MINS' },
-  { treatment: 'Belly', female: '30,000', male: '40,000', duration: '30MINS' },
-  { treatment: 'Half Belly', female: '20,000', male: '30,000', duration: '30MINS' },
-  { treatment: 'Bikini Line', female: '40,000', male: '60,000', duration: '30MINS' },
-  { treatment: 'Brazilian', female: '80,000', male: '100,000', duration: '45MINS' },
-  { treatment: 'Hollywood + Bell Line + Butt Hole', female: '100,000', male: '120,000', duration: '45MINS', promo: true },
-  { treatment: 'Butt Cheeks', female: '60,000', male: '70,000', duration: '1HR' },
-  { treatment: 'Insep', female: '40,000', male: '50,000', duration: '45MINS' },
-  { treatment: 'Full Leg', female: '150,000', male: '160,000', duration: '1HR 30MINS' },
-  { treatment: 'Half Leg', female: '70,000', male: '70,000', duration: '45MINS' },
-]
-
-const laserRejuvenation = [
-  { service: 'Chin', female: '20,000', male: '30,000' },
-  { service: 'Cheeks (Sideface)', female: '25,000', male: '30,000' },
-  { service: 'Neck / Under Arm', female: '30,000', male: '30,000' },
-  { service: 'Bikini Line', female: '25,000', male: '30,000' },
-  { service: 'Brazilian / Hollywood', female: '30,000', male: '40,000' },
+  { treatment: 'Half Back', female: '60,000', male: '45,000', duration: '45MINS' },
+  { treatment: 'Full Belly', female: '60,000', male: '70,000', duration: '45MINS' },
+  { treatment: 'Half Belly', female: '40,000', male: '50,000', duration: '30MINS' },
+  { treatment: 'Bikini Line', female: '30,000', male: '40,000', duration: '30MINS' },
+  { treatment: 'Brazilian', female: '40,000', male: '40,000', duration: '30MINS' },
+  { treatment: 'Hollywood + Bell Line + Butt Hole', female: '85,000', male: '120,000', duration: '40MINS', promo: true },
+  { treatment: 'Butt Cheeks', female: '105,000', male: '125,000', duration: '45MINS' },
+  { treatment: 'Insep', female: '60,000', male: '70,000', duration: '45MINS' },
+  { treatment: 'Full Leg', female: '150,000', male: '160,000', duration: '45MINS' },
+  { treatment: 'Half Leg', female: '70,000', male: '70,000', duration: '30MINS' },
 ]
 
 const carbonPeel = [
   { treatment: 'Full Face Carbon Peel', price: '200,000', isNew: true },
   { treatment: 'Half Face', price: '120,000', isNew: true },
-  { treatment: 'Full Face Acne Laser Treatment', price: '60,000', isNew: true },
-  { treatment: 'Half Back Acne Laser', price: '60,000', isNew: true },
-  { treatment: 'Full Back Acne Laser', price: '100,000', isNew: true },
+  { treatment: 'Half Back Acne Laser', price: '100,000', isNew: true },
+  { treatment: 'Full Back Acne Laser', price: '200,000', isNew: true },
   { treatment: 'Elbow', price: '40,000', isNew: true },
   { treatment: 'Knee', price: '40,000', isNew: true },
   { treatment: 'Full Neck Carbon Peel', price: '60,000', isNew: true },
@@ -100,21 +88,14 @@ const carbonPeel = [
   { treatment: 'Carbon Laser Under Arm', price: '50,000', isNew: true },
 ]
 
-const electrolysis = [
-  { treatment: 'Chin', icon: Focus },
-  { treatment: 'Under Arm', icon: Droplets },
-  { treatment: 'Brazilian', icon: Heart },
-  { treatment: 'Full Face', icon: Fingerprint },
-]
-
 const packageDeals = [
-  { service: 'Full Body', female: '500,000', male: '600,000', duration: '2HR 30MINS' },
+  { service: 'Full Body', female: '500,000', male: '600,000', duration: '2HR' },
   { service: 'Half Body', female: '300,000', male: '350,000', duration: '1HR 30MINS' },
-  { service: 'Chin + Neck', female: '50,000', male: '70,000', promo: true },
+  { service: 'Chin + Neck', female: '70,000', male: '90,000', promo: true },
   { service: 'Full Leg + Bikini Line', female: '160,000', male: '170,000', promo: true },
-  { service: 'Full Arm + Under Arm', female: '120,000', male: '120,000', promo: true },
+  { service: 'Full Arm + Under Arm', female: '120,000', male: '145,000', promo: true },
   { service: 'Bikini Line + Belly Line', female: '50,000', male: '70,000', promo: true },
-  { service: 'Underarm + Hollywood', female: '130,000', male: '140,000', promo: true },
+  { service: 'Underarm + Hollywood', female: '135,000', male: '145,000', promo: true },
 ]
 
 const features = [
@@ -577,32 +558,6 @@ export default function LaserPageContent() {
       </section>
 
       {/* ─────────────────────────────────────────────────────────
-          Rejuvenation — short list, same row primitive (no
-          duration column on these).
-          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
-          ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-4 isolate">
-        <div className="max-w-5xl mx-auto px-4">
-          <SectionHeader
-            eyebrow="Rejuvenation"
-            title="Laser Skin Rejuvenation"
-            caption="Even tone and brighter skin in targeted areas."
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {laserRejuvenation.map((item, index) => (
-              <PriceRow
-                key={item.service}
-                rank={index + 1}
-                name={item.service}
-                female={item.female}
-                male={item.male}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────
           Carbon peel — single price column, so this is a custom
           compact card layout (rank disc + name + price chip).
           `isolate` — Chrome scroll-ghosting fix (see "Why laser").
@@ -639,40 +594,6 @@ export default function LaserPageContent() {
                   <p className="mt-0.5 text-[12px] font-bold text-[#7B2D8E] tabular-nums">
                     &#8358;{item.price}
                   </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─────────────────────────────────────────────────────────
-          Electrolysis — no fixed price; small "contact us" cards.
-          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
-          ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-4 isolate">
-        <div className="max-w-5xl mx-auto px-4">
-          <SectionHeader
-            eyebrow="Permanent solution"
-            title="Electrolysis Hair Removal"
-            caption="Single-hair accuracy. Contact us for a consult."
-          />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            {electrolysis.map((item) => (
-              <div
-                key={item.treatment}
-                className="flex items-center gap-2.5 rounded-2xl border border-[#7B2D8E]/15 bg-white p-3"
-              >
-                <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
-                  <item.icon className="w-[18px] h-[18px] text-white" />
-                </div>
-                <div className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-[#1a0d1f] leading-tight truncate">
-                    {item.treatment}
-                  </span>
-                  <span className="block text-[11px] text-[#1a0d1f]/55 leading-snug">
-                    Contact for pricing
-                  </span>
                 </div>
               </div>
             ))}
