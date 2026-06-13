@@ -536,30 +536,26 @@ export default function TicketDetailPage() {
             const HeroIcon = cfg.hero.Icon
             return (
               <div
-                className={`relative overflow-hidden rounded-2xl border ${tone.card} mb-4`}
+                className={`rounded-xl border ${tone.card} mb-4`}
               >
-                <span
-                  className={`absolute inset-y-0 left-0 w-1.5 ${tone.accentBar}`}
-                  aria-hidden="true"
-                />
-                <div className="p-4 sm:p-5 pl-5 sm:pl-6 flex items-start gap-3 sm:gap-4">
+                <div className="p-3.5 flex items-start gap-3">
                   <div
-                    className={`shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-sm ${tone.badge}`}
+                    className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${tone.badge}`}
                   >
-                    <HeroIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                    <HeroIcon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className={`text-base font-semibold ${tone.heading}`}>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`text-sm font-semibold leading-tight ${tone.heading}`}>
                         {cfg.hero.headline}
                       </h3>
                       <span
-                        className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${cfg.pillClass}`}
+                        className={`shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${cfg.pillClass}`}
                       >
                         {cfg.label}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-700 mt-1 leading-relaxed">
+                    <p className="text-[13px] text-gray-600 mt-0.5 leading-snug">
                       {cfg.hero.detail}
                     </p>
                   </div>
