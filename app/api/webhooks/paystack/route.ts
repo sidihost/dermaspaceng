@@ -8,7 +8,7 @@ import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { getUserById } from '@/lib/auth'
 import { sendPaymentFailedEmail } from '@/lib/wallet-emails'
 import { confirmBookingPayment, markBookingPaymentFailed, getBookingByReference } from '@/lib/booking'
-import { notifyBookingPaymentFailed } from '@/lib/notifications'
+import { notifyBookingPaymentFailed, notifyUser } from '@/lib/notifications'
 
 // POST /api/webhooks/paystack - Handle Paystack webhooks
 export async function POST(request: NextRequest) {
@@ -183,6 +183,29 @@ async function handleChargeFailed(data: {
         reason: data.gateway_response || 'Payment could not be processed',
         reference: data.reference,
       })
+    }
+
+    // In-app bell entry for the failed payment. Previously only an
+    // email went out, so the failure was invisible inside the app —
+    // the customer would just see a stuck "pending" row with no
+    // explanation. The deep-link opens the transaction's detail page
+    // (which surfaces the failure reason + a "fund again" action).
+    try {
+      const ref = transaction.payment_reference || data.reference
+      await notifyUser({
+        userId: String(transaction.user_id),
+        title: 'Payment failed',
+        message: `Your payment of \u20A6${Number(transaction.amount).toLocaleString('en-NG')} couldn't be completed${
+          data.gateway_response ? ` (${data.gateway_response})` : ''
+        }. Tap to try again.`,
+        type: 'status_update',
+        referenceType: 'transaction',
+        referenceId: ref,
+        actionUrl: `/dashboard/transactions/${ref}`,
+        priority: 'high',
+      })
+    } catch (err) {
+      console.error('[paystack-webhook] notify wallet failure', err)
     }
   } catch (error) {
     console.error('Handle charge failed error:', error)
