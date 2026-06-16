@@ -43,7 +43,7 @@ export const DERMA_LIVE_VOICES: LiveVoice[] = [
     tagline: 'Warm · English-speaking host',
     category: 'english',
     gender: 'female',
-    mistralVoiceId: 'casual_female',
+    mistralVoiceId: '4dfe382b-e28e-4685-b2be-a05b609c5765',
     previewText:
       "Hi, I'm Yvonne, your Derma AI Live concierge. Tell me about your skin today.",
   },

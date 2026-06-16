@@ -2428,6 +2428,32 @@ export default function DermaAI({
   const [proactiveSuggestions, setProactiveSuggestions] = useState(true)
   const [inlineMapsEnabled, setInlineMapsEnabled] = useState(true)
 
+  // Live mirror of the conversational settings that `sendMessageWithConsent`
+  // forwards to /api/chat. The send callback is memoized with a dependency
+  // array that (deliberately) excludes these — re-creating it on every
+  // toggle would tear down in-flight Live wiring (the sendMessageRef sync,
+  // captureAndAnalyze closures, etc). The bug that caused this ref: the
+  // callback captured the INITIAL values of speechLangId / memoryEnabled /
+  // proactiveSuggestions / voiceCallMode, so changing the language (or any
+  // other setting) in the Settings sheet had zero effect — the model kept
+  // getting "English" + the original toggle states. Reading from this ref
+  // inside the callback means every send always uses the user's CURRENT
+  // choices without invalidating the memoization.
+  const chatSettingsRef = useRef({
+    speechLangId: DEFAULT_SPEECH_LANGUAGE_ID,
+    memoryEnabled: true,
+    proactiveSuggestions: true,
+    voiceCallMode: false,
+  })
+  useEffect(() => {
+    chatSettingsRef.current = {
+      speechLangId,
+      memoryEnabled,
+      proactiveSuggestions,
+      voiceCallMode,
+    }
+  }, [speechLangId, memoryEnabled, proactiveSuggestions, voiceCallMode])
+
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
   // the nearest horizontal edge on release (iOS AssistiveTouch style).
@@ -4623,7 +4649,7 @@ export default function DermaAI({
     const tick = async () => {
       if (cancelled) return
       if (liveAnalyzeInFlightRef.current) {
-        // Still waiting on the previous frame — skip this tick and
+        // Still waiting on the previous frame ��� skip this tick and
         // try again on the next cadence so we never queue up.
         liveAnalyzeTimerRef.current = setTimeout(tick, 3000)
         return
@@ -5004,6 +5030,17 @@ export default function DermaAI({
     const attachments = attachmentsOverride ?? pendingAttachments
     if (!content.trim() && attachments.length === 0 && !historyOverride) return
 
+    // Pull the LIVE settings (language + capability toggles) from the
+    // ref rather than the callback's frozen closure. See chatSettingsRef
+    // above — this is what makes the Settings sheet actually take effect
+    // on the very next message instead of being ignored.
+    const {
+      speechLangId: liveSpeechLangId,
+      memoryEnabled: liveMemoryEnabled,
+      proactiveSuggestions: liveProactiveSuggestions,
+      voiceCallMode: liveVoiceCallMode,
+    } = chatSettingsRef.current
+
     // Read consent freshly from storage as a fallback so we never send stale false
     // after the user just clicked "Grant Access" (React state update hasn't applied yet).
     let effectiveConsent = consentOverride ?? accountAccessConsent
@@ -5036,7 +5073,7 @@ export default function DermaAI({
     // a fresh send we cancel any leftover audio from the previous
     // reply and re-arm the queue so sentence chunks start firing
     // the moment Mistral emits its first sentence.
-    if (voiceCallMode) {
+    if (liveVoiceCallMode) {
       ttsStreamHelpersRef.current.resetTtsStream()
     }
     // Optimistic loader label — derive a best-guess tool from the
@@ -5116,7 +5153,7 @@ export default function DermaAI({
           // chosen one of those. The route reads `responseLanguage`
           // and prepends a single instruction line to the system
           // prompt — no other plumbing needed.
-          responseLanguage: resolveSpeechLanguage(speechLangId).label,
+          responseLanguage: resolveSpeechLanguage(liveSpeechLangId).label,
           // Send the user's long-term memory so the model can pick up
           // conversations from yesterday / last week with full
           // continuity. Respects the Settings > Capabilities >
@@ -5124,15 +5161,15 @@ export default function DermaAI({
           // stop forwarding memories AND stop the model from calling
           // saveMemory / forgetMemory (enforced server-side via
           // `memoryEnabled: false`).
-          memories: memoryEnabled ? memories : [],
-          memoryEnabled,
-          proactiveSuggestions,
+          memories: liveMemoryEnabled ? memories : [],
+          memoryEnabled: liveMemoryEnabled,
+          proactiveSuggestions: liveProactiveSuggestions,
           // When the user is on a Live voice call, ask the server
           // to inject a "speak briefly, plain prose, no markdown"
           // directive into the system prompt. Shorter replies = less
           // audio = the call feels snappy and natural instead of
           // turning into a 30-second monologue every turn.
-          voiceMode: voiceCallMode,
+          voiceMode: liveVoiceCallMode,
           // Tell the server whether this viewer is signed in. Drives
           // the three-state account-access narrative in the system
           // prompt — signed-out viewers get "sign in / create
@@ -5223,7 +5260,7 @@ export default function DermaAI({
               // each chunk in parallel; the player drains them in
               // order. First audio plays when the FIRST sentence is
               // ready (~1s) instead of after the entire reply ends.
-              if (voiceCallMode) {
+              if (liveVoiceCallMode) {
                 const helpers = ttsStreamHelpersRef.current
                 const stream = ttsStreamRef.current
                 let cursor = stream.spokenIdx
@@ -5282,7 +5319,7 @@ export default function DermaAI({
               // `id` so the same tool re-firing (e.g. wallet check
               // twice in a row) still re-mounts the card with its
               // entry animation.
-              if (voiceCallMode) {
+              if (liveVoiceCallMode) {
                 setLiveActionCard({
                   toolName,
                   result: output,
@@ -5329,7 +5366,7 @@ export default function DermaAI({
       // or a final word after the last `.`). Then mark the TTS
       // stream as done so the player exits its drain loop after
       // the queue empties.
-      if (voiceCallMode) {
+      if (liveVoiceCallMode) {
         const helpers = ttsStreamHelpersRef.current
         const stream = ttsStreamRef.current
         const tail = helpers.splitNextSentence(fullContent, stream.spokenIdx, true)
