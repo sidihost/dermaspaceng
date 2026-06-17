@@ -170,100 +170,121 @@ export default function StaffAppointmentDetailPage({
     booking.status === "no_show"
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Back link */}
       <button
         onClick={() => router.back()}
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#7B2D8E] transition-colors"
+        className="group inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-[#7B2D8E] transition-colors"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white ring-1 ring-gray-200 transition-all group-hover:ring-[#7B2D8E]/30 group-hover:bg-[#7B2D8E]/5">
+          <ArrowLeft className="h-4 w-4" />
+        </span>
         Back
       </button>
 
       {/* Hero — booking reference, appointment headline, status pill */}
-      <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
+      <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_28px_-12px_rgba(123,45,142,0.18)]">
+        {/* Brand wash band behind the header */}
+        <div
+          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#7B2D8E]/[0.07] to-transparent"
+          aria-hidden
+        />
         <div className="absolute inset-y-0 left-0 w-1.5 bg-[#7B2D8E]" aria-hidden />
-        <div className="flex items-start gap-4">
-          {/* Real customer avatar — falls back to brand-purple initials
-              for walk-ins or seeded accounts that haven't picked a
-              portrait yet. */}
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-base font-bold uppercase text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
-            {booking.customer_avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={booking.customer_avatar_url}
-                alt=""
-                aria-hidden="true"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              (booking.customer_name || "?")
-                .trim()
-                .split(/\s+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((p) => p[0])
-                .join("")
-                .toUpperCase() || "?"
-            )}
-          </span>
-          <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <span className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden />
-              Appointment
-              <span className="font-mono text-gray-400 normal-case tracking-normal">
-                · {booking.booking_reference}
-              </span>
-            </span>
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
-              {booking.customer_name}
-            </h1>
-            <p className="text-sm text-gray-500">
-              {formatLongDate(booking.appointment_date)} · {booking.appointment_time}
-            </p>
-            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
-                  booking.status === "confirmed"
-                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
-                    : booking.status === "completed"
-                      ? "bg-[#7B2D8E] text-white ring-[#7B2D8E]"
-                      : booking.status === "cancelled" || booking.status === "no_show"
-                        ? "bg-rose-50 text-rose-700 ring-rose-200"
-                        : "bg-amber-50 text-amber-700 ring-amber-200"
-                }`}
-              >
-                {booking.status}
-              </span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
-                  booking.payment_status === "paid"
-                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
-                    : "bg-gray-50 text-gray-600 ring-gray-200"
-                }`}
-              >
-                {booking.payment_status}
-              </span>
-              {booking.access_role === "granted" && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider">
-                  shared
-                </span>
+        <div className="relative p-5 sm:p-7">
+          <div className="flex items-start gap-4 sm:gap-5">
+            {/* Real customer avatar — falls back to brand-purple initials
+                for walk-ins or seeded accounts that haven't picked a
+                portrait yet. */}
+            <span className="flex h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#7B2D8E] text-xl font-bold uppercase text-white shadow-[0_8px_20px_-6px_rgba(123,45,142,0.6)] ring-4 ring-white">
+              {booking.customer_avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={booking.customer_avatar_url}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (booking.customer_name || "?")
+                  .trim()
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((p) => p[0])
+                  .join("")
+                  .toUpperCase() || "?"
               )}
+            </span>
+            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+              <span className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden />
+                Appointment
+                <span className="font-mono text-gray-400 normal-case tracking-normal">
+                  · {booking.booking_reference}
+                </span>
+              </span>
+              <h1 className="text-2xl sm:text-[28px] font-semibold leading-tight text-gray-900 tracking-tight text-balance">
+                {booking.customer_name}
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#FBF9FC] px-2.5 py-1 text-[12.5px] font-medium text-gray-700 ring-1 ring-gray-100">
+                  <Calendar className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                  {formatLongDate(booking.appointment_date)}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#FBF9FC] px-2.5 py-1 text-[12.5px] font-medium text-gray-700 ring-1 ring-gray-100">
+                  <Clock className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                  {booking.appointment_time}
+                </span>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-5 flex items-center gap-2 flex-wrap border-t border-gray-100 pt-4">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                booking.status === "confirmed"
+                  ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
+                  : booking.status === "completed"
+                    ? "bg-[#7B2D8E] text-white ring-[#7B2D8E]"
+                    : booking.status === "cancelled" || booking.status === "no_show"
+                      ? "bg-rose-50 text-rose-700 ring-rose-200"
+                      : "bg-amber-50 text-amber-700 ring-amber-200"
+              }`}
+            >
+              <span
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  booking.status === "completed" ? "bg-white" : "bg-current"
+                }`}
+                aria-hidden
+              />
+              {booking.status}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                booking.payment_status === "paid"
+                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                  : "bg-gray-50 text-gray-600 ring-gray-200"
+              }`}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+              {booking.payment_status}
+            </span>
+            {booking.access_role === "granted" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-2 py-1 text-[10.5px] font-semibold uppercase tracking-wider">
+                shared
+              </span>
+            )}
           </div>
         </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         {/* Left column */}
         <div className="space-y-5">
           {/* Customer */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <User className="w-4 h-4 text-[#7B2D8E]" />
-              Customer
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-3">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <SectionHeader icon={<User className="w-4 h-4" />} title="Customer" />
+            <div className="mt-4 grid sm:grid-cols-2 gap-3">
               <Field icon={<User className="w-4 h-4" />} label="Name" value={booking.customer_name} />
               <Field
                 icon={<Mail className="w-4 h-4" />}
@@ -284,21 +305,29 @@ export default function StaffAppointmentDetailPage({
           </section>
 
           {/* Services */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-[#7B2D8E]" />
-              Services
-            </h2>
-            <ul className="divide-y divide-gray-100">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <SectionHeader icon={<Receipt className="w-4 h-4" />} title="Services" />
+            <ul className="mt-4 space-y-2">
               {booking.services.map((s, i) => (
-                <li key={i} className="py-2.5 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {s.treatmentName}
-                    </p>
-                    <p className="text-[11.5px] text-gray-500">
-                      {s.categoryName || "Service"} · {s.duration} min
-                    </p>
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-[#FBF9FC] px-3.5 py-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#7B2D8E] ring-1 ring-[#7B2D8E]/12"
+                      aria-hidden
+                    >
+                      <Receipt className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {s.treatmentName}
+                      </p>
+                      <p className="text-[11.5px] text-gray-500">
+                        {s.categoryName || "Service"} · {s.duration} min
+                      </p>
+                    </div>
                   </div>
                   <p className="text-sm font-semibold tabular-nums text-gray-900 flex-shrink-0">
                     {formatNaira(s.priceKobo)}
@@ -306,11 +335,11 @@ export default function StaffAppointmentDetailPage({
                 </li>
               ))}
             </ul>
-            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-[#7B2D8E]/[0.06] px-4 py-3 ring-1 ring-[#7B2D8E]/10">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#7B2D8E]">
                 Total
               </span>
-              <span className="text-base font-bold tabular-nums text-[#7B2D8E]">
+              <span className="text-lg font-bold tabular-nums text-[#7B2D8E]">
                 {formatNaira(booking.total_price_kobo)}
               </span>
             </div>
@@ -318,12 +347,9 @@ export default function StaffAppointmentDetailPage({
 
           {/* Notes */}
           {booking.notes && (
-            <section className="rounded-2xl border border-gray-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <StickyNote className="w-4 h-4 text-[#7B2D8E]" />
-                Notes
-              </h2>
-              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+            <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+              <SectionHeader icon={<StickyNote className="w-4 h-4" />} title="Notes" />
+              <p className="mt-4 rounded-xl bg-[#FBF9FC] border border-gray-100 p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                 {booking.notes}
               </p>
             </section>
@@ -336,12 +362,12 @@ export default function StaffAppointmentDetailPage({
           {booking.review ? (
             <CustomerReviewCard review={booking.review} />
           ) : booking.status === "completed" ? (
-            <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                <MessageSquareQuote className="w-4 h-4 text-[#7B2D8E]" />
-                Customer review
-              </h2>
-              <p className="text-[12.5px] text-gray-500 leading-relaxed">
+            <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-5 sm:p-6">
+              <SectionHeader
+                icon={<MessageSquareQuote className="w-4 h-4" />}
+                title="Customer review"
+              />
+              <p className="mt-2 text-[12.5px] text-gray-500 leading-relaxed">
                 The customer hasn&apos;t left a review yet. They can do
                 so any time from their booking receipt.
               </p>
@@ -350,13 +376,13 @@ export default function StaffAppointmentDetailPage({
         </div>
 
         {/* Right column — actions */}
-        <div className="space-y-5">
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-[#7B2D8E]" />
-              {booking.can_edit ? "Status" : "Access"}
-            </h2>
-            <p className="text-[11.5px] text-gray-500 mb-3 leading-relaxed">
+        <div className="space-y-5 lg:sticky lg:top-5 lg:self-start">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <SectionHeader
+              icon={<ShieldCheck className="w-4 h-4" />}
+              title={booking.can_edit ? "Status" : "Access"}
+            />
+            <p className="mt-2 mb-4 text-[11.5px] text-gray-500 leading-relaxed">
               {booking.can_edit
                 ? "Update the appointment status. The customer is notified instantly."
                 : "You have view-only access to this booking. Ask an admin for edit rights to change the status."}
@@ -421,37 +447,45 @@ export default function StaffAppointmentDetailPage({
             )}
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-[#7B2D8E]" />
-              Payment
-            </h2>
-            <p className="text-[11.5px] text-gray-500 mb-2">Current status</p>
-            <p className="text-sm font-semibold text-gray-900 capitalize">
-              {booking.payment_status}
-            </p>
-            <p className="mt-2 text-[11.5px] text-gray-500">Total charged</p>
-            <p className="text-base font-bold tabular-nums text-[#7B2D8E]">
-              {formatNaira(booking.total_price_kobo)}
-            </p>
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <SectionHeader icon={<Wallet className="w-4 h-4" />} title="Payment" />
+            <div className="mt-4 rounded-xl bg-[#7B2D8E]/[0.06] p-4 ring-1 ring-[#7B2D8E]/10">
+              <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#7B2D8E]/70">
+                Total charged
+              </p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-[#7B2D8E]">
+                {formatNaira(booking.total_price_kobo)}
+              </p>
+            </div>
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-100 px-3.5 py-3">
+              <span className="text-[11.5px] font-medium text-gray-500">Status</span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                  booking.payment_status === "paid"
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    : "bg-gray-50 text-gray-600 ring-gray-200"
+                }`}
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+                {booking.payment_status}
+              </span>
+            </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#7B2D8E]" />
-              When
-            </h2>
-            <Field
-              icon={<Calendar className="w-4 h-4" />}
-              label="Date"
-              value={formatLongDate(booking.appointment_date)}
-            />
-            <div className="h-2" />
-            <Field
-              icon={<Clock className="w-4 h-4" />}
-              label="Time"
-              value={booking.appointment_time}
-            />
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+            <SectionHeader icon={<Calendar className="w-4 h-4" />} title="When" />
+            <div className="mt-4 space-y-3">
+              <Field
+                icon={<Calendar className="w-4 h-4" />}
+                label="Date"
+                value={formatLongDate(booking.appointment_date)}
+              />
+              <Field
+                icon={<Clock className="w-4 h-4" />}
+                label="Time"
+                value={booking.appointment_time}
+              />
+            </div>
           </section>
         </div>
       </div>
@@ -510,18 +544,18 @@ function CustomerReviewCard({ review }: { review: StaffReview }) {
     year: "numeric",
   })
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5">
+    <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-            <MessageSquareQuote className="w-4 h-4 text-[#7B2D8E]" />
-            Customer review
-          </h2>
-          <p className="mt-0.5 text-[11.5px] text-gray-500">
+          <SectionHeader
+            icon={<MessageSquareQuote className="w-4 h-4" />}
+            title="Customer review"
+          />
+          <p className="mt-1.5 text-[11.5px] text-gray-500">
             Submitted {submitted}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rounded-full bg-[#FBF9FC] px-3 py-1.5 ring-1 ring-gray-100">
           <StaticStars value={review.rating} />
           <span className="text-sm font-semibold text-gray-900 tabular-nums">
             {review.rating}.0
@@ -564,6 +598,25 @@ function CustomerReviewCard({ review }: { review: StaffReview }) {
   )
 }
 
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode
+  title: string
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/12">
+        {icon}
+      </span>
+      <h2 className="text-[15px] font-semibold text-gray-900 tracking-tight">
+        {title}
+      </h2>
+    </div>
+  )
+}
+
 function Field({
   icon,
   label,
@@ -574,15 +627,15 @@ function Field({
   value: string
 }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
+    <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-[#FBF9FC] px-3.5 py-3">
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-[#7B2D8E] ring-1 ring-[#7B2D8E]/12 flex-shrink-0">
         {icon}
       </span>
       <div className="min-w-0">
         <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-500">
           {label}
         </p>
-        <p className="text-[13px] font-medium text-gray-900 break-words">
+        <p className="text-[13.5px] font-medium text-gray-900 break-words leading-snug">
           {value}
         </p>
       </div>
