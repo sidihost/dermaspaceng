@@ -224,9 +224,9 @@ export default function StaffAppointmentsPage() {
                         <span
                           className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider ring-1 ${
                             b.status === "confirmed"
-                              ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                              ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
                               : b.status === "completed"
-                                ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20"
+                                ? "bg-[#7B2D8E] text-white ring-[#7B2D8E]"
                                 : b.status === "cancelled" || b.status === "no_show"
                                   ? "bg-rose-50 text-rose-700 ring-rose-200"
                                   : "bg-amber-50 text-amber-700 ring-amber-200"

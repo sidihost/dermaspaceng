@@ -817,6 +817,13 @@ export async function getTransactionStats(): Promise<{
   failedCount: number
   todayRevenue: number
 }> {
+  // Revenue = money the business actually earned = completed booking/service
+  // payments. Those are `debit` transactions (we debit the customer's wallet
+  // when they pay for a booking). Wallet top-ups are `credit` and are NOT
+  // revenue — they're just the customer moving their own money in. Refunds
+  // (money paid back out) are subtracted. The previous query summed
+  // `completed + credit`, which is why the dashboard showed ₦0 despite many
+  // completed booking payments.
   const stats = await query<{
     total_transactions: string
     total_revenue: string
@@ -826,10 +833,12 @@ export async function getTransactionStats(): Promise<{
   }>(`
     SELECT 
       COUNT(*) as total_transactions,
-      COALESCE(SUM(CASE WHEN status = 'completed' AND type = 'credit' THEN amount ELSE 0 END), 0) as total_revenue,
+      COALESCE(SUM(CASE WHEN status = 'completed' AND type = 'debit' THEN amount ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN status = 'completed' AND type = 'refund' THEN amount ELSE 0 END), 0) as total_revenue,
       COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_amount,
       COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_count,
-      COALESCE(SUM(CASE WHEN status = 'completed' AND type = 'credit' AND created_at >= CURRENT_DATE THEN amount ELSE 0 END), 0) as today_revenue
+      COALESCE(SUM(CASE WHEN status = 'completed' AND type = 'debit' AND created_at >= CURRENT_DATE THEN amount ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN status = 'completed' AND type = 'refund' AND created_at >= CURRENT_DATE THEN amount ELSE 0 END), 0) as today_revenue
     FROM transactions
   `)
   

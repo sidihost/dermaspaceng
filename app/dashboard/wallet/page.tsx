@@ -388,12 +388,12 @@ function WalletDashboardContent() {
           >
             <div className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg ${
               notification.type === 'success' 
-                ? 'bg-green-50 text-green-800 border border-green-200'
+                ? 'bg-[#7B2D8E]/10 text-[#5A1D6A] border border-[#7B2D8E]/20'
                 : notification.type === 'error'
                   ? 'bg-[#7B2D8E]/5 text-[#7B2D8E] border border-[#7B2D8E]/20'
                   : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
             }`}>
-              {notification.type === 'success' && <CheckCircle className="h-5 w-5 text-green-600" />}
+              {notification.type === 'success' && <CheckCircle className="h-5 w-5 text-[#7B2D8E]" />}
               {notification.type === 'error' && <XCircle className="h-5 w-5 text-[#7B2D8E]" />}
               {notification.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600" />}
               <span className="text-sm font-medium">{notification.message}</span>
