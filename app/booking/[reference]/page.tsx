@@ -749,13 +749,13 @@ export default function BookingDetailPage({
       <section className="mx-auto max-w-2xl px-4 py-6 print:py-0 print:px-0 print:max-w-none">
         {/* Success ribbon — only right after a successful payment */}
         {showSuccess && booking.status === 'confirmed' ? (
-          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 print:hidden animate-in fade-in slide-in-from-top-2 duration-300">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+          <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.06] p-4 print:hidden animate-in fade-in slide-in-from-top-2 duration-300">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#7B2D8E]" />
             <div>
-              <p className="text-sm font-semibold text-emerald-900">
+              <p className="text-sm font-semibold text-[#5A1D6A]">
                 You&apos;re booked in!
               </p>
-              <p className="mt-0.5 text-[12px] text-emerald-800">
+              <p className="mt-0.5 text-[12px] text-[#7B2D8E]">
                 A copy has been sent to {booking.customer_email}. See you on{' '}
                 {dateLabel} at {booking.appointment_time}.
               </p>
@@ -850,7 +850,7 @@ export default function BookingDetailPage({
             >
               {copied ? (
                 <>
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  <Check className="h-3.5 w-3.5 text-[#7B2D8E]" />
                   Copied
                 </>
               ) : (
@@ -1243,7 +1243,7 @@ function StatusPill({
     tone === 'brand-muted'
       ? 'bg-[#7B2D8E]/10 text-[#5A1D6A] ring-[#7B2D8E]/20'
       : tone === 'green'
-        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+        ? 'bg-[#7B2D8E] text-white ring-[#7B2D8E]'
         : 'bg-amber-50 text-amber-800 ring-amber-200'
   return (
     <span

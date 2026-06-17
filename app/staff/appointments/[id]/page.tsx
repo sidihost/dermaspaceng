@@ -225,9 +225,9 @@ export default function StaffAppointmentDetailPage({
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
                   booking.status === "confirmed"
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
                     : booking.status === "completed"
-                      ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20"
+                      ? "bg-[#7B2D8E] text-white ring-[#7B2D8E]"
                       : booking.status === "cancelled" || booking.status === "no_show"
                         ? "bg-rose-50 text-rose-700 ring-rose-200"
                         : "bg-amber-50 text-amber-700 ring-amber-200"
@@ -238,7 +238,7 @@ export default function StaffAppointmentDetailPage({
               <span
                 className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
                   booking.payment_status === "paid"
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
                     : "bg-gray-50 text-gray-600 ring-gray-200"
                 }`}
               >
@@ -378,7 +378,7 @@ export default function StaffAppointmentDetailPage({
                   <Button
                     onClick={() => patch("set_status", { status: "confirmed" })}
                     disabled={updating}
-                    className="w-full justify-start gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="w-full justify-start gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Mark confirmed
@@ -549,8 +549,8 @@ function CustomerReviewCard({ review }: { review: StaffReview }) {
         <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium">
           {review.wouldRecommend ? (
             <>
-              <ThumbsUp className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="text-emerald-700">Would recommend us</span>
+              <ThumbsUp className="h-3.5 w-3.5 text-[#7B2D8E]" />
+              <span className="text-[#7B2D8E]">Would recommend us</span>
             </>
           ) : (
             <>
