@@ -55,6 +55,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
         ON u.id = ${staffId}
  LEFT JOIN users cu
         ON cu.id = b.user_id
+        OR (b.user_id IS NULL AND LOWER(cu.email) = LOWER(b.customer_email))
      WHERE b.id = ${bookingId}
      LIMIT 1
   `) as any[]

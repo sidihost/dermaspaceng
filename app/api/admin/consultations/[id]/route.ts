@@ -42,9 +42,11 @@ export async function GET(
           ELSE NULL
         END AS scheduled_at,
         u.first_name AS assigned_first_name,
-        u.last_name AS assigned_last_name
+        u.last_name AS assigned_last_name,
+        cu.avatar_url AS customer_avatar_url
       FROM consultations c
       LEFT JOIN users u ON u.id = c.assigned_to
+      LEFT JOIN users cu ON LOWER(cu.email) = LOWER(c.email)
       WHERE c.id = ${id}
       LIMIT 1
     `

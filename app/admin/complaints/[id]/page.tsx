@@ -17,7 +17,7 @@ import {
   ArrowLeft, Mail, MailOpen, Send, Phone, Clock, AlertTriangle,
   Ticket, Loader2, AlertCircle, Check,
   CircleDot, CircleDashed, CheckCircle2, XCircle,
-  Flag, Flame, Trash2, ExternalLink, Copy,
+  Flag, Flame, Trash2, ExternalLink, Copy, Info,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
@@ -41,6 +41,7 @@ interface Complaint {
   resolved_at: string | null
   source: 'complaint' | 'ticket'
   ticket_id: string | null
+  customer_avatar_url?: string | null
 }
 
 interface Reply {
@@ -64,6 +65,8 @@ interface Reply {
   // in the in-app conversation (e.g. "Franca", "Itunu"). Falls back
   // to the staff member's real name when null.
   sender_display_name?: string | null
+  /** Responder's resolved portrait URL (uploaded or role default). NULL on customer replies. */
+  author_avatar_url?: string | null
 }
 
 export default function ComplaintDetailPage() {
@@ -411,8 +414,18 @@ export default function ComplaintDetailPage() {
                 className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
               />
               <div className="flex items-start gap-3 sm:gap-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0">
-                  {headerInitials}
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0 overflow-hidden">
+                  {complaint.customer_avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={complaint.customer_avatar_url}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    headerInitials
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
@@ -528,15 +541,24 @@ export default function ComplaintDetailPage() {
                 >
                   <div
                     aria-hidden="true"
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold overflow-hidden ${
                       reply.is_internal
                         ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-200'
                         : isStaffReply
-                          ? 'bg-[#7B2D8E] text-white'
+                          ? 'bg-[#7B2D8E] text-white ring-2 ring-[#7B2D8E]/15'
                           : 'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
                     }`}
                   >
-                    {initials}
+                    {isStaffReply && reply.author_avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={reply.author_avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      initials
+                    )}
                   </div>
                   <div
                     className={`max-w-[80%] min-w-0 flex flex-col ${
@@ -606,6 +628,52 @@ export default function ComplaintDetailPage() {
 
         {/* ──────────────────────────── Right rail ─────────────────────────── */}
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+          {/* Details — surfaced first so the key facts (reference, when,
+              category) sit at the top of the rail instead of buried at
+              the bottom. */}
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <header className="flex items-center gap-2 border-b border-gray-100 bg-gray-50/70 px-5 py-3">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                <Info className="h-3.5 w-3.5" />
+              </span>
+              <h2 className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">
+                Details
+              </h2>
+            </header>
+            <div className="p-5 space-y-3 text-sm">
+              <MetaRow
+                label="Received"
+                value={`${submittedDate} · ${submittedTime}`}
+              />
+              <MetaRow
+                label="Reference"
+                value={
+                  <span className="font-mono text-xs text-gray-700">
+                    {reference}
+                  </span>
+                }
+              />
+              {complaint.category && (
+                <MetaRow label="Category" value={complaint.category} />
+              )}
+              {complaint.assigned_first_name && (
+                <MetaRow
+                  label="Assigned to"
+                  value={`${complaint.assigned_first_name} ${complaint.assigned_last_name || ''}`.trim()}
+                />
+              )}
+              {complaint.resolved_at && (
+                <MetaRow
+                  label="Resolved"
+                  value={new Date(complaint.resolved_at).toLocaleDateString(
+                    undefined,
+                    { month: 'short', day: 'numeric', year: 'numeric' },
+                  )}
+                />
+              )}
+            </div>
+          </section>
+
           {/* Status workflow */}
           <SegmentedPicker
             label="Status"
@@ -623,40 +691,6 @@ export default function ComplaintDetailPage() {
             onChange={(v) => handleUpdate('update_priority', v)}
             options={PRIORITY_TILES}
           />
-
-          {/* Meta — submitted, reference, category, assignee, resolved. */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 text-sm">
-            <MetaRow
-              label="Received"
-              value={`${submittedDate} · ${submittedTime}`}
-            />
-            <MetaRow
-              label="Reference"
-              value={
-                <span className="font-mono text-xs text-gray-700">
-                  {reference}
-                </span>
-              }
-            />
-            {complaint.category && (
-              <MetaRow label="Category" value={complaint.category} />
-            )}
-            {complaint.assigned_first_name && (
-              <MetaRow
-                label="Assigned to"
-                value={`${complaint.assigned_first_name} ${complaint.assigned_last_name || ''}`.trim()}
-              />
-            )}
-            {complaint.resolved_at && (
-              <MetaRow
-                label="Resolved"
-                value={new Date(complaint.resolved_at).toLocaleDateString(
-                  undefined,
-                  { month: 'short', day: 'numeric', year: 'numeric' },
-                )}
-              />
-            )}
-          </section>
         </aside>
       </div>
 
@@ -800,7 +834,7 @@ function MetaRow({
 
 /* ──────────────────────────────────────────────────────────────
    Status & Priority pickers — clean segmented list
-   ──────────────────────────────────────────────────────────────
+   ───────────────────────────────��──────────────────────────────
    Re-implemented as a quiet vertical list of options. The previous
    2x2 grid leant on a heavy purple gradient + drop-shadow that
    read as garish next to the rest of the admin (which uses flat

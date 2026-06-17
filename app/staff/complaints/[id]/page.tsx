@@ -68,6 +68,7 @@ interface Complaint {
   resolved_at: string | null
   source: "complaint" | "ticket"
   ticket_id: string | null
+  customer_avatar_url?: string | null
 }
 
 interface Reply {
@@ -95,6 +96,8 @@ interface Reply {
    * null on staff-authored replies — staff reply as themselves.
    */
   sender_display_name?: string | null
+  /** Responder's resolved portrait URL (uploaded or role default). NULL on customer replies. */
+  author_avatar_url?: string | null
 }
 
 const initialsFor = (name: string) => {
@@ -408,11 +411,20 @@ export default function StaffComplaintDetailPage() {
         <div className="flex items-start gap-4">
           <div
             aria-hidden="true"
-            className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0"
+            className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 overflow-hidden"
           >
-            <span className="text-lg font-semibold text-[#7B2D8E]">
-              {initialsFor(complaint.name)}
-            </span>
+            {complaint.customer_avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={complaint.customer_avatar_url}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-lg font-semibold text-[#7B2D8E]">
+                {initialsFor(complaint.name)}
+              </span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -570,6 +582,7 @@ export default function StaffComplaintDetailPage() {
                 key={reply.id}
                 side={isStaffReply ? "right" : "left"}
                 initials={initialsFor(name)}
+                avatarUrl={isStaffReply ? reply.author_avatar_url ?? null : null}
                 name={name}
                 timestamp={reply.created_at}
                 message={reply.message}
@@ -618,6 +631,7 @@ export default function StaffComplaintDetailPage() {
 function ConversationBubble({
   side,
   initials,
+  avatarUrl,
   name,
   timestamp,
   message,
@@ -626,6 +640,7 @@ function ConversationBubble({
 }: {
   side: "left" | "right"
   initials: string
+  avatarUrl?: string | null
   name: string
   timestamp: string
   message: string
@@ -644,15 +659,20 @@ function ConversationBubble({
       <div
         aria-hidden="true"
         className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold",
+          "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold overflow-hidden",
           isStaff
-            ? "bg-[#7B2D8E] text-white"
+            ? "bg-[#7B2D8E] text-white ring-2 ring-[#7B2D8E]/15"
             : isInternal
               ? "bg-amber-100 text-amber-800 ring-1 ring-amber-200"
               : "bg-gray-100 text-gray-700 ring-1 ring-gray-200",
         )}
       >
-        {initials}
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          initials
+        )}
       </div>
       <div
         className={cn(
