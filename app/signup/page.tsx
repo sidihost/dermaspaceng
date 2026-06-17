@@ -3,7 +3,8 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, ArrowLeft, Check, ChevronDown } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, ArrowLeft, Check, ChevronDown, Loader2 } from 'lucide-react'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import PageLoader from '@/components/shared/page-loader'
@@ -57,6 +58,19 @@ function SignUpForm() {
   // API), so we use the modal in `inline` mode here and let the
   // wizard own the final submit button.
   const [legalAccepted, setLegalAccepted] = useState(false)
+
+  // ── Email-verification OTP step ───────────────────────────────────
+  // After a successful /api/auth/signup we no longer show a static
+  // "check your inbox" card. Instead the wizard advances to an inline
+  // code-entry screen: the user types the 6-digit code we emailed,
+  // we POST it to /api/auth/verify-email, and on success they're
+  // auto-logged-in and pushed straight to the dashboard.
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [resendNotice, setResendNotice] = useState('')
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -115,6 +129,13 @@ function SignUpForm() {
       detectCountry()
     }
   }, [isCheckingAuth, showToast])
+
+  // Tick down the resend cooldown once per second whenever it's active.
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setTimeout(() => setResendCooldown((c) => c - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendCooldown])
 
   if (isCheckingAuth) {
     return <PageLoader />
@@ -233,6 +254,9 @@ function SignUpForm() {
       }
 
       setSuccess(true)
+      // Start the resend cooldown so the user can't hammer the resend
+      // button the instant they land on the code screen.
+      setResendCooldown(30)
     } catch {
       setError('Something went wrong. Please try again.')
       // Reset captcha on error
@@ -243,25 +267,185 @@ function SignUpForm() {
     }
   }
 
+  // Submit the typed code. On success the server creates a session +
+  // sets the cookie, so we just push to the dashboard (or the original
+  // redirect target).
+  const handleVerifyOtp = async (codeOverride?: string) => {
+    const code = (codeOverride ?? otp).trim()
+    setOtpError('')
+
+    if (code.length !== 6) {
+      setOtpError('Enter the 6-digit code from your email.')
+      return
+    }
+
+    setOtpVerifying(true)
+    try {
+      const res = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, code }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setOtpError(data.error || 'That code is incorrect. Please try again.')
+        setOtp('')
+        return
+      }
+
+      // Verified + auto-logged-in. Straight to the dashboard.
+      router.push(redirectTo)
+    } catch {
+      setOtpError('Something went wrong. Please try again.')
+    } finally {
+      setOtpVerifying(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || resending) return
+    setResending(true)
+    setOtpError('')
+    setResendNotice('')
+    try {
+      const res = await fetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setOtpError(data.error || 'Could not resend the code. Please try again.')
+        return
+      }
+      setResendNotice('A new code is on its way to your inbox.')
+      setResendCooldown(30)
+      setOtp('')
+    } catch {
+      setOtpError('Could not resend the code. Please try again.')
+    } finally {
+      setResending(false)
+    }
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
-            <Check className="w-8 h-8 text-[#7B2D8E]" />
+        <div className="max-w-md w-full">
+          <div className="text-center">
+            <Link href="/" className="inline-block mb-6" aria-label="Dermaspace home">
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                alt="Dermaspace"
+                className="h-9 w-auto mx-auto"
+              />
+            </Link>
+            <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+              <Mail className="w-8 h-8 text-[#7B2D8E]" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Enter your code</h1>
+            <p className="text-gray-600 mb-8">
+              We sent a 6-digit code to <strong>{formData.email}</strong>.
+              Enter it below to verify and finish signing in.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-3">Check Your Email</h1>
-          <p className="text-gray-600 mb-6">
-            We&apos;ve sent a verification link to <strong>{formData.email}</strong>. 
-            Please check your inbox and click the link to verify your account.
-          </p>
-          <Link 
-            href="/signin"
-            className="inline-flex items-center gap-2 text-[#7B2D8E] font-medium hover:underline"
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleVerifyOtp()
+            }}
+            className="flex flex-col items-center"
           >
-            Go to Sign In
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+            <InputOTP
+              maxLength={6}
+              value={otp}
+              onChange={(value) => {
+                setOtp(value)
+                setOtpError('')
+                // Auto-submit the moment all six digits are present.
+                if (value.length === 6) {
+                  handleVerifyOtp(value)
+                }
+              }}
+              disabled={otpVerifying}
+              containerClassName="justify-center gap-2"
+            >
+              <InputOTPGroup className="gap-2">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <InputOTPSlot
+                    key={i}
+                    index={i}
+                    className="h-12 w-11 rounded-xl border-gray-200 text-lg font-semibold first:rounded-l-xl last:rounded-r-xl data-[active=true]:border-[#7B2D8E] data-[active=true]:ring-[#7B2D8E]/20"
+                  />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+
+            {otpError && (
+              <p className="mt-4 text-sm text-red-600 text-center" role="alert">
+                {otpError}
+              </p>
+            )}
+
+            {resendNotice && !otpError && (
+              <p className="mt-4 text-sm text-[#7B2D8E] text-center">
+                {resendNotice}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={otpVerifying || otp.length !== 6}
+              className="mt-6 w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {otpVerifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying…
+                </>
+              ) : (
+                <>
+                  Verify and continue
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center text-sm text-gray-600">
+            Didn&apos;t get a code?{' '}
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              disabled={resendCooldown > 0 || resending}
+              className="text-[#7B2D8E] font-medium hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+            >
+              {resending
+                ? 'Sending…'
+                : resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : 'Resend code'}
+            </button>
+          </div>
+
+          <p className="mt-4 text-center text-xs text-gray-500">
+            Wrong email?{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setSuccess(false)
+                setOtp('')
+                setOtpError('')
+                setResendNotice('')
+                setStep(1)
+              }}
+              className="underline hover:text-gray-700"
+            >
+              Go back
+            </button>
+          </p>
         </div>
       </div>
     )

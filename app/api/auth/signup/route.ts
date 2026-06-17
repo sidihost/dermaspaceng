@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createUser, verifyHCaptcha } from '@/lib/auth'
-import { sendVerificationEmail } from '@/lib/email'
+import { sendSignupOtpEmail } from '@/lib/email'
+import { generateOtp, storeOtp } from '@/lib/signup-otp'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { neon } from '@neondatabase/serverless'
 import { evaluatePassword } from '@/lib/password-strength'
@@ -203,13 +204,19 @@ export async function POST(request: Request) {
       console.error('[v0] legal acceptance audit failed:', legalAuditErr)
     }
 
-    // Get verification token
-    const users = await sql`SELECT verification_token FROM users WHERE id = ${user.id}`
-    const verificationToken = users[0]?.verification_token
-
-    // Send verification email
-    if (verificationToken) {
-      await sendVerificationEmail(email, firstName, verificationToken)
+    // ── Email verification via OTP ─────────────────────────────────
+    // Instead of mailing a click-through link, we generate a 6-digit
+    // code, stash it in Redis (10-min TTL, keyed by email), and email
+    // it to the user. They type it back into the wizard, which calls
+    // /api/auth/verify-email to flip `email_verified` AND create a
+    // session — logging them straight in. Best-effort send: a mail
+    // hiccup doesn't roll back the account (the user can resend).
+    try {
+      const otp = generateOtp()
+      await storeOtp(email, otp)
+      await sendSignupOtpEmail(email, firstName, otp)
+    } catch (otpErr) {
+      console.error('[v0] signup OTP send failed:', otpErr)
     }
 
     // ── Audit ledger: append the signup event ──────────────────────
@@ -235,7 +242,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Account created. Please check your email to verify.'
+      message: 'Account created. Enter the code we just emailed you to verify.'
     })
 
   } catch (error) {
