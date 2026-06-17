@@ -64,6 +64,8 @@ interface Reply {
   // in the in-app conversation (e.g. "Franca", "Itunu"). Falls back
   // to the staff member's real name when null.
   sender_display_name?: string | null
+  /** Responder's resolved portrait URL (uploaded or role default). NULL on customer replies. */
+  author_avatar_url?: string | null
 }
 
 export default function ComplaintDetailPage() {
@@ -528,15 +530,24 @@ export default function ComplaintDetailPage() {
                 >
                   <div
                     aria-hidden="true"
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold overflow-hidden ${
                       reply.is_internal
                         ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-200'
                         : isStaffReply
-                          ? 'bg-[#7B2D8E] text-white'
+                          ? 'bg-[#7B2D8E] text-white ring-2 ring-[#7B2D8E]/15'
                           : 'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
                     }`}
                   >
-                    {initials}
+                    {isStaffReply && reply.author_avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={reply.author_avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      initials
+                    )}
                   </div>
                   <div
                     className={`max-w-[80%] min-w-0 flex flex-col ${

@@ -32,12 +32,14 @@ export async function GET(
     if (source === 'ticket') {
       const rows = await sql`
         SELECT
-          id, name, email, phone, subject, message,
-          COALESCE(status, 'open')     AS status,
-          COALESCE(priority, 'normal') AS priority,
-          category, ticket_id, created_at
-        FROM support_tickets
-        WHERE id = ${numericId}
+          st.id, st.name, st.email, st.phone, st.subject, st.message,
+          COALESCE(st.status, 'open')     AS status,
+          COALESCE(st.priority, 'normal') AS priority,
+          st.category, st.ticket_id, st.created_at,
+          cu.avatar_url                   AS customer_avatar_url
+        FROM support_tickets st
+        LEFT JOIN users cu ON LOWER(cu.email) = LOWER(st.email)
+        WHERE st.id = ${numericId}
         LIMIT 1
       `
       if (rows.length === 0) {
@@ -65,9 +67,11 @@ export async function GET(
         cm.created_at,
         cm.resolved_at,
         u.first_name                    AS assigned_first_name,
-        u.last_name                     AS assigned_last_name
+        u.last_name                     AS assigned_last_name,
+        cu.avatar_url                   AS customer_avatar_url
       FROM contact_messages cm
       LEFT JOIN users u ON u.id::text = cm.assigned_to::text
+      LEFT JOIN users cu ON LOWER(cu.email) = LOWER(cm.email)
       WHERE cm.id = ${numericId}
       LIMIT 1
     `

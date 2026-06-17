@@ -501,7 +501,9 @@ export async function GET(request: NextRequest) {
               WHEN tr.is_staff = true
                 THEN tr.responder_name
               ELSE NULL
-            END AS sender_display_name
+            END AS sender_display_name,
+            u.avatar_url AS author_avatar_url,
+            u.role       AS author_role
           FROM ticket_responses tr
           LEFT JOIN users u ON u.id::text = tr.user_id::text
           WHERE tr.ticket_id = ${code}
@@ -519,7 +521,9 @@ export async function GET(request: NextRequest) {
             u.last_name  AS staff_last_name,
             NULL::text   AS customer_first_name,
             NULL::text   AS customer_last_name,
-            NULL::text   AS sender_display_name
+            NULL::text   AS sender_display_name,
+            u.avatar_url AS author_avatar_url,
+            u.role       AS author_role
           FROM admin_replies ar
           LEFT JOIN users u ON u.id::text = ar.staff_id::text
           WHERE ar.request_type = 'contact'
@@ -531,7 +535,21 @@ export async function GET(request: NextRequest) {
 
       const replies = [...threadRows, ...internalRows].sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      )
+      ).map((r) => {
+        const row = r as Record<string, unknown>
+        // Only staff/admin authored bubbles get a portrait; customer
+        // bubbles fall back to initials in the UI.
+        const isStaff = row.is_staff !== false
+        return {
+          ...row,
+          author_avatar_url: isStaff
+            ? resolveAdminAvatar(
+                row.author_avatar_url as string | null,
+                row.author_role as string | null,
+              )
+            : null,
+        }
+      })
       console.log(
         '/api/admin/reply GET ticket: code=', code,
         'thread=', threadRows.length,
@@ -571,7 +589,9 @@ export async function GET(request: NextRequest) {
           u.first_name        AS staff_first_name,
           u.last_name         AS staff_last_name,
           NULL::text          AS customer_first_name,
-          NULL::text          AS customer_last_name
+          NULL::text          AS customer_last_name,
+          u.avatar_url        AS author_avatar_url,
+          u.role              AS author_role
         FROM admin_replies ar
         LEFT JOIN users u ON u.id::text = ar.staff_id::text
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
@@ -590,7 +610,9 @@ export async function GET(request: NextRequest) {
           u.first_name        AS staff_first_name,
           u.last_name         AS staff_last_name,
           NULL::text          AS customer_first_name,
-          NULL::text          AS customer_last_name
+          NULL::text          AS customer_last_name,
+          u.avatar_url        AS author_avatar_url,
+          u.role              AS author_role
         FROM admin_replies ar
         LEFT JOIN users u ON u.id::text = ar.staff_id::text
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
@@ -598,7 +620,15 @@ export async function GET(request: NextRequest) {
       `
     }
 
-    return NextResponse.json({ replies })
+    const resolvedReplies = (replies as Record<string, unknown>[]).map((row) => ({
+      ...row,
+      author_avatar_url: resolveAdminAvatar(
+        row.author_avatar_url as string | null,
+        row.author_role as string | null,
+      ),
+    }))
+
+    return NextResponse.json({ replies: resolvedReplies })
   } catch (error) {
     console.error('Get replies error:', error)
     return NextResponse.json(

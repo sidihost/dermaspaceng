@@ -87,6 +87,7 @@ interface Consultation {
   admin_notes: string | null
   scheduled_at: string | null
   created_at: string
+  customer_avatar_url?: string | null
 }
 
 interface Reply {
@@ -518,8 +519,18 @@ export default function ConsultationDetailPage() {
                 className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
               />
               <div className="flex items-start gap-3 sm:gap-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0">
-                  {initials}
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0 overflow-hidden">
+                  {consultation.customer_avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={consultation.customer_avatar_url}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    initials
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
