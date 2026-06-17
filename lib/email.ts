@@ -518,6 +518,72 @@ export async function sendVerificationEmail(email: string, firstName: string, to
   })
 }
 
+// ── Signup verification CODE (OTP) ────────────────────────────────
+// The signup flow no longer ships a click-through verification *link*
+// — it sends a short 6-digit code the user types back into the wizard,
+// which then verifies their email and logs them straight in. This
+// template mirrors the rest of the transactional family (flat, full-
+// bleed shell, brand-purple accents, signed footer) but swaps the CTA
+// button for a large, letter-spaced code block — the single most
+// important thing in the email, so it gets the visual weight.
+export async function sendSignupOtpEmail(
+  email: string,
+  firstName: string,
+  code: string,
+): Promise<boolean> {
+  // Render the 6 digits with generous tracking so the code is easy to
+  // read and copy on any device. We DON'T split it into separate cells
+  // (email clients butcher flexbox/grid) — a single letter-spaced
+  // string in a tinted rounded block reads cleanly everywhere.
+  const content = `
+    <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">Confirm your email</h1>
+
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      Hi ${firstName},
+    </p>
+
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      Welcome to Dermaspace! Enter the verification code below to confirm
+      your email and finish setting up your account:
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="margin: 0 0 24px;">
+      <tr>
+        <td align="center">
+          <div style="display: inline-block; padding: 18px 32px; background-color: ${BRAND_COLOR}0D; border: 1px solid ${BRAND_COLOR}33; border-radius: 12px;">
+            <span style="font-family: 'Courier New', Courier, monospace; font-size: 36px; font-weight: 700; letter-spacing: 10px; color: ${BRAND_COLOR};">
+              ${escapeHtml(code)}
+            </span>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 8px; font-size: 14px; color: #65676b; line-height: 1.5;">
+      This code will expire in 10 minutes.
+    </p>
+
+    <p style="margin: 0; font-size: 14px; color: #65676b; line-height: 1.5;">
+      If you didn&apos;t request this, you can safely ignore this email — no
+      account will be created without this code.
+    </p>
+
+    <p style="margin: 24px 0 0; font-size: 14px; color: #1c1e21; line-height: 1.5;">
+      Thanks,<br>
+      Dermaspace Team
+    </p>
+  `
+
+  return sendEmail({
+    to: email,
+    subject: `${code} is your Dermaspace verification code`,
+    html: getEmailTemplate(content, {
+      preheader: `Your Dermaspace verification code is ${code}. It expires in 10 minutes.`,
+      eyebrow: 'Verify your email',
+    }),
+  })
+}
+
 // Consultation confirmation
 export async function sendConsultationConfirmation(data: {
   email: string
