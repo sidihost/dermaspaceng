@@ -314,16 +314,39 @@ export default function Header() {
 
   return (
     <>
-      {/* Notification Banner - Hide on mobile when logged in */}
+      {/* Anniversary Banner - Hide on mobile when logged in.
+          A celebratory 7-year marker that replaced the old "welcome to
+          our new website" notice. The bar stays brand-purple and flat
+          (no gradient, no shadow); a single low-opacity white light
+          sweep glides across it for a quiet celebratory glint, the
+          serif "7" breathes gently, and a pair of accent dots twinkle
+          in sequence. All motion is disabled under
+          prefers-reduced-motion. */}
       {showBanner && (
         <div className={cn(
-          "bg-[#7B2D8E] text-white py-2.5 px-4",
+          "relative overflow-hidden bg-[#7B2D8E] text-white py-2.5 px-4",
           user && !isAuthLoading ? "hidden lg:block" : ""
         )}>
-          <div className="max-w-6xl mx-auto flex items-center justify-center gap-3">
-            <p className="text-xs sm:text-sm text-center">
-              Welcome to our new website! Experience seamless booking.
-            </p>
+          {/* Diagonal light sweep */}
+          <div
+            aria-hidden="true"
+            className="anniv-sweep pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/15"
+          />
+          <div className="relative max-w-6xl mx-auto flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-2.5 text-center">
+              <span className="anniv-seven font-serif italic text-lg sm:text-xl font-semibold leading-none">
+                7
+              </span>
+              <p className="text-xs sm:text-sm tracking-wide">
+                <span className="font-semibold">Years of Dermaspace</span>
+                <span className="hidden sm:inline text-white/85">{' '}— thank you for celebrating with us</span>
+              </p>
+              <span aria-hidden="true" className="hidden sm:flex items-center gap-1">
+                <span className="anniv-twinkle h-1 w-1 rounded-full bg-white" />
+                <span className="anniv-twinkle h-1.5 w-1.5 rounded-full bg-white" style={{ animationDelay: '0.4s' }} />
+                <span className="anniv-twinkle h-1 w-1 rounded-full bg-white" style={{ animationDelay: '0.8s' }} />
+              </span>
+            </div>
             <button 
               onClick={() => setShowBanner(false)}
               className="p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
