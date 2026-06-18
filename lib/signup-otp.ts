@@ -4,55 +4,92 @@
 // Replaces the old click-through verification *link* with a short 6-digit
 // code the user types back into the signup wizard. The code is the only
 // thing standing between "account created (unverified)" and "verified +
-// auto-logged-in", so we treat it like any other auth secret:
+// auto-logged-in", so we treat it like any other auth secret.
 //
-//   • stored in Redis (ephemeral, never in Postgres) keyed by the user's
-//     email, with a 10-minute TTL so a leaked code is useless minutes later
-//   • compared with a constant-time-ish equality so timing can't leak digits
-//   • attempt-limited (5 tries) so the 1-in-a-million code can't be brute
-//     forced inside its 10-minute life
+// Storage: Postgres (NOT Redis).
+// -----------------------------
+// This used to live in Redis, but Upstash isn't provisioned in every
+// environment — and when its env vars are missing, `getRedis()` THROWS,
+// which silently killed the whole "create code → email it" path (the
+// signup route swallows the error, so no mail ever went out). Postgres is
+// our always-available system of record, so the OTP now lives there:
 //
-// All helpers fail-soft on Redis hiccups in the same spirit as lib/redis.ts —
-// but verification itself fails CLOSED (a missing/expired code is a failed
-// verification, never an accidental pass).
+//   • one row per email in `signup_email_otps`, upserted on (re)issue
+//   • we store a SHA-256 *hash* of the code, never the plaintext
+//   • a 10-minute expiry column makes a leaked code useless minutes later
+//   • an attempts counter (max 5) blocks brute force inside that window
+//
+// Verification fails CLOSED: a missing / expired / over-limit code is a
+// failed verification, never an accidental pass.
 // ---------------------------------------------------------------------------
 
-import { getRedis } from '@/lib/redis'
+import { createHash, randomInt } from 'crypto'
+import { sql } from '@/lib/db'
 
 const OTP_TTL_SECONDS = 10 * 60 // 10 minutes
 const MAX_ATTEMPTS = 5
 
-function codeKey(email: string): string {
-  return `signup:otp:${email.toLowerCase()}`
+// Lazily create the backing table the first time any helper touches it.
+// `CREATE TABLE IF NOT EXISTS` is idempotent and cheap, and keeps this
+// feature self-contained (no separate migration step required to ship).
+let schemaReady: Promise<void> | null = null
+function ensureSchema(): Promise<void> {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS signup_email_otps (
+          email       TEXT PRIMARY KEY,
+          code_hash   TEXT NOT NULL,
+          attempts    INTEGER NOT NULL DEFAULT 0,
+          expires_at  TIMESTAMPTZ NOT NULL,
+          created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `
+    })().catch((err) => {
+      // Reset so a transient failure can be retried on the next call.
+      schemaReady = null
+      throw err
+    })
+  }
+  return schemaReady
 }
 
-function attemptsKey(email: string): string {
-  return `signup:otp:attempts:${email.toLowerCase()}`
+function normalize(email: string): string {
+  return email.toLowerCase().trim()
+}
+
+function hashCode(code: string): string {
+  return createHash('sha256').update(String(code).trim()).digest('hex')
 }
 
 /**
  * Generate a cryptographically-random 6-digit code (000000–999999).
- * We pad to a fixed 6 chars so codes like `004217` keep their leading
- * zeros — important since the email and the input both treat it as a
- * string, not a number.
+ * Padded to a fixed 6 chars so codes like `004217` keep their leading
+ * zeros — both the email and the input treat it as a string, not a number.
  */
 export function generateOtp(): string {
-  // crypto.randomInt is uniformly distributed and available in the Node
-  // runtime our route handlers run under.
-  const { randomInt } = require('crypto') as typeof import('crypto')
   return String(randomInt(0, 1_000_000)).padStart(6, '0')
 }
 
 /**
- * Store (or overwrite) the pending code for an email and reset the
- * attempt counter. Called when the user first requests a code AND when
- * they ask for a resend.
+ * Store (or overwrite) the pending code for an email and reset the attempt
+ * counter. Called when the user first requests a code AND on resend.
  */
 export async function storeOtp(email: string, code: string): Promise<void> {
-  const redis = getRedis()
-  await redis.set(codeKey(email), code, { ex: OTP_TTL_SECONDS })
-  // Fresh code → fresh attempt budget.
-  await redis.del(attemptsKey(email))
+  await ensureSchema()
+  const key = normalize(email)
+  const codeHash = hashCode(code)
+  const expiresAt = new Date(Date.now() + OTP_TTL_SECONDS * 1000).toISOString()
+
+  await sql`
+    INSERT INTO signup_email_otps (email, code_hash, attempts, expires_at)
+    VALUES (${key}, ${codeHash}, 0, ${expiresAt})
+    ON CONFLICT (email) DO UPDATE
+      SET code_hash  = EXCLUDED.code_hash,
+          attempts   = 0,
+          expires_at = EXCLUDED.expires_at,
+          created_at = NOW()
+  `
 }
 
 export type VerifyOtpResult =
@@ -60,36 +97,51 @@ export type VerifyOtpResult =
   | { ok: false; reason: 'expired' | 'mismatch' | 'too_many_attempts' }
 
 /**
- * Verify a user-supplied code against the stored one.
+ * Verify a user-supplied code against the stored hash.
  *
  * Fails closed: no stored code (never issued / already expired) is an
- * `expired` failure, never a pass. On a correct match we delete the
- * code so it can't be replayed.
+ * `expired` failure, never a pass. On a correct match we delete the row
+ * so it can't be replayed.
  */
 export async function verifyOtp(
   email: string,
   supplied: string,
 ): Promise<VerifyOtpResult> {
-  const redis = getRedis()
+  await ensureSchema()
+  const key = normalize(email)
 
-  // Burn an attempt up-front so even error paths count toward the cap.
-  const attempts = await redis.incr(attemptsKey(email))
-  if (attempts === 1) {
-    await redis.expire(attemptsKey(email), OTP_TTL_SECONDS)
-  }
-  if (attempts > MAX_ATTEMPTS) {
-    return { ok: false, reason: 'too_many_attempts' }
-  }
+  const rows = (await sql`
+    SELECT code_hash, attempts, expires_at
+      FROM signup_email_otps
+     WHERE email = ${key}
+     LIMIT 1
+  `) as Array<{ code_hash: string; attempts: number; expires_at: string }>
 
-  const stored = await redis.get<string>(codeKey(email))
-  if (stored === null || stored === undefined) {
+  const record = rows[0] ?? null
+
+  // No pending code → treat as expired (fails closed).
+  if (!record) {
     return { ok: false, reason: 'expired' }
   }
 
-  // Normalise both sides to strings of digits before comparing — the
-  // Upstash client may hand back a number for an all-digit value.
-  const a = String(stored).trim()
-  const b = String(supplied).trim()
+  // Expired window → burn the row and report expiry.
+  if (new Date(record.expires_at).getTime() <= Date.now()) {
+    await sql`DELETE FROM signup_email_otps WHERE email = ${key}`
+    return { ok: false, reason: 'expired' }
+  }
+
+  // Burn an attempt up-front so even error paths count toward the cap.
+  const attempts = record.attempts + 1
+  if (attempts > MAX_ATTEMPTS) {
+    return { ok: false, reason: 'too_many_attempts' }
+  }
+  await sql`
+    UPDATE signup_email_otps SET attempts = ${attempts} WHERE email = ${key}
+  `
+
+  // Constant-time-ish comparison over the hex hashes.
+  const a = record.code_hash
+  const b = hashCode(supplied)
   if (a.length !== b.length) {
     return { ok: false, reason: 'mismatch' }
   }
@@ -101,15 +153,13 @@ export async function verifyOtp(
     return { ok: false, reason: 'mismatch' }
   }
 
-  // Success — consume the code + attempt counter so it can't be reused.
-  await redis.del(codeKey(email))
-  await redis.del(attemptsKey(email))
+  // Success — consume the code so it can't be reused.
+  await sql`DELETE FROM signup_email_otps WHERE email = ${key}`
   return { ok: true }
 }
 
-/** Clear any pending code/attempts for an email (e.g. after a hard reset). */
+/** Clear any pending code for an email (e.g. after a hard reset). */
 export async function clearOtp(email: string): Promise<void> {
-  const redis = getRedis()
-  await redis.del(codeKey(email))
-  await redis.del(attemptsKey(email))
+  await ensureSchema()
+  await sql`DELETE FROM signup_email_otps WHERE email = ${normalize(email)}`
 }
