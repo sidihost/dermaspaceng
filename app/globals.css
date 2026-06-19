@@ -517,6 +517,130 @@
   50% { transform: scaleY(1.3); opacity: 1; }
 }
 
+/* ── 7-Year anniversary banner ────────────────────────────────────
+   A slow diagonal light sweep travels across the purple bar (pure
+   white-at-low-opacity, no gradient color shift), giving a quiet
+   "celebration" glint without shadows or rainbow gradients. */
+@keyframes anniv-sweep {
+  0%   { transform: translateX(-150%) skewX(-20deg); }
+  100% { transform: translateX(250%) skewX(-20deg); }
+}
+
+/* The serif "7" breathes very gently so the eye is drawn to it
+   without any motion that feels gimmicky. */
+@keyframes anniv-seven {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.12); }
+}
+
+/* Tiny accent dots that twinkle in sequence beside the message. */
+@keyframes anniv-twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50%      { opacity: 1;    transform: scale(1); }
+}
+
+/* Emblem ring in the banner slowly rotates its dotted stroke. */
+@keyframes anniv-banner-ring {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* A soft light passes through the wordmark for a classy sheen. */
+@keyframes anniv-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.anniv-sweep {
+  animation: anniv-sweep 4.5s ease-in-out infinite;
+}
+.anniv-seven {
+  animation: anniv-seven 2.8s ease-in-out infinite;
+}
+.anniv-twinkle {
+  animation: anniv-twinkle 2.4s ease-in-out infinite;
+}
+.anniv-banner-ring {
+  animation: anniv-banner-ring 12s linear infinite;
+}
+.anniv-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.85) 40%,
+    #ffffff 50%,
+    rgba(255, 255, 255, 0.85) 60%,
+    rgba(255, 255, 255, 0.85) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: anniv-shimmer 5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anniv-sweep,
+  .anniv-seven,
+  .anniv-twinkle,
+  .anniv-banner-ring,
+  .anniv-shimmer {
+    animation: none;
+  }
+}
+
+/* ── Anniversary story-reel (/anniversary) ────────────────────────
+   These live in the global stylesheet (not styled-jsx) so the reel,
+   which is a client component rendered with SSR, hydrates without a
+   class-hash mismatch. */
+@keyframes anniv-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes anniv-pop {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes anniv-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+@keyframes anniv-fall {
+  0%   { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.55; }
+  90%  { opacity: 0.55; }
+  100% { transform: translateY(115vh) translateX(40px) rotate(220deg); opacity: 0; }
+}
+@keyframes anniv-ring-draw {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes anniv-ring-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes anniv-seven-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}
+.anniv-float { animation: anniv-float 6s ease-in-out infinite; }
+.anniv-ring-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: anniv-ring-draw 1.4s ease-out forwards;
+}
+.anniv-ring-rotate { animation: anniv-ring-rotate 14s linear infinite; }
+.anniv-seven-float { animation: anniv-seven-float 2.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anniv-float,
+  .anniv-ring-rotate,
+  .anniv-seven-float {
+    animation: none !important;
+  }
+  .anniv-ring-draw { stroke-dashoffset: 0; animation: none !important; }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out forwards;
 }

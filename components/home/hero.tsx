@@ -313,34 +313,6 @@ export default function Hero() {
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div className="max-w-2xl">
-              {/* 7-Year Anniversary lockup — a quiet, premium marker that
-                  sits above the slide eyebrow. Deliberately built WITHOUT
-                  shadows or gradients: a thin hairline-bordered pill, a
-                  solid white disc, and the year set in our serif italic
-                  (the same face used for the hero highlight) in brand
-                  purple. The thin connecting rules echo the eyebrow's
-                  hairline language so it reads as part of the system, not
-                  a sticker. Rendered once (not keyed to the slide) so it
-                  stays steady while the photography behind it changes. */}
-              <div
-                className="inline-flex items-center gap-2.5 mb-4 rounded-full border border-white/35 bg-white/10 pl-1.5 pr-4 py-1.5 backdrop-blur-sm"
-                style={{ animation: 'hero-char-in 700ms cubic-bezier(0.2,0.8,0.2,1) both' }}
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white">
-                  <span className="font-serif italic text-xl font-semibold leading-none text-[#7B2D8E]">
-                    7
-                  </span>
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="text-white text-xs sm:text-sm font-semibold tracking-wide">
-                    Years of Dermaspace
-                  </span>
-                  <span className="text-white/70 text-[10px] uppercase tracking-[0.28em]">
-                    Anniversary
-                  </span>
-                </span>
-              </div>
-
               {/* Eyebrow — hairlines grow on both sides */}
               <div
                 key={`eyebrow-${currentSlide}`}
