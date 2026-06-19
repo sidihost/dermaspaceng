@@ -333,20 +333,24 @@ export default function Header() {
             className="anniv-sweep pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/15"
           />
           <div className="relative max-w-6xl mx-auto flex items-center justify-center gap-3">
-            <div className="flex items-center justify-center gap-2.5 text-center">
+            <Link
+              href="/anniversary"
+              className="group flex items-center justify-center gap-2.5 text-center transition-opacity hover:opacity-90"
+              aria-label="Watch our 7 year anniversary story"
+            >
               <span className="anniv-seven font-serif italic text-lg sm:text-xl font-semibold leading-none">
                 7
               </span>
               <p className="text-xs sm:text-sm tracking-wide">
                 <span className="font-semibold">Years of Dermaspace</span>
-                <span className="hidden sm:inline text-white/85">{' '}— thank you for celebrating with us</span>
+                <span className="hidden sm:inline text-white/85">{' '}— tap to watch our story</span>
               </p>
               <span aria-hidden="true" className="hidden sm:flex items-center gap-1">
                 <span className="anniv-twinkle h-1 w-1 rounded-full bg-white" />
                 <span className="anniv-twinkle h-1.5 w-1.5 rounded-full bg-white" style={{ animationDelay: '0.4s' }} />
                 <span className="anniv-twinkle h-1 w-1 rounded-full bg-white" style={{ animationDelay: '0.8s' }} />
               </span>
-            </div>
+            </Link>
             <button 
               onClick={() => setShowBanner(false)}
               className="p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
