@@ -589,6 +589,58 @@
   }
 }
 
+/* ── Anniversary story-reel (/anniversary) ────────────────────────
+   These live in the global stylesheet (not styled-jsx) so the reel,
+   which is a client component rendered with SSR, hydrates without a
+   class-hash mismatch. */
+@keyframes anniv-rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes anniv-pop {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes anniv-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+@keyframes anniv-fall {
+  0%   { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: 0.55; }
+  90%  { opacity: 0.55; }
+  100% { transform: translateY(115vh) translateX(40px) rotate(220deg); opacity: 0; }
+}
+@keyframes anniv-ring-draw {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes anniv-ring-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes anniv-seven-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}
+.anniv-float { animation: anniv-float 6s ease-in-out infinite; }
+.anniv-ring-draw {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: anniv-ring-draw 1.4s ease-out forwards;
+}
+.anniv-ring-rotate { animation: anniv-ring-rotate 14s linear infinite; }
+.anniv-seven-float { animation: anniv-seven-float 2.8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anniv-float,
+  .anniv-ring-rotate,
+  .anniv-seven-float {
+    animation: none !important;
+  }
+  .anniv-ring-draw { stroke-dashoffset: 0; animation: none !important; }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out forwards;
 }

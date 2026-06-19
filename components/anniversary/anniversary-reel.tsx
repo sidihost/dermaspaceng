@@ -43,7 +43,7 @@ const SEGMENTS: Segment[] = [
   {
     kind: 'cover',
     image: '/images/anniversary/illus-cover.png',
-    kicker: 'Est. 2018',
+    kicker: 'Est. 2019',
     title: 'Seven years of',
     highlight: 'glowing skin',
     body: 'A little story about how far we have come — and the faces that brought us here.',
@@ -51,18 +51,18 @@ const SEGMENTS: Segment[] = [
   {
     kind: 'story',
     image: '/images/anniversary/illus-origin.png',
-    kicker: 'How it started',
-    title: 'One room.',
-    highlight: 'One promise.',
-    body: 'We opened with a simple idea: skincare built for Lagos skin and Lagos weather. No gimmicks — just results you can see.',
+    kicker: '2019 · Ikoyi',
+    title: 'It began in',
+    highlight: 'Ikoyi',
+    body: 'In 2019 we opened our very first studio in Ikoyi, with a simple idea: skincare built for Lagos skin and Lagos weather. No gimmicks — just results you can see.',
   },
   {
     kind: 'story',
     image: '/images/anniversary/illus-treatments.png',
-    kicker: 'The work',
-    title: 'Thousands of afternoons,',
-    highlight: 'off your shoulders',
-    body: 'Facials, peels, massages and steam — quiet hours that sent you out lighter than you walked in.',
+    kicker: 'Then · Victoria Island',
+    title: 'Then we grew',
+    highlight: 'to VI',
+    body: 'As word spread, we opened our Victoria Island branch — bringing the same calm, the same care, and the same glow to even more of you.',
   },
   {
     kind: 'stat',
@@ -437,58 +437,6 @@ export default function AnniversaryReel() {
         </button>
       )}
 
-      {/* Scoped animation keyframes */}
-      <style jsx global>{`
-        @keyframes anniv-rise {
-          from { opacity: 0; transform: translateY(26px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes anniv-pop {
-          from { opacity: 0; transform: scale(0.9) translateY(20px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes anniv-float {
-          0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-12px); }
-        }
-        @keyframes anniv-fall {
-          0%   { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 0; }
-          10%  { opacity: 0.55; }
-          90%  { opacity: 0.55; }
-          100% { transform: translateY(115vh) translateX(40px) rotate(220deg); opacity: 0; }
-        }
-        @keyframes anniv-ring-draw {
-          from { stroke-dashoffset: 100; }
-          to   { stroke-dashoffset: 0; }
-        }
-        @keyframes anniv-ring-rotate {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes anniv-seven-float {
-          0%, 100% { transform: translateY(0); }
-          50%      { transform: translateY(-1.5px); }
-        }
-        .anniv-float { animation: anniv-float 6s ease-in-out infinite; }
-        .anniv-ring-draw {
-          stroke-dasharray: 100;
-          stroke-dashoffset: 100;
-          animation: anniv-ring-draw 1.4s ease-out forwards;
-        }
-        .anniv-ring-rotate { animation: anniv-ring-rotate 14s linear infinite; }
-        .anniv-seven-float { animation: anniv-seven-float 2.8s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce) {
-          .anniv-float,
-          .anniv-ring-rotate,
-          .anniv-seven-float,
-          [style*='anniv-rise'],
-          [style*='anniv-pop'],
-          [style*='anniv-fall'] {
-            animation: none !important;
-          }
-          .anniv-ring-draw { stroke-dashoffset: 0; animation: none !important; }
-        }
-      `}</style>
     </div>
   )
 }
