@@ -335,20 +335,33 @@ export default function Header() {
           <div className="relative max-w-6xl mx-auto flex items-center justify-center gap-3">
             <Link
               href="/anniversary"
-              className="group flex items-center justify-center gap-2.5 text-center transition-opacity hover:opacity-90"
+              className="group flex items-center justify-center gap-3 text-center transition-opacity hover:opacity-95"
               aria-label="Watch our 7 year anniversary story"
             >
-              <span className="anniv-seven font-serif italic text-lg sm:text-xl font-semibold leading-none">
-                7
+              {/* Animated emblem: a serif "7" inside a slowly rotating
+                  dotted ring — small, quiet, and classy. */}
+              <span
+                aria-hidden="true"
+                className="relative inline-flex h-7 w-7 items-center justify-center flex-shrink-0"
+              >
+                <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+                  <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="3" />
+                  <circle
+                    cx="50" cy="50" r="38" fill="none"
+                    stroke="rgba(255,255,255,0.85)" strokeWidth="3"
+                    strokeLinecap="round" strokeDasharray="0.5 7"
+                    className="anniv-banner-ring" style={{ transformOrigin: '50% 50%' }}
+                  />
+                </svg>
+                <span className="anniv-seven font-serif italic text-sm font-semibold leading-none">7</span>
               </span>
               <p className="text-xs sm:text-sm tracking-wide">
-                <span className="font-semibold">Years of Dermaspace</span>
+                <span className="anniv-shimmer font-semibold">Seven Years of Dermaspace</span>
                 <span className="hidden sm:inline text-white/85">{' '}— tap to watch our story</span>
               </p>
-              <span aria-hidden="true" className="hidden sm:flex items-center gap-1">
-                <span className="anniv-twinkle h-1 w-1 rounded-full bg-white" />
-                <span className="anniv-twinkle h-1.5 w-1.5 rounded-full bg-white" style={{ animationDelay: '0.4s' }} />
-                <span className="anniv-twinkle h-1 w-1 rounded-full bg-white" style={{ animationDelay: '0.8s' }} />
+              <span className="hidden items-center gap-1 rounded-full border border-white/30 px-2.5 py-0.5 text-[11px] font-medium text-white/90 transition-colors group-hover:bg-white/10 sm:inline-flex">
+                Watch
+                <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
               </span>
             </Link>
             <button 
