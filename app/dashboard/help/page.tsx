@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { FeatureIntroModal } from '@/components/shared/feature-intro-modal'
@@ -17,7 +18,28 @@ import {
   ExternalLink,
   BookOpen,
   Ticket,
+  MapPin,
 } from 'lucide-react'
+
+// The branch map is Leaflet-based and client-only, so we load it lazily and
+// disable SSR. It already owns our brand purple pins, addresses and live
+// directions, so we simply embed it at a compact height inside the answer.
+const InteractiveMap = dynamic(
+  () => import('@/components/home/interactive-map'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-[300px] items-center justify-center bg-secondary text-sm text-[#7B2D8E]">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#7B2D8E] [animation-delay:-0.3s]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#7B2D8E] [animation-delay:-0.15s]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#7B2D8E]" />
+          Preparing the map
+        </span>
+      </div>
+    ),
+  },
+)
 
 interface HelpSource {
   title: string
@@ -28,26 +50,60 @@ interface AnswerState {
   question: string
   answer: string
   sources: HelpSource[]
+  showMap: boolean
 }
 
 const MAX_LEN = 90
 
-// The model sometimes returns light markdown (e.g. **Settings**) even
-// though the prompt discourages it. Instead of showing raw asterisks,
-// render bold segments properly. We only support **bold** — anything
-// fancier is stripped server-side by the concise prompt.
+// Render an answer line, turning inline markdown into real UI:
+//   **bold**            -> <strong>
+//   [label](/in-app)    -> <Link> in brand purple (for navigation)
+//   [label](https://..) -> external <a>
+// We only ever follow internal links the model is allowed to emit, so the
+// answer can guide people straight to the right page like the reference design.
+function renderInline(text: string, keyPrefix: string) {
+  // Split on links first, keeping the link tokens.
+  const linkParts = text.split(/(\[[^\]]+\]\([^)]+\))/g)
+  return linkParts.map((part, i) => {
+    const link = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+    if (link) {
+      const [, label, href] = link
+      const isInternal = href.startsWith('/')
+      const className =
+        'font-medium text-[#7B2D8E] underline-offset-2 hover:underline'
+      return isInternal ? (
+        <Link key={`${keyPrefix}-l${i}`} href={href} className={className}>
+          {label}
+        </Link>
+      ) : (
+        <a
+          key={`${keyPrefix}-l${i}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={className}
+        >
+          {label}
+        </a>
+      )
+    }
+    // Within non-link text, render **bold** segments.
+    return part.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
+      seg.startsWith('**') && seg.endsWith('**') ? (
+        <strong key={`${keyPrefix}-b${i}-${j}`} className="font-semibold">
+          {seg.slice(2, -2)}
+        </strong>
+      ) : (
+        <span key={`${keyPrefix}-t${i}-${j}`}>{seg}</span>
+      ),
+    )
+  })
+}
+
 function renderAnswer(answer: string) {
   return answer.split('\n').map((line, i) => (
     <p key={i} className="leading-relaxed text-foreground [&:not(:first-child)]:mt-2">
-      {line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
-        part.startsWith('**') && part.endsWith('**') ? (
-          <strong key={j} className="font-semibold">
-            {part.slice(2, -2)}
-          </strong>
-        ) : (
-          part
-        ),
-      )}
+      {renderInline(line, `p${i}`)}
     </p>
   ))
 }
@@ -89,7 +145,12 @@ export default function HelpCenterPage() {
         setError(data?.error || 'Something went wrong. Please try again.')
         setResult(null)
       } else {
-        setResult({ question: q, answer: data.answer, sources: data.sources ?? [] })
+        setResult({
+          question: q,
+          answer: data.answer,
+          sources: data.sources ?? [],
+          showMap: Boolean(data.showMap),
+        })
       }
     } catch {
       setError('Network error. Please check your connection and try again.')
@@ -232,6 +293,31 @@ export default function HelpCenterPage() {
             </div>
 
             <div>{renderAnswer(result.answer)}</div>
+
+            {/* Live branch map — shown for location / directions questions.
+                Reuses our brand-purple Leaflet map so people can see exactly
+                where each branch is and get one-tap directions. */}
+            {result.showMap ? (
+              <div className="mt-4 overflow-hidden rounded-2xl border border-border">
+                <InteractiveMap height="300px" />
+                <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card p-3">
+                  <Link
+                    href="/locations"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#5A1D6A]"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Open full map
+                  </Link>
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-4 py-2 text-sm font-medium text-[#7B2D8E] transition-colors hover:bg-[#7B2D8E]/20"
+                  >
+                    Book a visit
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            ) : null}
 
             {/* Feedback */}
             <div className="mt-5 flex items-center gap-3">
