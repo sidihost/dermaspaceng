@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Search, Users, UserCheck, UserX, ChevronLeft, ChevronRight,
   Mail, Phone, ArrowUpRight, UserPlus, CircleDashed, CheckCircle2,
-  BadgeCheck,
+  BadgeCheck, RefreshCw, Loader2,
 } from 'lucide-react'
 
 interface User {
@@ -93,6 +93,53 @@ export default function UsersPage() {
   // request so even if the API allowed other roles, we'd never render
   // them here. The role filter dropdown was removed.
   const roleFilter = 'user'
+  // Per-row in-flight flag for the "Resend verification" button so a slow
+  // request only greys out the row it was fired from.
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  // Small inline banner for resend success/failure — the admin area has no
+  // global toast system, so we mirror the inline-banner pattern used on the
+  // staff page. Auto-dismisses after 5s.
+  const [resendFeedback, setResendFeedback] = useState<
+    { kind: 'success' | 'error'; message: string } | null
+  >(null)
+
+  useEffect(() => {
+    if (!resendFeedback) return
+    const t = setTimeout(() => setResendFeedback(null), 5000)
+    return () => clearTimeout(t)
+  }, [resendFeedback])
+
+  const handleResendVerification = useCallback(async (user: User) => {
+    const fullName =
+      `${user.first_name} ${user.last_name}`.trim() || user.email || 'this user'
+    setResendingId(user.id)
+    try {
+      const res = await fetch(
+        `/api/admin/users/${user.id}/resend-verification`,
+        { method: 'POST' },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setResendFeedback({
+          kind: 'error',
+          message: body?.error || `Could not send a code to ${fullName}.`,
+        })
+        return
+      }
+      setResendFeedback({
+        kind: 'success',
+        message: body?.message || `Verification code sent to ${user.email}.`,
+      })
+    } catch (error) {
+      console.error('[v0] Resend verification failed:', error)
+      setResendFeedback({
+        kind: 'error',
+        message: 'Network error. Please try again in a moment.',
+      })
+    } finally {
+      setResendingId(null)
+    }
+  }, [])
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -185,6 +232,33 @@ export default function UsersPage() {
           ) : null}
         </div>
       </div>
+
+      {/* Resend feedback banner — inline status for the per-row "Resend"
+          action. Brand purple for success, rose for failure. */}
+      {resendFeedback && (
+        <div
+          role="status"
+          className={
+            resendFeedback.kind === 'success'
+              ? 'flex items-start gap-3 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 p-3.5 text-sm text-[#5A1D6A]'
+              : 'flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700'
+          }
+        >
+          {resendFeedback.kind === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          ) : (
+            <UserX className="w-4 h-4 mt-0.5 shrink-0" />
+          )}
+          <span className="flex-1">{resendFeedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setResendFeedback(null)}
+            className="text-xs font-medium opacity-70 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Filters — search only. The role dropdown was removed because
           this page is hard-locked to clients (role=user). */}
@@ -424,10 +498,34 @@ export default function UsersPage() {
                         link to the full details page where all user
                         actions (suspend, promote, etc.) already live. */}
                     <TableCell className="text-right">
-                      <span className="inline-flex items-center gap-1 text-sm text-[#7B2D8E]">
-                        View
-                        <ArrowUpRight className="w-3.5 h-3.5" />
-                      </span>
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Resend verification — only for accounts that
+                            haven't verified their email yet. stopPropagation
+                            keeps the row-click navigation from firing. */}
+                        {!user.email_verified && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleResendVerification(user)
+                            }}
+                            disabled={resendingId === user.id}
+                            className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/20 bg-white px-2 py-1 text-[11px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                            title="Email a fresh verification code"
+                          >
+                            {resendingId === user.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                            Resend
+                          </button>
+                        )}
+                        <span className="inline-flex items-center gap-1 text-sm text-[#7B2D8E]">
+                          View
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

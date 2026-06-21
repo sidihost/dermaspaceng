@@ -584,6 +584,87 @@ export async function sendSignupOtpEmail(
   })
 }
 
+// ---------------------------------------------------------------------------
+// Onboarding "pick up where you left off" reminder
+// ---------------------------------------------------------------------------
+// Sent by /api/cron/onboarding-reminders to users who signed up but never
+// verified their email OR never finished the /complete-profile wizard.
+//
+// Two flavours, driven by `stage`:
+//   • 'verify'   — they never confirmed their email. CTA → /verify-email
+//                  (with their email prefilled) so they can request a fresh
+//                  code and finish.
+//   • 'profile'  — verified, but stopped partway through onboarding. CTA →
+//                  /complete-profile to wrap it up.
+// A single, focused CTA in each — anything else hurts the "come back and
+// finish" conversion we're after.
+export async function sendOnboardingReminderEmail(data: {
+  email: string
+  firstName: string
+  stage: 'verify' | 'profile'
+}): Promise<boolean> {
+  const isVerify = data.stage === 'verify'
+  const ctaUrl = isVerify
+    ? `${PUBLIC_ORIGIN}/verify-email?email=${encodeURIComponent(data.email)}`
+    : `${PUBLIC_ORIGIN}/complete-profile`
+  const ctaLabel = isVerify ? 'Verify my email' : 'Finish my profile'
+  const headline = isVerify
+    ? 'Confirm your email to get started'
+    : "You're almost there"
+  const body = isVerify
+    ? `You started creating your Dermaspace account but never confirmed your
+       email, so it isn't active yet. Pick up right where you left off — tap
+       the button below to verify your email and unlock your account.`
+    : `You created your Dermaspace account but didn't finish setting up your
+       profile. It only takes a minute — tap the button below to complete it
+       and start booking treatments, earning glow points, and more.`
+
+  const content = `
+    <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">${headline}</h1>
+
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      Hi ${escapeHtml(data.firstName)},
+    </p>
+
+    <p style="margin: 0 0 28px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      ${body}
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="margin: 0 0 28px;">
+      <tr>
+        <td align="center">
+          <a href="${ctaUrl}"
+             style="display: inline-block; padding: 14px 32px; background-color: ${BRAND_COLOR}; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 10px;">
+            ${ctaLabel}
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 14px; color: #65676b; line-height: 1.5;">
+      If you didn&apos;t sign up for Dermaspace, you can safely ignore this email.
+    </p>
+
+    <p style="margin: 24px 0 0; font-size: 14px; color: #1c1e21; line-height: 1.5;">
+      Thanks,<br>
+      Dermaspace Team
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: isVerify
+      ? 'Finish creating your Dermaspace account'
+      : 'Your Dermaspace profile is almost ready',
+    html: getEmailTemplate(content, {
+      preheader: isVerify
+        ? 'You started signing up but never confirmed your email. Pick up where you left off.'
+        : 'You started setting up your profile but never finished. It only takes a minute.',
+      eyebrow: isVerify ? 'Verify your email' : 'Finish onboarding',
+    }),
+  })
+}
+
 // Consultation confirmation
 export async function sendConsultationConfirmation(data: {
   email: string
