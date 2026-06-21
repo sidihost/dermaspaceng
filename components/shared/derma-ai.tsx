@@ -247,9 +247,43 @@ function renderInlineIcon(name: string) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block -translate-y-[1px] mr-1 text-[#7B2D8E]" aria-hidden="true">${paths}</svg>`
 }
 
+// Small external-link glyph appended to links that leave the app, so
+// users get the same affordance native apps give (a quiet "this opens
+// elsewhere" hint). Matches the inline-icon sizing/baseline treatment.
+const EXTERNAL_LINK_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block -translate-y-[1px] ml-0.5 opacity-70" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>'
+
+// Render a single hyperlink as a polished, on-brand anchor. Links are
+// the AI answer's "guide rails" (see the Snapchat-style help reference)
+// so we make them obviously tappable — brand purple, medium weight, a
+// soft underline that firms up on hover — but deliberately NO shadow,
+// pill, or background, to stay calm inside the prose.
+//   • internal paths (`/services/...`, `#section`) navigate in place
+//   • external URLs (http, www, mailto, tel) open in a new tab and get
+//     the little external-link glyph + rel="noopener"
+//   • anything with an unsafe scheme (e.g. `javascript:`) is dropped
+//     back to plain text so a stray model token can't inject a handler
+function renderInlineLink(rawHref: string, label: string): string {
+  const href = (rawHref || '').trim()
+  const isWww = /^www\./i.test(href)
+  const safe = /^(https?:\/\/|mailto:|tel:|\/|#)/i.test(href) || isWww
+  if (!safe) return label
+  const finalHref = isWww ? `https://${href}` : href
+  const isExternal = /^(https?:\/\/|mailto:|tel:)/i.test(href) || isWww
+  const cls =
+    'text-[#7B2D8E] font-medium underline decoration-[#7B2D8E]/30 underline-offset-2 hover:decoration-[#7B2D8E] transition-colors break-words'
+  if (isExternal) {
+    return `<a href="${finalHref}" target="_blank" rel="noopener noreferrer" class="${cls}">${label}${EXTERNAL_LINK_SVG}</a>`
+  }
+  return `<a href="${finalHref}" class="${cls}">${label}</a>`
+}
+
 // Inline markdown — runs on every text fragment inside a block.
 // Order matters: code spans are extracted FIRST (via placeholders)
-// so bold/italic inside backticks isn't accidentally processed.
+// so bold/italic inside backticks isn't accidentally processed, and
+// links are extracted to placeholders BEFORE we inject any icon/emoji
+// SVGs — otherwise the bare-URL autolinker would corrupt the SVGs'
+// `xmlns="http://www.w3.org/2000/svg"` attribute.
 function applyInline(raw: string) {
   const codeSpans: string[] = []
   let s = raw.replace(/`([^`]+)`/g, (_m, code: string) => {
@@ -257,9 +291,36 @@ function applyInline(raw: string) {
     return `\u0000CODE${codeSpans.length - 1}\u0000`
   })
 
+  // Links are stashed as placeholders so later passes (icons, emoji,
+  // bold/italic, autolink) can't touch the anchor HTML we generate.
+  const links: string[] = []
+  const stashLink = (html: string) => {
+    links.push(html)
+    return `\u0000LINK${links.length - 1}\u0000`
+  }
+
+  // 1) Markdown links `[label](href)` → anchors. Bold/italic inside the
+  //    label is honoured so `[**Facials**](/...)` still renders bold.
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label: string, href: string) => {
+    const lbl = label
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    return stashLink(renderInlineLink(href, lbl))
+  })
+
+  // 2) Bare URLs the model pasted (http(s):// or www.) become clickable
+  //    too. Trailing sentence punctuation is kept OUTSIDE the link.
+  s = s.replace(
+    /(^|[\s(])((?:https?:\/\/|www\.)[^\s<>)\]]+)/gi,
+    (_m, pre: string, url: string) => {
+      const trail = url.match(/[.,!?;:]+$/)
+      const clean = trail ? url.slice(0, -trail[0].length) : url
+      const suffix = trail ? trail[0] : ''
+      return `${pre}${stashLink(renderInlineLink(clean, clean))}${suffix}`
+    },
+  )
+
   // Icon tags — `[icon:name]` renders as an inline brand-purple SVG.
-  // We process this BEFORE link syntax so `[icon:map-pin]` isn't
-  // mistaken for a markdown link.
   s = s.replace(/\[icon:([a-z0-9-]+)\]/gi, (_m, name: string) => renderInlineIcon(name.toLowerCase()))
 
   // Emoji fallback — swap any bare emoji the model emitted for the
@@ -273,15 +334,9 @@ function applyInline(raw: string) {
 
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
   s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
-  // Markdown-style links `[label](/path)` → real anchors. We keep the
-  // styling understated (underline only, inherits text colour) so it
-  // reads as a real hyperlink, not as a coloured button or badge.
-  s = s.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" class="underline underline-offset-2 hover:opacity-80">$1</a>'
-  )
-  // Re-hydrate code spans with a soft brand chip, matching how
-  // ChatGPT renders inline `code` inside plain prose.
+
+  // Re-hydrate links, then code spans (soft brand chip, ChatGPT-style).
+  s = s.replace(/\u0000LINK(\d+)\u0000/g, (_m, i: string) => links[Number(i)] || '')
   s = s.replace(/\u0000CODE(\d+)\u0000/g, (_m, i: string) => {
     const code = escapeHtml(codeSpans[Number(i)] || '')
     return `<code class="font-mono text-[12px] px-1 py-0.5 rounded bg-[#7B2D8E]/8 text-[#7B2D8E]">${code}</code>`
