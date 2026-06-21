@@ -136,13 +136,13 @@ export async function createUser(data: {
       INSERT INTO users (
         id, email, password_hash, first_name, last_name, phone,
         verification_token, date_of_birth, gender, avatar_url,
-        legal_accepted_version, legal_accepted_at
+        legal_accepted_version, legal_accepted_at, email_verified
       )
       VALUES (
         ${id}, ${data.email.toLowerCase()}, ${hashedPassword},
         ${data.firstName}, ${data.lastName}, ${data.phone || null},
         ${verificationToken}, ${dob}, ${gender}, ${defaultAvatar},
-        ${legalVersion}, ${legalAt}
+        ${legalVersion}, ${legalAt}, false
       )
     `
 

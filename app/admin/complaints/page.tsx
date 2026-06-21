@@ -152,7 +152,15 @@ export default function ComplaintsPage() {
   // which keeps the baseline in sync with the latest server state.
   useEffect(() => {
     const open = (statusCounts.open || 0) + (statusCounts.in_progress || 0)
-    if (open >= 0) markSurfaceSeen('complaints', open)
+    // Baseline key must match what the sidebar reads for this row. The
+    // sidebar's "Tickets" row (href /admin/complaints) reads the
+    // `tickets` baseline, so we write the same key — otherwise the badge
+    // never cleared because the page wrote `complaints` but the sidebar
+    // looked up `tickets`. The unified inbox open-count we snapshot here
+    // is >= the ticket-only count the sidebar compares against, so the
+    // delta drops to zero on view and only re-appears on genuinely new
+    // unattended items.
+    if (open >= 0) markSurfaceSeen('tickets', open)
   }, [statusCounts])
 
   // Tapping a row navigates to the dedicated detail page instead of

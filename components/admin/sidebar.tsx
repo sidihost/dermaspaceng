@@ -202,11 +202,31 @@ const adminStatsFetcher = (url: string) =>
 
 const BASELINE_PREFIX = 'admin:badgeBaseline:'
 
+// Surfaces whose underlying count is a *per-day* tally (it resets to 0 at
+// midnight server-side). For these we store the baseline stamped with the
+// day it was written (`YYYY-MM-DD:count`). On read, a baseline from an
+// earlier day is treated as 0 — otherwise yesterday's "seen 5 signups"
+// baseline would suppress today's genuinely-new signup (max(0, 1-5) = 0).
+const DATED_SURFACES = new Set(['users'])
+
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
+}
+
 function readBaseline(surface: string): number {
   if (typeof window === 'undefined') return 0
   try {
     const raw = window.localStorage.getItem(BASELINE_PREFIX + surface)
     if (!raw) return 0
+    // Dated format: "YYYY-MM-DD:count". Only honour it if the stamp is
+    // today; a stale stamp means the daily counter has since reset, so
+    // the baseline no longer applies and we fall back to 0.
+    if (raw.includes(':')) {
+      const [stamp, countPart] = raw.split(':')
+      if (stamp !== todayStamp()) return 0
+      const n = parseInt(countPart, 10)
+      return Number.isFinite(n) && n >= 0 ? n : 0
+    }
     const n = parseInt(raw, 10)
     return Number.isFinite(n) && n >= 0 ? n : 0
   } catch {
@@ -237,10 +257,13 @@ export function resetSurfaceBaseline(surface: string): void {
 export function markSurfaceSeen(surface: string, currentCount: number): void {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(
-      BASELINE_PREFIX + surface,
-      String(Math.max(0, currentCount)),
-    )
+    const safe = Math.max(0, currentCount)
+    // Dated surfaces (per-day counters) store the day alongside the count
+    // so readBaseline can discard a stale baseline after midnight.
+    const value = DATED_SURFACES.has(surface)
+      ? `${todayStamp()}:${safe}`
+      : String(safe)
+    window.localStorage.setItem(BASELINE_PREFIX + surface, value)
     // Notify any other tabs / the sidebar in the same tab so its
     // displayed count refreshes immediately rather than waiting for
     // the next 30s SWR poll.

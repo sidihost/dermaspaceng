@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -185,6 +186,14 @@ export default function ConsultationsPage() {
   useEffect(() => {
     fetchConsultations()
   }, [fetchConsultations])
+
+  // Clear the sidebar Consultations badge on view — Google/Vercel-style
+  // "seen" baseline. We snapshot the pending count so the chip only
+  // re-appears when a NEW consultation lands. Recomputed whenever the
+  // counts change so the baseline tracks the latest server state.
+  useEffect(() => {
+    markSurfaceSeen('consultations', statusCounts.pending || 0)
+  }, [statusCounts])
 
   // Client-side search across the page we already have — keeps the
   // experience instant for the typical "I'm looking for Aisha" flow

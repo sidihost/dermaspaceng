@@ -68,6 +68,18 @@ export const QSTASH_SCHEDULES: QStashScheduleConfig[] = [
       'Daily — nudges users who signed up 2-26h ago without passkey or 2FA. Marks users.security_reminder_sent so each user only sees it once.',
   },
   {
+    id: 'onboarding-reminders',
+    path: '/api/cron/onboarding-reminders',
+    // 10:00 Africa/Lagos — an hour after the security nudge so the two
+    // daily account emails don't land in the same minute. Targets users
+    // who signed up 2-48h ago and never verified or never finished
+    // /complete-profile.
+    cron: '0 9 * * *',
+    label: 'Onboarding reminders',
+    description:
+      'Daily — emails users who signed up 2-48h ago but never verified their email or never finished onboarding. Marks users.onboarding_reminder_sent so each user is nudged once.',
+  },
+  {
     id: 'broadcasts',
     path: '/api/cron/broadcasts',
     // Every 5 minutes. Vercel Hobby cron forced this to be daily, which

@@ -155,7 +155,7 @@ export default function StaffPage() {
   // remove). Separate from busyInvite so a slow remove call on row A
   // can't grey out the resend button on invitation row B.
   const [busyMember, setBusyMember] = useState<
-    Record<string, 'suspend' | 'reinstate' | 'remove' | undefined>
+    Record<string, 'suspend' | 'reinstate' | 'remove' | 'resend' | undefined>
   >({})
   // Inline feedback banner reserved for member-row actions. We keep
   // it separate from inviteFeedback so the success/error message
@@ -352,6 +352,49 @@ export default function StaffPage() {
     } catch (error) {
       console.error('[v0] Remove staff failed:', error)
       setStaff(prev)
+      setMemberFeedback({
+        kind: 'error',
+        message: 'Network error. Please try again in a moment.',
+      })
+    } finally {
+      setBusyMember((b) => ({ ...b, [member.id]: undefined }))
+    }
+  }
+
+  // Resend an email-verification code to a team member who was
+  // promoted/created but never verified their email (status = 'pending').
+  // Unlike "resend invitation" (which rotates an invite token), this
+  // re-issues the signup OTP via /api/admin/users/[id]/resend-verification
+  // so the staffer can verify from the normal verify-email screen.
+  const handleResendVerification = async (member: Staff) => {
+    const fullName =
+      `${member.first_name} ${member.last_name}`.trim() ||
+      member.email ||
+      'this team member'
+    setBusyMember((b) => ({ ...b, [member.id]: 'resend' }))
+    try {
+      const res = await fetch(
+        `/api/admin/users/${member.id}/resend-verification`,
+        { method: 'POST' },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setMemberFeedback({
+          kind: 'error',
+          message:
+            body?.error ||
+            `Could not send a verification code to ${fullName}.`,
+        })
+        return
+      }
+      setMemberFeedback({
+        kind: 'success',
+        message:
+          body?.message ||
+          `Verification code sent to ${member.email ?? fullName}.`,
+      })
+    } catch (error) {
+      console.error('[v0] Resend verification error:', error)
       setMemberFeedback({
         kind: 'error',
         message: 'Network error. Please try again in a moment.',
@@ -741,6 +784,28 @@ export default function StaffPage() {
                                   View
                                   <ChevronRight className="w-3 h-3" />
                                 </Link>
+                                {/* Resend verification — only meaningful for
+                                    rows that are still pending AND have a real
+                                    email to send to (placeholder seed addresses
+                                    can't receive mail). Non-destructive, so it
+                                    shows even on protected (self/super) rows. */}
+                                {status === 'pending' &&
+                                  !isPlaceholderEmail(member.email) && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleResendVerification(member)}
+                                      disabled={!!busy}
+                                      className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/20 bg-white px-2 py-1 text-[11px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                      title="Email a fresh verification code so they can finish setup"
+                                    >
+                                      {busy === 'resend' ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="w-3 h-3" />
+                                      )}
+                                      Resend code
+                                    </button>
+                                  )}
                                 {!protect && (
                                   <>
                                     {member.is_active ? (
