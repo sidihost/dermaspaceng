@@ -44,13 +44,40 @@ function matchSources(question: string) {
   return chosen.map(({ title, path }) => ({ title, path }))
 }
 
+// Whether the question is about *where* we are / how to get to us. When true
+// the Help Center renders the live interactive branch map right inside the
+// answer card instead of just describing the addresses in words.
+const LOCATION_KEYWORDS = [
+  'location', 'locations', 'address', 'where', 'branch', 'branches',
+  'directions', 'direction', 'map', 'navigate', 'find you', 'find us',
+  'how to get', 'how do i get', 'parking', 'victoria island', 'ikoyi',
+]
+function wantsMap(question: string) {
+  const q = question.toLowerCase()
+  return LOCATION_KEYWORDS.some((k) => q.includes(k))
+}
+
 const SYSTEM_PROMPT = `You are the Dermaspace Help Center assistant for Dermaspace Esthetic and Wellness Centre, a skincare and wellness spa in Lagos, Nigeria with branches in Victoria Island and Ikoyi.
 
-Answer the user's question clearly and warmly in 2-4 short sentences. Be specific and practical. If the answer involves an action in the app (booking, funding a wallet, resetting a password, rescheduling), tell them exactly where to go using plain words like "Settings" or "your Wallet" — do NOT invent URLs or features that don't exist.
+Answer the user's question clearly and warmly in 2-4 short sentences. Be specific and practical.
+
+Linking — this is important. When the answer involves an action the user can take in the app, link the relevant words to the exact in-app page using markdown link syntax: [label](/path). Only use paths from this approved list — never invent URLs or features that don't exist:
+- /booking — book or schedule an appointment
+- /dashboard/wallet — wallet, funding, balance, top up
+- /dashboard/transactions — transactions, receipts, refunds
+- /dashboard/bookings — view, reschedule or cancel a booking
+- /dashboard/settings — account, password, email, security
+- /services — services, treatments and prices
+- /membership — memberships and packages
+- /locations — branches, addresses, hours, directions
+- /dashboard/support — contact support / open a ticket
+- /consultation — free skin consultation
+
+For example: "You can update it in [Settings](/dashboard/settings)." or "Top up from [your Wallet](/dashboard/wallet)." Link the natural words, not the raw path. Use 1-2 links where they genuinely help the user navigate — do not link every sentence.
 
 Rules:
-- Never make up prices, policies, or features. If you are unsure, say they can contact support.
-- Keep it concise and friendly. Respond in PLAIN TEXT only — no markdown of any kind: no headings, no bullet lists, no asterisks, and never wrap words in ** for bold. The answer is rendered as plain text in the app.
+- Never make up prices, policies, or features. If you are unsure, say they can [contact support](/dashboard/support).
+- Keep it concise and friendly. The only markdown allowed is the [label](/path) links described above and **bold** for emphasis. No headings, bullet lists, or other markdown.
 - Do not mention that you are an AI model or which provider you run on.`
 
 export async function POST(req: Request) {
@@ -70,6 +97,7 @@ export async function POST(req: Request) {
   }
 
   const sources = matchSources(question)
+  const showMap = wantsMap(question)
 
   try {
     const chain = getChatModelChain()
@@ -87,20 +115,22 @@ export async function POST(req: Request) {
     if (!answer) {
       return NextResponse.json({
         answer:
-          "I couldn't generate an answer right now. You can reach our team directly from the Contact support page and we'll be happy to help.",
+          "I couldn't generate an answer right now. You can reach our team directly from [Contact support](/dashboard/support) and we'll be happy to help.",
         sources,
+        showMap,
         provider: pick.name,
       })
     }
 
-    return NextResponse.json({ answer, sources, provider: pick.name })
+    return NextResponse.json({ answer, sources, showMap, provider: pick.name })
   } catch (error) {
     console.error('[v0] help/answer error:', error)
     return NextResponse.json(
       {
         answer:
-          "Something went wrong generating an answer. Please try again, or reach our team from the Contact support page.",
+          "Something went wrong generating an answer. Please try again, or reach our team from [Contact support](/dashboard/support).",
         sources,
+        showMap,
       },
       { status: 200 },
     )
