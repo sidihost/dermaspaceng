@@ -333,11 +333,7 @@ export default function Header() {
             className="anniv-sweep pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/15"
           />
           <div className="relative max-w-6xl mx-auto flex items-center justify-center gap-3">
-            <Link
-              href="/anniversary"
-              className="group flex items-center justify-center gap-3 text-center transition-opacity hover:opacity-95"
-              aria-label="Watch our 7 year anniversary story"
-            >
+            <div className="flex items-center justify-center gap-3 text-center">
               {/* Animated emblem: a serif "7" inside a slowly rotating
                   dotted ring — small, quiet, and classy. */}
               <span
@@ -357,13 +353,8 @@ export default function Header() {
               </span>
               <p className="text-xs sm:text-sm tracking-wide">
                 <span className="anniv-shimmer font-semibold">Seven Years of Dermaspace</span>
-                <span className="hidden sm:inline text-white/85">{' '}— tap to watch our story</span>
               </p>
-              <span className="hidden items-center gap-1 rounded-full border border-white/30 px-2.5 py-0.5 text-[11px] font-medium text-white/90 transition-colors group-hover:bg-white/10 sm:inline-flex">
-                Watch
-                <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-              </span>
-            </Link>
+            </div>
             <button 
               onClick={() => setShowBanner(false)}
               className="p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
