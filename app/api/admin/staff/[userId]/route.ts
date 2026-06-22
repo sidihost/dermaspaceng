@@ -351,19 +351,20 @@ export async function PATCH(
 // ---------------------------------------------------------------------------
 // DELETE /api/admin/staff/[userId]
 //
-// "Remove from staff" — now creates an approval request instead of
-// directly demoting. The request moves to /admin/approvals where another
-// admin reviews it and either approves (which executes the demotion) or
-// rejects it.
+// "Remove from staff" — demotes the team member back to a regular,
+// ACTIVE client immediately (no second-admin approval). After this:
+//   1. role = 'user'
+//   2. admin flags stripped (is_super_admin, can_manage_services)
+//   3. is_active stays TRUE — they remain a normal customer who can
+//      still sign in and book, and they show up in the Clients list.
+//   4. their staff sessions are revoked so the admin-panel cookie can't
+//      keep elevated access; they simply sign back in as a client.
 //
-// When approved, the logic is the same as before:
-//   1. Demote the user back to `role = 'user'`
-//   2. Strip admin flags (is_super_admin, can_manage_services)
-//   3. Deactivate the account (is_active = FALSE) and revoke sessions
+// Their history (ticket replies, assignments) is preserved for audit.
 //
 // Guardrails:
-//   • can't delete yourself
-//   • can't delete a super admin (must transfer the super_admin flag first)
+//   • can't remove yourself
+//   • can't remove a super admin (must transfer the super_admin flag first)
 // ---------------------------------------------------------------------------
 export async function DELETE(
   request: NextRequest,
@@ -410,35 +411,26 @@ export async function DELETE(
       )
     }
 
-    // Parse optional reason from request body
-    const body = (await request.json().catch(() => ({}))) as { reason?: string }
-
-    // Create approval request instead of executing the deletion directly.
-    // The approval system (via /admin/approvals) will handle the actual
-    // demotion & session revocation once another admin approves.
-    const result = await sql`
-      INSERT INTO admin_approval_requests (
-        action_type,
-        target_user_id,
-        payload,
-        requested_by,
-        requested_reason,
-        status
-      ) VALUES (
-        'remove_staff',
-        ${userId},
-        jsonb_build_object('target_name', ${target.first_name}, 'target_email', ${target.email}),
-        ${admin.id},
-        ${body.reason || null},
-        'pending'
-      )
-      RETURNING id
+    // Demote back to a regular, ACTIVE client immediately.
+    // is_active stays TRUE so they remain a normal customer and appear
+    // in the Clients list — they're just no longer staff.
+    await sql`
+      UPDATE users
+      SET
+        role = 'user',
+        is_active = TRUE,
+        is_super_admin = FALSE,
+        can_manage_services = FALSE,
+        updated_at = NOW()
+      WHERE id = ${userId}
     `
+    // Revoke their sessions so the admin-panel cookie can't keep elevated
+    // access; they sign back in as a normal client.
+    await sql`DELETE FROM sessions WHERE user_id = ${userId}`
 
     return NextResponse.json({
       success: true,
-      message: 'Staff member removal requested. Waiting for admin approval.',
-      requestId: result[0]?.id,
+      message: 'Staff member removed. They are now a regular client.',
     })
   } catch (error) {
     console.error('[v0] DELETE /api/admin/staff/[userId] failed', error)
