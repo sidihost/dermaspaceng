@@ -120,6 +120,103 @@ export async function PUT(request: NextRequest) {
     }
 
     switch (action) {
+      case 'update_profile': {
+        // Admin-edits core profile fields. `value` is an object with any
+        // of: first_name, last_name, email, phone, username, email_verified.
+        // We treat empty strings for nullable fields (phone/username) as
+        // NULL so the admin can clear them.
+        const v = (value ?? {}) as {
+          first_name?: string
+          last_name?: string
+          email?: string
+          phone?: string | null
+          username?: string | null
+          email_verified?: boolean
+        }
+
+        const firstName = (v.first_name ?? '').trim()
+        const lastName = (v.last_name ?? '').trim()
+        const email = (v.email ?? '').trim().toLowerCase()
+        const phone = (v.phone ?? '').trim() || null
+        const username = (v.username ?? '').trim() || null
+
+        if (!firstName || !lastName) {
+          return NextResponse.json(
+            { error: 'First and last name are required.' },
+            { status: 400 },
+          )
+        }
+        // Minimal but real email validation — must look like an address.
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return NextResponse.json(
+            { error: 'Please enter a valid email address.' },
+            { status: 400 },
+          )
+        }
+
+        // Email must stay unique — block if another account already owns it.
+        const dupe = await sql`
+          SELECT id FROM users
+          WHERE LOWER(email) = ${email} AND id <> ${userId}
+          LIMIT 1
+        `
+        if (dupe.length > 0) {
+          return NextResponse.json(
+            { error: 'Another account is already using that email address.' },
+            { status: 409 },
+          )
+        }
+
+        // Update the guaranteed columns in one statement. `email_verified`
+        // is only changed when the caller explicitly sends a boolean, so a
+        // plain name/phone edit never silently flips verification.
+        if (typeof v.email_verified === 'boolean') {
+          await sql`
+            UPDATE users SET
+              first_name = ${firstName},
+              last_name = ${lastName},
+              email = ${email},
+              phone = ${phone},
+              email_verified = ${v.email_verified},
+              updated_at = NOW()
+            WHERE id = ${userId}
+          `
+        } else {
+          await sql`
+            UPDATE users SET
+              first_name = ${firstName},
+              last_name = ${lastName},
+              email = ${email},
+              phone = ${phone},
+              updated_at = NOW()
+            WHERE id = ${userId}
+          `
+        }
+
+        // `username` lives behind an optional migration — update it in a
+        // separate best-effort statement so environments without the
+        // column don't fail the whole edit.
+        try {
+          // Guard uniqueness only when a username is actually set.
+          if (username) {
+            const dupeUsername = await sql`
+              SELECT id FROM users
+              WHERE LOWER(username) = LOWER(${username}) AND id <> ${userId}
+              LIMIT 1
+            `
+            if (dupeUsername.length > 0) {
+              return NextResponse.json(
+                { error: 'That username is already taken.' },
+                { status: 409 },
+              )
+            }
+          }
+          await sql`UPDATE users SET username = ${username} WHERE id = ${userId}`
+        } catch {
+          // Column missing in this environment — silently skip username.
+        }
+        break
+      }
       case 'toggle_active':
         await sql`UPDATE users SET is_active = ${value} WHERE id = ${userId}`
         // Suspending a user must take effect immediately on THEIR
