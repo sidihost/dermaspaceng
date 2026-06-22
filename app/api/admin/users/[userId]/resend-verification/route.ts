@@ -21,11 +21,11 @@ import { generateOtp, storeOtp } from '@/lib/signup-otp'
  */
 export async function POST(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
     await requireAdmin()
-    const { id } = await params
+    const { userId: id } = await params
 
     if (!id) {
       return NextResponse.json({ error: 'User id is required' }, { status: 400 })
