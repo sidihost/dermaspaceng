@@ -3120,6 +3120,149 @@ export async function sendBookingReceipt(data: {
 }
 
 /**
+ * Booking-cancellation email.
+ *
+ * Sent the moment a booking is cancelled (customer self-service or
+ * staff action). Confirms the cancellation, restates the appointment
+ * that was cancelled, and — when there's a refund — tells the customer
+ * how it's being returned:
+ *   • wallet  → already credited back to their Dermaspace wallet
+ *   • paystack→ being reviewed by the team and returned to their card
+ * Best-effort send; callers wrap this in try/catch.
+ */
+export async function sendBookingCancellation(data: {
+  email: string
+  customerName: string
+  bookingReference: string
+  appointmentDate: string // human-readable, e.g. "Saturday, 14 June 2025"
+  appointmentTime: string // "15:00"
+  locationName: string
+  reason?: string | null
+  refundKobo?: number
+  paymentMethod?: 'wallet' | 'paystack' | null
+}): Promise<boolean> {
+  if (!data.email) return false
+
+  const firstName = (data.customerName || '').split(' ')[0] || 'there'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com'
+  const bookUrl = `${appUrl}/booking`
+
+  const refundKobo = data.refundKobo ?? 0
+  const refundHtml =
+    refundKobo > 0
+      ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #ecfdf5; border-radius: 12px; border: 1px solid #bbf7d0;">
+          <tr>
+            <td style="padding: 16px 20px;">
+              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: #047857; text-transform: uppercase; letter-spacing: 1px;">Refund</p>
+              <p style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #047857;">${fmtNairaForEmail(
+                refundKobo,
+              )}</p>
+              <p style="margin: 0; font-size: 13px; color: #4a4a4a; line-height: 1.6;">
+                ${
+                  data.paymentMethod === 'wallet'
+                    ? 'This has been credited back to your Dermaspace wallet and is available to use right away.'
+                    : 'Your refund is being processed by our team and will be returned to your original payment method. This can take a few business days.'
+                }
+              </p>
+            </td>
+          </tr>
+        </table>`
+      : ''
+
+  const reasonHtml = data.reason
+    ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+          <tr>
+            <td style="padding: 16px 20px;">
+              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 1px;">Reason</p>
+              <p style="margin: 0; font-size: 14px; color: #4a4a4a; line-height: 1.6;">${escapeHtml(
+                data.reason,
+              )}</p>
+            </td>
+          </tr>
+        </table>`
+    : ''
+
+  const content = `
+    <h2 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.3px;">
+      Hi ${escapeHtml(firstName)}, your booking is cancelled.
+    </h2>
+    <p style="margin: 0 0 24px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      We&rsquo;ve cancelled the appointment below. We&rsquo;re sorry we won&rsquo;t be seeing you this time &mdash; you&rsquo;re always welcome to book again whenever you&rsquo;re ready.
+    </p>
+
+    <!-- Reference / status -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="vertical-align: top;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">BOOKING REFERENCE</div>
+          <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${BRAND_COLOR}; margin-top: 4px;">
+            ${escapeHtml(data.bookingReference)}
+          </div>
+        </td>
+        <td style="vertical-align: top; text-align: right;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">STATUS</div>
+          <div style="display: inline-block; background-color: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-top: 4px;">Cancelled</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Appointment details -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #faf6fc; border-radius: 12px; border: 1px solid #e8d8ee;">
+      <tr>
+        <td style="padding: 20px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 110px;">Date:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(
+                data.appointmentDate,
+              )}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Time:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(
+                data.appointmentTime,
+              )}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Location:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(
+                data.locationName,
+              )}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${refundHtml}
+    ${reasonHtml}
+
+    <!-- CTA -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 28px;">
+      <tr>
+        <td align="center">
+          <a href="${bookUrl}" style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 13px 28px; border-radius: 10px;">
+            Book a new appointment
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 12px; color: #787a82; line-height: 1.6; text-align: center;">
+      Didn&rsquo;t request this? Reply to this email and we&rsquo;ll look into it right away.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Booking ${data.bookingReference} cancelled \u00B7 Dermaspace`,
+    html: getEmailTemplate(content),
+  })
+}
+
+/**
  * Notify the requester that an admin approval request was reviewed.
  * Best-effort send; callers wrap this in try/catch.
  */

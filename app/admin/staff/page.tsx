@@ -323,7 +323,7 @@ export default function StaffPage() {
     const fullName = `${member.first_name} ${member.last_name}`.trim() || member.email || 'this staff member'
     if (
       !confirm(
-        `Remove ${fullName} from the team?\n\nThey will be demoted back to a regular user, signed out of every device, and disappear from the staff list. Their history (replies, assignments) is kept for audit.`,
+        `Remove ${fullName} from the team?\n\nThey'll be demoted to a regular client (still active and able to sign in and book), signed out of every device, and will appear in your Clients list. Their history (replies, assignments) is kept for audit.`,
       )
     ) {
       return
@@ -347,7 +347,7 @@ export default function StaffPage() {
       }
       setMemberFeedback({
         kind: 'success',
-        message: `${fullName} has been removed from the team.`,
+        message: `${fullName} has been removed from the team and is now a regular client.`,
       })
     } catch (error) {
       console.error('[v0] Remove staff failed:', error)

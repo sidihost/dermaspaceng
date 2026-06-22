@@ -142,6 +142,41 @@ export async function POST(
       }
     }
 
+    // Cancellation confirmation email — best-effort, never blocks the
+    // response. Mirrors the booking-receipt email so the customer gets a
+    // clear "cancelled" message plus refund details when applicable.
+    try {
+      const recipient = booking.customer_email || user.email
+      if (recipient) {
+        const dateLabelLong = booking.appointment_date
+          ? new Date(`${booking.appointment_date}T00:00:00Z`).toLocaleDateString(
+              'en-NG',
+              {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'UTC',
+              },
+            )
+          : ''
+        const { sendBookingCancellation } = await import('@/lib/email')
+        await sendBookingCancellation({
+          email: recipient,
+          customerName: booking.customer_name ?? '',
+          bookingReference: result.bookingReference ?? booking.booking_reference,
+          appointmentDate: dateLabelLong,
+          appointmentTime: (booking.appointment_time ?? '').toString().slice(0, 5),
+          locationName: booking.location_name ?? 'Dermaspace',
+          reason: body.reason || null,
+          refundKobo: result.refundKobo,
+          paymentMethod: result.paymentMethod,
+        })
+      }
+    } catch (mailErr) {
+      console.error('[bookings.cancel] cancellation email failed', mailErr)
+    }
+
     return NextResponse.json({
       ok: true,
       refundKobo: result.refundKobo,

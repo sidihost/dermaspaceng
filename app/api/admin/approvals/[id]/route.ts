@@ -76,12 +76,12 @@ export async function POST(
     // If approved, execute the action
     if (body.decision === 'approved') {
       if (approvalReq.action_type === 'remove_staff') {
-        // Demote staff member back to user
+        // Demote staff member back to a regular, ACTIVE client.
         await sql`
           UPDATE users
           SET
             role = 'user',
-            is_active = FALSE,
+            is_active = TRUE,
             is_super_admin = FALSE,
             can_manage_services = FALSE,
             updated_at = NOW()
@@ -89,12 +89,13 @@ export async function POST(
         `
         await sql`DELETE FROM sessions WHERE user_id = ${approvalReq.target_user_id}`
       } else if (approvalReq.action_type === 'delete_user') {
-        // Same soft-delete as remove_staff (demote + deactivate)
+        // Demote to a regular client. We keep the account active so the
+        // person can still sign in as a customer (history preserved).
         await sql`
           UPDATE users
           SET
             role = 'user',
-            is_active = FALSE,
+            is_active = TRUE,
             is_super_admin = FALSE,
             can_manage_services = FALSE,
             updated_at = NOW()
