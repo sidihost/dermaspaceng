@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, Mail, Phone, Shield, ShieldOff,
-  Calendar, UserCheck, UserX,
+  Calendar, UserCheck, UserX, MailCheck, MailWarning,
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
   Bot, Activity, KeyRound, Smartphone,
-  LogIn, Eye, RotateCcw, Copy, Check,
+  LogIn, Eye, RotateCcw, Copy, Check, Pencil,
   Wallet as WalletIcon, CalendarCheck, Gift, Heart,
   BadgeCheck, BarChart3,
 } from 'lucide-react'
@@ -262,6 +262,21 @@ export default function AdminUserDetailPage() {
   const [error, setError] = useState('')
   const [acting, setActing] = useState(false)
 
+  // Edit-profile modal. `editForm` holds the in-flight values; it's
+  // seeded from the loaded user each time the modal opens so cancelling
+  // discards changes cleanly. `editError` surfaces server-side validation
+  // (bad email, duplicate email/username) inline in the dialog.
+  const [editOpen, setEditOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    username: '',
+    email_verified: false,
+  })
+  const [editError, setEditError] = useState('')
+
   const fetchUser = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -293,6 +308,45 @@ export default function AdminUserDetailPage() {
         body: JSON.stringify({ userId, action, value }),
       })
       if (res.ok) await fetchUser()
+    } finally {
+      setActing(false)
+    }
+  }
+
+  // Open the edit modal, seeding the form from the currently-loaded user.
+  const openEdit = (u: UserDetail) => {
+    setEditForm({
+      first_name: u.first_name ?? '',
+      last_name: u.last_name ?? '',
+      email: u.email ?? '',
+      phone: u.phone ?? '',
+      username: u.username ?? '',
+      email_verified: Boolean(u.email_verified),
+    })
+    setEditError('')
+    setEditOpen(true)
+  }
+
+  // Persist profile edits. Reads the error body so duplicate-email /
+  // invalid-email failures show inline instead of silently no-op'ing.
+  const handleSaveProfile = async () => {
+    setActing(true)
+    setEditError('')
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'update_profile', value: editForm }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setEditError(body?.error || 'Could not save changes.')
+        return
+      }
+      setEditOpen(false)
+      await fetchUser()
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Could not save changes.')
     } finally {
       setActing(false)
     }
@@ -559,6 +613,30 @@ export default function AdminUserDetailPage() {
                 >
                   {user.is_active !== false ? 'Active' : 'Suspended'}
                 </span>
+                {/* Email-verification badge — a SEPARATE truth from the
+                    account status above. "Active" means the account is
+                    enabled; this tells you whether they've confirmed their
+                    email. Distinct mail icons keep it from being confused
+                    with the Active/Suspended (User) icons. */}
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                    user.email_verified
+                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
+                      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                  }`}
+                  title={
+                    user.email_verified
+                      ? 'This user has confirmed their email address'
+                      : 'This user has not confirmed their email address yet'
+                  }
+                >
+                  {user.email_verified ? (
+                    <MailCheck className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <MailWarning className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {user.email_verified ? 'Email verified' : 'Email unverified'}
+                </span>
               </div>
               <div className="mt-2.5 flex flex-wrap gap-1.5">
                 <a
@@ -676,6 +754,16 @@ export default function AdminUserDetailPage() {
 
           {/* Quick actions */}
           <div className="flex flex-wrap gap-2">
+            {/* Edit profile — lets an admin correct the customer's name,
+                email, phone, username, and verification status. */}
+            <button
+              disabled={acting}
+              onClick={() => openEdit(user)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 text-sm font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
+            >
+              <Pencil className="w-4 h-4" />
+              Edit profile
+            </button>
             {/* Login-as / impersonate — only shown for non-admin
                 accounts. Admins cannot impersonate other admins (the
                 API enforces this too). Disabled for suspended users
@@ -851,6 +939,17 @@ export default function AdminUserDetailPage() {
           acting={acting}
           onConfirm={handleImpersonate}
           onCancel={() => setImpersonatePrompt(false)}
+        />
+      )}
+
+      {editOpen && (
+        <EditProfileModal
+          form={editForm}
+          onChange={(patch) => setEditForm((prev) => ({ ...prev, ...patch }))}
+          error={editError}
+          acting={acting}
+          onConfirm={handleSaveProfile}
+          onCancel={() => setEditOpen(false)}
         />
       )}
 
@@ -2045,4 +2144,216 @@ function ImpersonateModal({
       </div>
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// EditProfileModal
+//
+// Lets an admin correct a customer's core profile: name, email, phone,
+// username, and email-verification status. Mirrors the ImpersonateModal
+// shell (backdrop, scroll-lock, Escape-to-close) so the dashboard's
+// dialogs feel consistent. All validation is enforced server-side; this
+// surfaces any returned error inline beneath the form.
+// ---------------------------------------------------------------------------
+function EditProfileModal({
+  form,
+  onChange,
+  error,
+  acting,
+  onConfirm,
+  onCancel,
+}: {
+  form: {
+    first_name: string
+    last_name: string
+    email: string
+    phone: string
+    username: string
+    email_verified: boolean
+  }
+  onChange: (patch: Partial<EditProfileModalProps['form']>) => void
+  error: string
+  acting: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !acting) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [acting, onCancel])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-profile-title"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => {
+          if (!acting) onCancel()
+        }}
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]"
+      />
+
+      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white shadow-xl">
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+              <Pencil className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2
+                id="edit-profile-title"
+                className="text-base font-semibold text-gray-900"
+              >
+                Edit profile
+              </h2>
+              <p className="mt-1 text-[12.5px] text-gray-600 leading-relaxed">
+                Update this customer&apos;s details. Changing the email here
+                updates the address they sign in with.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] font-medium text-gray-600">
+                First name
+              </span>
+              <input
+                type="text"
+                value={form.first_name}
+                onChange={(e) => onChange({ first_name: e.target.value })}
+                maxLength={120}
+                className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-medium text-gray-600">
+                Last name
+              </span>
+              <input
+                type="text"
+                value={form.last_name}
+                onChange={(e) => onChange({ last_name: e.target.value })}
+                maxLength={120}
+                className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+              />
+            </label>
+          </div>
+
+          <label className="block mt-3">
+            <span className="text-[11px] font-medium text-gray-600">Email</span>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => onChange({ email: e.target.value })}
+              maxLength={255}
+              className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+            />
+          </label>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[11px] font-medium text-gray-600">
+                Phone
+              </span>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => onChange({ phone: e.target.value })}
+                maxLength={32}
+                placeholder="Optional"
+                className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-[11px] font-medium text-gray-600">
+                Username
+              </span>
+              <input
+                type="text"
+                value={form.username}
+                onChange={(e) => onChange({ username: e.target.value })}
+                maxLength={60}
+                placeholder="Optional"
+                className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+              />
+            </label>
+          </div>
+
+          {/* Verification override — lets the admin manually confirm an
+              email the customer never clicked through, or revoke it. */}
+          <label className="mt-4 flex items-center gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.email_verified}
+              onChange={(e) => onChange({ email_verified: e.target.checked })}
+              className="h-4 w-4 rounded border-gray-300 text-[#7B2D8E] focus:ring-[#7B2D8E]/30"
+            />
+            <span className="text-[12.5px] text-gray-700">
+              Email verified
+              <span className="block text-[11px] text-gray-500">
+                Mark this address as confirmed without the user clicking a link.
+              </span>
+            </span>
+          </label>
+
+          {error && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-rose-600">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={acting}
+              onClick={onCancel}
+              className="inline-flex items-center px-3.5 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={acting}
+              onClick={onConfirm}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {acting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              Save changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Helper type so the modal's `onChange` patch stays in sync with `form`.
+type EditProfileModalProps = {
+  form: {
+    first_name: string
+    last_name: string
+    email: string
+    phone: string
+    username: string
+    email_verified: boolean
+  }
 }
