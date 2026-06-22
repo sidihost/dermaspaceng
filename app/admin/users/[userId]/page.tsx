@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, Mail, Phone, Shield, ShieldOff,
-  Calendar, UserCheck, UserX,
+  Calendar, UserCheck, UserX, MailCheck, MailWarning,
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
   Bot, Activity, KeyRound, Smartphone,
@@ -558,6 +558,30 @@ export default function AdminUserDetailPage() {
                   }`}
                 >
                   {user.is_active !== false ? 'Active' : 'Suspended'}
+                </span>
+                {/* Email-verification badge — a SEPARATE truth from the
+                    account status above. "Active" means the account is
+                    enabled; this tells you whether they've confirmed their
+                    email. Distinct mail icons keep it from being confused
+                    with the Active/Suspended (User) icons. */}
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
+                    user.email_verified
+                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
+                      : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                  }`}
+                  title={
+                    user.email_verified
+                      ? 'This user has confirmed their email address'
+                      : 'This user has not confirmed their email address yet'
+                  }
+                >
+                  {user.email_verified ? (
+                    <MailCheck className="h-3 w-3" aria-hidden="true" />
+                  ) : (
+                    <MailWarning className="h-3 w-3" aria-hidden="true" />
+                  )}
+                  {user.email_verified ? 'Email verified' : 'Email unverified'}
                 </span>
               </div>
               <div className="mt-2.5 flex flex-wrap gap-1.5">

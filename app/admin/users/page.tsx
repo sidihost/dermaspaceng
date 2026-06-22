@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import {
-  Search, Users, UserCheck, UserX, ChevronLeft, ChevronRight,
+  Search, Users, UserX, ChevronLeft, ChevronRight,
   Mail, Phone, ArrowUpRight, UserPlus, CircleDashed, CheckCircle2,
-  BadgeCheck, RefreshCw, Loader2,
+  BadgeCheck, RefreshCw, Loader2, MailCheck, MailWarning,
 } from 'lucide-react'
 
 interface User {
@@ -374,15 +374,18 @@ export default function UsersPage() {
                               </span>
                             ) : null}
                           </div>
-                          {/* Brand purple for "verified" replaces the stray
-                              green-500 so the list stays strictly on-palette. */}
+                          {/* Email-verification status — labelled "Email …"
+                              so it can't be mistaken for the account
+                              status (Active/Suspended) shown in its own
+                              column. Mail icons (not User icons) reinforce
+                              that this is specifically about the email. */}
                           <div className="flex items-center gap-1 text-xs text-gray-500">
                             {user.email_verified ? (
-                              <UserCheck className="w-3 h-3 text-[#7B2D8E]" />
+                              <MailCheck className="w-3 h-3 text-[#7B2D8E]" />
                             ) : (
-                              <UserX className="w-3 h-3 text-gray-400" />
+                              <MailWarning className="w-3 h-3 text-amber-600" />
                             )}
-                            <span>{user.email_verified ? 'Verified' : 'Unverified'}</span>
+                            <span>{user.email_verified ? 'Email verified' : 'Email unverified'}</span>
                           </div>
                         </div>
                       </div>

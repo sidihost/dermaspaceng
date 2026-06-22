@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdmin()
+    const admin = await requireAdmin()
 
     const { userId, action, value } = await request.json()
 
