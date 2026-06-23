@@ -345,14 +345,14 @@ export default function AdminUserDetailPage() {
       const body = await res.json().catch(() => ({}))
       if (res.ok) {
         notify.success(
-          'Verification code sent',
-          body.message || `A fresh code was emailed to ${data?.user?.email ?? 'the client'}.`,
+          'Verification email sent',
+          body.message || `A verification link was emailed to ${data?.user?.email ?? 'the client'}.`,
         )
       } else {
-        notify.error('Could not send code', body.error || 'Please try again.')
+        notify.error('Could not send email', body.error || 'Please try again.')
       }
     } catch {
-      notify.error('Could not send code', 'Please try again.')
+      notify.error('Could not send email', 'Please try again.')
     } finally {
       setResending(false)
     }
