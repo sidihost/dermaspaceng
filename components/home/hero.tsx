@@ -194,6 +194,18 @@ export default function Hero() {
               'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(42,12,58,0.38) 100%)',
           }}
         />
+        {/* Soft spotlight anchored to the left content column — a warm
+            plum-tinted glow that lifts the headline and CTAs off the
+            photography and adds a little depth, without darkening the
+            image like another flat overlay would. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(60% 90% at 22% 60%, rgba(123,45,142,0.30) 0%, transparent 60%)',
+          }}
+        />
       </div>
 
       {/* --- Signature spa ambient layers --- */}
@@ -430,10 +442,15 @@ export default function Hero() {
               >
                 <button
                   onClick={scrollToBooking}
-                  className="group inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-sm hover:shadow-md"
+                  className="group relative overflow-hidden inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-sm hover:shadow-md"
                 >
-                  Book Appointment
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[#7B2D8E] text-white transition-transform duration-300 group-hover:translate-x-0.5">
+                  {/* Diagonal shine that sweeps across the button on hover */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-0 -left-3/4 h-full w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-[#7B2D8E]/15 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[260%]"
+                  />
+                  <span className="relative">Book Appointment</span>
+                  <span className="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#7B2D8E] text-white transition-transform duration-300 group-hover:translate-x-0.5">
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 </button>
