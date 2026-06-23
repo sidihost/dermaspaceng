@@ -593,7 +593,7 @@ export async function sendSignupOtpEmail(
     subject: `${code} is your Dermaspace verification code`,
     html: getEmailTemplate(content, {
       preheader: `Your Dermaspace verification code is ${code}. It expires in 10 minutes.`,
-      eyebrow: 'Verify your email',
+      eyebrow: 'Complete your verification',
     }),
   })
 }
