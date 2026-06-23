@@ -11,7 +11,7 @@ import {
   Bot, Activity, KeyRound, Smartphone,
   LogIn, Eye, RotateCcw, Copy, Check, Pencil,
   Wallet as WalletIcon, CalendarCheck, Gift, Heart,
-  BadgeCheck, BarChart3,
+  BadgeCheck, BarChart3, Send, Archive, ArchiveRestore,
 } from 'lucide-react'
 import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
 import { IdentityAuditPanel } from '@/components/admin/identity-audit-panel'
@@ -27,6 +27,11 @@ interface UserDetail {
   role: string
   is_active: boolean
   created_at: string
+  // Soft-delete (archive) state — script 650. `deleted_at` is non-null
+  // when the client has been archived; `deletion_reason` is the optional
+  // note the admin left. Both drive the archived banner + Restore action.
+  deleted_at?: string | null
+  deletion_reason?: string | null
   // `last_login_at` and `bio` are not on the real users table in any
   // migration, so we don't fetch or render them anymore.
   avatar_url: string | null
@@ -313,6 +318,65 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  // ── Resend email verification ─────────────────────────────────
+  // Re-issues a fresh OTP and emails it (with the "Enter my code"
+  // button → /verify-email). `resendMsg` shows the inline result so
+  // the admin knows the nudge actually went out.
+  const [resending, setResending] = useState(false)
+  const [resendMsg, setResendMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const handleResendVerification = async () => {
+    setResending(true)
+    setResendMsg(null)
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/resend-verification`, {
+        method: 'POST',
+      })
+      const body = await res.json().catch(() => ({}))
+      setResendMsg({
+        ok: res.ok,
+        text: res.ok
+          ? body.message || 'Verification code sent.'
+          : body.error || 'Could not send the code.',
+      })
+    } catch {
+      setResendMsg({ ok: false, text: 'Could not send the code.' })
+    } finally {
+      setResending(false)
+    }
+  }
+
+  // ── Archive / restore (recoverable soft-delete) ───────────────
+  // `archivePrompt` opens an in-page confirmation that collects an
+  // optional reason. Restore is a one-tap reverse with no prompt.
+  const [archivePrompt, setArchivePrompt] = useState(false)
+  const [archiveReason, setArchiveReason] = useState('')
+  const [archiveError, setArchiveError] = useState('')
+
+  const handleArchive = async () => {
+    setActing(true)
+    setArchiveError('')
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action: 'archive_user', value: archiveReason || null }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setArchiveError(body?.error || 'Could not archive this client.')
+        return
+      }
+      setArchivePrompt(false)
+      setArchiveReason('')
+      await fetchUser()
+    } catch (err) {
+      setArchiveError(err instanceof Error ? err.message : 'Could not archive this client.')
+    } finally {
+      setActing(false)
+    }
+  }
+
   // Open the edit modal, seeding the form from the currently-loaded user.
   const openEdit = (u: UserDetail) => {
     setEditForm({
@@ -532,6 +596,38 @@ export default function AdminUserDetailPage() {
           {user.first_name} {user.last_name}
         </span>
       </div>
+
+      {/* Archived banner — shown when the client has been soft-deleted.
+          Makes the archive state impossible to miss and offers a one-tap
+          Restore right where the admin is looking. */}
+      {user.deleted_at && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-red-100">
+              <Archive className="h-4 w-4 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-red-800">
+                This client is archived
+              </p>
+              <p className="text-sm text-red-700">
+                Archived {new Date(user.deleted_at).toLocaleDateString()}. They
+                are hidden from the clients list and can&apos;t sign in until
+                restored.
+                {user.deletion_reason ? ` Reason: ${user.deletion_reason}` : ''}
+              </p>
+            </div>
+          </div>
+          <button
+            disabled={acting}
+            onClick={() => handleAction('restore_user', null)}
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50 flex-shrink-0"
+          >
+            <ArchiveRestore className="w-4 h-4" />
+            Restore client
+          </button>
+        </div>
+      )}
 
       {/* Hero / profile card — premium redesign.
           The card now opens with a 4px brand-purple gradient strip
@@ -764,6 +860,23 @@ export default function AdminUserDetailPage() {
               <Pencil className="w-4 h-4" />
               Edit profile
             </button>
+            {/* Resend verification — only when the email is still
+                unverified. Re-issues a fresh OTP and emails it with a
+                button to /verify-email so the customer can finish. */}
+            {!user.email_verified && (
+              <button
+                disabled={resending}
+                onClick={handleResendVerification}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-amber-300 bg-amber-50 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+              >
+                {resending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Resend verification
+              </button>
+            )}
             {/* Login-as / impersonate — only shown for non-admin
                 accounts. Admins cannot impersonate other admins (the
                 API enforces this too). Disabled for suspended users
@@ -829,8 +942,48 @@ export default function AdminUserDetailPage() {
                 </button>
               </>
             )}
+
+            {/* Archive / Restore — recoverable soft-delete. Archive is
+                a destructive-looking action so it sits last and opens a
+                confirmation; Restore is a one-tap reverse. Hidden for
+                admins (the API blocks archiving super admins too). */}
+            {user.role !== 'admin' && (
+              user.deleted_at ? (
+                <button
+                  disabled={acting}
+                  onClick={() => handleAction('restore_user', null)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 text-sm font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
+                >
+                  <ArchiveRestore className="w-4 h-4" />
+                  Restore client
+                </button>
+              ) : (
+                <button
+                  disabled={acting}
+                  onClick={() => {
+                    setArchiveError('')
+                    setArchiveReason('')
+                    setArchivePrompt(true)
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-red-200 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive client
+                </button>
+              )
+            )}
           </div>
         </div>
+
+        {/* Inline result of the "Resend verification" nudge. */}
+        {resendMsg && (
+          <p
+            className={`mt-3 text-sm ${resendMsg.ok ? 'text-[#7B2D8E]' : 'text-red-600'}`}
+            role="status"
+          >
+            {resendMsg.text}
+          </p>
+        )}
 
         {/*
           Cross-product stat strip — segmented into three labeled
@@ -951,6 +1104,72 @@ export default function AdminUserDetailPage() {
           onConfirm={handleSaveProfile}
           onCancel={() => setEditOpen(false)}
         />
+      )}
+
+      {/* Archive confirmation — recoverable. We spell out exactly what
+          archiving does (hidden + signed out + blocked, data kept) and
+          collect an optional reason that shows up on the archived banner. */}
+      {archivePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-xl">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-red-100">
+                <Archive className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-gray-900">
+                  Archive {user.first_name} {user.last_name}?
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  They&apos;ll be hidden from the clients list, signed out, and
+                  blocked from signing in. Their bookings, transactions, and
+                  history are kept and you can restore them anytime.
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.1em] text-gray-500">
+              Reason (optional)
+            </label>
+            <textarea
+              value={archiveReason}
+              onChange={(e) => setArchiveReason(e.target.value)}
+              rows={2}
+              placeholder="e.g. Duplicate account, requested by customer…"
+              className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
+            />
+
+            {archiveError && (
+              <p className="mt-3 text-sm text-red-600" role="alert">
+                {archiveError}
+              </p>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => setArchivePrompt(false)}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={acting}
+                onClick={handleArchive}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {acting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Archive className="w-4 h-4" />
+                )}
+                Archive client
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Security & 2FA breakdown — now front and centre so admins can
