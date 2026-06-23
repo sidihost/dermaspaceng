@@ -593,7 +593,7 @@ export async function sendSignupOtpEmail(
     subject: `${code} is your Dermaspace verification code`,
     html: getEmailTemplate(content, {
       preheader: `Your Dermaspace verification code is ${code}. It expires in 10 minutes.`,
-      eyebrow: 'Verify your email',
+      eyebrow: 'Complete your verification',
     }),
   })
 }
@@ -616,6 +616,18 @@ export async function sendOnboardingReminderEmail(data: {
   email: string
   firstName: string
   stage: 'verify' | 'profile'
+  // Optional copy overrides so other flows (e.g. the admin "resend
+  // verification" nudge) can reuse this link-only template — which points at
+  // the verify page with ?send=1 so a fresh code is auto-issued on arrival —
+  // while showing their own wording. Defaults keep the reminder unchanged.
+  overrides?: {
+    headline?: string
+    eyebrow?: string
+    body?: string
+    ctaLabel?: string
+    subject?: string
+    preheader?: string
+  }
 }): Promise<boolean> {
   const isVerify = data.stage === 'verify'
   const ctaUrl = isVerify
@@ -624,17 +636,17 @@ export async function sendOnboardingReminderEmail(data: {
     // long expired and we don't want the user to hit a dead code.
     ? `${PUBLIC_ORIGIN}/verify-email?email=${encodeURIComponent(data.email)}&send=1`
     : `${PUBLIC_ORIGIN}/complete-profile`
-  const ctaLabel = isVerify ? 'Verify my email' : 'Finish my profile'
-  const headline = isVerify
+  const ctaLabel = data.overrides?.ctaLabel ?? (isVerify ? 'Verify my email' : 'Finish my profile')
+  const headline = data.overrides?.headline ?? (isVerify
     ? 'Confirm your email to get started'
-    : "You're almost there"
-  const body = isVerify
+    : "You're almost there")
+  const body = data.overrides?.body ?? (isVerify
     ? `You started creating your Dermaspace account but never confirmed your
        email, so it isn't active yet. Pick up right where you left off — tap
        the button below to verify your email and unlock your account.`
     : `You created your Dermaspace account but didn't finish setting up your
        profile. It only takes a minute — tap the button below to complete it
-       and start booking treatments, earning glow points, and more.`
+       and start booking treatments, earning glow points, and more.`)
 
   const content = `
     <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">${headline}</h1>
@@ -670,14 +682,14 @@ export async function sendOnboardingReminderEmail(data: {
 
   return sendEmail({
     to: data.email,
-    subject: isVerify
+    subject: data.overrides?.subject ?? (isVerify
       ? 'Finish creating your Dermaspace account'
-      : 'Your Dermaspace profile is almost ready',
+      : 'Your Dermaspace profile is almost ready'),
     html: getEmailTemplate(content, {
-      preheader: isVerify
+      preheader: data.overrides?.preheader ?? (isVerify
         ? 'You started signing up but never confirmed your email. Pick up where you left off.'
-        : 'You started setting up your profile but never finished. It only takes a minute.',
-      eyebrow: isVerify ? 'Verify your email' : 'Finish onboarding',
+        : 'You started setting up your profile but never finished. It only takes a minute.'),
+      eyebrow: data.overrides?.eyebrow ?? (isVerify ? 'Verify your email' : 'Finish onboarding'),
     }),
   })
 }

@@ -579,14 +579,32 @@
   animation: anniv-shimmer 5s linear infinite;
 }
 
+/* Confetti pieces that gently fall through the banner bar, looping
+   forever. Each piece carries its own --dur/--delay/--drift so the
+   pieces feel scattered rather than marching in lockstep. Replaces the
+   old horizontal light "sweep" that scrolled across the bar. */
+@keyframes anniv-confetti {
+  0%   { transform: translateY(-160%) translateX(0) rotate(0deg); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(160%) translateX(var(--drift, 6px)) rotate(260deg); opacity: 0; }
+}
+.anniv-confetti-piece {
+  animation: anniv-confetti var(--dur, 3.4s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anniv-sweep,
   .anniv-seven,
   .anniv-twinkle,
   .anniv-banner-ring,
-  .anniv-shimmer {
+  .anniv-shimmer,
+  .anniv-confetti-piece {
     animation: none;
   }
+  /* Hide the falling confetti entirely when motion is reduced. */
+  .anniv-confetti-piece { opacity: 0; }
 }
 
 /* ── Anniversary story-reel (/anniversary) ────────────────────────

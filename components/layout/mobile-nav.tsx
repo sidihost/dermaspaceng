@@ -262,18 +262,6 @@ export default function MobileNav() {
         // Mirrors the destination already exposed in the desktop
         // footer and the (logged-in) mobile bottom rail.
         { name: 'Blog', href: '/blog', desc: 'Tips & guides', icon: BookOpen },
-        // Community is intentionally non-clickable for now — the
-        // surface still has work to ship. We keep the row visible
-        // so visitors can see it's coming, but `disabled: true`
-        // tells the renderer to swap the <Link> for a plain span
-        // with a "Soon" pill in place of the "New" pill.
-        {
-          name: 'Community',
-          href: '/community',
-          desc: 'Talk to members & therapists',
-          icon: MessageCircleQuestion,
-          disabled: true,
-        },
         { name: 'FAQ', href: '/#faq', desc: 'Common questions', icon: MessageCircleQuestion },
       ],
     },

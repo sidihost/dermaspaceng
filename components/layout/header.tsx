@@ -101,12 +101,6 @@ const navLinks = [
     dropdownItems: [
       { name: 'Our Story', href: '/about', icon: Feather },
       { name: 'Our Team', href: '/about#team', icon: Users },
-      // Community is intentionally non-clickable for now — the
-      // surface still has work to ship before we point traffic at
-      // it. We keep it in the menu so returning visitors can see
-      // it's coming, but `disabled` flips the renderer to a plain
-      // span with a "Soon" pill instead of a working <Link>.
-      { name: 'Community', href: '/community', icon: MessageCircleQuestion, disabled: true },
       { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
       { name: 'Survey', href: '/survey', icon: FileText },
     ]
@@ -196,11 +190,6 @@ const desktopNavLinks: DesktopNavGroup[] = [
       {
         title: 'Connect',
         items: [
-          // Same "non-clickable for now" treatment as the mobile
-          // drawer — visible so visitors know it's coming, but
-          // the mega-menu render swaps the <Link> for a span and
-          // shows a "Soon" pill in place of the "New" pill.
-          { name: 'Community', href: '/community', icon: MessageCircleQuestion, description: 'Tips, stories & threads', disabled: true },
           { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion, description: 'Common questions' },
           { name: 'Survey', href: '/survey', icon: FileText, description: 'Help us improve' },
         ],
@@ -327,11 +316,39 @@ export default function Header() {
           "relative overflow-hidden bg-[#7B2D8E] text-white py-2.5 px-4",
           user && !isAuthLoading ? "hidden lg:block" : ""
         )}>
-          {/* Diagonal light sweep */}
-          <div
-            aria-hidden="true"
-            className="anniv-sweep pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/15"
-          />
+          {/* Falling confetti — a scatter of small pieces drifting down
+              through the bar. Replaces the old horizontal light sweep so
+              the banner reads as a celebration rather than a scrolling
+              shimmer. Decorative only, so it's aria-hidden. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+            {[
+              { left: '8%', dur: '3.2s', delay: '0s', drift: '8px', color: '#FFFFFF', w: 5, h: 8, round: false },
+              { left: '20%', dur: '4.1s', delay: '0.8s', drift: '-6px', color: '#F6C453', w: 6, h: 6, round: true },
+              { left: '33%', dur: '3.6s', delay: '1.6s', drift: '10px', color: '#FFFFFF', w: 4, h: 7, round: false },
+              { left: '46%', dur: '4.4s', delay: '0.4s', drift: '-9px', color: '#F6C453', w: 5, h: 5, round: true },
+              { left: '58%', dur: '3.0s', delay: '2.1s', drift: '7px', color: '#FFFFFF', w: 6, h: 9, round: false },
+              { left: '70%', dur: '4.0s', delay: '1.1s', drift: '-7px', color: '#F6C453', w: 5, h: 5, round: true },
+              { left: '82%', dur: '3.5s', delay: '0.2s', drift: '9px', color: '#FFFFFF', w: 4, h: 7, round: false },
+              { left: '92%', dur: '4.3s', delay: '1.9s', drift: '-5px', color: '#F6C453', w: 6, h: 6, round: true },
+            ].map((p, i) => (
+              <span
+                key={i}
+                className="anniv-confetti-piece absolute top-0"
+                style={{
+                  left: p.left,
+                  width: p.w,
+                  height: p.h,
+                  backgroundColor: p.color,
+                  borderRadius: p.round ? '9999px' : '1px',
+                  opacity: 0.85,
+                  // CSS custom props consumed by the keyframe.
+                  '--dur': p.dur,
+                  '--delay': p.delay,
+                  '--drift': p.drift,
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
           <div className="relative max-w-6xl mx-auto flex items-center justify-center gap-3">
             <div className="flex items-center justify-center gap-3 text-center">
               {/* Animated emblem: a serif "7" inside a slowly rotating
@@ -612,7 +629,7 @@ export default function Header() {
                                       // "Soon" pill in place of "New".
                                       // Used for surfaces that aren't
                                       // ready for traffic yet.
-                                      const Tag = item.disabled ? 'span' : Link
+                                      const Tag: React.ElementType = item.disabled ? 'span' : Link
                                       const itemProps = item.disabled
                                         ? {
                                             'aria-disabled': true as const,

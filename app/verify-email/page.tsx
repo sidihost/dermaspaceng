@@ -11,9 +11,10 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 //
 // This is where the onboarding reminder email, the signup OTP email, and the
 // admin "resend verification" nudge all point. It mirrors the signup wizard's
-// code-entry screen exactly so the experience is consistent: a single
-// centered card (no excess whitespace, no page scroll), a 6-digit OTP input
-// that auto-submits, and a rate-limited "resend" affordance.
+// code-entry screen exactly so the experience is consistent: a top-aligned
+// card with comfortable vertical padding that scrolls naturally on short
+// viewports, a 6-digit OTP input that auto-submits, and a rate-limited
+// "resend" affordance.
 //
 // Flow:
 //   1. We read the target email from ?email= (prefilled by the emails). If
@@ -135,8 +136,8 @@ function VerifyEmailInner() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-white flex items-start justify-center overflow-y-auto px-4 py-12 sm:py-20">
+      <div className="max-w-md w-full my-auto">
         <div className="text-center">
           <Link href="/" className="inline-block mb-6" aria-label="Dermaspace home">
             <img
