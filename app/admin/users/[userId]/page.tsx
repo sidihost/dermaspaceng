@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
 import { IdentityAuditPanel } from '@/components/admin/identity-audit-panel'
+import { useNotify } from '@/components/shared/notify'
 
 interface UserDetail {
   id: string
@@ -262,6 +263,7 @@ export default function AdminUserDetailPage() {
   const params = useParams()
   const router = useRouter()
   const userId = params.userId as string
+  const notify = useNotify()
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -312,7 +314,17 @@ export default function AdminUserDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, value }),
       })
-      if (res.ok) await fetchUser()
+      if (res.ok) {
+        await fetchUser()
+        if (action === 'restore_user') {
+          notify.success('Client restored', 'They can sign in again and are back in the clients list.')
+        }
+      } else {
+        const body = await res.json().catch(() => ({}))
+        if (action === 'restore_user') {
+          notify.error('Could not restore client', body?.error || 'Please try again.')
+        }
+      }
     } finally {
       setActing(false)
     }
@@ -320,27 +332,27 @@ export default function AdminUserDetailPage() {
 
   // ── Resend email verification ─────────────────────────────────
   // Re-issues a fresh OTP and emails it (with the "Enter my code"
-  // button → /verify-email). `resendMsg` shows the inline result so
-  // the admin knows the nudge actually went out.
+  // button → /verify-email). Fires a branded success/error toast via
+  // useNotify() so the result matches the rest of the admin area.
   const [resending, setResending] = useState(false)
-  const [resendMsg, setResendMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const handleResendVerification = async () => {
     setResending(true)
-    setResendMsg(null)
     try {
       const res = await fetch(`/api/admin/users/${userId}/resend-verification`, {
         method: 'POST',
       })
       const body = await res.json().catch(() => ({}))
-      setResendMsg({
-        ok: res.ok,
-        text: res.ok
-          ? body.message || 'Verification code sent.'
-          : body.error || 'Could not send the code.',
-      })
+      if (res.ok) {
+        notify.success(
+          'Verification code sent',
+          body.message || `A fresh code was emailed to ${data?.user?.email ?? 'the client'}.`,
+        )
+      } else {
+        notify.error('Could not send code', body.error || 'Please try again.')
+      }
     } catch {
-      setResendMsg({ ok: false, text: 'Could not send the code.' })
+      notify.error('Could not send code', 'Please try again.')
     } finally {
       setResending(false)
     }
@@ -370,6 +382,7 @@ export default function AdminUserDetailPage() {
       setArchivePrompt(false)
       setArchiveReason('')
       await fetchUser()
+      notify.success('Client archived', 'They are hidden from the clients list and can\u2019t sign in until restored.')
     } catch (err) {
       setArchiveError(err instanceof Error ? err.message : 'Could not archive this client.')
     } finally {
@@ -601,22 +614,14 @@ export default function AdminUserDetailPage() {
           Makes the archive state impossible to miss and offers a one-tap
           Restore right where the admin is looking. */}
       {user.deleted_at && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-red-100">
-              <Archive className="h-4 w-4 text-red-600" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-red-800">
-                This client is archived
-              </p>
-              <p className="text-sm text-red-700">
-                Archived {new Date(user.deleted_at).toLocaleDateString()}. They
-                are hidden from the clients list and can&apos;t sign in until
-                restored.
-                {user.deletion_reason ? ` Reason: ${user.deletion_reason}` : ''}
-              </p>
-            </div>
+        <div className="rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <Archive className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#7B2D8E]" />
+            <p className="text-sm text-[#5A1D6A] leading-snug">
+              <span className="font-semibold">This client is archived.</span>{' '}
+              Archived {new Date(user.deleted_at).toLocaleDateString()} — hidden from the clients list and can&apos;t sign in until restored.
+              {user.deletion_reason ? ` Reason: ${user.deletion_reason}` : ''}
+            </p>
           </div>
           <button
             disabled={acting}
@@ -867,7 +872,7 @@ export default function AdminUserDetailPage() {
               <button
                 disabled={resending}
                 onClick={handleResendVerification}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-amber-300 bg-amber-50 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 text-sm font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
               >
                 {resending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -974,16 +979,6 @@ export default function AdminUserDetailPage() {
             )}
           </div>
         </div>
-
-        {/* Inline result of the "Resend verification" nudge. */}
-        {resendMsg && (
-          <p
-            className={`mt-3 text-sm ${resendMsg.ok ? 'text-[#7B2D8E]' : 'text-red-600'}`}
-            role="status"
-          >
-            {resendMsg.text}
-          </p>
-        )}
 
         {/*
           Cross-product stat strip — segmented into three labeled
