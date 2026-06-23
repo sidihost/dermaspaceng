@@ -92,13 +92,6 @@ export default function Footer() {
                 { name: 'Journal', href: '/blog' },
                 { name: 'Packages', href: '/packages' },
                 { name: 'Membership', href: '/membership' },
-                // Community (Discourse-backed) is a freshly-shipped
-                // surface — flag it with the same "New" badge as the
-                // Download link so returning visitors notice it on
-                // the footer scan. Lives inside Company because
-                // that's where the soft-launch / brand-extension
-                // links cluster.
-                { name: 'Community', href: '/community', badge: 'New' as const },
                 // Surfacing the native app from the footer is the
                 // single most discoverable place for it. Currently
                 // the desktop / mobile app build is in private beta

@@ -101,12 +101,6 @@ const navLinks = [
     dropdownItems: [
       { name: 'Our Story', href: '/about', icon: Feather },
       { name: 'Our Team', href: '/about#team', icon: Users },
-      // Community is intentionally non-clickable for now — the
-      // surface still has work to ship before we point traffic at
-      // it. We keep it in the menu so returning visitors can see
-      // it's coming, but `disabled` flips the renderer to a plain
-      // span with a "Soon" pill instead of a working <Link>.
-      { name: 'Community', href: '/community', icon: MessageCircleQuestion, disabled: true },
       { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
       { name: 'Survey', href: '/survey', icon: FileText },
     ]
@@ -196,11 +190,6 @@ const desktopNavLinks: DesktopNavGroup[] = [
       {
         title: 'Connect',
         items: [
-          // Same "non-clickable for now" treatment as the mobile
-          // drawer — visible so visitors know it's coming, but
-          // the mega-menu render swaps the <Link> for a span and
-          // shows a "Soon" pill in place of the "New" pill.
-          { name: 'Community', href: '/community', icon: MessageCircleQuestion, description: 'Tips, stories & threads', disabled: true },
           { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion, description: 'Common questions' },
           { name: 'Survey', href: '/survey', icon: FileText, description: 'Help us improve' },
         ],
