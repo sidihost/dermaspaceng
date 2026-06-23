@@ -559,6 +559,20 @@ export async function sendSignupOtpEmail(
       </tr>
     </table>
 
+    <!-- Button to the standalone verification page with the email
+         prefilled, so recipients who don't still have the signup tab open
+         (admin resends, returning users) have somewhere to enter the code. -->
+    <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="margin: 0 0 24px;">
+      <tr>
+        <td align="center">
+          <a href="${PUBLIC_ORIGIN}/verify-email?email=${encodeURIComponent(email)}"
+             style="display: inline-block; padding: 13px 30px; background-color: ${BRAND_COLOR}; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 10px;">
+            Enter my code
+          </a>
+        </td>
+      </tr>
+    </table>
+
     <p style="margin: 0 0 8px; font-size: 14px; color: #65676b; line-height: 1.5;">
       This code will expire in 10 minutes.
     </p>
