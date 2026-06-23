@@ -31,6 +31,11 @@ function VerifyEmailInner() {
   // Seed the email from the query string. If it's absent the user enters it.
   const emailParam = (searchParams.get('email') || '').trim()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
+  // Only auto-issue a fresh code when the link explicitly asks for it
+  // (?send=1, used by the onboarding reminder email). The OTP email and
+  // admin "resend" already deliver a valid code, so auto-sending there
+  // would invalidate the very code the user is reading.
+  const shouldAutoSend = searchParams.get('send') === '1'
 
   const [email, setEmail] = useState(emailParam)
   // When no email is supplied we show a small "enter your email" step first.
@@ -56,7 +61,7 @@ function VerifyEmailInner() {
   // a valid code waiting without an extra tap. Guarded so it only fires once.
   const autoSent = useRef(false)
   useEffect(() => {
-    if (emailConfirmed && email && !autoSent.current) {
+    if (shouldAutoSend && emailConfirmed && email && !autoSent.current) {
       autoSent.current = true
       void sendCode(email, { silent: true })
     }
@@ -147,8 +152,8 @@ function VerifyEmailInner() {
           <p className="text-gray-600 mb-8">
             {emailConfirmed && email ? (
               <>
-                We sent a 6-digit code to <strong>{email}</strong>. Enter it
-                below to verify and finish signing in.
+                Enter the 6-digit code we emailed to <strong>{email}</strong> to
+                verify and finish signing in. No code yet? Tap resend below.
               </>
             ) : (
               <>

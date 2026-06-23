@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
-import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
+import { sendPasswordResetEmail, sendSignupOtpEmail } from '@/lib/email'
+import { generateOtp, storeOtp } from '@/lib/signup-otp'
 import {
   getChatModelChain,
   pickFirstHealthyChatProvider,
@@ -643,22 +644,20 @@ const tools = {
           return { success: true, alreadyVerified: true, message: 'Your email is already verified.' }
         }
 
-        let token = user.verification_token as string | null
-        if (!token) {
-          token = randomBytes(32).toString('hex')
-          await sql`
-            UPDATE users SET verification_token = ${token} WHERE id = ${user.id}
-          `
-        }
-
-        const emailSent = await sendVerificationEmail(user.email, user.first_name, token)
+        // Re-issue a fresh signup OTP (same flow as signup + admin resend)
+        // and email it. The OTP email carries an "Enter my code" button to
+        // /verify-email where the user can type the code — the old
+        // token-link flow had no working entry page.
+        const otp = generateOtp()
+        await storeOtp(user.email, otp)
+        const emailSent = await sendSignupOtpEmail(user.email, user.first_name || 'there', otp)
 
         return {
           success: true,
           sent: emailSent,
           email: user.email,
           message: emailSent
-            ? `Verification email sent to ${user.email}. Please check your inbox.`
+            ? `Verification code sent to ${user.email}. Check your inbox and enter it at /verify-email.`
             : 'Could not send verification email at the moment. Please try again.'
         }
       } catch (error) {

@@ -13,6 +13,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
     const role = searchParams.get('role') || ''
+    // Archived (soft-deleted) clients are hidden from the main list by
+    // default. Pass ?archived=true to review the archive and restore them.
+    const includeArchived = searchParams.get('archived') === 'true'
     const offset = (page - 1) * limit
 
     // Build query conditions
@@ -58,6 +61,8 @@ export async function GET(request: NextRequest) {
       SELECT 
         id, email, first_name, last_name, phone, avatar_url,
         email_verified, role, is_active, created_at,
+        deleted_at,
+        (deleted_at IS NOT NULL) AS is_archived,
         profile_complete,
         COALESCE(signup_step, 0) AS signup_step,
         (created_at > NOW() - INTERVAL '7 days') AS is_new,
@@ -76,6 +81,7 @@ export async function GET(request: NextRequest) {
       WHERE 
         (${search} = '' OR LOWER(email) LIKE LOWER(${'%' + search + '%'}) OR LOWER(first_name) LIKE LOWER(${'%' + search + '%'}) OR LOWER(last_name) LIKE LOWER(${'%' + search + '%'}))
         AND (${role} = '' OR role = ${role || 'user'})
+        AND (${includeArchived} OR deleted_at IS NULL)
       ORDER BY created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `
@@ -86,6 +92,7 @@ export async function GET(request: NextRequest) {
       WHERE 
         (${search} = '' OR LOWER(email) LIKE LOWER(${'%' + search + '%'}) OR LOWER(first_name) LIKE LOWER(${'%' + search + '%'}) OR LOWER(last_name) LIKE LOWER(${'%' + search + '%'}))
         AND (${role} = '' OR role = ${role || 'user'})
+        AND (${includeArchived} OR deleted_at IS NULL)
     `
 
     return NextResponse.json({
@@ -295,6 +302,64 @@ export async function PUT(request: NextRequest) {
         // reliable invalidation.
         await sql`DELETE FROM sessions WHERE user_id = ${userId}`
         break
+
+      case 'archive_user':
+        // Recoverable soft-delete. The client is hidden from the default
+        // Clients list, signed out everywhere, and blocked from signing
+        // in (is_active = FALSE), but ALL their data/history is kept and
+        // an admin can Restore them later. This is intentionally an
+        // IMMEDIATE action (no second-admin approval) — distinct from the
+        // `delete_user` request flow above.
+        {
+          if (userId === admin.id) {
+            return NextResponse.json(
+              { error: 'You cannot archive your own account.' },
+              { status: 400 },
+            )
+          }
+
+          const before = (await sql`
+            SELECT COALESCE(is_super_admin, FALSE) AS is_super_admin
+              FROM users WHERE id = ${userId} LIMIT 1
+          `) as Array<{ is_super_admin: boolean }>
+
+          if (!before.length) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 })
+          }
+          if (before[0].is_super_admin) {
+            return NextResponse.json(
+              { error: 'Super admins cannot be archived. Transfer the super admin role first.' },
+              { status: 409 },
+            )
+          }
+
+          const reason = typeof value === 'string' && value.trim() ? value.trim() : null
+          await sql`
+            UPDATE users SET
+              deleted_at = NOW(),
+              deletion_reason = ${reason},
+              is_active = FALSE,
+              updated_at = NOW()
+            WHERE id = ${userId}
+          `
+          // Revoke sessions so the archived client can't keep using the app.
+          await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+        }
+        break
+
+      case 'restore_user':
+        // Reverse an archive: clear the soft-delete marker and re-enable
+        // the account. The client can sign back in immediately.
+        await sql`
+          UPDATE users SET
+            deleted_at = NULL,
+            deletion_reason = NULL,
+            is_active = TRUE,
+            updated_at = NOW()
+          WHERE id = ${userId}
+        `
+        break
+
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }

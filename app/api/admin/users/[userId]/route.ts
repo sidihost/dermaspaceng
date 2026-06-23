@@ -27,6 +27,7 @@ export async function GET(
       SELECT
         id, email, first_name, last_name, phone,
         email_verified, role, is_active, created_at,
+        deleted_at, deletion_reason,
         profile_complete,
         COALESCE(signup_step, 0) AS signup_step,
         -- Membership block (script 480). Each column is nullable

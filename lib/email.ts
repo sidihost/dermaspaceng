@@ -619,7 +619,10 @@ export async function sendOnboardingReminderEmail(data: {
 }): Promise<boolean> {
   const isVerify = data.stage === 'verify'
   const ctaUrl = isVerify
-    ? `${PUBLIC_ORIGIN}/verify-email?email=${encodeURIComponent(data.email)}`
+    // send=1 asks the verify page to auto-issue a fresh code on landing —
+    // the reminder goes out days after signup, so any earlier code has
+    // long expired and we don't want the user to hit a dead code.
+    ? `${PUBLIC_ORIGIN}/verify-email?email=${encodeURIComponent(data.email)}&send=1`
     : `${PUBLIC_ORIGIN}/complete-profile`
   const ctaLabel = isVerify ? 'Verify my email' : 'Finish my profile'
   const headline = isVerify
