@@ -9,7 +9,6 @@ import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import PageLoader from '@/components/shared/page-loader'
 import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
-import { LegalAcceptanceModal } from '@/components/legal/legal-acceptance-modal'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 import Header from '@/components/layout/header'
 
@@ -58,6 +57,11 @@ function SignUpForm() {
   // API), so we use the modal in `inline` mode here and let the
   // wizard own the final submit button.
   const [legalAccepted, setLegalAccepted] = useState(false)
+  // Spotify-style Terms & Conditions step preferences. Both are
+  // optional opt-ins/opt-outs and default to the privacy-friendly
+  // choice (no extra marketing, no data sharing).
+  const [optOutMarketing, setOptOutMarketing] = useState(false)
+  const [shareDataForMarketing, setShareDataForMarketing] = useState(false)
 
   // ── Email-verification OTP step ───────────────────────────────────
   // After a successful /api/auth/signup we no longer show a static
@@ -194,9 +198,17 @@ function SignUpForm() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (
+    e: React.FormEvent,
+    opts?: { accepted?: boolean }
+  ) => {
     e.preventDefault()
     setError('')
+
+    // On the Spotify-style Terms step, tapping "Sign up" *is* the
+    // acceptance — we pass `{ accepted: true }` so we don't have to
+    // wait for the async `setLegalAccepted` state flush.
+    const accepted = opts?.accepted ?? legalAccepted
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
@@ -218,7 +230,7 @@ function SignUpForm() {
       return
     }
 
-    if (!legalAccepted) {
+    if (!accepted) {
       setError('Please review and accept our Terms, Privacy Policy and Derma AI Terms.')
       return
     }
@@ -529,11 +541,11 @@ function SignUpForm() {
           {step === 3 && (
             <>
               <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">
-                A quick review
+                Terms &amp; Conditions
               </h1>
               <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
-                How we use Derma AI, look after your data, and the
-                ground rules. Swipe through the three.
+                A quick look at the ground rules, then tap Sign up to
+                create your account.
               </p>
             </>
           )}
@@ -893,102 +905,125 @@ function SignUpForm() {
         </form>
         )}
 
-        {/* Step 3 — Legal pack review.
-            Renders the same `<LegalAcceptanceModal>` the dashboard
-            gate uses, but in `inline` mode (no fixed-position
-            backdrop) so it sits naturally inside the signup card.
-            We pass `dismissible={false}` because acceptance is
-            required to create the account. The modal owns the
-            three-card swipe + accept button; on accept we fall
-            back to *this* page's `handleSubmit` flow (with the
-            legalAccepted flag now true) which fires hCaptcha
-            verification + the actual /api/auth/signup call. */}
+        {/* Step 3 — Terms & Conditions (Spotify-style).
+            A clean, scannable consent screen: two optional
+            marketing-preference cards, plain-English terms copy with
+            links to the canonical legal pages, the captcha, then one
+            big "Sign up" button. Tapping it both records legal
+            acceptance (the signup API stamps CURRENT_LEGAL_VERSION
+            onto the new user row) and fires the submit. */}
         {step === 3 && (
           <div className="space-y-5">
-            {legalAccepted ? (
-              // After the user accepts in the modal we still need
-              // a captcha + final submit. We surface that as a
-              // small confirmation card so users see the
-              // acceptance was registered, then ask them to verify
-              // the captcha and tap "Create account".
-              <>
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#7B2D8E]/5 border border-[#7B2D8E]/15">
-                  <div className="w-9 h-9 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0">
-                    <Check className="w-4 h-4" strokeWidth={3} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-gray-900">
-                      Thanks — you&apos;re all set
-                    </p>
-                    <p className="text-[11.5px] text-gray-600 leading-snug">
-                      One last verification and we&apos;ll create your
-                      account.
-                    </p>
-                  </div>
-                </div>
-
-                <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
-
-                {error && (
-                  <div className="px-3 py-2 rounded-lg bg-red-50 text-[12px] font-medium text-red-700 border border-red-100">
-                    {error}
-                  </div>
+            {/* Marketing preference cards */}
+            <button
+              type="button"
+              onClick={() => setOptOutMarketing((v) => !v)}
+              aria-pressed={optOutMarketing}
+              className="w-full flex items-start gap-3 text-left px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 hover:border-[#7B2D8E]/40 transition-colors"
+            >
+              <span
+                className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${
+                  optOutMarketing
+                    ? 'bg-[#7B2D8E] border-[#7B2D8E]'
+                    : 'bg-white border-gray-300'
+                }`}
+              >
+                {optOutMarketing && (
+                  <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
                 )}
+              </span>
+              <span className="text-[13px] text-gray-700 leading-snug">
+                I would prefer not to receive marketing messages from
+                Dermaspace
+              </span>
+            </button>
 
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setError('')
-                      setLegalAccepted(false)
-                      setStep(2)
-                    }}
-                    className="px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)}
-                    disabled={isLoading || !captchaToken}
-                    className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
-                  >
-                    {isLoading ? 'Creating your account…' : 'Create account'}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Inline acceptance card stack — owns its own
-                    "I accept" button. We DO NOT call
-                    /api/legal/accept here (the user has no session
-                    yet); instead we just flip `legalAccepted` and
-                    let the signup API stamp the version onto the
-                    new user row. The modal's `onAccepted` prop is
-                    therefore the right hook — it fires on
-                    successful client-side acceptance only. */}
-                <LegalAcceptanceModal
-                  inline
-                  surface="signup"
-                  dismissible={false}
-                  recordOnServer={false}
-                  onAccepted={() => setLegalAccepted(true)}
-                />
+            <button
+              type="button"
+              onClick={() => setShareDataForMarketing((v) => !v)}
+              aria-pressed={shareDataForMarketing}
+              className="w-full flex items-start gap-3 text-left px-4 py-3.5 rounded-xl bg-gray-50 border border-gray-200 hover:border-[#7B2D8E]/40 transition-colors"
+            >
+              <span
+                className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${
+                  shareDataForMarketing
+                    ? 'bg-[#7B2D8E] border-[#7B2D8E]'
+                    : 'bg-white border-gray-300'
+                }`}
+              >
+                {shareDataForMarketing && (
+                  <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                )}
+              </span>
+              <span className="text-[13px] text-gray-700 leading-snug">
+                Share my registration data with Dermaspace&apos;s partners
+                for marketing purposes.
+              </span>
+            </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setError('')
-                    setStep(2)
-                  }}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+            {/* Plain-English terms copy with links to the canonical
+                legal pages. */}
+            <div className="space-y-3 text-[13px] text-gray-600 leading-relaxed pt-1">
+              <p className="font-semibold text-gray-900">
+                Dermaspace is a personalised service.
+              </p>
+              <p>
+                By clicking on Sign up, you agree to Dermaspace&apos;s{' '}
+                <Link
+                  href="/terms"
+                  className="text-[#7B2D8E] font-medium hover:underline"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back
-                </button>
-              </>
-            )}
+                  Terms and Conditions of Use
+                </Link>
+                .
+              </p>
+              <p>
+                By clicking on Sign up, you also agree to the Dermaspace{' '}
+                <Link
+                  href="/privacy"
+                  className="text-[#7B2D8E] font-medium hover:underline"
+                >
+                  Privacy Policy
+                </Link>{' '}
+                and{' '}
+                <Link
+                  href="/derma-ai-terms"
+                  className="text-[#7B2D8E] font-medium hover:underline"
+                >
+                  Derma AI Terms
+                </Link>
+                .
+              </p>
+              <p>We may occasionally send you service-based messages.</p>
+            </div>
+
+            <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
+
+            <button
+              type="button"
+              onClick={(e) => {
+                setLegalAccepted(true)
+                handleSubmit(e as unknown as React.FormEvent, {
+                  accepted: true,
+                })
+              }}
+              disabled={isLoading || !captchaToken}
+              className="w-full py-3.5 bg-[#7B2D8E] text-white text-base font-bold rounded-full hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
+            >
+              {isLoading ? 'Creating your account…' : 'Sign up'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setError('')
+                setStep(2)
+              }}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
           </div>
         )}
         </div>
@@ -1081,9 +1116,9 @@ function SignUpForm() {
                   Almost there.
                 </h2>
                 <p className="mt-4 text-pretty text-base leading-relaxed text-white/85">
-                  One last step — verify your phone so we can confirm
-                  bookings, send reminders, and keep your account
-                  secure.
+                  A quick look at our terms, then tap Sign up — we&apos;ll
+                  email you a code to confirm your account and you&apos;re
+                  in.
                 </p>
               </>
             )}
