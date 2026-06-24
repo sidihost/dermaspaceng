@@ -63,6 +63,7 @@ function iconForPerk(perk: string) {
 function periodLabel(months: number) {
   return months === 12 ? 'yr' : `${months} mo`
 }
+// (membership upgrade sheet — solid brand purple, no gradients/shadows)
 
 export default function MembershipPlansInteractive({
   plans,
