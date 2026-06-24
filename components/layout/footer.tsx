@@ -159,6 +159,7 @@ export default function Footer() {
                 // general questions (locations, services, memberships)
                 // without requiring an account.
                 { name: 'Help Center', href: '/dashboard/help' },
+                { name: "What's New", href: '/changelog' },
                 { name: 'Contact Us', href: '/contact' },
                 { name: 'Free Consultation', href: '/consultation' },
                 ...(showBooking

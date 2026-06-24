@@ -104,7 +104,7 @@ export default function AdminSettingsPage() {
   const [consultationAlerts, setConsultationAlerts] = useState(true)
 
   // Email — also hydrated from the server.
-  const [supportEmail, setSupportEmail] = useState("support@dermaspaceng.com")
+  const [supportEmail, setSupportEmail] = useState("info@dermaspaceng.com")
   const [notificationEmail, setNotificationEmail] = useState("notifications@dermaspaceng.com")
   const [emailSignature, setEmailSignature] = useState("Best regards,\nThe Dermaspace Team")
 

@@ -57,8 +57,8 @@ export default function BlockedPage() {
         
         <p className="mt-6 text-xs text-gray-400">
           If you believe you&apos;re seeing this in error, please contact{' '}
-          <a href="mailto:support@dermaspaceng.com" className="text-[#7B2D8E] hover:underline">
-            support@dermaspaceng.com
+          <a href="mailto:info@dermaspaceng.com" className="text-[#7B2D8E] hover:underline">
+            info@dermaspaceng.com
           </a>
         </p>
       </div>

@@ -11,7 +11,8 @@ import {
   Meh,
   Loader2,
   Mail,
-  User as UserIcon,
+  UserCheck,
+  UserX,
   Filter,
   AlertCircle,
 } from 'lucide-react'
@@ -350,13 +351,14 @@ export default function AdminFeedbackPage() {
                             {displayName}
                           </p>
                           {row.user_id ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/10 px-1.5 py-0.5 rounded">
-                              <UserIcon className="w-2.5 h-2.5" />
-                              account
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600">
+                              <UserCheck className="w-3 h-3 text-[#7B2D8E]" />
+                              Signed-in
                             </span>
                           ) : (
-                            <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                              guest
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                              <UserX className="w-3 h-3 text-gray-400" />
+                              Anonymous
                             </span>
                           )}
                           <ExperiencePill value={row.experience} />
