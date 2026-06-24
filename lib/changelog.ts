@@ -42,11 +42,6 @@ export const CHANGELOG: ChangelogEntry[] = [
       'See every email we have sent, with delivery status',
       'Resend any email instantly if it never arrived',
     ],
-    screenshot: {
-      desktop: '/changelog/activity-desktop.png',
-      mobile: '/changelog/activity-mobile.png',
-      alt: 'Account activity timeline and email history with a resend button',
-    },
   },
   {
     id: 'personalized-help-center',
