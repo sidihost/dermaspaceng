@@ -1,13 +1,13 @@
 import { Metadata } from 'next'
-import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 // `Award` replaces `Sparkles`. Design rules forbid sparkle / zap /
 // lightning-bolt ornaments. Award reads as a tangible reward and
 // stays inside the professional icon vocabulary (Crown, Check, Star).
-import { Check, Crown, ArrowRight, Percent, Award, Calendar, Users } from 'lucide-react'
-import { MEMBERSHIP_PLANS, formatNgn, formatGlowPoints } from '@/lib/membership-plans'
+import { Check, Crown, Percent, Award, Calendar, Users } from 'lucide-react'
+import { MEMBERSHIP_PLANS } from '@/lib/membership-plans'
+import MembershipPlansInteractive from '@/components/membership/membership-plans-interactive'
 
 export const metadata: Metadata = {
   title: 'Memberships | Dermaspace',
@@ -125,127 +125,12 @@ export default function MembershipPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-stretch">
-            {MEMBERSHIP_PLANS.map((plan) => {
-              const isRecommended = plan.recommended
-              return (
-                <div
-                  key={plan.id}
-                  className={`relative flex flex-col bg-white rounded-2xl p-5 md:p-6 transition-shadow ${
-                    isRecommended
-                      ? 'border-2 border-[#7B2D8E] shadow-lg md:scale-[1.02]'
-                      : 'border border-gray-200 shadow-sm hover:shadow-md'
-                  }`}
-                >
-                  {isRecommended && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-[#7B2D8E] rounded-full">
-                        Most popular
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Plan header — accent strip, name, tagline */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${plan.accent}1A` }}
-                    >
-                      <Crown
-                        className="w-5 h-5"
-                        style={{ color: plan.accent }}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                        {plan.name}
-                      </h3>
-                      <p
-                        className="text-xs text-gray-600 leading-snug"
-                        // Plan taglines are authored copy and may
-                        // contain &amp; entities — render verbatim.
-                        dangerouslySetInnerHTML={{ __html: plan.tagline }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-4 pb-4 border-b border-gray-100">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-2xl md:text-3xl font-bold text-gray-900">
-                        {formatNgn(plan.price)}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        /{plan.validityMonths === 12 ? 'year' : `${plan.validityMonths} mo`}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-gray-500">
-                      {plan.siteWideOnly
-                        ? `Earn ${formatGlowPoints(plan.glowPointsOnSignup)} on signup — unlocks site features (not credited to your wallet)`
-                        : `Funds your wallet with ${formatNgn(plan.price)} + earn ${formatGlowPoints(plan.glowPointsOnSignup)}`}
-                    </p>
-                  </div>
-
-                  {/* Perk list */}
-                  <ul className="space-y-2.5 flex-1">
-                    {plan.perks.map((perk, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <span
-                          className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                          style={{ backgroundColor: `${plan.accent}1A` }}
-                        >
-                          <Check
-                            className="w-2.5 h-2.5"
-                            style={{ color: plan.accent }}
-                          />
-                        </span>
-                        <span
-                          className="text-xs text-gray-700 leading-relaxed"
-                          // perks are authored copy and may contain
-                          // &amp; entities — render verbatim.
-                          dangerouslySetInnerHTML={{ __html: perk }}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA
-                      Recommended plan -> solid brand purple. Other
-                      plans -> outlined brand purple (was solid
-                      gray-900 / black, which felt off-palette next
-                      to the rest of the page). The outlined variant
-                      keeps the visual hierarchy intact while staying
-                      strictly within the Dermaspace colour system.
-
-                      The href was previously `/contact?plan=…` which
-                      sent customers to the generic support / ticket
-                      form — admin feedback flagged this as the
-                      "Register for Silver" button going to the wrong
-                      place. We now point at the real
-                      /membership/checkout flow, which already exists
-                      and (a) validates the plan id, (b) gates on auth
-                      (signing the user in with a `next` param if
-                      needed) and (c) hands off to Paystack. */}
-                  <Link
-                    href={`/membership/checkout?plan=${plan.id}`}
-                    className={`mt-5 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold rounded-full text-sm transition-colors ${
-                      isRecommended
-                        ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
-                        : 'bg-white text-[#7B2D8E] border border-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white'
-                    }`}
-                  >
-                    Register for {plan.name}
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              )
-            })}
-          </div>
-
-          <p className="mt-6 text-center text-xs text-gray-500">
-            All plans are valid for 12 months and auto-renew is opt-in.
-            Need something custom? <Link href="/contact" className="text-[#7B2D8E] font-semibold hover:underline">Talk to our team</Link>.
-          </p>
+          {/* Interactive plan stack + Snapchat-style upgrade sheet.
+              Tapping a plan (or its "See what's included" affordance)
+              opens a full upgrade detail panel with feature cards, an
+              expandable benefits row, the glowing subscribe button and
+              fine-print terms. */}
+          <MembershipPlansInteractive plans={MEMBERSHIP_PLANS} />
         </div>
       </section>
 
