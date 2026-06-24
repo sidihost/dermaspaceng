@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { FeatureIntroModal } from '@/components/shared/feature-intro-modal'
+import { useAuth } from '@/hooks/use-auth'
 import {
   ArrowLeft,
   Search,
@@ -119,7 +120,21 @@ const SUGGESTED_QUESTIONS = [
   'How do memberships work?',
 ]
 
+// For signed-in users we lead with account-oriented questions, since
+// they are most likely managing an existing booking, wallet or plan.
+const MEMBER_QUESTIONS = [
+  'How do I reschedule my appointment?',
+  'How do I fund my wallet?',
+  'How do I update my profile details?',
+  'How do memberships work?',
+  'How do I view my booking history?',
+  'How do I reset my password?',
+]
+
 export default function HelpCenterPage() {
+  const { user, isAuthenticated } = useAuth()
+  const firstName = user?.firstName?.trim() || ''
+
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnswerState | null>(null)
@@ -220,9 +235,14 @@ export default function HelpCenterPage() {
           Help Center
         </Link>
 
-        <h1 className="mb-6 text-balance font-serif text-3xl font-semibold text-foreground">
-          How can we help?
+        <h1 className="mb-2 text-balance font-serif text-3xl font-semibold text-foreground">
+          {firstName ? `How can we help, ${firstName}?` : 'How can we help?'}
         </h1>
+        <p className="mb-6 text-pretty text-sm leading-relaxed text-muted-foreground">
+          {isAuthenticated
+            ? 'Ask anything about your account, bookings, wallet or memberships — answers link straight to the right page.'
+            : 'Ask anything about Dermaspace and get an instant answer linked to the right page.'}
+        </p>
 
         {/* Search card */}
         <form
@@ -401,10 +421,16 @@ export default function HelpCenterPage() {
         {/* Suggested / related questions */}
         <section className="mt-6">
           <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-            {result ? 'Related questions' : 'Popular questions'}
+            {result
+              ? 'Related questions'
+              : isAuthenticated
+                ? 'Questions for your account'
+                : 'Popular questions'}
           </h3>
           <ul className="overflow-hidden rounded-2xl border border-border bg-card">
-            {SUGGESTED_QUESTIONS.filter((q) => q !== result?.question).map((q) => (
+            {(isAuthenticated ? MEMBER_QUESTIONS : SUGGESTED_QUESTIONS)
+              .filter((q) => q !== result?.question)
+              .map((q) => (
               <li key={q} className="border-b border-border last:border-b-0">
                 <button
                   type="button"
