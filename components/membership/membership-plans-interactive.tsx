@@ -45,6 +45,7 @@ import {
   formatNgn,
   formatGlowPoints,
 } from '@/lib/membership-plans'
+import { useAuth } from '@/hooks/use-auth'
 
 // Round-robin of on-brand icons for the perk -> feature-card
 // mapping. Perks are plain strings in the catalog, so we pick an
@@ -219,6 +220,16 @@ function UpgradeSheet({
   const extraPerks = plan.perks.slice(3)
   const otherPlans = allPlans.filter((p) => p.id !== plan.id)
 
+  // Logged-in users get a personalized header: their own avatar
+  // (or initials) front-and-centre with a small brand crown badge —
+  // Snapchat-"Lens+" style. Signed-out visitors fall back to the
+  // plain Dermaspace brand mark.
+  const { user, isAuthenticated } = useAuth()
+  const initials =
+    `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase() ||
+    user?.email?.[0]?.toUpperCase() ||
+    ''
+
   return (
     <div
       className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
@@ -252,19 +263,52 @@ function UpgradeSheet({
         </div>
 
         <div className="px-5 pb-5">
-          {/* Brand logo avatar + title — compact, Snapchat-style */}
+          {/* Avatar + title — compact, Snapchat-style. Logged-in
+              users see their own photo/initials with a brand crown
+              badge; visitors see the Dermaspace mark. */}
           <div className="text-center pt-1 pb-4">
             <div className="inline-flex items-center justify-center mb-2.5">
-              <span className="w-16 h-16 rounded-full bg-white flex items-center justify-center ring-2 ring-white/25 overflow-hidden">
-                <Image
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-                  alt="Dermaspace"
-                  width={96}
-                  height={96}
-                  className="w-11 h-11 object-contain"
-                />
+              <span className="relative inline-block">
+                {isAuthenticated ? (
+                  <span className="block w-16 h-16 rounded-full bg-white/15 ring-2 ring-white/30 overflow-hidden flex items-center justify-center">
+                    {user?.avatarUrl ? (
+                      <Image
+                        src={user.avatarUrl || '/placeholder.svg'}
+                        alt={user.firstName ?? 'Your avatar'}
+                        width={96}
+                        height={96}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xl font-bold text-white">
+                        {initials || (
+                          <Crown className="w-7 h-7 text-white" />
+                        )}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="block w-16 h-16 rounded-full bg-white ring-2 ring-white/25 overflow-hidden flex items-center justify-center">
+                    <Image
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                      alt="Dermaspace"
+                      width={96}
+                      height={96}
+                      className="w-11 h-11 object-contain"
+                    />
+                  </span>
+                )}
+                {/* Brand crown badge — overlaps the avatar bottom-right */}
+                <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#7B2D8E] ring-2 ring-[#3F1349] flex items-center justify-center">
+                  <Crown className="w-3.5 h-3.5 text-white" />
+                </span>
               </span>
             </div>
+            {isAuthenticated && user?.firstName && (
+              <p className="text-[13px] font-medium text-white/60 mb-0.5">
+                Hi, {user.firstName}
+              </p>
+            )}
             <h2 className="text-2xl font-bold text-balance leading-tight">
               Upgrade to {plan.name}
             </h2>
