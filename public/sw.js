@@ -1,7 +1,32 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v13)
+// Dermaspace service worker (v14)
 //
-// v13 (current) — Wire up `CACHE_NAVIGATION`, `CACHE_URLS`, and
+// v14 (current) — Make cached pages actually show up offline AND on poor
+//   connections. Two real-world bugs were defeating the page cache:
+//
+//     1. Query-string cache misses. Pages are stored keyed by their full
+//        URL (path + search), but the PWA launches at `/?source=pwa`
+//        while install only seeds `/`. `cache.match()` does EXACT URL
+//        matching by default, so `/?source=pwa`, `/services?ref=...`,
+//        any UTM-tagged or PWA-launch URL missed the cache entirely and
+//        fell straight through to the OFFLINE_HTML shell — even though
+//        the page was sitting in PAGES_CACHE under a slightly different
+//        key. The offline lookup now falls back to `ignoreSearch: true`
+//        so a cached page is served regardless of the query string.
+//
+//     2. No slow-network fallback. Navigations were strictly
+//        network-first with no timeout, so a user on a flaky/poor
+//        connection (Nigerian 4G/H+ that connects but crawls) sat
+//        staring at a hanging tab while the SW waited indefinitely for
+//        the network before ever consulting the cache. v14 races the
+//        network against a short timeout: if we already have the page
+//        cached and the network is too slow, we serve the cached copy
+//        INSTANTLY and refresh it in the background. Truly online users
+//        with a healthy connection still get the fresh network response.
+//
+//   Cache version bumped to v14 so v13 entries auto-evict on activate.
+//
+// v13 — Wire up `CACHE_NAVIGATION`, `CACHE_URLS`, and
 //   `EVICT_PAGE` message handlers so client-side route changes (and
 //   any bookmark-style "save for offline" UI) actually populate
 //   PAGES_CACHE. Before this, `service-worker-register.tsx` was
@@ -86,7 +111,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v13';
+const VERSION = 'v14';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -125,6 +150,14 @@ const PAGES_CACHE_LIMIT   = 40;
 // want to keep reading the same article" but short enough that we
 // don't hand out a week-old layout if the SW somehow misses an update.
 const HTML_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// How long to wait for the network on a page navigation before falling
+// back to a cached copy (when we have one). This is the lever that makes
+// the site usable on poor/crawling connections rather than only when
+// fully offline: a healthy connection answers well under this budget and
+// still gets the fresh page, while a stalled request serves the cached
+// page instantly and refreshes it in the background.
+const NAV_NETWORK_TIMEOUT_MS = 4000;
 
 // ---------------------------------------------------------------------------
 // Self-contained offline page.
@@ -441,41 +474,84 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        try {
-          const fresh = await fetch(request);
-          // Mirror successful HTML responses into PAGES_CACHE for
-          // offline replay. We deliberately only cache 200s — caching
-          // a 4xx/5xx would mean the user re-opens the page offline
-          // and sees an error page they shouldn't be persisting.
+        // Look up a cached copy of this page. Try an exact URL match
+        // first, then retry ignoring the query string — this is what
+        // rescues `/?source=pwa`, UTM-tagged links, and any page the
+        // user reaches with slightly different search params from the
+        // copy we cached. Without the `ignoreSearch` fallback those
+        // navigations missed the cache and dropped to the offline
+        // shell even though the page was sitting in PAGES_CACHE.
+        const lookupCachedPage = async () => {
+          const cache = await caches.open(PAGES_CACHE);
+          let cached = await cache.match(request);
+          if (!cached) {
+            cached = await cache.match(request, { ignoreSearch: true });
+          }
+          return cached;
+        };
+
+        // Kick off the network request. On success we mirror the
+        // response into PAGES_CACHE for offline replay. We deliberately
+        // only cache 200s — caching a 4xx/5xx would mean the user
+        // re-opens the page offline and sees an error page they
+        // shouldn't be persisting.
+        const networkPromise = fetch(request).then((fresh) => {
           if (fresh && fresh.ok && fresh.status === 200) {
-            // Fire-and-forget — never make the user wait on the
-            // mirror write. Errors here are non-fatal (storage
-            // quota, etc.) and shouldn't block navigation.
-            stampAndCache(PAGES_CACHE, request, fresh)
+            stampAndCache(PAGES_CACHE, request, fresh.clone())
               .then(() => limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT))
               .catch(() => {});
           }
           return fresh;
+        });
+
+        // Race the network against a short timeout. A healthy
+        // connection resolves well within the budget and the user gets
+        // the fresh page. A stalled/crawling connection trips the
+        // timeout so we can serve a cached copy instantly instead of
+        // leaving the user staring at a hanging tab.
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error('nav-network-timeout')),
+            NAV_NETWORK_TIMEOUT_MS,
+          );
+        });
+
+        try {
+          const fresh = await Promise.race([networkPromise, timeoutPromise]);
+          clearTimeout(timeoutId);
+          return fresh;
         } catch {
-          // Network failed — try the cache.
-          const cache = await caches.open(PAGES_CACHE);
-          const cached = await cache.match(request);
+          clearTimeout(timeoutId);
+          // Either the network failed outright (truly offline) or it
+          // was too slow (poor connection). Prefer a cached page.
+          const cached = await lookupCachedPage();
           if (cached && isFreshEnough(cached, HTML_MAX_AGE_MS)) {
+            // Let the in-flight request keep going so the cache is
+            // fresh next time, but don't make the user wait on it.
+            event.waitUntil(networkPromise.catch(() => {}));
             return cached;
           }
-          // Last-resort offline shell — branded, fully self-contained,
-          // zero chunk/CSS/font deps. Status 200 (not 503) because
-          // some Android browsers replace 5xx responses served from
-          // a SW with their own native "no internet" page on
-          // refresh, which is exactly the "breaks to browser"
-          // symptom we were debugging.
-          return new Response(OFFLINE_HTML, {
-            status: 200,
-            headers: {
-              'Content-Type': 'text/html; charset=utf-8',
-              'Cache-Control': 'no-store',
-            },
-          });
+          // No usable cache. If the failure was just a timeout the
+          // request may still be in flight and succeed — wait for it
+          // rather than prematurely showing the offline shell.
+          try {
+            return await networkPromise;
+          } catch {
+            // Last-resort offline shell — branded, fully self-contained,
+            // zero chunk/CSS/font deps. Status 200 (not 503) because
+            // some Android browsers replace 5xx responses served from
+            // a SW with their own native "no internet" page on
+            // refresh, which is exactly the "breaks to browser"
+            // symptom we were debugging.
+            return new Response(OFFLINE_HTML, {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store',
+              },
+            });
+          }
         }
       })(),
     );
