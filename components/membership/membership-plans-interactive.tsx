@@ -5,22 +5,23 @@
  * --------------------------------------------------------------
  * The interactive plan-selection block on /membership.
  *
- * Two layers, matching the references the team signed off on:
+ * Two layers:
  *
- *   1. A neat, compact stack of plan cards (Spotify-"Premium"
- *      card style) — name, price, one-line positioning and a
- *      "See what's included" affordance.
+ *   1. A neat, compact stack of plan cards — name, price,
+ *      one-line positioning and a "See what's included"
+ *      affordance.
  *
  *   2. A Snapchat-"Upgrade to Lens+" style detail sheet that
  *      slides up when a card (or its feature affordance) is
- *      tapped: a glowing brand-purple panel with feature cards,
- *      an expandable "all benefits" section, a big glowing
- *      Subscribe pill, "View other plans", and the fine-print
- *      terms carrying a linked "Membership Terms".
+ *      tapped: a solid brand-purple panel with feature cards,
+ *      an expandable "all benefits" section, a big Subscribe
+ *      pill, "View other plans", and the fine-print terms
+ *      carrying a linked "Membership Terms".
  *
- * Colours stay strictly inside the Dermaspace palette (brand
- * purple #7B2D8E and its shades) — we borrow the *layout* of the
- * references, not their colours.
+ * Styling rules from the team: Dermaspace brand purple (#7B2D8E)
+ * and its shades only — NO gradients, NO drop shadows, NO glow
+ * blur, and NO sparkle/zap icons. Depth comes from solid fills
+ * and borders.
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -33,7 +34,7 @@ import {
   Calendar,
   Gift,
   Wallet,
-  Sparkle,
+  Star,
   X,
   ChevronDown,
   ChevronRight,
@@ -46,7 +47,7 @@ import {
 
 // Round-robin of on-brand icons for the perk -> feature-card
 // mapping. Perks are plain strings in the catalog, so we pick an
-// icon by keyword where we can and fall back to the rota otherwise.
+// icon by keyword where we can and fall back otherwise.
 function iconForPerk(perk: string) {
   const p = perk.toLowerCase()
   if (p.includes('glow point')) return Award
@@ -55,7 +56,7 @@ function iconForPerk(perk: string) {
   if (p.includes('priority') || p.includes('booking')) return Calendar
   if (p.includes('complimentary') || p.includes('facial')) return Gift
   if (p.includes('offer') || p.includes('promo') || p.includes('access'))
-    return Sparkle
+    return Star
   return Check
 }
 
@@ -90,7 +91,7 @@ export default function MembershipPlansInteractive({
 
   return (
     <>
-      {/* Neat plan stack (Spotify-card style) */}
+      {/* Neat plan stack */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-stretch">
         {plans.map((plan) => {
           const isRecommended = plan.recommended
@@ -99,10 +100,10 @@ export default function MembershipPlansInteractive({
               key={plan.id}
               type="button"
               onClick={() => setActiveId(plan.id)}
-              className={`group relative flex flex-col text-left bg-white rounded-2xl p-5 md:p-6 transition-shadow ${
+              className={`group relative flex flex-col text-left bg-white rounded-2xl p-5 md:p-6 transition-colors ${
                 isRecommended
-                  ? 'border-2 border-[#7B2D8E] shadow-lg md:scale-[1.02]'
-                  : 'border border-gray-200 shadow-sm hover:shadow-md'
+                  ? 'border-2 border-[#7B2D8E]'
+                  : 'border border-gray-200 hover:border-[#7B2D8E]'
               }`}
             >
               {isRecommended && (
@@ -114,11 +115,8 @@ export default function MembershipPlansInteractive({
               )}
 
               <div className="flex items-center gap-3 mb-4">
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `${plan.accent}1A` }}
-                >
-                  <Crown className="w-5 h-5" style={{ color: plan.accent }} />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#7B2D8E]/10">
+                  <Crown className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
                 <div className="min-w-0">
                   <h3 className="text-lg font-bold text-gray-900 leading-tight">
@@ -152,18 +150,12 @@ export default function MembershipPlansInteractive({
               </div>
 
               {/* Short preview of the top perks, then the "see all"
-                  affordance that opens the Snapchat-style sheet. */}
+                  affordance that opens the upgrade sheet. */}
               <ul className="space-y-2.5 flex-1">
                 {plan.perks.slice(0, 3).map((perk, idx) => (
                   <li key={idx} className="flex items-start gap-2">
-                    <span
-                      className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ backgroundColor: `${plan.accent}1A` }}
-                    >
-                      <Check
-                        className="w-2.5 h-2.5"
-                        style={{ color: plan.accent }}
-                      />
+                    <span className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-[#7B2D8E]/10">
+                      <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
                     </span>
                     <span
                       className="text-xs text-gray-700 leading-relaxed"
@@ -194,7 +186,7 @@ export default function MembershipPlansInteractive({
         .
       </p>
 
-      {/* Snapchat-style upgrade detail sheet */}
+      {/* Upgrade detail sheet */}
       {activePlan && (
         <UpgradeSheet
           plan={activePlan}
@@ -220,8 +212,7 @@ function UpgradeSheet({
 }) {
   const [expanded, setExpanded] = useState(false)
   // First three perks become feature cards; the rest fold into the
-  // expandable "Includes all benefits" panel — mirroring the
-  // Snapchat reference's "Includes all Snapchat+ features" row.
+  // expandable "Includes all benefits" panel.
   const featurePerks = plan.perks.slice(0, 3)
   const extraPerks = plan.perks.slice(3)
   const otherPlans = allPlans.filter((p) => p.id !== plan.id)
@@ -238,13 +229,13 @@ function UpgradeSheet({
         type="button"
         aria-label="Close"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60"
       />
 
-      {/* Panel — brand-purple gradient, dark premium feel */}
-      <div className="relative w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-gradient-to-b from-[#3F1349] via-[#5A1D6A] to-[#2A0D32] text-white shadow-2xl">
+      {/* Panel — solid brand-purple, no gradient, no shadow */}
+      <div className="relative w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-[#3F1349] text-white border border-white/10">
         {/* Top bar */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-5 pt-4 pb-2 bg-gradient-to-b from-[#3F1349] to-transparent">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 pt-4 pb-2 bg-[#3F1349]">
           <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/70">
             Dermaspace Membership
           </span>
@@ -259,15 +250,10 @@ function UpgradeSheet({
         </div>
 
         <div className="px-5 pb-7">
-          {/* Glowing crown + title */}
+          {/* Crown + title */}
           <div className="text-center pt-2 pb-5">
-            <div className="relative inline-flex items-center justify-center mb-3">
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 rounded-full blur-xl"
-                style={{ backgroundColor: '#C77DFF66' }}
-              />
-              <span className="relative w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+            <div className="inline-flex items-center justify-center mb-3">
+              <span className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
                 <Crown className="w-8 h-8 text-white" />
               </span>
             </div>
@@ -340,19 +326,11 @@ function UpgradeSheet({
             )}
           </div>
 
-          {/* Glowing subscribe pill */}
-          <div className="relative mt-6">
-            <span
-              aria-hidden="true"
-              className="absolute -inset-1 rounded-full blur-lg opacity-70"
-              style={{
-                background:
-                  'linear-gradient(90deg,#7B2D8E,#C77DFF,#7B2D8E)',
-              }}
-            />
+          {/* Subscribe pill — solid brand purple */}
+          <div className="mt-6">
             <Link
               href={`/membership/checkout?plan=${plan.id}`}
-              className="relative flex items-center justify-center w-full py-4 rounded-full bg-[#7B2D8E] text-white text-base font-bold hover:bg-[#5A1D6A] transition-colors"
+              className="flex items-center justify-center w-full py-4 rounded-full bg-[#7B2D8E] text-white text-base font-bold hover:bg-[#5A1D6A] transition-colors"
             >
               Register for {formatNgn(plan.price)}/
               {periodLabel(plan.validityMonths)}
