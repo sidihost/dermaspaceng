@@ -529,10 +529,10 @@ function ComposeBox({
                 External links aren&apos;t allowed in comments. Your account has been
                 suspended pending review. Contact{' '}
                 <a
-                  href="mailto:support@dermaspaceng.com"
+                  href="mailto:info@dermaspaceng.com"
                   className="font-semibold underline"
                 >
-                  support@dermaspaceng.com
+                  info@dermaspaceng.com
                 </a>{' '}
                 if you believe this is a mistake.
               </p>

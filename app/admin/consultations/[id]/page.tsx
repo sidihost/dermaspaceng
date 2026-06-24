@@ -617,25 +617,30 @@ export default function ConsultationDetailPage() {
                   label="Device & submission"
                 />
 
-                {/* Anonymous vs signed-in badge */}
+                {/* Anonymous vs signed-in — understated, professional label
+                    rather than a loud colored badge. */}
                 {consultation.is_anonymous != null && (
-                  <div className="mb-3">
+                  <div className="mb-4 flex items-center gap-2 text-sm">
                     {consultation.is_anonymous ? (
-                      <Badge
-                        variant="outline"
-                        className="bg-amber-50 text-amber-700 border-amber-200 font-medium rounded-full px-3 py-1 inline-flex items-center gap-1.5"
-                      >
-                        <UserX className="w-3.5 h-3.5" />
-                        Anonymous visitor
-                      </Badge>
+                      <>
+                        <UserX className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-gray-600">
+                          Submitted by an{' '}
+                          <span className="font-medium text-gray-800">
+                            anonymous visitor
+                          </span>
+                        </span>
+                      </>
                     ) : (
-                      <Badge
-                        variant="outline"
-                        className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium rounded-full px-3 py-1 inline-flex items-center gap-1.5"
-                      >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        Signed-in customer
-                      </Badge>
+                      <>
+                        <UserCheck className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+                        <span className="text-gray-600">
+                          Submitted by a{' '}
+                          <span className="font-medium text-gray-800">
+                            signed-in customer
+                          </span>
+                        </span>
+                      </>
                     )}
                   </div>
                 )}

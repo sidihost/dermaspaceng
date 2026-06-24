@@ -111,7 +111,7 @@ export default async function MaintenancePage() {
                 +234 906 183 6625
               </a>
               <a
-                href="mailto:support@dermaspaceng.com"
+                href="mailto:info@dermaspaceng.com"
                 className="inline-flex items-center gap-1.5 font-semibold text-[#7B2D8E] hover:underline"
               >
                 <Mail className="w-3.5 h-3.5" aria-hidden />

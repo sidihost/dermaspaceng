@@ -67,7 +67,7 @@ const DEFAULT_NOTIFICATIONS: NotificationPrefs = {
 }
 
 const DEFAULT_EMAIL: EmailPrefs = {
-  supportEmail: 'support@dermaspaceng.com',
+  supportEmail: 'info@dermaspaceng.com',
   notificationEmail: 'notifications@dermaspaceng.com',
   emailSignature: 'Best regards,\nThe Dermaspace Team',
 }

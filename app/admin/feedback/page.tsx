@@ -351,13 +351,13 @@ export default function AdminFeedbackPage() {
                             {displayName}
                           </p>
                           {row.user_id ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                              <UserCheck className="w-2.5 h-2.5" />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-600">
+                              <UserCheck className="w-3 h-3 text-[#7B2D8E]" />
                               Signed-in
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-                              <UserX className="w-2.5 h-2.5" />
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                              <UserX className="w-3 h-3 text-gray-400" />
                               Anonymous
                             </span>
                           )}
