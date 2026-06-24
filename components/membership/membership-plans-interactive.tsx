@@ -26,6 +26,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import {
   Check,
   Crown,
@@ -250,33 +251,39 @@ function UpgradeSheet({
           </button>
         </div>
 
-        <div className="px-5 pb-7">
-          {/* Crown + title */}
-          <div className="text-center pt-2 pb-5">
-            <div className="inline-flex items-center justify-center mb-3">
-              <span className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
-                <Crown className="w-8 h-8 text-white" />
+        <div className="px-5 pb-5">
+          {/* Brand logo avatar + title — compact, Snapchat-style */}
+          <div className="text-center pt-1 pb-4">
+            <div className="inline-flex items-center justify-center mb-2.5">
+              <span className="w-16 h-16 rounded-full bg-white flex items-center justify-center ring-2 ring-white/25 overflow-hidden">
+                <Image
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                  alt="Dermaspace"
+                  width={96}
+                  height={96}
+                  className="w-11 h-11 object-contain"
+                />
               </span>
             </div>
-            <h2 className="text-2xl font-bold text-balance">
+            <h2 className="text-2xl font-bold text-balance leading-tight">
               Upgrade to {plan.name}
             </h2>
             <p
-              className="mt-1.5 text-sm text-white/75 max-w-xs mx-auto"
+              className="mt-1 text-[13px] text-white/70 max-w-xs mx-auto leading-snug"
               dangerouslySetInnerHTML={{ __html: plan.tagline }}
             />
           </div>
 
           {/* Feature cards */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {featurePerks.map((perk, idx) => {
               const Icon = iconForPerk(perk)
               return (
                 <div
                   key={idx}
-                  className="flex items-center gap-3.5 px-4 py-3.5 rounded-2xl bg-white/8 border border-white/10"
+                  className="flex items-center gap-3 px-3.5 py-3 rounded-2xl bg-white/8 border border-white/10"
                 >
-                  <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <span className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
                     <Icon className="w-5 h-5 text-white" />
                   </span>
                   <p
@@ -294,9 +301,9 @@ function UpgradeSheet({
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
                   aria-expanded={expanded}
-                  className="w-full flex items-center gap-3.5 px-4 py-3.5 text-left"
+                  className="w-full flex items-center gap-3 px-3.5 py-3 text-left"
                 >
-                  <span className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <span className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
                     <Award className="w-5 h-5 text-white" />
                   </span>
                   <span className="flex-1 text-sm font-medium text-white/95">
@@ -328,10 +335,10 @@ function UpgradeSheet({
           </div>
 
           {/* Subscribe pill — solid brand purple */}
-          <div className="mt-6">
+          <div className="mt-4">
             <Link
               href={`/membership/checkout?plan=${plan.id}`}
-              className="flex items-center justify-center w-full py-4 rounded-full bg-[#7B2D8E] text-white text-base font-bold hover:bg-[#5A1D6A] transition-colors"
+              className="flex items-center justify-center w-full py-3.5 rounded-full bg-[#7B2D8E] text-white text-base font-bold hover:bg-[#5A1D6A] transition-colors"
             >
               Register for {formatNgn(plan.price)}/
               {periodLabel(plan.validityMonths)}
@@ -340,8 +347,8 @@ function UpgradeSheet({
 
           {/* View other plans */}
           {otherPlans.length > 0 && (
-            <div className="mt-5 text-center">
-              <p className="text-xs font-semibold text-white/60 uppercase tracking-widest mb-2">
+            <div className="mt-3.5 text-center">
+              <p className="text-[11px] font-semibold text-white/60 uppercase tracking-widest mb-2">
                 View other plans
               </p>
               <div className="flex items-center justify-center gap-2">
@@ -360,7 +367,7 @@ function UpgradeSheet({
           )}
 
           {/* Fine print + linked terms */}
-          <p className="mt-6 text-[11px] leading-relaxed text-white/55 text-center">
+          <p className="mt-4 text-[11px] leading-relaxed text-white/55 text-center">
             Benefits and rates can change with notice. Memberships are valid
             for {plan.validityMonths} months, are non-refundable and
             non-exchangeable. Glow Points are a reward and are not credited
