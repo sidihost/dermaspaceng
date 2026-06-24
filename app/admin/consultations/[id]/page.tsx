@@ -62,6 +62,12 @@ import {
   ExternalLink,
   Copy,
   Trash2,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Globe,
+  UserCheck,
+  UserX,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
@@ -88,6 +94,17 @@ interface Consultation {
   scheduled_at: string | null
   created_at: string
   customer_avatar_url?: string | null
+  // Device / submission metadata (see migration 670). All nullable —
+  // older rows predate this capture and stay undefined.
+  is_anonymous?: boolean | null
+  user_agent?: string | null
+  browser?: string | null
+  os?: string | null
+  device_type?: string | null
+  ip_address?: string | null
+  geo_country?: string | null
+  geo_city?: string | null
+  geo_region?: string | null
 }
 
 interface Reply {
@@ -582,6 +599,80 @@ export default function ConsultationDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Device & submission — tells the admin whether this came from a
+              signed-in customer or an anonymous visitor, plus the browser /
+              OS / device and approximate location it was sent from. Only
+              renders for rows captured after migration 670. */}
+          {(consultation.is_anonymous != null ||
+            consultation.browser ||
+            consultation.os ||
+            consultation.device_type ||
+            consultation.ip_address ||
+            consultation.geo_country ||
+            consultation.geo_city) && (
+            <Card className="border-gray-200/80">
+              <CardContent className="p-5 sm:p-6">
+                <SectionHeader
+                  icon={<Monitor className="w-3.5 h-3.5" />}
+                  label="Device & submission"
+                />
+
+                {/* Anonymous vs signed-in badge */}
+                {consultation.is_anonymous != null && (
+                  <div className="mb-3">
+                    {consultation.is_anonymous ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-50 text-amber-700 border-amber-200 font-medium rounded-full px-3 py-1 inline-flex items-center gap-1.5"
+                      >
+                        <UserX className="w-3.5 h-3.5" />
+                        Anonymous visitor
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium rounded-full px-3 py-1 inline-flex items-center gap-1.5"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        Signed-in customer
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                  <DeviceField
+                    icon={<DeviceTypeIcon type={consultation.device_type} />}
+                    label="Device"
+                    value={formatDeviceLine(consultation)}
+                  />
+                  <DeviceField
+                    icon={<Globe className="w-4 h-4" />}
+                    label="Location"
+                    value={formatGeoLine(consultation)}
+                  />
+                  <DeviceField
+                    icon={<Globe className="w-4 h-4" />}
+                    label="IP address"
+                    value={consultation.ip_address || null}
+                    mono
+                  />
+                </dl>
+
+                {consultation.user_agent && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-1">
+                      User agent
+                    </p>
+                    <p className="text-xs text-gray-600 font-mono break-all leading-relaxed">
+                      {consultation.user_agent}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Concerns — only renders when present. Concerns become
               real pills with a brand-tinted background; no shoutiness,
               just a calm chip rhythm. */}
@@ -837,6 +928,59 @@ export default function ConsultationDetailPage() {
 }
 
 // ───────────────────────────── Subcomponents ──────────────────────────────
+
+// Compose "Chrome on Android (mobile)" from the stored parts.
+function formatDeviceLine(c: Consultation): string | null {
+  const parts: string[] = []
+  if (c.browser) parts.push(c.browser)
+  if (c.os) parts.push(`on ${c.os}`)
+  let line = parts.join(' ')
+  if (c.device_type) line += `${line ? ' ' : ''}(${c.device_type})`
+  return line || null
+}
+
+// Compose "Lagos, Lagos State, Nigeria" from the stored geo parts.
+function formatGeoLine(c: Consultation): string | null {
+  const parts = [c.geo_city, c.geo_region, c.geo_country].filter(Boolean) as string[]
+  const unique = [...new Set(parts)]
+  return unique.length > 0 ? unique.join(', ') : null
+}
+
+function DeviceTypeIcon({ type }: { type?: string | null }) {
+  if (type === 'mobile') return <Smartphone className="w-4 h-4" />
+  if (type === 'tablet') return <Tablet className="w-4 h-4" />
+  return <Monitor className="w-4 h-4" />
+}
+
+function DeviceField({
+  icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | null
+  mono?: boolean
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+          {label}
+        </dt>
+        <dd
+          className={`text-sm text-gray-800 break-words ${mono ? 'font-mono text-xs' : ''}`}
+        >
+          {value || <span className="text-gray-400">Not available</span>}
+        </dd>
+      </div>
+    </div>
+  )
+}
 
 function SectionHeader({
   icon,

@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid'
 // helper, so a QStash outage never breaks consultation creation.
 import { scheduleConsultationReminder } from '@/lib/reminders'
 import { notifyUser } from '@/lib/notifications'
+import { getDeviceInfo } from '@/lib/device-info'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -77,10 +78,28 @@ export async function POST(request: Request) {
     const currentUser = await getCurrentUser().catch(() => null)
     const userId = currentUser?.id ?? null
 
+    // Capture device / submission metadata so admins can tell whether a
+    // request came from a signed-in customer or an anonymous visitor, and
+    // from which browser / OS / device / location. Best-effort — never
+    // blocks the submission.
+    const device = await getDeviceInfo(request).catch(() => null)
+    const isAnonymous = !userId
+
     const id = uuidv4()
     await sql`
-      INSERT INTO consultations (id, user_id, first_name, last_name, email, phone, location, appointment_date, appointment_time, concerns, notes)
-      VALUES (${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location}, ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''})
+      INSERT INTO consultations (
+        id, user_id, first_name, last_name, email, phone, location,
+        appointment_date, appointment_time, concerns, notes,
+        is_anonymous, user_agent, browser, os, device_type,
+        ip_address, geo_country, geo_city, geo_region
+      )
+      VALUES (
+        ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
+        ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''},
+        ${isAnonymous}, ${device?.userAgent ?? null}, ${device?.browser ?? null},
+        ${device?.os ?? null}, ${device?.deviceType ?? null}, ${device?.ipAddress ?? null},
+        ${device?.geoCountry ?? null}, ${device?.geoCity ?? null}, ${device?.geoRegion ?? null}
+      )
     `
 
     // Send confirmation email
