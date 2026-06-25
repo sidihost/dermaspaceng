@@ -29,61 +29,6 @@ import {
 // Leaflet's base stylesheet — static import so Next.js bundles it at build time.
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
 import 'leaflet/dist/leaflet.css'
-import { useAuth } from '@/hooks/use-auth'
-
-// Escape user-supplied strings before they go into the marker's innerHTML.
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-// Builds the inner HTML for the "you are here" marker. When a customer is
-// signed in we render their avatar (or initials) inside a white-ringed,
-// pin-pointed bubble — the Snapchat-style personal marker — layered over the
-// same pulsing halo. Logged-out visitors get the classic anonymous dot.
-function buildUserMarkerHtml(authUser: {
-  firstName?: string
-  lastName?: string
-  avatarUrl?: string
-} | null): string {
-  const pulse = `<span class="ds-user-pulse"></span>`
-  const heading = `
-    <span class="ds-user-heading" style="display:none">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="#7B2D8E" aria-hidden="true">
-        <path d="M12 2 4 20l8-4 8 4z"/>
-      </svg>
-    </span>`
-
-  if (authUser) {
-    const name = `${authUser.firstName ?? ''} ${authUser.lastName ?? ''}`.trim()
-    const initials =
-      (`${authUser.firstName?.[0] ?? ''}${authUser.lastName?.[0] ?? ''}`.trim() || 'You')
-        .toUpperCase()
-    const inner = authUser.avatarUrl
-      ? `<img class="ds-user-photo" src="${escapeHtml(authUser.avatarUrl)}" alt="${escapeHtml(name || 'You')}" referrerpolicy="no-referrer" />`
-      : `<span class="ds-user-initials">${escapeHtml(initials)}</span>`
-    return `
-      <div class="ds-user-root ds-user-root--avatar" aria-label="${escapeHtml(name || 'Your location')}">
-        ${pulse}
-        ${heading}
-        <span class="ds-user-bubble">${inner}</span>
-        <span class="ds-user-stem"></span>
-      </div>`
-  }
-
-  return `
-    <div class="ds-user-root" aria-label="Your location">
-      ${pulse}
-      ${heading}
-      <span class="ds-user-ring">
-        <span class="ds-user-core"></span>
-      </span>
-    </div>`
-}
 
 // Coordinates for our two Lagos branches.
 // Exposed so the parent can pass them down or tests can reference them.
@@ -359,13 +304,6 @@ export default function InteractiveMap({
   // User location uses a divIcon Marker now (for a proper pulsing halo look)
   // instead of a flat CircleMarker, so this ref is typed as a Marker.
   const userMarkerRef = useRef<import('leaflet').Marker | null>(null)
-  // Signed-in customer — when present we render their avatar in the
-  // "you are here" marker (Snapchat-style). Kept in a ref so the Leaflet
-  // divIcon builder (which runs outside React's render) always reads the
-  // latest value without re-subscribing.
-  const { user: authUser } = useAuth()
-  const authUserRef = useRef(authUser)
-  authUserRef.current = authUser
   const routeLineRef = useRef<import('leaflet').Polyline | null>(null)
   // White "casing" polyline underneath the purple route line — gives the
   // route the crisp outlined look that Google Maps uses so the path stays
@@ -832,26 +770,6 @@ export default function InteractiveMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // If the customer signs in (or changes their avatar) after the "you are
-  // here" marker is already on the map, swap its icon so their face appears
-  // without needing to re-locate. Reads from authUser (not the ref) so the
-  // effect actually re-runs on auth changes.
-  useEffect(() => {
-    const L = LRef.current
-    const marker = userMarkerRef.current
-    if (!L || !marker) return
-    const hasAvatar = !!authUser
-    marker.setIcon(
-      L.divIcon({
-        className: 'dermaspace-user-marker',
-        html: buildUserMarkerHtml(authUser),
-        iconSize: hasAvatar ? [48, 58] : [28, 28],
-        iconAnchor: hasAvatar ? [24, 56] : [14, 14],
-      }),
-    )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authUser?.id, authUser?.avatarUrl, authUser?.firstName, authUser?.lastName])
-
   const drawRoute = async (user: LatLng, branchId: BranchId, mode: TravelMode) => {
     const L = LRef.current
     const map = mapRef.current
@@ -868,15 +786,23 @@ export default function InteractiveMap({
     // Maps, which everyone instantly recognises as "you are here".
     // Colour is Dermaspace brand purple; the round dot shape is already
     // clearly distinct from the teardrop branch pins so there's no ambiguity.
-    const hasAvatar = !!authUserRef.current
     const userIcon = L.divIcon({
       className: 'dermaspace-user-marker',
-      html: buildUserMarkerHtml(authUserRef.current),
-      // The avatar bubble is larger and points downward at the location, so
-      // it gets a taller box and a bottom anchor; the anonymous dot stays
-      // centred on the point.
-      iconSize: hasAvatar ? [48, 58] : [28, 28],
-      iconAnchor: hasAvatar ? [24, 56] : [14, 14],
+      html: `
+        <div class="ds-user-root" aria-label="Your location">
+          <span class="ds-user-pulse"></span>
+          <span class="ds-user-heading" style="display:none">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="#7B2D8E" aria-hidden="true">
+              <path d="M12 2 4 20l8-4 8 4z"/>
+            </svg>
+          </span>
+          <span class="ds-user-ring">
+            <span class="ds-user-core"></span>
+          </span>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
     })
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng([user.lat, user.lng])
@@ -1645,75 +1571,6 @@ export default function InteractiveMap({
           border-radius: 9999px;
           /* Dermaspace brand purple core. */
           background: #7B2D8E;
-        }
-        /* ---------- Signed-in avatar marker (Snapchat-style) ----------
-           A circular avatar bubble with a white ring sits above a small
-           pointer that touches the exact location. The same pulse halo
-           plays behind the bubble so it still reads as a live position. */
-        .ds-user-root--avatar {
-          width: 48px;
-          height: 58px;
-        }
-        .ds-user-root--avatar .ds-user-pulse {
-          inset: auto;
-          top: 4px;
-          left: 4px;
-          width: 40px;
-          height: 40px;
-          margin: 0;
-        }
-        .ds-user-root--avatar .ds-user-heading {
-          top: -4px;
-        }
-        .ds-user-bubble {
-          position: absolute;
-          top: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 44px;
-          height: 44px;
-          border-radius: 9999px;
-          background: #ffffff;
-          border: 3px solid #ffffff;
-          box-shadow: 0 3px 10px rgba(123, 45, 142, 0.45);
-          overflow: hidden;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-sizing: border-box;
-        }
-        .ds-user-photo {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          border-radius: 9999px;
-        }
-        .ds-user-initials {
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 9999px;
-          background: #7B2D8E;
-          color: #ffffff;
-          font-size: 15px;
-          font-weight: 700;
-          letter-spacing: 0.5px;
-          font-family: ui-sans-serif, system-ui, sans-serif;
-        }
-        /* Downward pointer connecting the bubble to the precise location. */
-        .ds-user-stem {
-          position: absolute;
-          bottom: 0;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 0;
-          height: 0;
-          border-left: 7px solid transparent;
-          border-right: 7px solid transparent;
-          border-top: 12px solid #ffffff;
-          filter: drop-shadow(0 2px 2px rgba(123, 45, 142, 0.35));
         }
         /* Heading arrow — only shown when the Geolocation API supplies a
            compass bearing. Sits just above the white ring and rotates via

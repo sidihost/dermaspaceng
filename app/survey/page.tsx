@@ -229,52 +229,9 @@ export default function SurveyPage() {
     if (step > 1) setStep((s) => s - 1)
   }
 
-  // Best-effort precise location. Resolves to GPS coordinates if the
-  // visitor has *already* granted permission (or grants it quickly),
-  // otherwise resolves to null so the server falls back to IP-based geo.
-  // We use a short timeout and never block submit on a denied/slow prompt.
-  const getGeolocation = (): Promise<{ latitude: number; longitude: number } | null> =>
-    new Promise((resolve) => {
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        resolve(null)
-        return
-      }
-      let settled = false
-      const done = (v: { latitude: number; longitude: number } | null) => {
-        if (settled) return
-        settled = true
-        resolve(v)
-      }
-      const timer = setTimeout(() => done(null), 6000)
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          clearTimeout(timer)
-          done({ latitude: pos.coords.latitude, longitude: pos.coords.longitude })
-        },
-        () => {
-          clearTimeout(timer)
-          done(null)
-        },
-        { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 },
-      )
-    })
-
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      // Attach a respondent-context envelope so the admin survey detail
-      // page can show device/browser/location and whether the response
-      // was anonymous. GPS is opt-in; the server derives the rest
-      // (browser/OS/device + approximate IP location) from the request.
-      const coords = await getGeolocation()
-      const meta = {
-        ...(coords ? coords : {}),
-        timezone:
-          typeof Intl !== 'undefined'
-            ? Intl.DateTimeFormat().resolvedOptions().timeZone
-            : undefined,
-      }
-
       // Persist to Neon via /api/surveys so the admin dashboard
       // actually sees the response. Previously this handler only
       // wrote to localStorage and never hit the server, which was
@@ -285,7 +242,7 @@ export default function SurveyPage() {
       const res = await fetch('/api/surveys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: surveyData, meta }),
+        body: JSON.stringify({ data: surveyData }),
       })
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}))

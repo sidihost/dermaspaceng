@@ -12,10 +12,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import {
-  ArrowLeft, Loader2, AlertCircle, Star,
-  Monitor, Smartphone, Globe, MapPin, UserCheck, UserX, Navigation,
-} from 'lucide-react'
+import { ArrowLeft, Loader2, AlertCircle, Star } from 'lucide-react'
 
 interface Survey {
   id: number
@@ -32,18 +29,6 @@ interface Survey {
   created_at: string
   first_name: string | null
   last_name: string | null
-  is_anonymous: boolean | null
-  respondent_user_agent: string | null
-  respondent_browser: string | null
-  respondent_os: string | null
-  respondent_device: string | null
-  respondent_ip: string | null
-  respondent_city: string | null
-  respondent_region: string | null
-  respondent_country: string | null
-  respondent_lat: number | null
-  respondent_lng: number | null
-  respondent_geo_source: string | null
 }
 
 const renderStars = (rating: number) => {
@@ -53,106 +38,6 @@ const renderStars = (rating: number) => {
       className={`w-5 h-5 ${i < rating ? 'fill-primary text-primary' : 'text-gray-300'}`}
     />
   ))
-}
-
-// Best-effort flag emoji from an ISO country code, purely cosmetic.
-function flagEmoji(country: string | null) {
-  if (!country || country.length !== 2) return ''
-  const base = 0x1f1e6
-  return String.fromCodePoint(
-    ...country.toUpperCase().split('').map((c) => base + (c.charCodeAt(0) - 65)),
-  )
-}
-
-// Respondent context captured at submit time: who (anonymous vs a
-// signed-in client), what device/browser/OS they used, and where they
-// were (precise GPS if they allowed it, otherwise approximate from IP).
-function RespondentDetails({ survey }: { survey: Survey }) {
-  const locationParts = [survey.respondent_city, survey.respondent_region]
-    .filter(Boolean)
-    .join(', ')
-  const countryFlag = flagEmoji(survey.respondent_country)
-  const locationLabel = [locationParts, survey.respondent_country]
-    .filter(Boolean)
-    .join(' · ')
-  const isAnon = survey.is_anonymous !== false && !survey.first_name
-
-  const rows: Array<{ icon: React.ReactNode; label: string; value: string | null }> = [
-    {
-      icon:
-        survey.respondent_device === 'Mobile' || survey.respondent_device === 'Tablet' ? (
-          <Smartphone className="w-4 h-4 text-gray-400" />
-        ) : (
-          <Monitor className="w-4 h-4 text-gray-400" />
-        ),
-      label: 'Device',
-      value: [survey.respondent_device, survey.respondent_os].filter(Boolean).join(' · ') || null,
-    },
-    {
-      icon: <Globe className="w-4 h-4 text-gray-400" />,
-      label: 'Browser',
-      value: survey.respondent_browser,
-    },
-    {
-      icon:
-        survey.respondent_geo_source === 'gps' ? (
-          <Navigation className="w-4 h-4 text-gray-400" />
-        ) : (
-          <MapPin className="w-4 h-4 text-gray-400" />
-        ),
-      label: survey.respondent_geo_source === 'gps' ? 'Location (GPS)' : 'Location (approx.)',
-      value:
-        survey.respondent_geo_source === 'gps' && survey.respondent_lat != null
-          ? `${survey.respondent_lat.toFixed(4)}, ${survey.respondent_lng?.toFixed(4)}`
-          : locationLabel
-            ? `${countryFlag ? countryFlag + ' ' : ''}${locationLabel}`
-            : null,
-    },
-    {
-      icon: <Globe className="w-4 h-4 text-gray-400" />,
-      label: 'IP address',
-      value: survey.respondent_ip,
-    },
-  ]
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-medium text-gray-700">Respondent details</h2>
-        <Badge
-          variant="outline"
-          className={
-            isAnon
-              ? 'bg-gray-100 text-gray-600 border-gray-200'
-              : 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
-          }
-        >
-          {isAnon ? (
-            <><UserX className="w-3 h-3 mr-1" /> Anonymous</>
-          ) : (
-            <><UserCheck className="w-3 h-3 mr-1" /> Signed in</>
-          )}
-        </Badge>
-      </div>
-
-      {!isAnon && (
-        <p className="text-sm text-gray-600 mb-2">
-          {survey.first_name} {survey.last_name}
-          {survey.user_email ? ` · ${survey.user_email}` : ''}
-        </p>
-      )}
-
-      <div className="rounded-lg border border-gray-100 divide-y divide-gray-100">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center gap-3 px-3 py-2.5">
-            {row.icon}
-            <span className="text-xs text-gray-500 w-32 shrink-0">{row.label}</span>
-            <span className="text-sm text-gray-700 truncate">{row.value || 'Unknown'}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 export default function SurveyDetailPage() {
@@ -267,8 +152,6 @@ export default function SurveyDetailPage() {
               </p>
             </div>
           )}
-
-          <RespondentDetails survey={survey} />
 
           <p className="text-center text-xs text-gray-500 pt-2">
             Submitted {new Date(survey.created_at).toLocaleString()}
