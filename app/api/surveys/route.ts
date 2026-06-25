@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { neon } from '@neondatabase/serverless'
 import { getCurrentUser } from '@/lib/auth'
+import { getRequestGeo, parseUserAgent } from '@/lib/request-meta'
 import {
   honeypotResponse,
   parseJsonBody,
@@ -114,6 +115,26 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser().catch(() => null)
     const userId = user?.id ?? null
     const userEmail = user?.email ?? null
+    const isAnonymous = !userId
+
+    // Respondent context — device/browser/OS from the user agent and an
+    // approximate location from Vercel's edge geo headers. The client may
+    // also pass precise GPS coordinates in `body.meta` if the visitor
+    // granted the browser geolocation permission; we prefer those over the
+    // IP-derived location. None of this is required (everything is
+    // nullable) so a missing UA or denied location never blocks a submit.
+    const ua = request.headers.get('user-agent')
+    const { browser, os, device } = parseUserAgent(ua)
+    const geo = getRequestGeo(request)
+    const meta = (body.meta && typeof body.meta === 'object'
+      ? (body.meta as Record<string, unknown>)
+      : {}) as Record<string, unknown>
+    const gpsLat = Number(meta.latitude)
+    const gpsLng = Number(meta.longitude)
+    const hasGps = Number.isFinite(gpsLat) && Number.isFinite(gpsLng)
+    const respLat = hasGps ? gpsLat : null
+    const respLng = hasGps ? gpsLng : null
+    const geoSource = hasGps ? 'gps' : geo.city || geo.country ? 'ip' : null
 
     // Some environments have `survey_responses.id` as VARCHAR NOT NULL
     // with no DEFAULT (the column was rebuilt after the original SERIAL
@@ -149,7 +170,11 @@ export async function POST(request: NextRequest) {
         user_id, user_email,
         answers,
         aesthetics, ambiance, front_desk, staff_professional,
-        appointment_delay, overall_rating, visit_again, comments
+        appointment_delay, overall_rating, visit_again, comments,
+        is_anonymous,
+        respondent_user_agent, respondent_browser, respondent_os, respondent_device,
+        respondent_ip, respondent_city, respondent_region, respondent_country,
+        respondent_lat, respondent_lng, respondent_geo_source
       )
       VALUES (
         ${newId},
@@ -158,7 +183,11 @@ export async function POST(request: NextRequest) {
         ${aesthetics || null}, ${ambiance || null},
         ${frontDesk || null}, ${staffProfessional || null},
         ${appointmentDelay || null}, ${Math.round(overallRating)},
-        ${visitAgain || null}, ${comments || null}
+        ${visitAgain || null}, ${comments || null},
+        ${isAnonymous},
+        ${ua || null}, ${browser}, ${os}, ${device},
+        ${geo.ip}, ${geo.city}, ${geo.region}, ${geo.country},
+        ${respLat}, ${respLng}, ${geoSource}
       )
       RETURNING id, created_at
     `
