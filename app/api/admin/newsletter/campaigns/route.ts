@@ -21,6 +21,21 @@ interface CreateCampaignBody {
   bodyHtml?: string
   ctaLabel?: string
   ctaUrl?: string
+  audience?: string
+}
+
+// Who a campaign goes out to:
+//   'subscribers' — only people on the marketing newsletter list.
+//   'customers'   — every active registered account (excluding those
+//                   who opted out of promotional email). This is the
+//                   "announce to everyone" broadcast.
+const VALID_AUDIENCES = ['subscribers', 'customers'] as const
+type Audience = (typeof VALID_AUDIENCES)[number]
+
+function normaliseAudience(value: unknown): Audience {
+  return VALID_AUDIENCES.includes(value as Audience)
+    ? (value as Audience)
+    : 'subscribers'
 }
 
 // Tiny defence-in-depth body sanitiser. Admins are trusted authors
@@ -51,7 +66,7 @@ export async function GET() {
 
   try {
     const rows = await sql`
-      SELECT id, subject, preheader, eyebrow, headline, status,
+      SELECT id, subject, preheader, eyebrow, headline, status, audience,
              recipient_count, sent_count, failed_count,
              last_error, created_at, sent_at,
              last_test_email, last_test_at
@@ -67,6 +82,7 @@ export async function GET() {
         eyebrow: r.eyebrow || null,
         headline: r.headline || null,
         status: r.status,
+        audience: r.audience || 'subscribers',
         recipientCount: Number(r.recipient_count ?? 0),
         sentCount: Number(r.sent_count ?? 0),
         failedCount: Number(r.failed_count ?? 0),
@@ -116,17 +132,18 @@ export async function POST(request: Request) {
   const headline = (body.headline || '').trim().slice(0, 200) || null
   const ctaLabel = (body.ctaLabel || '').trim().slice(0, 60) || null
   const ctaUrl = (body.ctaUrl || '').trim() || null
+  const audience = normaliseAudience(body.audience)
 
   try {
     const rows = await sql`
       INSERT INTO newsletter_campaigns (
         subject, preheader, eyebrow, headline, body_html,
-        cta_label, cta_url, created_by
+        cta_label, cta_url, audience, created_by
       ) VALUES (
         ${subject}, ${preheader}, ${eyebrow}, ${headline}, ${bodyHtml},
-        ${ctaLabel}, ${ctaUrl}, ${user.id}
+        ${ctaLabel}, ${ctaUrl}, ${audience}, ${user.id}
       )
-      RETURNING id, subject, status, created_at
+      RETURNING id, subject, status, audience, created_at
     `
     return NextResponse.json({
       ok: true,
@@ -134,6 +151,7 @@ export async function POST(request: Request) {
         id: rows[0].id,
         subject: rows[0].subject,
         status: rows[0].status,
+        audience: rows[0].audience || 'subscribers',
         createdAt: new Date(rows[0].created_at as string).toISOString(),
       },
     })

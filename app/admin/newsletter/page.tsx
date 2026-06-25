@@ -74,6 +74,7 @@ interface CampaignSummary {
   eyebrow: string | null
   headline: string | null
   status: 'draft' | 'sending' | 'sent' | 'failed'
+  audience: 'subscribers' | 'customers'
   recipientCount: number
   sentCount: number
   failedCount: number
@@ -571,6 +572,7 @@ const EMPTY_FORM = {
   bodyHtml: '',
   ctaLabel: '',
   ctaUrl: '',
+  audience: 'subscribers' as 'subscribers' | 'customers',
 }
 
 function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
@@ -582,7 +584,23 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
   const [testEmail, setTestEmail] = useState('')
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
 
+  // Live audience sizes so the admin sees exactly how many people a
+  // send reaches before committing. Cached briefly — the numbers
+  // don't need to be real-time to the second.
+  const { data: audienceCounts } = useSWR<{
+    subscribers: number
+    customers: number
+  }>('/api/admin/newsletter/audience-counts', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 30_000,
+  })
+
   const isReadOnly = campaign && campaign.status !== 'draft'
+
+  const selectedAudienceCount =
+    form.audience === 'customers'
+      ? audienceCounts?.customers
+      : audienceCounts?.subscribers
 
   // Hydrate the editing target when we have an id; brand-new
   // campaigns start with the empty form.
@@ -614,6 +632,7 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
           bodyHtml: c.bodyHtml || '',
           ctaLabel: c.ctaLabel || '',
           ctaUrl: c.ctaUrl || '',
+          audience: c.audience === 'customers' ? 'customers' : 'subscribers',
         })
       })
       .catch(err => {
@@ -670,6 +689,7 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
             ...form,
             id: id as string,
             status: 'draft',
+            audience: form.audience,
             recipientCount: 0,
             sentCount: 0,
             failedCount: 0,
@@ -728,9 +748,13 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
   }, [testEmail, save, notify])
 
   const sendBlast = useCallback(async () => {
+    const audienceNoun =
+      form.audience === 'customers'
+        ? 'every active customer'
+        : 'every active subscriber'
     if (
       !window.confirm(
-        'Send this campaign to every active subscriber? This cannot be undone.',
+        `Send this campaign to ${audienceNoun}? This cannot be undone.`,
       )
     ) {
       return
@@ -747,8 +771,10 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
         throw new Error(body?.error || 'Send failed')
       }
       const result = await res.json()
+      const recipientNoun =
+        form.audience === 'customers' ? 'customers' : 'subscribers'
       notify.success(
-        `Sent to ${result.sentCount}/${result.recipientCount} subscribers` +
+        `Sent to ${result.sentCount}/${result.recipientCount} ${recipientNoun}` +
           (result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''),
       )
       onClose(true)
@@ -757,7 +783,7 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
     } finally {
       setSending(false)
     }
-  }, [save, notify, onClose])
+  }, [save, notify, onClose, form.audience])
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end">
