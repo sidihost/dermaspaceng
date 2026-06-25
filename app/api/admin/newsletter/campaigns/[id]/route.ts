@@ -20,7 +20,11 @@ interface PatchBody {
   bodyHtml?: string
   ctaLabel?: string
   ctaUrl?: string
+  audience?: string
 }
+
+const VALID_AUDIENCES = ['subscribers', 'customers'] as const
+type Audience = (typeof VALID_AUDIENCES)[number]
 
 function sanitiseBody(html: string): string {
   return html
@@ -46,7 +50,7 @@ export async function GET(
   try {
     const rows = await sql`
       SELECT id, subject, preheader, eyebrow, headline, body_html,
-             cta_label, cta_url, status, recipient_count, sent_count,
+             cta_label, cta_url, status, audience, recipient_count, sent_count,
              failed_count, last_error, created_at, sent_at,
              last_test_email, last_test_at
       FROM newsletter_campaigns
@@ -68,6 +72,7 @@ export async function GET(
         ctaLabel: r.cta_label || '',
         ctaUrl: r.cta_url || '',
         status: r.status,
+        audience: r.audience || 'subscribers',
         recipientCount: Number(r.recipient_count ?? 0),
         sentCount: Number(r.sent_count ?? 0),
         failedCount: Number(r.failed_count ?? 0),
@@ -136,6 +141,15 @@ export async function PATCH(
   const headline = body.headline !== undefined ? (body.headline || '').trim().slice(0, 200) || null : undefined
   const ctaLabel = body.ctaLabel !== undefined ? (body.ctaLabel || '').trim().slice(0, 60) || null : undefined
   const ctaUrl = body.ctaUrl !== undefined ? (body.ctaUrl || '').trim() || null : undefined
+  // Audience only changes when explicitly provided; an unknown value
+  // falls back to 'subscribers' so a malformed PATCH can never widen
+  // the blast radius to all customers by accident.
+  const audience =
+    body.audience !== undefined
+      ? VALID_AUDIENCES.includes(body.audience as Audience)
+        ? (body.audience as Audience)
+        : 'subscribers'
+      : undefined
 
   try {
     // We use a single UPDATE with COALESCE so unspecified fields
@@ -152,7 +166,8 @@ export async function PATCH(
         eyebrow     = CASE WHEN ${body.eyebrow !== undefined} THEN ${eyebrow ?? null} ELSE eyebrow END,
         headline    = CASE WHEN ${body.headline !== undefined} THEN ${headline ?? null} ELSE headline END,
         cta_label   = CASE WHEN ${body.ctaLabel !== undefined} THEN ${ctaLabel ?? null} ELSE cta_label END,
-        cta_url     = CASE WHEN ${body.ctaUrl !== undefined} THEN ${ctaUrl ?? null} ELSE cta_url END
+        cta_url     = CASE WHEN ${body.ctaUrl !== undefined} THEN ${ctaUrl ?? null} ELSE cta_url END,
+        audience    = COALESCE(${audience ?? null}, audience)
       WHERE id = ${id}::uuid AND status = 'draft'
       RETURNING id
     `
