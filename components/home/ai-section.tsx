@@ -51,6 +51,13 @@ type Shot = {
 
 const SHOTS: Shot[] = [
   {
+    id: 'booking',
+    label: 'Booking',
+    path: 'dermaspaceng.com/booking',
+    src: '/images/mockups/booking.png',
+    alt: 'Dermaspace appointment booking wizard showing the branch location step on mobile',
+  },
+  {
     id: 'survey-intro',
     label: 'Feedback',
     path: 'dermaspaceng.com/survey',
@@ -258,7 +265,10 @@ function AppShowcase() {
           {/* Screenshot stage — fixed phone aspect ratio so the section
               never jumps as we cross-fade between shots. All images are
               stacked and toggled via opacity for a smooth transition. */}
-          <div className="relative bg-gray-50 aspect-[390/620] overflow-hidden">
+          <div
+            className="relative bg-gray-50 overflow-hidden"
+            style={{ aspectRatio: '390 / 620' }}
+          >
             {SHOTS.map((shot, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
