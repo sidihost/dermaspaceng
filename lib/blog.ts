@@ -239,6 +239,154 @@ export async function getRelatedPosts(post: BlogPost, limit = 3): Promise<BlogPo
   })
 }
 
+// -- Per-user personalization (logged-in blog) ------------------------------
+//
+// These four helpers power the personalized rails that appear on /blog
+// only when a member is signed in. They are deliberately NOT cached with
+// the public `cached(...)` wrapper because the results are per-user — the
+// blast radius of caching them would be every other member's blog page.
+// Each is a single indexed query, so the cost is negligible.
+
+// Record (or refresh) that `userId` opened `postId`. UPSERT keeps exactly
+// one row per (user, post) and bumps `viewed_at` so the "Continue reading"
+// rail always reflects the member's most recent reading order. Best-effort:
+// a failed write must never break rendering the article.
+export async function recordPostView(userId: string, postId: string, slug: string): Promise<void> {
+  try {
+    await sql`
+      INSERT INTO blog_post_views (user_id, post_id, post_slug)
+      VALUES (${userId}, ${postId}, ${slug})
+      ON CONFLICT (user_id, post_id)
+      DO UPDATE SET viewed_at = NOW(), post_slug = EXCLUDED.post_slug
+    `
+  } catch (err) {
+    console.warn('[blog] recordPostView failed:', err)
+  }
+}
+
+// "Continue reading" — the member's most recently opened published posts,
+// newest first. Joined back to blog_posts so deleted/unpublished posts
+// drop out automatically.
+export async function getRecentlyViewedPosts(userId: string, limit = 4): Promise<BlogPost[]> {
+  const rows = (await sql`
+    SELECT
+      p.*,
+      c.slug AS category_slug,
+      c.name AS category_name,
+      c.accent_hex AS category_accent,
+      u.avatar_url AS author_avatar_url,
+      u.username   AS author_username,
+      v.viewed_at  AS viewed_at
+    FROM blog_post_views v
+    JOIN blog_posts p     ON p.id = v.post_id
+    LEFT JOIN blog_categories c ON c.id = p.category_id
+    LEFT JOIN users u           ON u.id = p.author_id
+    WHERE v.user_id = ${userId}
+      AND p.status = 'published'
+      AND p.published_at <= NOW()
+    ORDER BY v.viewed_at DESC
+    LIMIT ${limit}
+  `) as BlogPost[]
+  return rows
+}
+
+// "Saved" — posts the member has hearted. We reuse the generic
+// user_favorites table with item_type='post' and item_id=<slug>, so no
+// extra table is needed. Join on slug to hydrate the full post card.
+export async function getSavedPosts(userId: string, limit = 6): Promise<BlogPost[]> {
+  const rows = (await sql`
+    SELECT
+      p.*,
+      c.slug AS category_slug,
+      c.name AS category_name,
+      c.accent_hex AS category_accent,
+      u.avatar_url AS author_avatar_url,
+      u.username   AS author_username,
+      f.created_at AS saved_at
+    FROM user_favorites f
+    JOIN blog_posts p     ON p.slug = f.item_id
+    LEFT JOIN blog_categories c ON c.id = p.category_id
+    LEFT JOIN users u           ON u.id = p.author_id
+    WHERE f.user_id = ${userId}
+      AND f.item_type = 'post'
+      AND p.status = 'published'
+      AND p.published_at <= NOW()
+    ORDER BY f.created_at DESC
+    LIMIT ${limit}
+  `) as BlogPost[]
+  return rows
+}
+
+// "Recommended for you" — published posts whose tags / title / excerpt /
+// category overlap the member's skin type and concerns. We score in SQL
+// with simple ILIKE matches (one point per matched term) and fall back to
+// the newest posts when a member has no preferences yet, so the rail is
+// never empty. `excludeSlugs` lets the caller drop posts the member has
+// already saved or recently read to keep the rails distinct.
+export async function getRecommendedPosts(
+  opts: { skinType?: string | null; concerns?: string[]; excludeSlugs?: string[]; limit?: number },
+): Promise<BlogPost[]> {
+  const { skinType, concerns = [], excludeSlugs = [], limit = 4 } = opts
+  // Build the term list: skin type + each concern, lower-cased, de-duped.
+  const terms = Array.from(
+    new Set(
+      [skinType, ...concerns]
+        .filter((t): t is string => !!t && t.trim().length > 0)
+        .map((t) => t.trim().toLowerCase()),
+    ),
+  )
+
+  // No preferences → just hand back the newest posts (minus exclusions).
+  if (terms.length === 0) {
+    const rows = (await sql`
+      SELECT
+        p.*, c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent,
+        u.avatar_url AS author_avatar_url, u.username AS author_username
+      FROM blog_posts p
+      LEFT JOIN blog_categories c ON c.id = p.category_id
+      LEFT JOIN users u           ON u.id = p.author_id
+      WHERE p.status = 'published'
+        AND p.published_at <= NOW()
+        AND (${excludeSlugs.length === 0} OR NOT (p.slug = ANY(${excludeSlugs})))
+      ORDER BY p.published_at DESC NULLS LAST
+      LIMIT ${limit}
+    `) as BlogPost[]
+    return rows
+  }
+
+  // Score = number of terms that appear anywhere in the searchable text
+  // (title + excerpt + category name + tags joined). Only return posts
+  // with at least one match, best match first, newest as the tie-break.
+  const haystackPattern = terms // postgres array of '%term%' patterns
+    .map((t) => `%${t}%`)
+  const rows = (await sql`
+    WITH scored AS (
+      SELECT
+        p.*,
+        c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent,
+        u.avatar_url AS author_avatar_url, u.username AS author_username,
+        (
+          SELECT COUNT(*) FROM unnest(${haystackPattern}::text[]) AS pat
+          WHERE lower(
+            COALESCE(p.title,'') || ' ' || COALESCE(p.excerpt,'') || ' ' ||
+            COALESCE(c.name,'') || ' ' || COALESCE(array_to_string(p.tags, ' '),'')
+          ) LIKE pat
+        ) AS match_score
+      FROM blog_posts p
+      LEFT JOIN blog_categories c ON c.id = p.category_id
+      LEFT JOIN users u           ON u.id = p.author_id
+      WHERE p.status = 'published'
+        AND p.published_at <= NOW()
+        AND (${excludeSlugs.length === 0} OR NOT (p.slug = ANY(${excludeSlugs})))
+    )
+    SELECT * FROM scored
+    WHERE match_score > 0
+    ORDER BY match_score DESC, published_at DESC NULLS LAST
+    LIMIT ${limit}
+  `) as (BlogPost & { match_score: number })[]
+  return rows
+}
+
 export async function incrementViewCount(postId: string): Promise<void> {
   // Best-effort, swallow errors — a failed counter must never break a page.
   try {

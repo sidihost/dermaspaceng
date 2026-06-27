@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 
-export type FavoriteItemType = 'treatment' | 'package' | 'category'
+export type FavoriteItemType = 'treatment' | 'package' | 'category' | 'post'
 
 export interface Favorite {
   itemType: FavoriteItemType

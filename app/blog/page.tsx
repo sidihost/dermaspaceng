@@ -33,6 +33,7 @@ import type { Metadata } from 'next'
 import { BookOpen } from 'lucide-react'
 import { BlogShell } from '@/components/blog/blog-shell'
 import { BlogLiveList } from '@/components/blog/blog-live-list'
+import { BlogPersonalized } from '@/components/blog/blog-personalized'
 import { getCategories, getPublishedPosts } from '@/lib/blog'
 
 export const metadata: Metadata = {
@@ -122,6 +123,11 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
             'Climate-aware routines, treatment deep-dives, and stories from our Victoria Island and Ikoyi studios.'}
         </p>
       </header>
+
+      {/* Logged-in-only personalization rails (greeting + recommended +
+          continue reading + saved). Renders nothing for guests, so the
+          public/SEO experience below is unchanged. */}
+      <BlogPersonalized />
 
       {/* Live, type-as-you-go search + results. Hydrated with the
           server's `?q=` so deep-linked searches start with the

@@ -21,7 +21,7 @@ async function getUserId(): Promise<string | null> {
 
 // Keep a small allow-list for item_type so client payloads can't
 // invent new namespaces. Mirrors the comment in the migration script.
-const ALLOWED_TYPES = new Set(['treatment', 'package', 'category'])
+const ALLOWED_TYPES = new Set(['treatment', 'package', 'category', 'post'])
 
 export async function GET() {
   try {
