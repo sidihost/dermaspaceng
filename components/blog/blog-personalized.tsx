@@ -22,7 +22,7 @@
 import useSWR from 'swr'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Sparkles, Clock, BookMarked, History, Heart } from 'lucide-react'
+import { Star, Clock, BookMarked, History, Heart } from 'lucide-react'
 
 interface CardPost {
   id: string
@@ -150,7 +150,7 @@ export function BlogPersonalized() {
     <div className="mb-7 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.03] p-4 sm:p-5">
       {/* Greeting */}
       <div className="flex items-center gap-2 mb-1">
-        <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+        <span className="h-px w-5 bg-[#7B2D8E]" aria-hidden />
         <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
           For you
         </span>
@@ -166,7 +166,7 @@ export function BlogPersonalized() {
       {hasAnyRail ? (
         <>
           <Rail
-            icon={<Sparkles className="w-3.5 h-3.5" />}
+            icon={<Star className="w-3.5 h-3.5" />}
             title="Recommended for you"
             posts={data.recommended}
           />
