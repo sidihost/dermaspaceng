@@ -105,18 +105,18 @@ export default function PackagesSection() {
 
                   {/* Meta chips: duration + treatment count */}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/8 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
-                      <Clock className="w-3.5 h-3.5" />
+                    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
+                      <Clock className="h-3.5 w-3.5 shrink-0" />
                       {pkg.duration}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/8 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
-                      <Layers className="w-3.5 h-3.5" />
+                    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
+                      <Layers className="h-3.5 w-3.5 shrink-0" />
                       {pkg.features.length} treatment{pkg.features.length > 1 ? 's' : ''}
                     </span>
                   </div>
 
                   {/* Divider */}
-                  <div className="my-3.5 h-px w-full bg-gray-100" />
+                  <div className="mt-4 mb-4 h-px w-full bg-gray-100" />
 
                   {/* Features */}
                   <ul className="space-y-2 mb-4 flex-1">
