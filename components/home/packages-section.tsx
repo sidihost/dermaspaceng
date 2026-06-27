@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Clock, Check, User } from 'lucide-react'
+import { ArrowRight, Clock, Check, User, Sparkles } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { useGeo } from '@/lib/geo-context'
 
@@ -64,70 +64,91 @@ export default function PackagesSection() {
         />
 
         {/* Cards Grid */}
-        <div className="grid md:grid-cols-3 gap-5">
+        <div className="grid md:grid-cols-3 gap-6 items-stretch">
           {packages.map((pkg, idx) => (
             <div
               key={idx}
-              className={`relative bg-white rounded-xl overflow-hidden transition-all duration-300 ${
-                pkg.popular 
-                  ? 'ring-2 ring-[#7B2D8E]' 
-                  : 'border border-gray-200 hover:border-[#7B2D8E]/30'
+              className={`group relative flex flex-col rounded-2xl overflow-hidden transition-all duration-500 ${
+                pkg.popular
+                  ? 'bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] text-white shadow-xl shadow-[#7B2D8E]/25 md:-translate-y-2 hover:-translate-y-3'
+                  : 'bg-white border border-gray-200 shadow-sm hover:shadow-xl hover:shadow-[#7B2D8E]/10 hover:-translate-y-1'
               }`}
             >
+              {/* Tier accent bar */}
+              <div className="h-1.5 w-full" style={{ backgroundColor: pkg.color }} />
+
+              {/* Soft decorative glow */}
+              <div
+                className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-20 blur-2xl transition-opacity duration-500 group-hover:opacity-40"
+                style={{ backgroundColor: pkg.popular ? '#ffffff' : pkg.color }}
+              />
+
               {pkg.popular && (
-                <div className="bg-[#7B2D8E] text-white text-[10px] font-bold uppercase tracking-wide text-center py-1.5">
-                  Most Popular
+                <div className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                  <Sparkles className="w-3 h-3" />
+                  Popular
                 </div>
               )}
-              
-              <div className="p-5">
+
+              <div className="relative flex flex-col flex-1 p-6">
                 {/* Icon & Name */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
-                    style={{ backgroundColor: `${pkg.color}20` }}
+                <div className="flex items-center gap-3 mb-5">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center ring-1 transition-transform duration-500 group-hover:scale-105"
+                    style={{
+                      backgroundColor: pkg.popular ? 'rgba(255,255,255,0.15)' : `${pkg.color}1A`,
+                      ['--tw-ring-color' as string]: pkg.popular ? 'rgba(255,255,255,0.25)' : `${pkg.color}33`,
+                    }}
                   >
-                    <User className="w-5 h-5" style={{ color: pkg.color }} />
+                    <User className="w-5 h-5" style={{ color: pkg.popular ? '#ffffff' : pkg.color }} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-gray-900">{pkg.name}</h3>
-                    <p className="text-[10px] text-[#7B2D8E]">{pkg.type}</p>
+                    <h3 className={`text-base font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{pkg.name}</h3>
+                    <p className={`text-[11px] font-medium uppercase tracking-wide ${pkg.popular ? 'text-white/70' : 'text-[#7B2D8E]'}`}>{pkg.type}</p>
                   </div>
                 </div>
 
                 {/* Price */}
                 <div className="mb-4">
-                  <span className="text-[10px] text-gray-500">Starting from</span>
-                  <div className="text-xl font-bold text-gray-900">{formatPrice(pkg.price)}</div>
+                  <span className={`text-[10px] uppercase tracking-wide ${pkg.popular ? 'text-white/60' : 'text-gray-400'}`}>Starting from</span>
+                  <div className={`text-3xl font-bold tracking-tight ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{formatPrice(pkg.price)}</div>
                 </div>
 
                 {/* Duration */}
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#7B2D8E]/10 rounded-full mb-4">
-                  <Clock className="w-3 h-3 text-[#7B2D8E]" />
-                  <span className="text-xs font-medium text-[#7B2D8E]">{pkg.duration}</span>
+                <div className={`inline-flex self-start items-center gap-1.5 px-3 py-1.5 rounded-full mb-5 ${
+                  pkg.popular ? 'bg-white/15' : 'bg-[#7B2D8E]/10'
+                }`}>
+                  <Clock className={`w-3.5 h-3.5 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
+                  <span className={`text-xs font-medium ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`}>{pkg.duration}</span>
                 </div>
 
+                {/* Divider */}
+                <div className={`h-px w-full mb-5 ${pkg.popular ? 'bg-white/15' : 'bg-gray-100'}`} />
+
                 {/* Features */}
-                <ul className="space-y-2 mb-5">
+                <ul className="space-y-3 mb-6 flex-1">
                   {pkg.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <div className="flex-shrink-0 w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mt-0.5">
-                        <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                    <li key={i} className="flex items-start gap-2.5">
+                      <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
+                        pkg.popular ? 'bg-white/20' : 'bg-[#7B2D8E]/10'
+                      }`}>
+                        <Check className={`w-3 h-3 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
                       </div>
-                      <span className="text-[11px] text-gray-600 leading-relaxed">{feature}</span>
+                      <span className={`text-xs leading-relaxed ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 <Link
                   href="/booking"
-                  className={`block w-full py-2.5 text-center text-xs font-semibold rounded-lg transition-colors ${
+                  className={`group/btn flex items-center justify-center gap-2 w-full py-3 text-center text-sm font-semibold rounded-xl transition-all ${
                     pkg.popular
-                      ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
-                      : 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white'
+                      ? 'bg-white text-[#7B2D8E] hover:bg-white/90'
+                      : 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
                   }`}
                 >
                   Book Now
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
                 </Link>
               </div>
             </div>
