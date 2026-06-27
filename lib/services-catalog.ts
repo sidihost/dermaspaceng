@@ -277,8 +277,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Advanced Pigmentation Correction",
     description:
       "Clinical-grade chemical peels for pigmentation, melasma and deep tone correction. Performed by trained therapists with full consultation.",
-    image:
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp",
+    image: "/images/dermaspace-peels.png",
     treatments: [
       {
         id: "depigmentation-peel",
@@ -585,8 +584,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Buy a Course, Save More",
     description:
       "Pre-purchase a multi-session course of our most-loved treatments at a meaningful discount over the per-session price.",
-    image:
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp",
+    image: "/images/bulk-packages.png",
     treatments: [
       {
         id: "bulk-dcf-3",
@@ -1301,8 +1299,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Save With a Curated Day",
     description:
       "Pre-bundled multi-treatment experiences — Bronze, Silver and Gold — available as single or couple bookings.",
-    image:
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp",
+    image: "/images/experience-packages.png",
     treatments: [
       {
         id: "bronze-experience-single",
