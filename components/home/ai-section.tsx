@@ -74,6 +74,29 @@ const SHOTS: Shot[] = [
   },
 ]
 
+/* -------------------- Real Derma AI desktop screenshots -----------
+ * On large screens the assistant doesn't shrink into a phone — it
+ * docks into the corner of the full Dermaspace site. These shots are
+ * captured straight from the running desktop experience so visitors
+ * see exactly how the concierge sits alongside the real website.
+ * ------------------------------------------------------------------ */
+const DESKTOP_SHOTS: Shot[] = [
+  {
+    id: 'desktop-welcome',
+    label: 'Welcome',
+    path: 'dermaspace.ng',
+    src: '/images/mockups/derma-ai-desktop-welcome.png',
+    alt: 'Derma AI concierge docked on the right of the Dermaspace website on desktop, greeting the visitor with quick suggestions',
+  },
+  {
+    id: 'desktop-voice',
+    label: 'Voice',
+    path: 'dermaspace.ng',
+    src: '/images/mockups/derma-ai-desktop-voice.png',
+    alt: 'Derma AI Live voice mode highlighted on the Dermaspace website on desktop, inviting the visitor to start a real-time voice chat',
+  },
+]
+
 export default function AISection() {
   const { user, isAuthenticated } = useAuth()
   const firstName = isAuthenticated ? user?.firstName || null : null
@@ -202,7 +225,14 @@ export default function AISection() {
 
           {/* ------------------- Right: app mockup + screen pills ---------------- */}
           <div className="order-1 lg:order-2 flex flex-col items-center gap-5 md:gap-6">
-            <AppShowcase />
+            {/* Phone-style window for mobile/tablet. */}
+            <div className="w-full lg:hidden">
+              <AppShowcase shots={SHOTS} variant="phone" />
+            </div>
+            {/* Desktop browser window with the docked concierge for lg+. */}
+            <div className="hidden w-full lg:block">
+              <AppShowcase shots={DESKTOP_SHOTS} variant="desktop" />
+            </div>
           </div>
         </div>
       </div>
@@ -219,25 +249,40 @@ export default function AISection() {
  * auto-advances every few seconds so the full set is seen without
  * interaction.
  * ------------------------------------------------------------------ */
-function AppShowcase() {
+function AppShowcase({
+  shots,
+  variant,
+}: {
+  shots: Shot[]
+  variant: 'phone' | 'desktop'
+}) {
   const [idx, setIdx] = useState(0)
+  const isDesktop = variant === 'desktop'
 
   // Auto-advance through the screenshots. Pauses are unnecessary — each
   // shot is a static image so there's nothing to "finish" before moving
   // on, unlike the old bubble-by-bubble chat reveal.
   useEffect(() => {
-    if (SHOTS.length < 2) return
+    if (shots.length < 2) return
     const tick = setTimeout(() => {
-      setIdx((i) => (i + 1) % SHOTS.length)
+      setIdx((i) => (i + 1) % shots.length)
     }, 4200)
     return () => clearTimeout(tick)
-  }, [idx])
+  }, [idx, shots.length])
 
-  const active = SHOTS[idx]
+  // Keep the index valid if the shot set ever changes length.
+  const safeIdx = idx % shots.length
+  const active = shots[safeIdx]
 
   return (
     <div className="w-full flex flex-col items-center gap-5 md:gap-6">
-      <div className="relative w-full max-w-[300px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[440px] mx-auto pb-6">
+      <div
+        className={`relative w-full mx-auto pb-6 ${
+          isDesktop
+            ? 'max-w-[560px] xl:max-w-[640px]'
+            : 'max-w-[300px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[440px]'
+        }`}
+      >
         {/* Ambient brand halo behind the window. */}
         <span
           aria-hidden="true"
@@ -269,18 +314,18 @@ function AppShowcase() {
               stacked and toggled via opacity for a smooth transition. */}
           <div
             className="relative bg-white overflow-hidden"
-            style={{ aspectRatio: '420 / 760' }}
+            style={{ aspectRatio: isDesktop ? '1440 / 900' : '420 / 760' }}
           >
-            {SHOTS.map((shot, i) => (
+            {shots.map((shot, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 key={shot.id}
                 src={shot.src || '/placeholder.svg'}
                 alt={shot.alt}
                 loading={i === 0 ? 'eager' : 'lazy'}
-                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${
-                  i === idx ? 'opacity-100' : 'opacity-0'
-                }`}
+                className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${
+                  isDesktop ? 'object-cover object-top' : 'object-contain'
+                } ${i === safeIdx ? 'opacity-100' : 'opacity-0'}`}
               />
             ))}
           </div>
@@ -306,8 +351,8 @@ function AppShowcase() {
         role="tablist"
         aria-label="Product screens"
       >
-        {SHOTS.map((s, i) => {
-          const isActive = i === idx
+        {shots.map((s, i) => {
+          const isActive = i === safeIdx
           return (
             <button
               key={s.id}
