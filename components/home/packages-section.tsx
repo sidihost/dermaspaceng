@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Clock, Check, User, Sparkles } from 'lucide-react'
+import { ArrowRight, Clock, Check, User } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { useGeo } from '@/lib/geo-context'
 
@@ -68,24 +68,17 @@ export default function PackagesSection() {
           {packages.map((pkg, idx) => (
             <div
               key={idx}
-              className={`group relative flex flex-col rounded-2xl overflow-hidden transition-all duration-500 ${
+              className={`group relative flex flex-col rounded-2xl overflow-hidden transition-colors duration-300 ${
                 pkg.popular
-                  ? 'bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] text-white shadow-xl shadow-[#7B2D8E]/25 md:-translate-y-2 hover:-translate-y-3'
-                  : 'bg-white border border-gray-200 shadow-sm hover:shadow-xl hover:shadow-[#7B2D8E]/10 hover:-translate-y-1'
+                  ? 'bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] text-white'
+                  : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/40'
               }`}
             >
               {/* Tier accent bar */}
               <div className="h-1.5 w-full" style={{ backgroundColor: pkg.color }} />
 
-              {/* Soft decorative glow */}
-              <div
-                className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full opacity-20 blur-2xl transition-opacity duration-500 group-hover:opacity-40"
-                style={{ backgroundColor: pkg.popular ? '#ffffff' : pkg.color }}
-              />
-
               {pkg.popular && (
-                <div className="absolute top-4 right-4 inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
-                  <Sparkles className="w-3 h-3" />
+                <div className="absolute top-4 right-4 inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
                   Popular
                 </div>
               )}
@@ -94,7 +87,7 @@ export default function PackagesSection() {
                 {/* Icon & Name */}
                 <div className="flex items-center gap-3 mb-5">
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center ring-1 transition-transform duration-500 group-hover:scale-105"
+                    className="w-12 h-12 rounded-xl flex items-center justify-center ring-1"
                     style={{
                       backgroundColor: pkg.popular ? 'rgba(255,255,255,0.15)' : `${pkg.color}1A`,
                       ['--tw-ring-color' as string]: pkg.popular ? 'rgba(255,255,255,0.25)' : `${pkg.color}33`,
