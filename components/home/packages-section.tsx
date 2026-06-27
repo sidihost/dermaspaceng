@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Clock, Check, User } from 'lucide-react'
+import { ArrowRight, Clock, Check, User, Layers } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { useGeo } from '@/lib/geo-context'
 
@@ -96,15 +96,23 @@ export default function PackagesSection() {
                   {/* Name */}
                   <h3 className="mt-2.5 text-base font-bold tracking-tight text-gray-900">{pkg.name}</h3>
 
-                  {/* Price + compact meta line */}
-                  <div className="mt-2 flex items-end justify-between">
+                  {/* Price */}
+                  <div className="mt-2">
                     <span className="text-2xl font-bold leading-none tracking-tight text-gray-900">
                       {formatPrice(pkg.price)}
                     </span>
-                    <div className="flex items-center gap-1 text-[11px] text-gray-500">
-                      <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                      <span>{pkg.duration}</span>
-                    </div>
+                  </div>
+
+                  {/* Meta chips: duration + treatment count */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/8 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
+                      <Clock className="w-3.5 h-3.5" />
+                      {pkg.duration}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/8 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
+                      <Layers className="w-3.5 h-3.5" />
+                      {pkg.features.length} treatment{pkg.features.length > 1 ? 's' : ''}
+                    </span>
                   </div>
 
                   {/* Divider */}
