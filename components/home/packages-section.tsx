@@ -70,12 +70,12 @@ export default function PackagesSection() {
               key={idx}
               className={`group relative flex flex-col rounded-2xl overflow-hidden transition-colors duration-300 ${
                 pkg.popular
-                  ? 'bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] text-white'
+                  ? 'bg-[#7B2D8E] text-white'
                   : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/40'
               }`}
             >
-              {/* Tier accent bar */}
-              <div className="h-1.5 w-full" style={{ backgroundColor: pkg.color }} />
+              {/* Brand accent bar */}
+              <div className={`h-1.5 w-full ${pkg.popular ? 'bg-white/30' : 'bg-[#7B2D8E]'}`} />
 
               {pkg.popular && (
                 <div className="absolute top-4 right-4 inline-flex items-center rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
@@ -87,13 +87,11 @@ export default function PackagesSection() {
                 {/* Icon & Name */}
                 <div className="flex items-center gap-3 mb-5">
                   <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center ring-1"
-                    style={{
-                      backgroundColor: pkg.popular ? 'rgba(255,255,255,0.15)' : `${pkg.color}1A`,
-                      ['--tw-ring-color' as string]: pkg.popular ? 'rgba(255,255,255,0.25)' : `${pkg.color}33`,
-                    }}
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center ring-1 ${
+                      pkg.popular ? 'bg-white/15 ring-white/25' : 'bg-[#7B2D8E]/10 ring-[#7B2D8E]/20'
+                    }`}
                   >
-                    <User className="w-5 h-5" style={{ color: pkg.popular ? '#ffffff' : pkg.color }} />
+                    <User className={`w-5 h-5 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
                   </div>
                   <div>
                     <h3 className={`text-base font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{pkg.name}</h3>
