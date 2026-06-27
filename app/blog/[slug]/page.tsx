@@ -37,12 +37,15 @@ import { ReadingProgress } from '@/components/blog/reading-progress'
 import { CopyLinkButton } from '@/components/blog/copy-link-button'
 import { AuthorAvatar } from '@/components/blog/author-avatar'
 import { BlogComments } from '@/components/blog/blog-comments'
+import FavoriteButton from '@/components/favorite-button'
 import {
   getPostBySlug,
   getPublishedPosts,
   getRelatedPosts,
   incrementViewCount,
+  recordPostView,
 } from '@/lib/blog'
+import { getCurrentUser } from '@/lib/auth'
 import { markdownToHtml, stripMarkdown } from '@/lib/markdown'
 import { isReservedUsername } from '@/lib/reserved-usernames'
 
@@ -118,6 +121,15 @@ export default async function BlogPostPage({ params }: PageProps) {
   }
   // Fire and forget — never await this.
   incrementViewCount(post.id).catch(() => {})
+
+  // If a member is signed in, log this read so it shows up in their
+  // "Continue reading" rail on the blog index. Best-effort and never
+  // awaited so it can't slow the article render for anyone.
+  getCurrentUser()
+    .then((u) => {
+      if (u) return recordPostView(u.id, post.id, post.slug)
+    })
+    .catch(() => {})
 
   const html = markdownToHtml(post.content_md)
   const desc = post.seo_description || post.excerpt || stripMarkdown(post.content_md, 160)
@@ -249,7 +261,7 @@ export default async function BlogPostPage({ params }: PageProps) {
             grey block on the page. Now it's a transparent row sitting
             between two hairline rules in solid brand purple, the way
             Substack / Vercel's own blog handles bylines. */}
-        <div className="mb-7 py-3 border-y border-[#7B2D8E]/15">
+        <div className="mb-7 py-3 border-y border-[#7B2D8E]/15 flex items-center gap-3">
           {profileHref ? (
             <Link
               href={profileHref}
@@ -297,6 +309,22 @@ export default async function BlogPostPage({ params }: PageProps) {
               </div>
             </div>
           )}
+
+          {/* Save / bookmark — fills the member's "Saved" rail on the
+              blog index. item_id is the slug so getSavedPosts() can
+              join straight back to blog_posts. Guests are bounced to
+              sign-in by the button itself. */}
+          <div className="flex-shrink-0">
+            <FavoriteButton
+              itemType="post"
+              itemId={post.slug}
+              label={post.title}
+              href={`/blog/${post.slug}`}
+              variant="solid"
+              size="md"
+              ariaLabel="Save this article"
+            />
+          </div>
         </div>
 
         {/* ARTICLE BODY — `.blog-prose` styles every tag rendered by
