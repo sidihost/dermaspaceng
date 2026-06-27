@@ -71,7 +71,7 @@ class ChatToolCardBoundary extends Component<
   }
   componentDidCatch(error: Error) {
     if (typeof console !== 'undefined') {
-      console.error('[v0] Chat tool card crashed — falling back gracefully:', error)
+      console.error('[derma-ai] Chat tool card crashed — falling back gracefully:', error)
     }
   }
   render() {
@@ -1874,7 +1874,7 @@ function LogoutConfirmCard({ message }: { message: string }) {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
     } catch (err) {
-      console.error('[v0] logout fetch failed:', err)
+      console.error('[derma-ai] logout fetch failed:', err)
     }
     try {
       localStorage.removeItem('derma-account-consent')
@@ -2044,7 +2044,7 @@ class DermaAIPanelBoundary extends Component<
   }
   componentDidCatch(error: Error) {
     if (typeof console !== 'undefined') {
-      console.error('[v0] DermaAI panel crashed:', error)
+      console.error('[derma-ai] DermaAI panel crashed:', error)
     }
   }
   reset = () => this.setState({ hasError: false, errorMessage: '' })
@@ -3646,7 +3646,7 @@ export default function DermaAI({
         }
       }
     } catch (err) {
-      console.warn('[v0] Voice transcribe failed:', err)
+      console.warn('[derma-ai] Voice transcribe failed:', err)
       setUploadError('Voice input failed.')
     }
   }, [voiceCallMode])
@@ -3710,7 +3710,7 @@ export default function DermaAI({
       setIsListening(true)
       setUploadError(null)
     } catch (err) {
-      console.warn('[v0] Mic permission denied:', err)
+      console.warn('[derma-ai] Mic permission denied:', err)
       setUploadError('Microphone permission denied. Enable it in your browser settings.')
       setIsListening(false)
     }
@@ -4192,7 +4192,7 @@ export default function DermaAI({
                 }, 200)
               }
             } catch (err) {
-              console.warn('[v0] Live listen STT failed:', err)
+              console.warn('[derma-ai] Live listen STT failed:', err)
               if (voiceCallModeRef.current && !liveMutedRef.current) {
                 setTimeout(() => {
                   if (voiceCallModeRef.current && !liveMutedRef.current) {
@@ -4250,7 +4250,7 @@ export default function DermaAI({
           }, 6000)
         }
       } catch (err) {
-        console.warn('[v0] Live listen failed:', err)
+        console.warn('[derma-ai] Live listen failed:', err)
         cleanup()
         const msg = err instanceof Error ? err.message : 'Microphone unavailable'
         if (msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('permission')) {
@@ -4489,7 +4489,7 @@ export default function DermaAI({
         }
       })
     } catch (err) {
-      console.warn('[v0] Live camera error:', err)
+      console.warn('[derma-ai] Live camera error:', err)
       const msg = err instanceof Error ? err.message : 'Camera unavailable'
       setLiveCamError(
         msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('permission')
@@ -4567,7 +4567,7 @@ export default function DermaAI({
       if (name === 'NotAllowedError' || name === 'AbortError') {
         return
       }
-      console.warn('[v0] Live screen share error:', err)
+      console.warn('[derma-ai] Live screen share error:', err)
       setLiveShareError('Couldn\u2019t start screen sharing. Try again.')
       setLiveShareActive(false)
     }
@@ -4675,7 +4675,7 @@ export default function DermaAI({
         )
       }
     } catch (err) {
-      console.warn('[v0] Live capture failed:', err)
+      console.warn('[derma-ai] Live capture failed:', err)
       setLiveCamError(err instanceof Error ? err.message : 'Capture failed')
     } finally {
       setLiveAnalyzing(false)
@@ -4733,7 +4733,7 @@ export default function DermaAI({
           setLiveCaption(obs)
         }
       } catch (err) {
-        console.warn('[v0] Live analyze tick failed:', err)
+        console.warn('[derma-ai] Live analyze tick failed:', err)
       } finally {
         liveAnalyzeInFlightRef.current = false
         setLiveDetecting(false)
@@ -5238,7 +5238,7 @@ export default function DermaAI({
         })
       })
 
-      // Removed `console.log('[v0] Chat API response status:', res.status)`:
+      // Removed `console.log('[derma-ai] Chat API response status:', res.status)`:
       // status alone isn't sensitive, but the surrounding scope on
       // this branch has the prompt + user identity context in
       // closure, and the line was the most-frequently-hit log on the
@@ -5247,7 +5247,7 @@ export default function DermaAI({
       
       if (!res.ok) {
         const errorText = await res.text()
-        console.error('[v0] Chat API error response:', errorText)
+        console.error('[derma-ai] Chat API error response:', errorText)
         throw new Error(`API error: ${res.status} - ${errorText}`)
       }
 
@@ -5401,7 +5401,7 @@ export default function DermaAI({
           }
 
           if (type === 'error') {
-            console.error('[v0] AI stream error event:', event)
+            console.error('[derma-ai] AI stream error event:', event)
             const msg =
               (typeof event.errorText === 'string' && (event.errorText as string)) ||
               (typeof event.error === 'string' && (event.error as string)) ||
@@ -5413,8 +5413,8 @@ export default function DermaAI({
         }
       }
 
-      console.log('[v0] Stream finished. Final content length:', fullContent.length)
-      console.log('[v0] Final content preview:', fullContent.substring(0, 200))
+      console.log('[derma-ai] Stream finished. Final content length:', fullContent.length)
+      console.log('[derma-ai] Final content preview:', fullContent.substring(0, 200))
 
       // Flush any trailing text that didn't terminate with a
       // sentence punctuation (e.g. a one-line reply with no period,
@@ -5547,7 +5547,7 @@ export default function DermaAI({
       // streamed so far as a normal assistant message (with a subtle
       // "stopped" marker) so the conversation doesn't lose context.
       if (err instanceof Error && err.name === 'AbortError') {
-        console.log('[v0] Generation stopped by user')
+        console.log('[derma-ai] Generation stopped by user')
         setStreamingContent((current) => {
           if (current.trim()) {
             setMessages(prev => [...prev, {
@@ -5560,7 +5560,7 @@ export default function DermaAI({
           return ''
         })
       } else {
-        console.error('[v0] Chat error:', err)
+        console.error('[derma-ai] Chat error:', err)
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -5620,7 +5620,7 @@ export default function DermaAI({
         setCopiedMessageId((prev) => (prev === messageId ? null : prev))
       }, 1500)
     } catch (err) {
-      console.error('[v0] Copy failed:', err)
+      console.error('[derma-ai] Copy failed:', err)
     }
   }, [])
 
