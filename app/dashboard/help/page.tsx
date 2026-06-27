@@ -235,7 +235,7 @@ export default function HelpCenterPage() {
           Help Center
         </Link>
 
-        <h1 className="mb-2 text-balance font-serif text-3xl font-semibold text-foreground">
+        <h1 className="mb-2 text-balance font-sans text-3xl font-bold tracking-tight text-foreground">
           {firstName ? `How can we help, ${firstName}?` : 'How can we help?'}
         </h1>
         <p className="mb-6 text-pretty text-sm leading-relaxed text-muted-foreground">
