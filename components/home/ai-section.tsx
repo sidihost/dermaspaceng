@@ -24,11 +24,12 @@ import { useAuth } from '@/hooks/use-auth'
  *                   / laser / booking sections in spacing, heading
  *                   scale, and rhythm).
  *   Right column : a clean floating app-window mockup that rotates
- *                   through REAL screenshots of the live product
- *                   (the feedback survey flow, etc.) rather than a
- *                   synthetic chat demo, so visitors see the actual
- *                   app they'll be using. Screenshots are captured
- *                   straight from the running pages and live in
+ *                   through REAL screenshots of the actual Derma AI
+ *                   assistant — its welcome screen, an in-chat
+ *                   conversation with quick actions, and the live
+ *                   voice picker — so visitors see the real concierge
+ *                   they'll be talking to. Screenshots are captured
+ *                   straight from the running chat and live in
  *                   /public/images/mockups.
  *
  *   When a user is signed in, the eyebrow / headline / capability
@@ -36,10 +37,10 @@ import { useAuth } from '@/hooks/use-auth'
  *   concierge" rather than a generic marketing pitch.
  * ------------------------------------------------------------------ */
 
-/* -------------------- Real product screenshots --------------------
- * Each shot is a faithful screenshot of an actual page in the app.
- * `path` is shown in the window's URL pill so the mockup reads as a
- * real, secure page rather than an illustration.
+/* -------------------- Real Derma AI screenshots -------------------
+ * Each shot is a faithful screenshot of the actual Derma AI chat.
+ * `label` is shown on the screen pills; the window chrome reads as a
+ * real, secure session rather than an illustration.
  * ------------------------------------------------------------------ */
 type Shot = {
   id: string
@@ -51,25 +52,25 @@ type Shot = {
 
 const SHOTS: Shot[] = [
   {
-    id: 'booking',
-    label: 'Booking',
-    path: 'dermaspaceng.com/booking',
-    src: '/images/mockups/booking.png',
-    alt: 'Dermaspace appointment booking wizard showing the branch location step on mobile',
+    id: 'welcome',
+    label: 'Welcome',
+    path: 'Derma AI · Concierge',
+    src: '/images/mockups/derma-ai-welcome.png',
+    alt: 'Derma AI welcome screen greeting the user with quick suggestions like popular services, skin advice and finding a branch',
   },
   {
-    id: 'survey-intro',
-    label: 'Feedback',
-    path: 'dermaspaceng.com/survey',
-    src: '/images/mockups/survey-intro.png',
-    alt: 'Dermaspace customer feedback survey landing screen on mobile',
+    id: 'chat',
+    label: 'Ask anything',
+    path: 'Derma AI · Concierge',
+    src: '/images/mockups/derma-ai-chat.png',
+    alt: 'Derma AI chat showing the assistant greeting with quick action cards to book an appointment or browse services',
   },
   {
-    id: 'survey-form',
-    label: 'Survey',
-    path: 'dermaspaceng.com/survey',
-    src: '/images/mockups/survey-form.png',
-    alt: 'Dermaspace survey form step asking about the spa environment',
+    id: 'live',
+    label: 'Voice',
+    path: 'Derma AI · Live',
+    src: '/images/mockups/derma-ai-live.png',
+    alt: 'Derma AI Live voice picker letting you choose a voice before starting a real-time voice chat',
   },
 ]
 
