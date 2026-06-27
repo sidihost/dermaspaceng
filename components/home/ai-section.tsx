@@ -263,12 +263,13 @@ function AppShowcase() {
             <MoreHorizontal className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
           </div>
 
-          {/* Screenshot stage — fixed phone aspect ratio so the section
-              never jumps as we cross-fade between shots. All images are
+          {/* Screenshot stage — the container matches the real
+              screenshot ratio (420 × 760) so nothing is cropped, and
+              `object-contain` keeps each full screen visible. Images are
               stacked and toggled via opacity for a smooth transition. */}
           <div
-            className="relative bg-gray-50 overflow-hidden"
-            style={{ aspectRatio: '390 / 620' }}
+            className="relative bg-white overflow-hidden"
+            style={{ aspectRatio: '420 / 760' }}
           >
             {SHOTS.map((shot, i) => (
               // eslint-disable-next-line @next/next/no-img-element
@@ -277,19 +278,11 @@ function AppShowcase() {
                 src={shot.src || '/placeholder.svg'}
                 alt={shot.alt}
                 loading={i === 0 ? 'eager' : 'lazy'}
-                className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-700 ${
+                className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${
                   i === idx ? 'opacity-100' : 'opacity-0'
                 }`}
               />
             ))}
-            {/* Live badge — anchors the mockup as the real, running app. */}
-            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/90 backdrop-blur text-[10px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E]/60 animate-ping" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#7B2D8E]" />
-              </span>
-              Live app
-            </span>
           </div>
         </div>
 
