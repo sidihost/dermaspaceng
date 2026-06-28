@@ -13,7 +13,6 @@
 // ---------------------------------------------------------------------------
 
 import type { Metadata } from 'next'
-import { Sparkles } from 'lucide-react'
 import { BlogShell } from '@/components/blog/blog-shell'
 import { BlogPersonalized } from '@/components/blog/blog-personalized'
 
@@ -28,7 +27,7 @@ export default function BlogForYouPage() {
     <BlogShell crumbs={[{ label: 'For you' }]}>
       <header className="pt-1 pb-5">
         <div className="mb-2 flex items-center gap-2">
-          <Sparkles className="h-3.5 w-3.5 text-[#7B2D8E]" aria-hidden />
+          <span className="h-px w-5 bg-[#7B2D8E]" aria-hidden />
           <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
             For you
           </span>

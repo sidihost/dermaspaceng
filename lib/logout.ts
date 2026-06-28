@@ -40,6 +40,85 @@
 import { clearCachedUser } from '@/lib/auth-cache'
 
 /**
+ * Paints a lightweight, on-brand "Signing you out…" overlay over the
+ * whole viewport while the logout request + redirect happen.
+ *
+ * Why a DOM-injected overlay instead of a React component: every
+ * sign-out entry point in the app funnels through `logoutAndRedirect`,
+ * which is a plain async function (not a component), and the flow ends
+ * in a hard `window.location` navigation that tears down the React
+ * tree. A self-contained DOM node is the simplest way to give the user
+ * immediate feedback that "something is happening" without threading a
+ * loading state through six different menus. It uses brand purple +
+ * neutrals only, no gradients, no shadows — consistent with the design
+ * system. Failure to mount (SSR, blocked DOM) is swallowed.
+ */
+function showSigningOutOverlay(): void {
+  if (typeof document === 'undefined') return
+  try {
+    if (document.getElementById('ds-logout-overlay')) return
+
+    const overlay = document.createElement('div')
+    overlay.id = 'ds-logout-overlay'
+    overlay.setAttribute('role', 'status')
+    overlay.setAttribute('aria-live', 'polite')
+    overlay.setAttribute('aria-label', 'Signing you out')
+    overlay.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:2147483647',
+      'display:flex',
+      'flex-direction:column',
+      'align-items:center',
+      'justify-content:center',
+      'gap:14px',
+      'background:rgba(255,255,255,0.92)',
+      '-webkit-backdrop-filter:blur(2px)',
+      'backdrop-filter:blur(2px)',
+      'opacity:0',
+      'transition:opacity 150ms ease-out',
+    ].join(';')
+
+    // Brand-purple ring spinner (CSS-only, no asset, no shadow).
+    const spinner = document.createElement('div')
+    spinner.style.cssText = [
+      'width:34px',
+      'height:34px',
+      'border-radius:9999px',
+      'border:3px solid rgba(123,45,142,0.18)',
+      'border-top-color:#7B2D8E',
+      'animation:ds-logout-spin 0.7s linear infinite',
+    ].join(';')
+
+    const label = document.createElement('p')
+    label.textContent = 'Signing you out…'
+    label.style.cssText = [
+      'margin:0',
+      'font-size:13px',
+      'font-weight:600',
+      'letter-spacing:0.01em',
+      'color:#374151',
+    ].join(';')
+
+    const style = document.createElement('style')
+    style.textContent =
+      '@keyframes ds-logout-spin{to{transform:rotate(360deg)}}'
+
+    overlay.appendChild(style)
+    overlay.appendChild(spinner)
+    overlay.appendChild(label)
+    document.body.appendChild(overlay)
+
+    // Next frame → fade in (so the transition actually runs).
+    requestAnimationFrame(() => {
+      overlay.style.opacity = '1'
+    })
+  } catch {
+    /* DOM unavailable / blocked — proceed silently with the logout. */
+  }
+}
+
+/**
  * Sign the current user out and hard-redirect.
  *
  * @param redirectTo  Path to land on after logout. Defaults to '/'.
@@ -47,6 +126,10 @@ import { clearCachedUser } from '@/lib/auth-cache'
  *                    to sign back in immediately on the auth page.
  */
 export async function logoutAndRedirect(redirectTo: string = '/'): Promise<void> {
+  // 0. Immediate feedback: paint the "Signing you out…" overlay before
+  //    any network work so the tap registers instantly.
+  showSigningOutOverlay()
+
   // 1. Server-side: delete the session row and the session_id cookie.
   try {
     await fetch('/api/auth/logout', { method: 'POST' })

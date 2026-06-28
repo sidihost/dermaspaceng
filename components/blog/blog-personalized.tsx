@@ -22,7 +22,7 @@
 import useSWR from 'swr'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Star, Clock, BookMarked, History, Heart, Sparkles } from 'lucide-react'
+import { Star, Clock, BookMarked, History, Heart } from 'lucide-react'
 
 interface CardPost {
   id: string
@@ -140,7 +140,7 @@ export function BlogPersonalized({ standalone = false }: { standalone?: boolean 
     return (
       <div className="rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.03] p-6 sm:p-8 text-center">
         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#7B2D8E]/10">
-          <Sparkles className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
+          <BookMarked className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
         </div>
         <h2 className="text-base font-semibold text-gray-900">Your personal journal</h2>
         <p className="mx-auto mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-gray-600 text-pretty">
