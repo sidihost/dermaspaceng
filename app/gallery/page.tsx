@@ -413,7 +413,7 @@ export default function GalleryPage() {
                     onClick={() => setCategory(c)}
                     className={`group inline-flex flex-shrink-0 items-center gap-2 rounded-full px-4 sm:px-5 py-2 text-sm font-medium transition-all ${
                       active
-                        ? "bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/25"
+                        ? "bg-[#7B2D8E] text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                     aria-pressed={active}
@@ -447,7 +447,7 @@ export default function GalleryPage() {
               onPointerLeave={onPointerLeave}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
-              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900 shadow-2xl shadow-[#7B2D8E]/15"
+              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900"
               style={{
                 aspectRatio: "16 / 11",
                 perspective: "1200px",
@@ -505,7 +505,7 @@ export default function GalleryPage() {
                       favourites.has(current.src) ? "Remove from favourites" : "Save to favourites"
                     }
                     aria-pressed={favourites.has(current.src)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
                   >
                     <Heart
                       className={`h-4 w-4 transition ${
@@ -516,7 +516,7 @@ export default function GalleryPage() {
                   <button
                     type="button"
                     onClick={() => setAutoplay((a) => !a)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
                     aria-label={autoplay ? "Pause auto walkthrough" : "Play auto walkthrough"}
                     aria-pressed={autoplay}
                   >
@@ -525,7 +525,7 @@ export default function GalleryPage() {
                   <button
                     type="button"
                     onClick={() => setLightbox(true)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
                     aria-label="Open fullscreen"
                   >
                     <Maximize2 className="h-4 w-4" />
@@ -542,8 +542,8 @@ export default function GalleryPage() {
                 aria-label="Previous room"
                 className="absolute inset-y-0 left-0 z-10 hidden sm:flex w-1/4 items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
               >
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5">
-                  <ChevronLeft className="h-6 w-6" />
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-black/5">
+                  <ChevronLeft className="h-5 w-5" />
                 </span>
               </button>
               <button
@@ -552,8 +552,8 @@ export default function GalleryPage() {
                 aria-label="Next room"
                 className="absolute inset-y-0 right-0 z-10 hidden sm:flex w-1/4 items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
               >
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5">
-                  <ChevronRight className="h-6 w-6" />
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-black/5">
+                  <ChevronRight className="h-5 w-5" />
                 </span>
               </button>
 
@@ -591,29 +591,31 @@ export default function GalleryPage() {
             {/* ───── Primary action toolbar ─────────────────────
                 Big, clearly-labelled Prev / Next instead of small
                 floating arrows. Always thumb-reachable on mobile. */}
-            <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="mt-4 flex items-center gap-2">
               <button
                 type="button"
                 onClick={prev}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 sm:px-5 py-3 text-sm font-semibold text-[#7B2D8E] ring-1 ring-gray-200 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
+                aria-label="Previous room"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-[13px] font-semibold text-[#7B2D8E] ring-1 ring-gray-200 transition hover:bg-gray-50 active:scale-[0.98]"
               >
-                <ChevronLeft className="h-5 w-5" />
-                Previous
+                <ChevronLeft className="h-4 w-4" />
+                Prev
               </button>
               <Link
                 href={bookHref}
-                className="flex-[2] sm:flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#7B2D8E]/25 transition hover:bg-[#5A1D6A] active:scale-[0.98]"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#5A1D6A] active:scale-[0.98]"
               >
-                <CalendarPlus className="h-5 w-5" />
+                <CalendarPlus className="h-4 w-4" />
                 {me?.firstName ? `Book ${current.category}` : "Book this space"}
               </Link>
               <button
                 type="button"
                 onClick={next}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 sm:px-5 py-3 text-sm font-semibold text-[#7B2D8E] ring-1 ring-gray-200 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
+                aria-label="Next room"
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-[13px] font-semibold text-[#7B2D8E] ring-1 ring-gray-200 transition hover:bg-gray-50 active:scale-[0.98]"
               >
                 Next
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
 
@@ -686,41 +688,45 @@ export default function GalleryPage() {
           </div>
         </section>
 
-        {/* ───── Lightbox ───────────────────────────────────────── */}
+        {/* ───── Lightbox ───────────────────────────────────────────
+            z-[70] deliberately sits ABOVE the persistent mobile tab bar
+            (fixed bottom-0 z-50) and the nav sheets (z-[55]/z-[60]) so
+            the fullscreen view fully covers them instead of letting the
+            nav punch through the bottom edge. Close button + safe-area
+            padding keep it usable and dismissable on phones. */}
         {lightbox && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-200"
+            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 animate-in fade-in duration-200"
             onClick={() => setLightbox(false)}
             role="dialog"
             aria-modal="true"
             aria-label={`${current.alt} — fullscreen`}
           >
-        <button
-          type="button"
-          aria-label="Previous room"
-          onClick={prev}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-black/5 transition hover:bg-gray-100"
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <button
-          type="button"
-          aria-label="Next room"
-          onClick={next}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-black/5 transition hover:bg-gray-100"
-        >
-          <ChevronRight className="h-6 w-6" />
-        </button>
+            {/* Close */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setLightbox(false)
+              }}
+              aria-label="Close fullscreen"
+              className="absolute right-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-md transition hover:bg-white/25 active:scale-95"
+              style={{ top: "calc(0.75rem + env(safe-area-inset-top))" }}
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Prev / Next */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 prev()
               }}
-              aria-label="Previous"
-              className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5 transition hover:bg-gray-100"
+              aria-label="Previous room"
+              className="absolute left-3 top-1/2 z-10 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#7B2D8E] ring-1 ring-black/5 transition hover:bg-white"
             >
-              <ChevronLeft className="h-6 w-6" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               type="button"
@@ -728,13 +734,15 @@ export default function GalleryPage() {
                 e.stopPropagation()
                 next()
               }}
-              aria-label="Next"
-              className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5 transition hover:bg-gray-100"
+              aria-label="Next room"
+              className="absolute right-3 top-1/2 z-10 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[#7B2D8E] ring-1 ring-black/5 transition hover:bg-white"
             >
-              <ChevronRight className="h-6 w-6" />
+              <ChevronRight className="h-5 w-5" />
             </button>
+
+            {/* Image */}
             <div
-              className="relative mx-4 flex h-full max-h-[85vh] w-full max-w-6xl items-center justify-center"
+              className="relative mx-4 flex h-full max-h-[72vh] w-full max-w-6xl items-center justify-center"
               onClick={(e) => e.stopPropagation()}
             >
               <Image
@@ -746,12 +754,17 @@ export default function GalleryPage() {
                 className="object-contain"
               />
             </div>
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-6 pb-8 text-center">
+
+            {/* Caption */}
+            <div
+              className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-6 pt-10 text-center"
+              style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+            >
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-3 py-1 text-xs font-medium text-white">
                 <MapPin className="h-3 w-3" />
                 {current.category}
               </span>
-              <h3 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
+              <h3 className="mt-2 text-lg font-semibold text-white sm:text-2xl">
                 {current.alt}
               </h3>
               <p className="mt-1 text-sm text-white/80">{current.caption}</p>
