@@ -141,14 +141,14 @@ export const ROUTE_ALIASES: Readonly<Record<string, string>> = {
   'sign-in': '/signin',
   sign_in: '/signin',
 
-  // Sign out → bounce back to sign-in (the actual logout flow is at
-  // `/api/auth/signout`, but a user who lands on `/logout` directly
-  // expects to end up on the sign-in page, not a 404).
-  logout: '/signin',
-  'log-out': '/signin',
-  log_out: '/signin',
-  'sign-out': '/signin',
-  sign_out: '/signin',
+  // Sign out → the dedicated `/logout` page handles the teardown and
+  // shows the "Signing you out…" screen. Note there is intentionally
+  // NO `logout` key here: `/logout` is a real route and must render,
+  // not redirect. The hyphen/underscore synonyms funnel into it.
+  'log-out': '/logout',
+  log_out: '/logout',
+  'sign-out': '/logout',
+  sign_out: '/logout',
 
   // Native desktop app — `/desktop` is the canonical landing page.
   // The two `/download(s)` aliases redirect there with 308 so any old

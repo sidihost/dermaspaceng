@@ -438,53 +438,6 @@ export default function GalleryPage() {
           </div>
         </section>
 
-        {/* ───── Personalised welcome strip (signed-in only) ──────
-            A quiet, on-brand bar that turns the tour into "your" tour:
-            greets the user, names the clinic we've dropped them into,
-            and gives one-tap routes to book that exact space or jump
-            to the rooms they've saved. Guests never see it. */}
-        {me?.firstName && (
-          <section className="bg-white">
-            <div className="max-w-6xl mx-auto px-4 pt-5 sm:pt-7">
-              <div className="flex flex-col gap-3 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                    <Compass className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {preferredCategory
-                        ? `Welcome back, ${me.firstName} — you're walking through ${preferredCategory}.`
-                        : `Welcome back, ${me.firstName}.`}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-600 leading-relaxed">
-                      {preferredCategory
-                        ? "We've started you at your saved clinic. Move room to room, then book the space that feels right."
-                        : 'Take a walk through both clinics and book the space that feels right.'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex flex-shrink-0 items-center gap-2">
-                  <Link
-                    href={bookHref}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#5A1D6A]"
-                  >
-                    <CalendarPlus className="h-3.5 w-3.5" />
-                    Book {current.category}
-                  </Link>
-                  <Link
-                    href="/dashboard/saved"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-white px-4 py-2 text-xs font-semibold text-[#7B2D8E] transition-colors hover:bg-[#7B2D8E]/5"
-                  >
-                    <Heart className="h-3.5 w-3.5" />
-                    Saved
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
         {/* ───── Stage ──────────────────────────────────────────── */}
         <section className="bg-gradient-to-b from-gray-50 to-white py-6 sm:py-10">
           <div className="max-w-6xl mx-auto px-4">
@@ -610,7 +563,9 @@ export default function GalleryPage() {
                   <div className="flex items-end justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-white/70">
-                        Room {safeIdx + 1} of {tour.length}
+                        {me?.firstName
+                          ? `${me.firstName}, you're in · Room ${safeIdx + 1} of ${tour.length}`
+                          : `Room ${safeIdx + 1} of ${tour.length}`}
                       </p>
                       <h2 className="mt-1 text-balance text-xl sm:text-2xl md:text-3xl font-semibold text-white truncate">
                         {current.alt}

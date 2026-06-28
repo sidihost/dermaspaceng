@@ -22,11 +22,11 @@ import {
   ArrowLeft,
   ArrowRight,
   Bell,
+  Flower2,
   Heart,
   Loader2,
   Newspaper,
   Package,
-  Sparkles,
   Tag,
   Trash2,
 } from 'lucide-react'
@@ -45,7 +45,7 @@ type Group = {
 // Display order + metadata for each favouritable namespace. Kept in one
 // place so the section headers, empty-state copy and icons stay in sync.
 const GROUPS: Group[] = [
-  { type: 'treatment', label: 'Treatments', Icon: Sparkles, browseHref: '/treatments' },
+  { type: 'treatment', label: 'Treatments', Icon: Flower2, browseHref: '/treatments' },
   { type: 'package', label: 'Packages', Icon: Package, browseHref: '/packages' },
   { type: 'category', label: 'Categories', Icon: Tag, browseHref: '/treatments' },
   { type: 'post', label: 'Articles', Icon: Newspaper, browseHref: '/blog' },
