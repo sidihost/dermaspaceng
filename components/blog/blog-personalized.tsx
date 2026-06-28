@@ -123,15 +123,39 @@ function Rail({
   )
 }
 
-export function BlogPersonalized() {
+export function BlogPersonalized({ standalone = false }: { standalone?: boolean } = {}) {
   const { data } = useSWR<PersonalizedResponse | null>('/api/blog/personalized', fetcher, {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
 
-  // Guests, loading, or errored → render nothing. The public list below
-  // is the full experience for them.
-  if (!data || !data.isLoggedIn) return null
+  // Still loading → render nothing (avoids layout flash).
+  if (!data) return null
+
+  // Guests. On the inline blog-index placement we render nothing so the
+  // public experience is untouched. On the dedicated /blog/for-you page
+  // we instead invite them to sign in, since a blank page would be odd.
+  if (!data.isLoggedIn) {
+    if (!standalone) return null
+    return (
+      <div className="rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.03] p-6 sm:p-8 text-center">
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#7B2D8E]/10">
+          <BookMarked className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
+        </div>
+        <h2 className="text-base font-semibold text-gray-900">Your personal journal</h2>
+        <p className="mx-auto mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-gray-600 text-pretty">
+          Sign in to see recommendations tuned to your skin profile, pick up where you left off,
+          and revisit the posts you&apos;ve saved.
+        </p>
+        <Link
+          href="/signin?next=/blog/for-you"
+          className="mt-4 inline-flex items-center justify-center rounded-full bg-[#7B2D8E] px-5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-[#6a2679]"
+        >
+          Sign in
+        </Link>
+      </div>
+    )
+  }
 
   const hasAnyRail =
     data.recommended.length > 0 || data.recent.length > 0 || data.saved.length > 0
@@ -147,14 +171,26 @@ export function BlogPersonalized() {
           : 'Your journal, tuned to what you love to read.'
 
   return (
-    <div className="mb-7 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.03] p-4 sm:p-5">
+    <div
+      className={
+        // On the dedicated /blog/for-you page the page header already
+        // carries the "For you" eyebrow, so we drop the tinted card and
+        // just show the greeting + rails. Inline on the index we keep the
+        // contained card treatment.
+        standalone
+          ? ''
+          : 'mb-7 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.03] p-4 sm:p-5'
+      }
+    >
       {/* Greeting */}
-      <div className="flex items-center gap-2 mb-1">
-        <span className="h-px w-5 bg-[#7B2D8E]" aria-hidden />
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
-          For you
-        </span>
-      </div>
+      {!standalone && (
+        <div className="flex items-center gap-2 mb-1">
+          <span className="h-px w-5 bg-[#7B2D8E]" aria-hidden />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
+            For you
+          </span>
+        </div>
+      )}
       <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight text-balance">
         {data.greeting}
         {data.firstName ? `, ${data.firstName}` : ''}.

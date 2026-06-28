@@ -118,7 +118,7 @@ function RankBadge({ rank }: { rank: number }) {
 
   return (
     <div
-      className="inline-flex items-center gap-1 h-7 pl-1.5 pr-2.5 rounded-full bg-[#7B2D8E] text-white shadow-md"
+      className="inline-flex items-center gap-1 h-7 pl-1.5 pr-2.5 rounded-full bg-[#7B2D8E] text-white ring-1 ring-white/25"
       aria-label={`Rank ${rank}`}
     >
       <Icon className="w-3.5 h-3.5" aria-hidden />
@@ -170,8 +170,9 @@ function CarouselCard({
       className="group block w-[160px] min-w-[160px] sm:w-[184px] sm:min-w-[184px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
     >
       {/* Square cover. Placeholder uses a near-white neutral so the
-          card never looks "purple-grey" while images load. */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#FAF6FB]">
+          card never looks "purple-grey" while images load. A hairline
+          plum ring gives the cover crisp definition without a shadow. */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#FAF6FB] ring-1 ring-[#7B2D8E]/10 transition-colors duration-300 group-hover:ring-[#7B2D8E]/30">
         <Image
           src={image}
           alt=""
@@ -188,7 +189,7 @@ function CarouselCard({
         {/* Solid white view-count chip — top-right. Only shown when
             we have real data (i.e. not the static fallback). */}
         {countLabel && (
-          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-white text-[#7B2D8E] shadow-sm">
+          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-white text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
             <Eye className="w-3 h-3" aria-hidden />
             <span className="text-[10px] font-bold tabular-nums leading-none">
               {countLabel}

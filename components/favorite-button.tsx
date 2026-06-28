@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart } from 'lucide-react'
 import { useFavorites, type FavoriteItemType } from '@/hooks/use-favorites'
+import { useNotify } from '@/components/shared/notify'
 
 interface FavoriteButtonProps {
   itemType: FavoriteItemType
@@ -37,9 +38,23 @@ export default function FavoriteButton({
   ariaLabel,
 }: FavoriteButtonProps) {
   const router = useRouter()
+  const notify = useNotify()
   const { isFavorited, addFavorite, removeFavorite } = useFavorites()
   const [busy, setBusy] = useState(false)
   const active = isFavorited(itemType, itemId)
+
+  // Human-friendly noun for the toast copy. Falls back to a generic
+  // "item" when no specific type label fits.
+  const itemNoun =
+    itemType === 'post'
+      ? 'Article'
+      : itemType === 'treatment'
+        ? 'Treatment'
+        : itemType === 'package'
+          ? 'Package'
+          : itemType === 'category'
+            ? 'Category'
+            : 'Item'
 
   // Sizing tokens kept in one place so the button stays consistent
   // across every card variant it shows up on.
@@ -64,8 +79,13 @@ export default function FavoriteButton({
     try {
       if (active) {
         await removeFavorite(itemType, itemId)
+        notify.success('Removed from saved', label ? `“${label}” is no longer saved.` : undefined)
       } else {
         await addFavorite({ itemType, itemId, label: label ?? null, href: href ?? null })
+        notify.success(
+          `${itemNoun} saved`,
+          label ? `“${label}” added to your saved list.` : 'Added to your saved list.',
+        )
       }
     } catch (err) {
       // 401 = guest. Send them to sign-in and come back to the current
@@ -73,6 +93,8 @@ export default function FavoriteButton({
       if (err instanceof Error && err.message === 'Failed') {
         const redirect = typeof window !== 'undefined' ? window.location.pathname : '/'
         router.push(`/signin?redirect=${encodeURIComponent(redirect)}`)
+      } else {
+        notify.error('Could not update', 'Please try again in a moment.')
       }
     } finally {
       setBusy(false)
