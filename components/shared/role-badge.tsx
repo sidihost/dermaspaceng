@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, ShieldCheck, ArrowUpRight } from 'lucide-react'
+import { Shield, ShieldCheck, ArrowUpRight, X } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 
 // Persistent role indicator pill, rendered globally on PUBLIC pages
@@ -75,35 +75,47 @@ export function RoleBadge() {
 
   return (
     <div
-      // The pill sits above the floating Derma AI launcher (z-50) but
-      // below modal overlays (z-[60]+). Bottom-left on phones and
-      // tablets so it never overlaps the bottom-right Derma AI bubble
-      // or the iOS Safari home indicator. On md+ we move it to the
-      // top-right where there's empty header chrome.
-      className="fixed z-50 left-3 bottom-20 md:left-auto md:right-4 md:top-4 md:bottom-auto pointer-events-none"
+      // Pinned to the top-right on every breakpoint. Previously this
+      // floated bottom-left on phones, where it collided with the
+      // journal's filter chips and the bottom nav (see support
+      // screenshots). The top-right corner is consistently empty
+      // chrome, reads as a status indicator rather than an action
+      // bar, and never overlaps page content or the bottom-right
+      // Derma AI launcher. Sits above the launcher (z-50) but below
+      // modal overlays (z-[60]+).
+      className="fixed z-50 right-3 top-3 md:right-4 md:top-4 pointer-events-none"
       role="status"
       aria-label={`${label} — you are signed in with a privileged account`}
     >
-      <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[#7B2D8E]/30 bg-white pl-2 pr-1 py-1 shadow-sm">
-        <span
-          className={
-            'inline-flex items-center justify-center w-5 h-5 rounded-full flex-shrink-0 ' +
-            (isAdmin ? 'bg-[#7B2D8E] text-white' : 'bg-[#7B2D8E]/15 text-[#7B2D8E]')
-          }
-          aria-hidden="true"
-        >
-          <Icon className="w-3 h-3" />
+      <div className="pointer-events-auto inline-flex items-stretch overflow-hidden rounded-full border border-[#7B2D8E]/25 bg-white">
+        {/* Status segment: the icon + label that reads "you are an
+            admin". Non-interactive, clearly separated from the action
+            by a hairline divider. */}
+        <span className="flex items-center gap-1.5 py-1 pl-2 pr-2.5">
+          <span
+            className={
+              'inline-flex h-4 w-4 items-center justify-center rounded-full flex-shrink-0 ' +
+              (isAdmin ? 'bg-[#7B2D8E] text-white' : 'bg-[#7B2D8E]/15 text-[#7B2D8E]')
+            }
+            aria-hidden="true"
+          >
+            <Icon className="h-2.5 w-2.5" />
+          </span>
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gray-900 leading-none">
+            {label}
+          </span>
         </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-900 leading-none">
-          {label}
-        </span>
+
+        {/* Action segment: jump back to the dashboard. */}
         <Link
           href={dashboardHref}
-          className="ml-1 inline-flex items-center gap-0.5 text-[11px] font-medium text-[#7B2D8E] hover:text-[#5d2069] transition-colors rounded-full px-2 py-0.5 hover:bg-[#7B2D8E]/5"
+          className="flex items-center gap-1 border-l border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.04] px-2.5 text-[10.5px] font-semibold text-[#7B2D8E] transition-colors hover:bg-[#7B2D8E]/10"
         >
           Dashboard
-          <ArrowUpRight className="w-3 h-3" aria-hidden="true" />
+          <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
         </Link>
+
+        {/* Dismiss for the session. */}
         <button
           type="button"
           onClick={() => {
@@ -115,9 +127,9 @@ export function RoleBadge() {
             setDismissed(true)
           }}
           aria-label="Dismiss role indicator"
-          className="ml-0.5 mr-0.5 w-5 h-5 inline-flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 text-xs leading-none"
+          className="flex w-7 items-center justify-center border-l border-[#7B2D8E]/15 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-700"
         >
-          <span aria-hidden="true">×</span>
+          <X className="h-3 w-3" aria-hidden="true" />
         </button>
       </div>
     </div>
