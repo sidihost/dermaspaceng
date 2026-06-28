@@ -76,11 +76,15 @@ export function RoleBadge() {
   return (
     <div
       // The pill sits above the floating Derma AI launcher (z-50) but
-      // below modal overlays (z-[60]+). Bottom-left on phones and
-      // tablets so it never overlaps the bottom-right Derma AI bubble
-      // or the iOS Safari home indicator. On md+ we move it to the
-      // top-right where there's empty header chrome.
-      className="fixed z-50 left-3 bottom-20 md:left-auto md:right-4 md:top-4 md:bottom-auto pointer-events-none"
+      // below modal overlays (z-[60]+). It stays anchored to the
+      // bottom-LEFT on every breakpoint: the site header is `sticky
+      // top-0 z-50` and fills the top edge with the logo + account
+      // chrome, so a top-anchored badge collided with it on desktop.
+      // Bottom-left keeps it clear of both the header and the
+      // bottom-right Derma AI bubble. The larger bottom offset on
+      // phones clears the mobile bottom nav + iOS home indicator;
+      // on md+ there is no bottom nav so it tucks into the corner.
+      className="fixed z-50 left-3 bottom-20 md:bottom-4 pointer-events-none"
       role="status"
       aria-label={`${label} — you are signed in with a privileged account`}
     >
