@@ -59,6 +59,13 @@ export function useFavorites() {
         }),
       })
       if (!res.ok) throw new Error('Failed')
+      // The server drops a "Saved to your list" notification on a
+      // brand-new favorite. Nudge the bell to revalidate immediately
+      // instead of waiting for its next 10s poll so the badge moves
+      // in the same gesture as the heart filling.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('notifications:refresh'))
+      }
     } catch (err) {
       // Roll back on failure so the UI matches the server.
       await mutate(favorites, { revalidate: false })

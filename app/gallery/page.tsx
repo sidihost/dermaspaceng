@@ -293,10 +293,13 @@ export default function GalleryPage() {
     const rect = el.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width - 0.5
     const y = (e.clientY - rect.top) / rect.height - 0.5
-    el.style.setProperty("--tx", `${x * -14}px`)
-    el.style.setProperty("--ty", `${y * -14}px`)
-    el.style.setProperty("--rx", `${y * -3}deg`)
-    el.style.setProperty("--ry", `${x * 3}deg`)
+    // Deeper translate + tilt so moving the cursor reads like leaning
+    // into the room — the parallax sells the "you're standing there"
+    // illusion better than the previous shallow ±14px shift.
+    el.style.setProperty("--tx", `${x * -22}px`)
+    el.style.setProperty("--ty", `${y * -22}px`)
+    el.style.setProperty("--rx", `${y * -5}deg`)
+    el.style.setProperty("--ry", `${x * 5}deg`)
   }
   const onPointerLeave = () => {
     const el = stageRef.current
@@ -484,9 +487,15 @@ export default function GalleryPage() {
 
               {/* Top chrome: location chip + favourite + fullscreen */}
               <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 p-3 sm:p-4">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md ring-1 ring-white/25">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {current.category}
+                <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md ring-1 ring-white/25">
+                  <span aria-hidden="true" className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    You are here · {current.category}
+                  </span>
                 </span>
                 <div className="flex items-center gap-2">
                   <button
@@ -554,7 +563,9 @@ export default function GalleryPage() {
                   <div className="flex items-end justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-white/70">
-                        Room {safeIdx + 1} of {tour.length}
+                        {me?.firstName
+                          ? `${me.firstName}, you're in · Room ${safeIdx + 1} of ${tour.length}`
+                          : `Room ${safeIdx + 1} of ${tour.length}`}
                       </p>
                       <h2 className="mt-1 text-balance text-xl sm:text-2xl md:text-3xl font-semibold text-white truncate">
                         {current.alt}

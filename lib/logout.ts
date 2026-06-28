@@ -119,38 +119,56 @@ function showSigningOutOverlay(): void {
 }
 
 /**
- * Sign the current user out and hard-redirect.
+ * Sign the current user out.
  *
- * @param redirectTo  Path to land on after logout. Defaults to '/'.
- *                    Pass `/signin` if you want the user to be able
- *                    to sign back in immediately on the auth page.
+ * Rather than doing the network work inline and tearing the tree down
+ * under a DOM overlay, every sign-out entry point now hands off to the
+ * dedicated `/logout` page. That page is the single, visible "Signing
+ * you out…" surface: it performs the same three steps (POST logout →
+ * clear local cache → hard navigate) but as a real route, so the user
+ * always lands on a proper "we're logging you out" screen instead of a
+ * flash of overlay. Keeping this function as the shared entry point
+ * means all six call sites (header, mobile nav, admin/staff sidebars,
+ * dashboard, Derma AI) keep working unchanged.
+ *
+ * @param redirectTo  Where to land *after* logout completes. Defaults
+ *                    to '/'. Pass `/signin` to drop the user straight
+ *                    on the auth page.
  */
 export async function logoutAndRedirect(redirectTo: string = '/'): Promise<void> {
-  // 0. Immediate feedback: paint the "Signing you out…" overlay before
-  //    any network work so the tap registers instantly.
+  // Immediate feedback for the gap between tap and the /logout page
+  // painting, then hand off. The overlay is torn down by the full
+  // navigation that follows.
   showSigningOutOverlay()
+  window.location.href = `/logout?redirect=${encodeURIComponent(redirectTo)}`
+}
 
-  // 1. Server-side: delete the session row and the session_id cookie.
+/**
+ * The actual teardown, called from the `/logout` page once it has
+ * painted its "Signing you out…" screen.
+ *
+ * 1. POST `/api/auth/logout` to delete the session row + clear the
+ *    `session_id` cookie server-side.
+ * 2. Wipe the localStorage user cache so the next page's first paint
+ *    has no stale "logged-in" fallback to render from.
+ * 3. Hard navigate to the destination — a full reload is the only
+ *    reliable way to drop the SWR cache and all session-tied state.
+ *
+ * Errors are swallowed deliberately: a failed network call must never
+ * leave the user stranded on a "logging out" screen forever.
+ */
+export async function performLogout(redirectTo: string = '/'): Promise<void> {
   try {
     await fetch('/api/auth/logout', { method: 'POST' })
   } catch {
-    /* network failure — proceed to local cleanup so the tab still
-       reflects "signed out" instead of getting stuck mid-logout. */
+    /* network failure — proceed to local cleanup anyway */
   }
 
-  // 2. Local cache: nuke the cached user payload so /api/auth/me's
-  //    upcoming 401 isn't preceded by a "logged-in" flash.
   try {
     clearCachedUser()
   } catch {
-    /* localStorage might be disabled (private mode) — fine, the
-       7-day TTL on the cache is long but the next /me 401 will
-       still clear it before any signed-in surface paints. */
+    /* localStorage disabled (private mode) — the next /me 401 clears it */
   }
 
-  // 3. Hard navigate. `window.location.href` triggers a full reload
-  //    which is the only reliable way to drop the SWR cache, the
-  //    React tree, and every other piece of in-memory state tied to
-  //    the previous user.
   window.location.href = redirectTo
 }
