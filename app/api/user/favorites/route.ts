@@ -74,14 +74,51 @@ export async function POST(request: Request) {
     }
 
     // Upsert so repeat POSTs are idempotent — matches the way the
-    // button optimistically toggles on the client.
-    await sql`
+    // button optimistically toggles on the client. `xmax = 0` is the
+    // standard Postgres trick to tell a fresh INSERT apart from an
+    // ON CONFLICT update: it's only true for newly-inserted rows, so
+    // we can fire the "saved" notification once and stay silent on
+    // repeat saves of the same item.
+    const upserted = await sql`
       INSERT INTO user_favorites (user_id, item_type, item_id, item_label, item_href)
       VALUES (${userId}, ${itemType}, ${itemId}, ${label}, ${href})
       ON CONFLICT (user_id, item_type, item_id) DO UPDATE SET
         item_label = EXCLUDED.item_label,
         item_href = EXCLUDED.item_href
+      RETURNING (xmax = 0) AS inserted
     `
+    const isNew = Boolean(upserted[0]?.inserted)
+
+    // Mirror the save into the notification bell so the user has a
+    // running record of what they've saved and a one-tap path back to
+    // the saved list. Fail-soft + no web push (a self-initiated tap
+    // doesn't warrant buzzing the user's other devices).
+    if (isNew) {
+      const noun =
+        itemType === 'post'
+          ? 'article'
+          : itemType === 'category'
+            ? 'category'
+            : itemType
+      try {
+        const { notifyUser } = await import('@/lib/notifications')
+        await notifyUser({
+          userId,
+          title: 'Saved to your list',
+          message: label
+            ? `“${label}” is now in your saved items.`
+            : `A ${noun} was added to your saved items.`,
+          type: 'system',
+          referenceType: itemType,
+          referenceId: itemId,
+          actionUrl: '/dashboard/saved',
+          priority: 'low',
+          push: false,
+        })
+      } catch (err) {
+        console.error('[favorites POST] notify failed', err)
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

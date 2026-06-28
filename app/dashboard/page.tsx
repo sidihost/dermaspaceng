@@ -721,7 +721,7 @@ export default function DashboardPage() {
                     { id: 'consultations', label: 'Consultations', icon: Calendar, href: '/dashboard/consultations' },
                     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
                     { id: 'transactions', label: 'Transactions', icon: Receipt, href: '/dashboard/transactions' },
-                    { id: 'favorites', label: 'Favorites', icon: Heart },
+                    { id: 'favorites', label: 'Saved', icon: Heart, href: '/dashboard/saved' },
                     { id: 'preferences', label: 'Preferences', icon: Sliders },
                     { id: 'support', label: 'Support', icon: Ticket, href: '/dashboard/support' },
                     { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
