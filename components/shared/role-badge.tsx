@@ -75,15 +75,17 @@ export function RoleBadge() {
 
   return (
     <div
-      // Pinned to the top-right on every breakpoint. Previously this
-      // floated bottom-left on phones, where it collided with the
-      // journal's filter chips and the bottom nav (see support
-      // screenshots). The top-right corner is consistently empty
-      // chrome, reads as a status indicator rather than an action
-      // bar, and never overlaps page content or the bottom-right
-      // Derma AI launcher. Sits above the launcher (z-50) but below
-      // modal overlays (z-[60]+).
-      className="fixed z-50 right-3 top-3 md:right-4 md:top-4 pointer-events-none"
+      // Anchored bottom-LEFT on every breakpoint. The two corners we
+      // can't use: the top edge is owned by the `sticky top-0 z-50`
+      // site header (logo + account chrome), so a top-anchored badge
+      // collided with it on desktop; the bottom-RIGHT holds the
+      // floating Derma AI launcher. Bottom-left is the only corner
+      // clear of both. The larger `bottom-20` offset on phones lifts
+      // it above the mobile bottom nav + iOS home indicator, and on
+      // md+ there's no bottom nav so it tucks into the corner with
+      // `bottom-4`. Sits above the launcher (z-50) but below modal
+      // overlays (z-[60]+).
+      className="fixed z-50 left-3 bottom-20 md:bottom-4 pointer-events-none"
       role="status"
       aria-label={`${label} — you are signed in with a privileged account`}
     >
