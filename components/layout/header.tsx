@@ -417,7 +417,13 @@ export default function Header() {
                   and the avatar pill keeps its iOS-style padding. */}
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <NotificationBell />
-              <div className="relative" ref={mobileProfileDropdownRef}>
+              {/* Profile dropdown is hidden on phones (< md) because the
+                  bottom navigation already exposes the profile sheet +
+                  Sign Out there — showing both was duplicating the
+                  logout entry. On tablets (md–lg) the bottom nav is
+                  hidden, so we keep this dropdown as the single profile
+                  surface for that range. */}
+              <div className="relative hidden md:block" ref={mobileProfileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                   className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
