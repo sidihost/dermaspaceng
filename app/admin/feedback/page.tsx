@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import {
   ClipboardList,
@@ -10,7 +11,6 @@ import {
   ThumbsDown,
   Meh,
   Loader2,
-  Mail,
   UserCheck,
   UserX,
   Filter,
@@ -120,7 +120,6 @@ export default function AdminFeedbackPage() {
   const [experience, setExperience] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
-  const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const queryString = useMemo(() => {
     const sp = new URLSearchParams()
@@ -132,41 +131,11 @@ export default function AdminFeedbackPage() {
     return sp.toString()
   }, [status, category, experience, q, page])
 
-  const { data, error, isLoading, mutate } = useSWR<FeedbackResponse>(
+  const { data, error, isLoading } = useSWR<FeedbackResponse>(
     `/api/admin/feedback?${queryString}`,
     fetcher,
     { revalidateOnFocus: false },
   )
-
-  const updateStatus = async (id: number, next: FeedbackRow['status']) => {
-    // Optimistic — flip the row's status locally, then confirm with
-    // the server. On failure SWR revalidates back to truth.
-    await mutate(
-      (curr) =>
-        curr
-          ? {
-              ...curr,
-              submissions: curr.submissions.map((s) =>
-                s.id === id ? { ...s, status: next } : s,
-              ),
-            }
-          : curr,
-      false,
-    )
-    const res = await fetch('/api/admin/feedback', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ id, status: next }),
-    })
-    if (!res.ok) {
-      // Revalidate to roll back the optimistic update.
-      await mutate()
-    } else {
-      // Re-pull the badge counts.
-      await mutate()
-    }
-  }
 
   const total = data?.pagination?.total ?? 0
   const stats = data?.stats
@@ -319,7 +288,6 @@ export default function AdminFeedbackPage() {
         ) : (
           <ul className="divide-y divide-gray-100">
             {data.submissions.map((row) => {
-              const isOpen = expandedId === row.id
               const displayName =
                 row.name ||
                 [row.account_first_name, row.account_last_name].filter(Boolean).join(' ') ||
@@ -327,9 +295,8 @@ export default function AdminFeedbackPage() {
               const displayEmail = row.email || row.account_email || ''
               return (
                 <li key={row.id}>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(isOpen ? null : row.id)}
+                  <Link
+                    href={`/admin/feedback/${row.id}`}
                     className="w-full text-left px-4 sm:px-5 py-4 hover:bg-gray-50 transition-colors flex flex-col gap-2"
                   >
                     <div className="flex items-start gap-3">
@@ -368,11 +335,7 @@ export default function AdminFeedbackPage() {
                           {displayEmail || 'no email'} · {row.category} ·{' '}
                           {new Date(row.created_at).toLocaleString()}
                         </p>
-                        <p
-                          className={`text-sm text-gray-700 mt-1 ${
-                            isOpen ? '' : 'line-clamp-2'
-                          }`}
-                        >
+                        <p className="text-sm text-gray-700 mt-1 line-clamp-2">
                           {row.message}
                         </p>
                       </div>
@@ -382,41 +345,7 @@ export default function AdminFeedbackPage() {
                         <span className="text-gray-400">/10</span>
                       </div>
                     </div>
-                  </button>
-
-                  {isOpen && (
-                    <div className="px-4 sm:px-5 pb-4 -mt-1 flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-gray-500 mr-2">Set status:</span>
-                      {(['new', 'in_review', 'actioned', 'closed'] as const).map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            void updateStatus(row.id, s)
-                          }}
-                          disabled={row.status === s}
-                          className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${
-                            row.status === s
-                              ? 'bg-[#7B2D8E] text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {s.replace('_', ' ')}
-                        </button>
-                      ))}
-                      {displayEmail && (
-                        <a
-                          href={`mailto:${displayEmail}?subject=Re%3A%20Your%20Dermaspace%20feedback`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:underline"
-                        >
-                          <Mail className="w-3.5 h-3.5" />
-                          Reply by email
-                        </a>
-                      )}
-                    </div>
-                  )}
+                  </Link>
                 </li>
               )
             })}
