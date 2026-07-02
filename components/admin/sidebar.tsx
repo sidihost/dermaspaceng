@@ -27,6 +27,7 @@ import {
   CalendarCheck2,
   Boxes,
   Layers,
+  Mail,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -138,6 +139,11 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/banners', icon: Megaphone, label: 'Banners', badge: null, group: 'platform' },
   { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
   { href: '/admin/broadcast', icon: Send, label: 'Broadcast', badge: null, group: 'platform' },
+  // Newsletter / email campaigns — compose and send monthly messages to
+  // subscribers, manage the subscriber list, and pick from premade
+  // branded templates. Sits in the platform group next to Broadcast
+  // since both are outbound-messaging surfaces.
+  { href: '/admin/newsletter', icon: Mail, label: 'Newsletter', badge: null, group: 'platform' },
   { href: '/admin/blog', icon: BookOpen, label: 'Blog', badge: null, group: 'platform' },
   // Recurring background jobs (QStash). Lets admins inspect schedule
   // health, force a re-sync from the manifest, and run any job on

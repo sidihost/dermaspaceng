@@ -40,6 +40,8 @@ import {
   Pencil,
   ExternalLink,
   Copy,
+  LayoutTemplate,
+  Check,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
@@ -575,6 +577,154 @@ const EMPTY_FORM = {
   audience: 'subscribers' as 'subscribers' | 'customers',
 }
 
+// ---------------------------------------------------------------------------
+// Premade monthly templates
+//
+// Each template is a one-tap starting point that fills the whole composer
+// (subject → CTA) with polished, on-brand copy plus a branded illustration
+// embedded at the top of the body. The illustration is referenced by an
+// ABSOLUTE URL on the production origin so email clients — which fetch
+// images over the public internet, not from the preview — can load it.
+//
+// The body illustration markup is intentionally email-safe: table-free,
+// inline styles only, width capped, block display. It renders verbatim
+// inside the shared Dermaspace email shell (see sendNewsletterCampaign).
+// ---------------------------------------------------------------------------
+
+const SITE_ORIGIN = 'https://www.dermaspaceng.com'
+
+/** Build the email-safe hero <img> that leads a template body. */
+function heroImg(file: string, alt: string): string {
+  return `<img src="${SITE_ORIGIN}/newsletter/${file}" alt="${alt}" width="536" style="width:100%;max-width:536px;height:auto;border-radius:14px;display:block;margin:0 0 22px;" />`
+}
+
+type NewsletterTemplate = {
+  id: string
+  /** Card label in the picker. */
+  name: string
+  /** One-line description under the label. */
+  blurb: string
+  /** Local illustration path — used for the picker thumbnail only. */
+  thumb: string
+  /** The composer fields this template fills. */
+  fill: {
+    subject: string
+    preheader: string
+    eyebrow: string
+    headline: string
+    bodyHtml: string
+    ctaLabel: string
+    ctaUrl: string
+  }
+}
+
+const NEWSLETTER_TEMPLATES: NewsletterTemplate[] = [
+  {
+    id: 'monthly',
+    name: 'Monthly update',
+    blurb: 'A warm “what’s new this month” broadcast.',
+    thumb: '/newsletter/monthly-update.png',
+    fill: {
+      subject: 'Your Dermaspace update is here',
+      preheader: 'A little glow-up news from the team this month.',
+      eyebrow: 'Monthly update',
+      headline: 'This month at Dermaspace',
+      bodyHtml:
+        `${heroImg('monthly-update.png', 'Dermaspace monthly update')}` +
+        `<p>Hi there,</p>` +
+        `<p>We’ve been busy creating calmer, more radiant moments for you. Here’s a quick look at what’s new this month at Dermaspace.</p>` +
+        `<ul>` +
+        `<li><strong>Fresh treatments</strong> — new additions to our esthetic and wellness menu.</li>` +
+        `<li><strong>Extended hours</strong> — more evening slots so self-care fits your week.</li>` +
+        `<li><strong>Member perks</strong> — little thank-yous for our returning clients.</li>` +
+        `</ul>` +
+        `<p>We’d love to see you again soon.</p>`,
+      ctaLabel: 'Book your next visit',
+      ctaUrl: `${SITE_ORIGIN}/booking`,
+    },
+  },
+  {
+    id: 'promo',
+    name: 'Special offer',
+    blurb: 'A members-only discount or seasonal treat.',
+    thumb: '/newsletter/special-offer.png',
+    fill: {
+      subject: 'A members-only offer, just for you',
+      preheader: 'An exclusive treat to make your next visit even sweeter.',
+      eyebrow: 'Member offer',
+      headline: 'An exclusive offer, just for you',
+      bodyHtml:
+        `${heroImg('special-offer.png', 'Dermaspace special offer')}` +
+        `<p>Hi there,</p>` +
+        `<p>As a thank-you for being part of the Dermaspace family, we’ve set aside a little something special for your next visit.</p>` +
+        `<p><strong>Enjoy a members-only treat</strong> when you book before the month is out. Simply mention this email at checkout — our team will take care of the rest.</p>` +
+        `<p>Treat yourself. You’ve earned it.</p>`,
+      ctaLabel: 'Claim your offer',
+      ctaUrl: `${SITE_ORIGIN}/booking`,
+    },
+  },
+  {
+    id: 'new-service',
+    name: 'New service',
+    blurb: 'Announce a new treatment or service.',
+    thumb: '/newsletter/new-service.png',
+    fill: {
+      subject: 'Introducing our newest treatment',
+      preheader: 'Something new has just arrived at Dermaspace.',
+      eyebrow: 'New service',
+      headline: 'Something new has arrived',
+      bodyHtml:
+        `${heroImg('new-service.png', 'A new Dermaspace treatment')}` +
+        `<p>Hi there,</p>` +
+        `<p>We’re thrilled to introduce the newest addition to our esthetic and wellness menu — thoughtfully designed to help you look and feel your very best.</p>` +
+        `<p>Our specialists will walk you through everything on the day, so all you have to do is relax and enjoy the experience.</p>` +
+        `<p>Curious? We’d be delighted to welcome you in.</p>`,
+      ctaLabel: 'Explore the treatment',
+      ctaUrl: `${SITE_ORIGIN}/services`,
+    },
+  },
+  {
+    id: 'seasonal',
+    name: 'Seasonal greeting',
+    blurb: 'A festive, warm holiday card.',
+    thumb: '/newsletter/seasonal-greeting.png',
+    fill: {
+      subject: 'Season’s greetings from Dermaspace',
+      preheader: 'Wishing you a calm, radiant season ahead.',
+      eyebrow: 'Seasonal greeting',
+      headline: 'Wishing you a radiant season',
+      bodyHtml:
+        `${heroImg('seasonal-greeting.png', 'Seasonal greetings from Dermaspace')}` +
+        `<p>Hi there,</p>` +
+        `<p>From all of us at Dermaspace, thank you for letting us be part of your self-care journey this year. It has been a joy to care for you.</p>` +
+        `<p>As the season slows down, we hope you find a moment to rest, glow, and treat yourself kindly — you deserve it.</p>` +
+        `<p>Warm wishes for a beautiful season ahead.</p>`,
+      ctaLabel: 'Book a festive treatment',
+      ctaUrl: `${SITE_ORIGIN}/booking`,
+    },
+  },
+  {
+    id: 'reengage',
+    name: 'We miss you',
+    blurb: 'Win back clients you haven’t seen in a while.',
+    thumb: '/newsletter/we-miss-you.png',
+    fill: {
+      subject: 'We’ve missed you at Dermaspace',
+      preheader: 'It’s been a while — your next glow-up is waiting.',
+      eyebrow: 'We miss you',
+      headline: 'It’s been a while',
+      bodyHtml:
+        `${heroImg('we-miss-you.png', 'We miss you at Dermaspace')}` +
+        `<p>Hi there,</p>` +
+        `<p>It’s been a little while since your last visit, and we wanted you to know — the door is always open, and your favourite treatments are ready whenever you are.</p>` +
+        `<p>Whether it’s time for a refresh or a full reset, our team would love to welcome you back and help you feel your best again.</p>` +
+        `<p>We can’t wait to see you.</p>`,
+      ctaLabel: 'Rebook your ritual',
+      ctaUrl: `${SITE_ORIGIN}/booking`,
+    },
+  },
+]
+
 function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState<boolean>(Boolean(campaignId))
@@ -583,6 +733,9 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
   const [testing, setTesting] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
+  // Which premade template the admin last applied — drives the "applied"
+  // check-mark on the picker card so the choice reads back clearly.
+  const [appliedTemplate, setAppliedTemplate] = useState<string | null>(null)
 
   // Live audience sizes so the admin sees exactly how many people a
   // send reaches before committing. Cached briefly — the numbers
@@ -654,6 +807,14 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
     },
     [],
   )
+
+  // Apply a premade template — fills every content field in one tap while
+  // preserving the currently-selected audience (subscribers vs customers)
+  // so the admin doesn't lose that choice.
+  const applyTemplate = useCallback((tpl: NewsletterTemplate) => {
+    setForm(prev => ({ ...prev, ...tpl.fill, audience: prev.audience }))
+    setAppliedTemplate(tpl.id)
+  }, [])
 
   // Save creates a new draft on the first call (no id yet) and
   // PATCHes thereafter. Returns the resulting id so the caller can
@@ -834,6 +995,62 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
                   <strong>{campaign?.status}</strong> and is locked. You can
                   still review the content and copy it into a new draft.
                 </p>
+              </div>
+            )}
+
+            {!isReadOnly && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <LayoutTemplate className="w-4 h-4 text-[#7B2D8E]" />
+                  <h3 className="text-[13.5px] font-semibold text-gray-900">
+                    Start from a template
+                  </h3>
+                </div>
+                <p className="text-[11.5px] text-gray-500 mb-3">
+                  Pick a monthly message and we&apos;ll fill in polished copy and a
+                  branded illustration. Edit anything before you send.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {NEWSLETTER_TEMPLATES.map(tpl => {
+                    const active = appliedTemplate === tpl.id
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => applyTemplate(tpl)}
+                        className={cn(
+                          'group relative text-left rounded-xl border overflow-hidden transition-colors',
+                          active
+                            ? 'border-[#7B2D8E] ring-1 ring-[#7B2D8E]'
+                            : 'border-gray-200 hover:border-[#7B2D8E]/50',
+                        )}
+                      >
+                        <div className="relative aspect-[12/5] bg-gray-50 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={tpl.thumb || '/placeholder.svg'}
+                            alt=""
+                            aria-hidden="true"
+                            className="w-full h-full object-cover"
+                          />
+                          {active && (
+                            <span className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#7B2D8E] text-white">
+                              <Check className="w-3 h-3" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="px-2.5 py-2">
+                          <p className="text-[12px] font-semibold text-gray-900 leading-tight">
+                            {tpl.name}
+                          </p>
+                          <p className="text-[10.5px] text-gray-500 leading-snug mt-0.5 line-clamp-2">
+                            {tpl.blurb}
+                          </p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
@@ -1042,6 +1259,15 @@ function CampaignPreview({
   ctaLabel: string
   ctaUrl: string
 }) {
+  // In the composer preview (and on the deployed site) the branded
+  // illustrations live at /newsletter/*. In the actual email they must be
+  // absolute, so templates embed the production origin. Rewrite that origin
+  // to a same-origin path here so the illustration renders in-preview no
+  // matter which environment the composer is running in.
+  const previewHtml = bodyHtml.replace(
+    /https:\/\/www\.dermaspaceng\.com\/newsletter\//g,
+    '/newsletter/',
+  )
   return (
     <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
       {/* Brand strip */}
@@ -1073,7 +1299,7 @@ function CampaignPreview({
           // the recipient will see.
           dangerouslySetInnerHTML={{
             __html:
-              bodyHtml ||
+              previewHtml ||
               '<p style="color:#9ca3af">Body content will appear here.</p>',
           }}
         />
