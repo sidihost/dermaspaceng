@@ -238,6 +238,38 @@ export default function LoginEventDetailPage() {
     ([k]) => !['newDevice', 'method', 'identifier'].includes(k),
   )
 
+  // Plain-language security read of this event. Combines the event type,
+  // whether it came from a new device, and how many failures share this IP.
+  const isFailure = event.eventType === 'signin_failed' || event.eventType === '2fa_disabled'
+  const assessment = (() => {
+    if (isFailure && ipInsight.failed >= 3) {
+      return {
+        level: 'high' as const,
+        title: 'Elevated risk',
+        note: `${ipInsight.failed} failed attempts share this IP — possible credential stuffing.`,
+      }
+    }
+    if (isFailure) {
+      return {
+        level: 'watch' as const,
+        title: 'Failed attempt',
+        note: 'Authentication did not succeed. Monitor for repeats from this IP.',
+      }
+    }
+    if (newDevice) {
+      return {
+        level: 'watch' as const,
+        title: 'New device sign-in',
+        note: 'First time this account signed in from this device fingerprint.',
+      }
+    }
+    return {
+      level: 'ok' as const,
+      title: 'Routine activity',
+      note: 'Known event pattern with no anomalies detected.',
+    }
+  })()
+
   return (
     <div className="space-y-4 pb-12">
       {/* Back link */}
@@ -317,6 +349,25 @@ export default function LoginEventDetailPage() {
                     New device
                   </span>
                 )}
+              </div>
+
+              {/* Glanceable stats strip */}
+              <div className="mt-5 grid grid-cols-3 divide-x divide-white/15 rounded-xl bg-white/[0.08] ring-1 ring-white/15">
+                <HeroStat
+                  icon={<device.Icon className="h-3.5 w-3.5" />}
+                  label="Device"
+                  value={device.label}
+                />
+                <HeroStat
+                  icon={<Globe className="h-3.5 w-3.5" />}
+                  label="Browser"
+                  value={browserFromUA(event.userAgent)}
+                />
+                <HeroStat
+                  icon={<Clock className="h-3.5 w-3.5" />}
+                  label="When"
+                  value={formatRelative(event.createdAt)}
+                />
               </div>
             </div>
 
@@ -463,6 +514,45 @@ export default function LoginEventDetailPage() {
 
         {/* ─────────────── Right rail ─────────────── */}
         <div className="space-y-4">
+          {/* Security assessment — plain-language verdict */}
+          <section
+            className={cn(
+              'rounded-2xl border p-5 sm:p-6',
+              assessment.level === 'high'
+                ? 'border-[#5A1D6A]/35 bg-[#5A1D6A]/[0.05]'
+                : assessment.level === 'watch'
+                  ? 'border-[#7B2D8E]/25 bg-[#7B2D8E]/[0.04]'
+                  : 'border-gray-200 bg-white',
+            )}
+          >
+            <SectionHeader
+              icon={<ShieldCheck className="w-3.5 h-3.5" />}
+              label="Security assessment"
+            />
+            <div className="flex items-start gap-3">
+              <span
+                className={cn(
+                  'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full',
+                  assessment.level === 'ok'
+                    ? 'bg-[#7B2D8E] text-white'
+                    : assessment.level === 'watch'
+                      ? 'bg-[#7B2D8E]/12 text-[#7B2D8E]'
+                      : 'bg-[#5A1D6A]/12 text-[#5A1D6A]',
+                )}
+              >
+                {assessment.level === 'ok' ? (
+                  <ShieldCheck className="h-5 w-5" />
+                ) : (
+                  <ShieldAlert className="h-5 w-5" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{assessment.title}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-gray-500">{assessment.note}</p>
+              </div>
+            </div>
+          </section>
+
           {/* Ledger integrity — the tamper-evident showcase */}
           <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
             <SectionHeader icon={<Fingerprint className="w-3.5 h-3.5" />} label="Ledger integrity" />
@@ -537,6 +627,26 @@ export default function LoginEventDetailPage() {
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+function HeroStat({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+}) {
+  return (
+    <div className="min-w-0 px-3 py-2.5">
+      <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/60">
+        {icon}
+        {label}
+      </span>
+      <span className="mt-1 block truncate text-sm font-semibold text-white">{value}</span>
     </div>
   )
 }
