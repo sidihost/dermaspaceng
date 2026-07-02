@@ -445,7 +445,7 @@ export default function ComplaintsPage() {
                               opening every row. */}
                           {complaint.reply_count && complaint.reply_count > 0 ? (
                             <span
-                              className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                              className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[10px] font-semibold text-white"
                               title={`${complaint.reply_count} ${
                                 complaint.reply_count === 1 ? 'reply' : 'replies'
                               } sent`}
