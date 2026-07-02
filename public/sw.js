@@ -1,7 +1,19 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v14)
+// Dermaspace service worker (v15)
 //
-// v14 (current) — Make cached pages actually show up offline AND on poor
+// v15 (current) — Cache-bust to evict stale recommendation assets.
+//   A previous deploy briefly shipped illustrated recommendation covers
+//   (served from `/images/recommendations/*.png`) plus the API/HTML that
+//   referenced them. That change was reverted in code — the rail is back
+//   to the original photography — but real devices kept showing the old
+//   illustrations because the v14 IMAGE_CACHE / PAGES_CACHE were still
+//   handing out the cached illustration bytes and markup offline-first,
+//   and a normal browser "clear cache" doesn't evict a service worker's
+//   Cache Storage. Bumping the version to v15 makes `activate` delete
+//   every non-v15 cache, so the next load fetches the reverted, photo-
+//   based rail fresh. No behavioural changes beyond the version bump.
+//
+// v14 — Make cached pages actually show up offline AND on poor
 //   connections. Two real-world bugs were defeating the page cache:
 //
 //     1. Query-string cache misses. Pages are stored keyed by their full
@@ -111,7 +123,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v14';
+const VERSION = 'v15';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
