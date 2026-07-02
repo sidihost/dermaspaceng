@@ -75,34 +75,6 @@ const fetcher = async (url: string) => {
 }
 
 // ---------------------------------------------------------------------------
-// Recommendation covers use bespoke, on-brand ILLUSTRATIONS rather than
-// the stock photography used elsewhere on the site. The team confirmed
-// the discovery rail reads better as a cohesive illustrated set (one
-// consistent plum + blush art style across every category) than as a
-// mix of real photos. These live only here — the service detail pages,
-// AI assistant and vector index continue to use the catalog's real
-// `image` field. We key by category slug and fall back to the catalog
-// photo if a slug ever lacks an illustration (defensive; today every
-// category has one).
-// ---------------------------------------------------------------------------
-const CATEGORY_ILLUSTRATIONS: Record<string, string> = {
-  'facial-treatments': '/images/recommendations/facial-treatments.png',
-  'dermaspace-peels': '/images/recommendations/dermaspace-peels.png',
-  'body-treatments': '/images/recommendations/body-treatments.png',
-  'bulk-packages': '/images/recommendations/bulk-packages.png',
-  waxing: '/images/recommendations/waxing.png',
-  'laser-hair-removal': '/images/recommendations/laser-hair-removal.png',
-  'laser-package-deals': '/images/recommendations/laser-package-deals.png',
-  'hollywood-peel': '/images/recommendations/hollywood-peel.png',
-  'nail-care': '/images/recommendations/nail-care.png',
-  'experience-packages': '/images/recommendations/experience-packages.png',
-}
-
-function coverFor(slug: string, fallback: string): string {
-  return CATEGORY_ILLUSTRATIONS[slug] ?? fallback
-}
-
-// ---------------------------------------------------------------------------
 // Static fallbacks so the rails are never empty (cold start / no data).
 // ---------------------------------------------------------------------------
 
@@ -476,7 +448,7 @@ export default function RecommendationsSection() {
           <div key={`v-${item.slug}-${i}`} data-rec-card>
             <CarouselCard
               href={item.href}
-              image={coverFor(item.slug, item.image)}
+              image={item.image}
               title={item.title}
               subtitle={item.description}
               rank={i + 1}
