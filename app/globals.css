@@ -1322,3 +1322,29 @@ input[type='search']::-ms-reveal {
   .ds-kenburns { animation: none; }
 }
 
+/* Rich-text email body (newsletter composer editor + read-only render).
+   Kept intentionally close to the real Dermaspace email shell so the
+   editing surface previews how content will actually look. */
+.prose-email :where(p) { margin: 0 0 0.75rem; }
+.prose-email :where(p):last-child { margin-bottom: 0; }
+.prose-email :where(h2) {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.6rem;
+  line-height: 1.35;
+}
+.prose-email :where(ul, ol) {
+  margin: 0 0 0.75rem;
+  padding-left: 1.35rem;
+}
+.prose-email :where(ul) { list-style: disc; }
+.prose-email :where(ol) { list-style: decimal; }
+.prose-email :where(li) { margin: 0 0 0.25rem; }
+.prose-email :where(a) {
+  color: #7B2D8E;
+  text-decoration: underline;
+}
+.prose-email :where(strong) { font-weight: 700; }
+.prose-email :where(em) { font-style: italic; }
+

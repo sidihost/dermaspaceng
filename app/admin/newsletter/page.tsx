@@ -42,9 +42,15 @@ import {
   Copy,
   LayoutTemplate,
   Check,
+  CalendarDays,
+  Star,
+  Gift,
+  Heart,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
+import { RichTextEditor } from '@/components/admin/rich-text-editor'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -435,8 +441,38 @@ function CampaignsTab({ notify }: { notify: ReturnType<typeof useNotify> }) {
     [notify, mutate],
   )
 
+  const sentCampaigns = campaigns.filter(c => c.status === 'sent')
+  const draftCampaigns = campaigns.filter(c => c.status === 'draft')
+  const totalDelivered = sentCampaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0)
+
   return (
     <div className="space-y-3 md:space-y-4">
+      {/* Stat tiles — a live at-a-glance summary of every broadcast, mirroring
+          the Subscribers tab so both views feel like matched action cards. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
+        <StatTile
+          icon={<Mail className="w-4 h-4 text-[#7B2D8E]" />}
+          label="Campaigns"
+          value={campaigns.length}
+        />
+        <StatTile
+          icon={<Send className="w-4 h-4 text-[#7B2D8E]" />}
+          label="Sent"
+          value={sentCampaigns.length}
+          accent
+        />
+        <StatTile
+          icon={<Pencil className="w-4 h-4 text-gray-500" />}
+          label="Drafts"
+          value={draftCampaigns.length}
+        />
+        <StatTile
+          icon={<CheckCircle2 className="w-4 h-4 text-[#7B2D8E]" />}
+          label="Emails delivered"
+          value={totalDelivered}
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <p className="text-[12.5px] text-gray-500">
           {campaigns.length} {campaigns.length === 1 ? 'campaign' : 'campaigns'}
@@ -581,22 +617,12 @@ const EMPTY_FORM = {
 // Premade monthly templates
 //
 // Each template is a one-tap starting point that fills the whole composer
-// (subject → CTA) with polished, on-brand copy plus a branded illustration
-// embedded at the top of the body. The illustration is referenced by an
-// ABSOLUTE URL on the production origin so email clients — which fetch
-// images over the public internet, not from the preview — can load it.
-//
-// The body illustration markup is intentionally email-safe: table-free,
-// inline styles only, width capped, block display. It renders verbatim
-// inside the shared Dermaspace email shell (see sendNewsletterCampaign).
+// (subject → CTA) with polished, on-brand copy. Bodies are plain, email-safe
+// HTML (no embedded illustrations) so they render cleanly in every inbox and
+// stay easy to edit in the rich-text editor.
 // ---------------------------------------------------------------------------
 
 const SITE_ORIGIN = 'https://www.dermaspaceng.com'
-
-/** Build the email-safe hero <img> that leads a template body. */
-function heroImg(file: string, alt: string): string {
-  return `<img src="${SITE_ORIGIN}/newsletter/${file}" alt="${alt}" width="536" style="width:100%;max-width:536px;height:auto;border-radius:14px;display:block;margin:0 0 22px;" />`
-}
 
 type NewsletterTemplate = {
   id: string
@@ -604,8 +630,8 @@ type NewsletterTemplate = {
   name: string
   /** One-line description under the label. */
   blurb: string
-  /** Local illustration path — used for the picker thumbnail only. */
-  thumb: string
+  /** Icon shown on the picker card (no illustration images). */
+  icon: LucideIcon
   /** The composer fields this template fills. */
   fill: {
     subject: string
@@ -623,14 +649,13 @@ const NEWSLETTER_TEMPLATES: NewsletterTemplate[] = [
     id: 'monthly',
     name: 'Monthly update',
     blurb: 'A warm “what’s new this month” broadcast.',
-    thumb: '/newsletter/monthly-update.png',
+    icon: CalendarDays,
     fill: {
       subject: 'Your Dermaspace update is here',
       preheader: 'A little glow-up news from the team this month.',
       eyebrow: 'Monthly update',
       headline: 'This month at Dermaspace',
       bodyHtml:
-        `${heroImg('monthly-update.png', 'Dermaspace monthly update')}` +
         `<p>Hi there,</p>` +
         `<p>We’ve been busy creating calmer, more radiant moments for you. Here’s a quick look at what’s new this month at Dermaspace.</p>` +
         `<ul>` +
@@ -647,14 +672,13 @@ const NEWSLETTER_TEMPLATES: NewsletterTemplate[] = [
     id: 'promo',
     name: 'Special offer',
     blurb: 'A members-only discount or seasonal treat.',
-    thumb: '/newsletter/special-offer.png',
+    icon: Tag,
     fill: {
       subject: 'A members-only offer, just for you',
       preheader: 'An exclusive treat to make your next visit even sweeter.',
       eyebrow: 'Member offer',
       headline: 'An exclusive offer, just for you',
       bodyHtml:
-        `${heroImg('special-offer.png', 'Dermaspace special offer')}` +
         `<p>Hi there,</p>` +
         `<p>As a thank-you for being part of the Dermaspace family, we’ve set aside a little something special for your next visit.</p>` +
         `<p><strong>Enjoy a members-only treat</strong> when you book before the month is out. Simply mention this email at checkout — our team will take care of the rest.</p>` +
@@ -667,14 +691,13 @@ const NEWSLETTER_TEMPLATES: NewsletterTemplate[] = [
     id: 'new-service',
     name: 'New service',
     blurb: 'Announce a new treatment or service.',
-    thumb: '/newsletter/new-service.png',
+    icon: Star,
     fill: {
       subject: 'Introducing our newest treatment',
       preheader: 'Something new has just arrived at Dermaspace.',
       eyebrow: 'New service',
       headline: 'Something new has arrived',
       bodyHtml:
-        `${heroImg('new-service.png', 'A new Dermaspace treatment')}` +
         `<p>Hi there,</p>` +
         `<p>We’re thrilled to introduce the newest addition to our esthetic and wellness menu — thoughtfully designed to help you look and feel your very best.</p>` +
         `<p>Our specialists will walk you through everything on the day, so all you have to do is relax and enjoy the experience.</p>` +
@@ -687,14 +710,13 @@ const NEWSLETTER_TEMPLATES: NewsletterTemplate[] = [
     id: 'seasonal',
     name: 'Seasonal greeting',
     blurb: 'A festive, warm holiday card.',
-    thumb: '/newsletter/seasonal-greeting.png',
+    icon: Gift,
     fill: {
       subject: 'Season’s greetings from Dermaspace',
       preheader: 'Wishing you a calm, radiant season ahead.',
       eyebrow: 'Seasonal greeting',
       headline: 'Wishing you a radiant season',
       bodyHtml:
-        `${heroImg('seasonal-greeting.png', 'Seasonal greetings from Dermaspace')}` +
         `<p>Hi there,</p>` +
         `<p>From all of us at Dermaspace, thank you for letting us be part of your self-care journey this year. It has been a joy to care for you.</p>` +
         `<p>As the season slows down, we hope you find a moment to rest, glow, and treat yourself kindly — you deserve it.</p>` +
@@ -707,14 +729,13 @@ const NEWSLETTER_TEMPLATES: NewsletterTemplate[] = [
     id: 'reengage',
     name: 'We miss you',
     blurb: 'Win back clients you haven’t seen in a while.',
-    thumb: '/newsletter/we-miss-you.png',
+    icon: Heart,
     fill: {
       subject: 'We’ve missed you at Dermaspace',
       preheader: 'It’s been a while — your next glow-up is waiting.',
       eyebrow: 'We miss you',
       headline: 'It’s been a while',
       bodyHtml:
-        `${heroImg('we-miss-you.png', 'We miss you at Dermaspace')}` +
         `<p>Hi there,</p>` +
         `<p>It’s been a little while since your last visit, and we wanted you to know — the door is always open, and your favourite treatments are ready whenever you are.</p>` +
         `<p>Whether it’s time for a refresh or a full reset, our team would love to welcome you back and help you feel your best again.</p>` +
@@ -1007,39 +1028,43 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
                   </h3>
                 </div>
                 <p className="text-[11.5px] text-gray-500 mb-3">
-                  Pick a monthly message and we&apos;ll fill in polished copy and a
-                  branded illustration. Edit anything before you send.
+                  Pick a monthly message and we&apos;ll fill in polished, on-brand
+                  copy. Edit anything before you send.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                   {NEWSLETTER_TEMPLATES.map(tpl => {
                     const active = appliedTemplate === tpl.id
+                    const TplIcon = tpl.icon
                     return (
                       <button
                         key={tpl.id}
                         type="button"
                         onClick={() => applyTemplate(tpl)}
                         className={cn(
-                          'group relative text-left rounded-xl border overflow-hidden transition-colors',
+                          'group relative text-left rounded-xl border p-3 transition-colors',
                           active
-                            ? 'border-[#7B2D8E] ring-1 ring-[#7B2D8E]'
+                            ? 'border-[#7B2D8E] ring-1 ring-[#7B2D8E] bg-[#7B2D8E]/5'
                             : 'border-gray-200 hover:border-[#7B2D8E]/50',
                         )}
                       >
-                        <div className="relative aspect-[12/5] bg-gray-50 overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={tpl.thumb || '/placeholder.svg'}
-                            alt=""
-                            aria-hidden="true"
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={cn(
+                              'inline-flex items-center justify-center w-8 h-8 rounded-lg',
+                              active
+                                ? 'bg-[#7B2D8E] text-white'
+                                : 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
+                            )}
+                          >
+                            <TplIcon className="w-4 h-4" />
+                          </span>
                           {active && (
-                            <span className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#7B2D8E] text-white">
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#7B2D8E] text-white">
                               <Check className="w-3 h-3" />
                             </span>
                           )}
                         </div>
-                        <div className="px-2.5 py-2">
+                        <div>
                           <p className="text-[12px] font-semibold text-gray-900 leading-tight">
                             {tpl.name}
                           </p>
@@ -1093,7 +1118,7 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
                   className="w-full px-3 py-2 rounded-xl border border-gray-200 text-[13.5px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
                 />
               </FormField>
-              <FormField label="Headline" hint="<h2> at the top of the body · optional">
+              <FormField label="Headline" hint="Large heading shown at the top of the email · optional">
                 <input
                   type="text"
                   maxLength={200}
@@ -1109,15 +1134,13 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
             <FormField
               label="Body"
               required
-              hint="HTML allowed · <p>, <ul>, <li>, <strong>, <em>, <a href> are recommended"
+              hint="Write your message and style it with the toolbar — bold, headings, lists and links."
             >
-              <textarea
-                rows={10}
+              <RichTextEditor
                 value={form.bodyHtml}
-                disabled={isReadOnly || undefined}
-                onChange={e => update('bodyHtml', e.target.value)}
-                placeholder={`<p>Hi friends,</p>\n<p>This month we're …</p>`}
-                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
+                disabled={Boolean(isReadOnly)}
+                onChange={html => update('bodyHtml', html)}
+                placeholder="Hi friends, this month we're…"
               />
             </FormField>
 
