@@ -1,8 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 import {
   ClipboardList,
   Search,
@@ -139,6 +140,17 @@ export default function AdminFeedbackPage() {
 
   const total = data?.pagination?.total ?? 0
   const stats = data?.stats
+
+  // Clear the sidebar Feedback badge as soon as the admin lands on this
+  // inbox — Google / Vercel-style "seen" baseline. The sidebar reads the
+  // `feedback` baseline against `stats.feedback.new`, so we snapshot the
+  // same untriaged ('new') count here. The badge only re-appears when a
+  // genuinely new submission arrives after this visit. Recomputed whenever
+  // the underlying counts change so the baseline tracks the latest state.
+  const newCount = data?.statusCounts?.new ?? 0
+  useEffect(() => {
+    markSurfaceSeen('feedback', newCount)
+  }, [newCount])
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">

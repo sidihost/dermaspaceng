@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -166,6 +167,31 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
+
+  // Clear the sidebar "new users today" badge as soon as the admin opens
+  // the clients list. The users list API doesn't return the daily-new
+  // count, so we read it once from the admin stats endpoint (shared,
+  // 60s-cached — deduped with the sidebar's own poll) and stamp the
+  // `users` baseline with it. The baseline is date-stamped server-side
+  // logic in the sidebar, so it resets cleanly at midnight and only
+  // re-surfaces the badge when someone new signs up after this visit.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/stats', { cache: 'no-store' })
+        if (!res.ok) return
+        const body = await res.json()
+        const todayNew = Number(body?.stats?.users?.todayNew) || 0
+        if (!cancelled) markSurfaceSeen('users', todayNew)
+      } catch {
+        /* non-critical — badge simply clears on next poll */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Keep role badges on-brand: admin uses filled purple, staff uses a soft
   // brand tint, user stays neutral. This avoids the off-brand blues/purples
