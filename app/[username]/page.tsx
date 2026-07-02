@@ -33,6 +33,7 @@ import { useNotify } from '@/components/shared/notify'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { CoverPicker } from '@/components/profile/cover-picker'
 import { ShareSheet } from '@/components/profile/share-sheet'
+import { FollowListSheet } from '@/components/profile/follow-list-sheet'
 import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
 import { aliasFor, isReservedUsername } from '@/lib/reserved-usernames'
@@ -189,6 +190,11 @@ export default function PublicProfilePage() {
   // first tap — users liked being able to see a preview of what
   // they were about to send before committing.
   const [showShareSheet, setShowShareSheet] = useState(false)
+  // Followers / following list sheet. `null` = closed; otherwise it holds
+  // which tab to open on.
+  const [followListTab, setFollowListTab] = useState<
+    'followers' | 'following' | null
+  >(null)
 
   // Follow state lives in SWR so the counts stay in sync across any
   // other follow buttons that mount on the same username later. We
@@ -863,12 +869,14 @@ export default function PublicProfilePage() {
                             </p>
                           )}
                           {/* Counts row — follows / followers sit right
-                              under the handle, tappable on the follower
-                              count only (followers list is a nice-to-
-                              have for later; the count alone is enough
-                              social proof for v1). */}
+                              under the handle. Both are tappable and open
+                              the connections sheet on the matching tab. */}
                           <div className="flex items-center gap-4 mt-2 text-sm">
-                            <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setFollowListTab('followers')}
+                              className="flex items-center gap-1 rounded-md -mx-1 px-1 py-0.5 hover:bg-gray-50 transition-colors"
+                            >
                               <span className="font-semibold text-gray-900">
                                 {follow.followerCount}
                               </span>
@@ -877,13 +885,17 @@ export default function PublicProfilePage() {
                                   ? 'follower'
                                   : 'followers'}
                               </span>
-                            </div>
-                            <div className="flex items-center gap-1">
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFollowListTab('following')}
+                              className="flex items-center gap-1 rounded-md -mx-1 px-1 py-0.5 hover:bg-gray-50 transition-colors"
+                            >
                               <span className="font-semibold text-gray-900">
                                 {follow.followingCount}
                               </span>
                               <span className="text-gray-500">following</span>
-                            </div>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -1305,6 +1317,18 @@ export default function PublicProfilePage() {
             avatarUrl: profile.avatarUrl,
             bio: profile.bio,
           }}
+        />
+
+        {/* Followers / following list. Signed-in visitors get inline
+            Follow buttons; owners and guests can still browse the lists. */}
+        <FollowListSheet
+          open={followListTab !== null}
+          onClose={() => setFollowListTab(null)}
+          username={profile.username || profile.id}
+          initialTab={followListTab ?? 'followers'}
+          followerCount={follow.followerCount}
+          followingCount={follow.followingCount}
+          canFollow={Boolean(viewer.loaded && viewer.id)}
         />
       </main>
       <Footer />

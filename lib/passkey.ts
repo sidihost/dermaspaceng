@@ -157,6 +157,30 @@ export async function verifyPasskeyRegistration(
     // Clean up the challenge
     await sql`DELETE FROM passkey_challenges WHERE user_id = ${userId}`
 
+    // Fire off a security confirmation email — best-effort and never
+    // allowed to block or fail the registration. Big platforms confirm
+    // every new sign-in method, so the member gets a clear "was this
+    // you?" trail the moment a passkey is added.
+    try {
+      const users = await sql`
+        SELECT email, first_name FROM users WHERE id = ${userId} LIMIT 1
+      `
+      const account = users[0]
+      if (account?.email) {
+        const { sendPasskeyAddedEmail } = await import('@/lib/email')
+        void sendPasskeyAddedEmail({
+          email: account.email,
+          firstName: account.first_name || 'there',
+          passkeyName: deviceName,
+          createdAt: new Date(),
+        }).catch((err) => {
+          console.error('[Passkey] confirmation email failed:', err)
+        })
+      }
+    } catch (emailErr) {
+      console.error('[Passkey] could not queue confirmation email:', emailErr)
+    }
+
     return { success: true }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to register passkey'
