@@ -405,14 +405,18 @@ function ComposerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
+      // z-[70] sits above the fixed mobile bottom nav (z-50). At the
+      // previous z-50 the nav painted over the sheet's action row on
+      // phones, hiding "Post idea". The extra bottom padding keeps the
+      // buttons clear of the home-indicator / nav safe area.
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Share a feature idea"
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl border border-gray-100 max-h-[92vh] overflow-y-auto"
+        className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl border border-gray-100 max-h-[92vh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white">

@@ -67,7 +67,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const EXPERIENCE_META = {
-  positive: { Icon: ThumbsUp, label: 'Positive', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  positive: { Icon: ThumbsUp, label: 'Positive', cls: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20' },
   neutral: { Icon: Meh, label: 'Neutral', cls: 'bg-gray-50 text-gray-700 border-gray-200' },
   negative: { Icon: ThumbsDown, label: 'Negative', cls: 'bg-red-50 text-red-700 border-red-200' },
 } as const
@@ -213,52 +213,53 @@ export default function FeedbackDetailPage() {
           stays reachable without scrolling past the message. */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         <div className="lg:col-span-2 space-y-4">
-      {/* Identity + rating card */}
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center text-lg font-bold flex-shrink-0 overflow-hidden">
-            {feedback.account_avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={feedback.account_avatar_url}
-                alt=""
-                aria-hidden="true"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              (displayName.charAt(0) || 'A').toUpperCase()
-            )}
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight text-balance">
-              {displayName}
-            </h1>
-            <div className="mt-1.5 flex flex-wrap items-center gap-2">
-              {feedback.user_id ? (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600">
-                  <UserCheck className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                  Signed-in client
-                </span>
+      {/* Identity + rating card — branded purple hero for a fuller,
+          more premium detail view that matches the consultation page. */}
+      <section className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
+        <div className="bg-[#7B2D8E] px-5 sm:px-7 py-5 sm:py-6 text-white">
+          <div className="flex items-start gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/12 ring-1 ring-white/25 text-white flex items-center justify-center text-lg sm:text-xl font-semibold flex-shrink-0 overflow-hidden">
+              {feedback.account_avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={feedback.account_avatar_url}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500">
-                  <UserX className="w-3.5 h-3.5 text-gray-400" />
-                  Anonymous
-                </span>
+                (displayName.charAt(0) || 'A').toUpperCase()
               )}
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${exp.cls}`}
-              >
-                <exp.Icon className="w-3 h-3" />
-                {exp.label}
-              </span>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-semibold text-white leading-tight text-balance break-words">
+                {displayName}
+              </h1>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {feedback.user_id ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/80">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    Signed-in client
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-white/70">
+                    <UserX className="w-3.5 h-3.5" />
+                    Anonymous
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-white/15 text-white ring-1 ring-white/25">
+                  <exp.Icon className="w-3 h-3" />
+                  {exp.label}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Rating block */}
-        <div className="mt-5 rounded-xl border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-2.5">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
               Rating
             </span>
@@ -273,15 +274,19 @@ export default function FeedbackDetailPage() {
       </section>
 
       {/* Message card */}
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-2">Message</h2>
-        <p className="text-[15px] leading-relaxed text-gray-800 whitespace-pre-wrap">
-          {feedback.message}
-        </p>
+      <section className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-3">
+          Message
+        </h2>
+        <blockquote className="relative pl-4 border-l-2 border-[#7B2D8E]/40">
+          <p className="text-[15px] leading-relaxed text-gray-800 whitespace-pre-wrap">
+            {feedback.message}
+          </p>
+        </blockquote>
       </section>
 
       {/* Meta card */}
-      <section className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+      <section className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="divide-y divide-gray-100">
           <MetaRow icon={<Tag className="w-4 h-4 text-gray-400" />} label="Category" value={categoryLabel} />
           <MetaRow
@@ -313,8 +318,10 @@ export default function FeedbackDetailPage() {
         {/* Right rail — status workflow */}
         <div className="lg:col-span-1 lg:sticky lg:top-6">
       {/* Status workflow card */}
-      <section className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Status</h2>
+      <section className="bg-white rounded-2xl border border-gray-200/80 p-5 sm:p-6">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-3">
+          Status
+        </h2>
         <div className="space-y-2">
           {STATUS_FLOW.map((s) => {
             const active = feedback.status === s.value
