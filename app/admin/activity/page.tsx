@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
+import { ChevronRight as ChevronRightIcon } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -583,10 +585,11 @@ function LoginsPanel() {
                 const device = deviceFromUA(l.userAgent)
                 const newDevice = (l.eventData as any)?.newDevice
                 return (
-                  <li
-                    key={l.id}
+                  <li key={l.id}>
+                   <Link
+                    href={`/admin/activity/${l.id}`}
                     className="flex items-start gap-4 p-4 transition-colors hover:bg-muted/30"
-                  >
+                   >
                     <div
                       className={cn(
                         "flex h-10 w-10 items-center justify-center rounded-full border flex-shrink-0",
@@ -645,11 +648,13 @@ function LoginsPanel() {
                       )}
                     </div>
 
-                    <div className="shrink-0 text-right">
+                    <div className="shrink-0 text-right flex items-center gap-1.5">
                       <span className="text-sm text-muted-foreground whitespace-nowrap">
                         {formatRelative(l.createdAt)}
                       </span>
+                      <ChevronRightIcon className="h-4 w-4 text-muted-foreground/40" />
                     </div>
+                   </Link>
                   </li>
                 )
               })}
