@@ -409,10 +409,6 @@ export default function ComplaintDetailPage() {
               mirroring the consultation detail hero. */}
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
             <div className="relative bg-[#7B2D8E] px-5 sm:px-7 py-5 text-white">
-              <div
-                aria-hidden="true"
-                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
-              />
               <div className="flex items-start gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0 overflow-hidden">
                   {complaint.customer_avatar_url ? (

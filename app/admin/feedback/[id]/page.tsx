@@ -197,7 +197,7 @@ export default function FeedbackDetailPage() {
   const reviewed = feedback.reviewed_at ? new Date(feedback.reviewed_at) : null
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-4 pb-12">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-4 pb-12">
       {/* Breadcrumb */}
       <Link
         href="/admin/feedback"
@@ -207,6 +207,12 @@ export default function FeedbackDetailPage() {
         Back to feedback
       </Link>
 
+      {/* Two-column layout on desktop: the roomy left column holds the
+          identity, message and metadata so long copy has space to
+          breathe; the right rail carries the status workflow so it
+          stays reachable without scrolling past the message. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="lg:col-span-2 space-y-4">
       {/* Identity + rating card */}
       <section className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
         <div className="flex items-start gap-4">
@@ -302,7 +308,10 @@ export default function FeedbackDetailPage() {
           )}
         </div>
       </section>
+        </div>
 
+        {/* Right rail — status workflow */}
+        <div className="lg:col-span-1 lg:sticky lg:top-6">
       {/* Status workflow card */}
       <section className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Status</h2>
@@ -357,6 +366,8 @@ export default function FeedbackDetailPage() {
           </a>
         )}
       </section>
+        </div>
+      </div>
     </div>
   )
 }
@@ -371,10 +382,10 @@ function MetaRow({
   value: string
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 sm:px-5 py-3">
-      {icon}
-      <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
-      <span className="text-sm text-gray-800 truncate">{value}</span>
+    <div className="flex items-start gap-3 px-4 sm:px-5 py-3.5">
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span className="text-xs text-gray-500 w-24 shrink-0 mt-0.5">{label}</span>
+      <span className="text-sm text-gray-800 min-w-0 flex-1 break-words">{value}</span>
     </div>
   )
 }

@@ -531,10 +531,6 @@ export default function ConsultationDetailPage() {
               shows the avatar, name, request id, and submitted-at. */}
           <Card className="overflow-hidden border-gray-200/80">
             <div className="relative bg-[#7B2D8E] px-5 sm:px-7 py-5 text-white">
-              <div
-                aria-hidden="true"
-                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
-              />
               <div className="flex items-start gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0 overflow-hidden">
                   {consultation.customer_avatar_url ? (
@@ -833,7 +829,7 @@ export default function ConsultationDetailPage() {
                         disabled={updating || active}
                         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-sm transition-colors disabled:cursor-not-allowed ${
                           active
-                            ? 'bg-[#7B2D8E] text-white shadow-sm'
+                            ? 'bg-[#7B2D8E] text-white'
                             : 'border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.03] text-gray-700'
                         }`}
                       >
