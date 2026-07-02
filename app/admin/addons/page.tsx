@@ -650,7 +650,7 @@ function BuildYourOwnCard() {
           Open request
         </span>
         <Link
-          href="/admin/feedback"
+          href="/admin/feature-requests"
           className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors"
         >
           Submit idea

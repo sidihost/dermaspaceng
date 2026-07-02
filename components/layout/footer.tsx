@@ -166,6 +166,7 @@ export default function Footer() {
                   ? [{ name: 'Book Appointment', href: '/booking' }]
                   : []),
                 { name: 'Give Feedback', href: '/feedback' },
+                { name: 'Feature Requests', href: '/feature-requests' },
               ].map((item) => (
                 <li key={item.name}>
                   <Link href={item.href} className="text-sm text-white/60 hover:text-white transition-colors">
