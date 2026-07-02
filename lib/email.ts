@@ -792,6 +792,70 @@ export async function sendNewDeviceAlert(data: {
   })
 }
 
+// Passkey added confirmation — a security notification sent the moment a
+// new passkey is registered, mirroring how big platforms confirm every
+// new sign-in method. Gives the member a clear "was this you?" trail so
+// an unexpected passkey can be spotted and removed immediately.
+export async function sendPasskeyAddedEmail(data: {
+  email: string
+  firstName: string
+  passkeyName: string
+  createdAt?: Date
+}): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com'
+  const securityUrl = `${appUrl}/dashboard/settings?section=security`
+  const when = (data.createdAt || new Date()).toLocaleString('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Passkey Added</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${escapeHtml(data.firstName)},<br><br>
+      A new passkey was just added to your Dermaspace account. You can now use it to sign in quickly and securely with your device.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #faf5fc; border-radius: 12px; border: 1px solid #e9d5f0;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: ${BRAND_COLOR};">Passkey Details</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666; width: 100px;">Name:</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #1a1a1a;">${escapeHtml(data.passkeyName)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Added:</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #1a1a1a;">${when}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="border-radius: 10px; background-color: ${BRAND_COLOR};">
+          <a href="${securityUrl}" target="_blank" rel="noopener" style="display: inline-block; padding: 12px 22px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 10px; background-color: ${BRAND_COLOR};">
+            Review security settings
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      If you added this passkey, no action is needed. If you don&apos;t recognise it, please remove it from your security settings and change your password right away.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: 'New passkey added to your account - Dermaspace',
+    html: getEmailTemplate(content),
+  })
+}
+
 // Booking confirmation
 export async function sendBookingConfirmation(data: {
   email: string

@@ -354,24 +354,42 @@ export async function getRecommendedPosts(
     return rows
   }
 
-  // Score = number of terms that appear anywhere in the searchable text
-  // (title + excerpt + category name + tags joined). Only return posts
-  // with at least one match, best match first, newest as the tie-break.
-  const haystackPattern = terms // postgres array of '%term%' patterns
-    .map((t) => `%${t}%`)
+  // --- Weighted relevance scoring -----------------------------------
+  //
+  // The old engine treated every field equally and every match as a flat
+  // +1. That surfaced posts that merely *mentioned* a concern in passing
+  // above posts genuinely *about* it, and it ignored freshness and
+  // popularity entirely. The new model scores each field independently
+  // with sensible weights, then layers on recency + popularity + featured
+  // boosts so the rail feels editorial rather than mechanical:
+  //
+  //   relevance   title ×4, tags ×3, category ×3, excerpt ×1
+  //               (a term matching the *title* is a far stronger signal
+  //                than the same term buried in the body excerpt)
+  //   featured    +2 flat, so hand-picked posts get a nudge
+  //   recency     up to +2, decaying linearly over 120 days
+  //   popularity  ln(1 + view_count) × 0.4, so proven posts rise but a
+  //               single viral piece can't dominate every rail
+  //
+  // We still require at least one keyword hit (keyword_score > 0) so the
+  // list stays on-topic, then backfill below if that leaves gaps.
+  const haystackPattern = terms.map((t) => `%${t}%`) // '%term%' patterns
+
   const rows = (await sql`
     WITH scored AS (
       SELECT
         p.*,
         c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent,
         u.avatar_url AS author_avatar_url, u.username AS author_username,
-        (
-          SELECT COUNT(*) FROM unnest(${haystackPattern}::text[]) AS pat
-          WHERE lower(
-            COALESCE(p.title,'') || ' ' || COALESCE(p.excerpt,'') || ' ' ||
-            COALESCE(c.name,'') || ' ' || COALESCE(array_to_string(p.tags, ' '),'')
-          ) LIKE pat
-        ) AS match_score
+        -- Per-field keyword hit counts.
+        (SELECT COUNT(*) FROM unnest(${haystackPattern}::text[]) AS pat
+           WHERE lower(COALESCE(p.title,'')) LIKE pat) AS title_hits,
+        (SELECT COUNT(*) FROM unnest(${haystackPattern}::text[]) AS pat
+           WHERE lower(COALESCE(array_to_string(p.tags,' '),'')) LIKE pat) AS tag_hits,
+        (SELECT COUNT(*) FROM unnest(${haystackPattern}::text[]) AS pat
+           WHERE lower(COALESCE(c.name,'')) LIKE pat) AS cat_hits,
+        (SELECT COUNT(*) FROM unnest(${haystackPattern}::text[]) AS pat
+           WHERE lower(COALESCE(p.excerpt,'')) LIKE pat) AS excerpt_hits
       FROM blog_posts p
       LEFT JOIN blog_categories c ON c.id = p.category_id
       LEFT JOIN users u           ON u.id = p.author_id
@@ -379,11 +397,43 @@ export async function getRecommendedPosts(
         AND p.published_at <= NOW()
         AND (${excludeSlugs.length === 0} OR NOT (p.slug = ANY(${excludeSlugs})))
     )
-    SELECT * FROM scored
-    WHERE match_score > 0
-    ORDER BY match_score DESC, published_at DESC NULLS LAST
+    SELECT *,
+      (title_hits * 4 + tag_hits * 3 + cat_hits * 3 + excerpt_hits * 1) AS keyword_score,
+      (
+        (title_hits * 4 + tag_hits * 3 + cat_hits * 3 + excerpt_hits * 1)
+        + (CASE WHEN featured THEN 2 ELSE 0 END)
+        + GREATEST(0, 2 - (EXTRACT(EPOCH FROM (NOW() - published_at)) / 86400.0) / 60.0)
+        + LN(1 + GREATEST(COALESCE(view_count, 0), 0)) * 0.4
+      ) AS rank_score
+    FROM scored
+    WHERE (title_hits + tag_hits + cat_hits + excerpt_hits) > 0
+    ORDER BY rank_score DESC, published_at DESC NULLS LAST
     LIMIT ${limit}
-  `) as (BlogPost & { match_score: number })[]
+  `) as (BlogPost & { keyword_score: number; rank_score: number })[]
+
+  // Backfill — if the personalized matches don't fill the rail, top it up
+  // with the freshest posts (excluding anything already chosen or passed
+  // in excludeSlugs) so the "Recommended" section is never half-empty.
+  if (rows.length < limit) {
+    const already = Array.from(
+      new Set([...excludeSlugs, ...rows.map((r) => r.slug)]),
+    )
+    const backfill = (await sql`
+      SELECT
+        p.*, c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent,
+        u.avatar_url AS author_avatar_url, u.username AS author_username
+      FROM blog_posts p
+      LEFT JOIN blog_categories c ON c.id = p.category_id
+      LEFT JOIN users u           ON u.id = p.author_id
+      WHERE p.status = 'published'
+        AND p.published_at <= NOW()
+        AND (${already.length === 0} OR NOT (p.slug = ANY(${already})))
+      ORDER BY p.featured DESC, p.published_at DESC NULLS LAST
+      LIMIT ${limit - rows.length}
+    `) as BlogPost[]
+    return [...rows, ...backfill]
+  }
+
   return rows
 }
 
