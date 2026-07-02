@@ -17,7 +17,7 @@ import { MembershipCard, type MembershipBlock } from '@/components/dashboard/mem
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
-  Package, Flower2, Trash2, Receipt, Crown
+  Package, Flower2, Trash2, Receipt, Crown, Lightbulb
 } from 'lucide-react'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -724,6 +724,7 @@ export default function DashboardPage() {
                     { id: 'favorites', label: 'Saved', icon: Heart, href: '/dashboard/saved' },
                     { id: 'preferences', label: 'Preferences', icon: Sliders },
                     { id: 'support', label: 'Support', icon: Ticket, href: '/dashboard/support' },
+                    { id: 'ideas', label: 'Feature Requests', icon: Lightbulb, href: '/feature-requests' },
                     { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
                   ].map(item => (
                     item.href ? (
@@ -907,6 +908,32 @@ export default function DashboardPage() {
                       </Link>
                     </div>
                   </div>
+
+                  {/* Feature Requests promo — gives signed-in clients a
+                      clear, on-brand entry point to the product roadmap
+                      board (previously only linkable from the footer).
+                      Flat white card, hairline border, brand purple — no
+                      gradient or shadow, per house style. */}
+                  <Link
+                    href="/feature-requests"
+                    className="group flex items-center gap-3 bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5 hover:border-[#7B2D8E]/30 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                      <Lightbulb className="w-5 h-5 text-[#7B2D8E]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13.5px] font-semibold text-gray-900 leading-tight">
+                        Have an idea for Dermaspace?
+                      </p>
+                      <p className="text-[11.5px] text-gray-500 leading-snug mt-0.5">
+                        Share it, upvote others, and follow it to launch.
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] flex-shrink-0">
+                      Open board
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </Link>
 
                   {/* Activity Feed - Requests, Notifications, Progress */}
                   <ActivityFeed />

@@ -30,6 +30,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   BookOpen,
+  Lightbulb,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useScrollLock } from '@/hooks/use-scroll-lock'
@@ -784,6 +785,7 @@ export default function MobileNav() {
                   { icon: User, label: 'Dashboard', href: '/dashboard' },
                   { icon: Clock, label: 'My Bookings', href: '/dashboard?tab=appointments' },
                   { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+                  { icon: Lightbulb, label: 'Feature Requests', href: '/feature-requests' },
                   { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
                 ].map(({ icon: Icon, label, href }) => (
                   <Link
