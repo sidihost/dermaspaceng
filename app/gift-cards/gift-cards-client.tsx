@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, CreditCard, ChevronLeft, Wallet } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
 
@@ -570,14 +570,6 @@ export default function GiftCardsClient() {
                     </>
                   )}
                 </button>
-
-                <p className="text-center text-white/80 text-xs flex items-center justify-center gap-1.5">
-                  <Wallet className="w-3 h-3" aria-hidden />
-                  Pay with your Dermaspace wallet
-                  <span className="text-white/40" aria-hidden>·</span>
-                  <CreditCard className="w-3 h-3" aria-hidden />
-                  Card via Paystack
-                </p>
               </div>
             </div>
           </div>

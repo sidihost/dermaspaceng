@@ -28,6 +28,7 @@ import {
   Boxes,
   Layers,
   Mail,
+  Lightbulb,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -121,6 +122,10 @@ const adminNavItems: NavItem[] = [
   // staff-side queue. Keeping the row out of the rail prevents the
   // admin from landing on a half-deprecated control panel.
   { href: '/admin/feedback', icon: ClipboardList, label: 'Feedback', badge: null, group: 'main' },
+  // Feature Requests — the ideas clients submit on the public board at
+  // /feature-requests. Lives in the "main" group alongside Feedback
+  // since both are inbound voice-of-customer queues.
+  { href: '/admin/feature-requests', icon: Lightbulb, label: 'Feature Requests', badge: 'NEW', group: 'main' },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null, group: 'main' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null, group: 'main' },
   { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null, group: 'main' },

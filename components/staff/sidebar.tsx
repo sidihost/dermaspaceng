@@ -21,6 +21,7 @@ import {
   BadgePercent,
   BarChart3,
   Headset,
+  Lightbulb,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -86,6 +87,9 @@ const navItems = [
   { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
   { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
   { title: "Consultations",      href: "/staff/consultations",icon: Calendar },
+  // Feature Requests: the client-submitted ideas board. Staff can triage
+  // and respond to them just like admins.
+  { title: "Feature Requests",   href: "/staff/feature-requests", icon: Lightbulb },
   // Live Chat: real-time conversation inbox between staff and
   // signed-in customers. The page exists at /staff/live-chat and
   // pulls from the same WebSocket-style polling endpoints the
