@@ -1296,9 +1296,12 @@ function CampaignPreview({
       {/* Brand strip */}
       <div className="h-1 bg-[#7B2D8E]" />
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white font-bold text-[11px]">
-          D
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/images/dermaspace-logo.png"
+          alt="Dermaspace"
+          className="w-7 h-7 object-contain flex-shrink-0"
+        />
         <p className="text-[13px] font-semibold text-[#7B2D8E]">Dermaspace</p>
         <p className="ml-auto text-[10px] uppercase tracking-widest text-gray-500">
           Esthetic &amp; Wellness
@@ -1383,7 +1386,7 @@ function StatTile({
 function StatusPill({ status }: { status: Subscriber['status'] }) {
   const styles =
     status === 'active'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
       : status === 'unsubscribed'
         ? 'bg-gray-100 text-gray-600 border-gray-200'
         : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -1403,7 +1406,7 @@ function CampaignStatusPill({ status }: { status: CampaignSummary['status'] }) {
   const map = {
     draft: 'bg-gray-100 text-gray-700 border-gray-200',
     sending: 'bg-amber-50 text-amber-700 border-amber-200',
-    sent: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    sent: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
     failed: 'bg-red-50 text-red-700 border-red-200',
   } as const
   return (

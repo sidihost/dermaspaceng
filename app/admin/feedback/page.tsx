@@ -86,7 +86,7 @@ const fetcher = (url: string) =>
 
 function ExperiencePill({ value }: { value: FeedbackRow['experience'] }) {
   const map = {
-    positive: { Icon: ThumbsUp, cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    positive: { Icon: ThumbsUp, cls: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20' },
     neutral: { Icon: Meh, cls: 'bg-gray-50 text-gray-700 border-gray-200' },
     negative: { Icon: ThumbsDown, cls: 'bg-red-50 text-red-700 border-red-200' },
   } as const
@@ -105,7 +105,7 @@ function StatusPill({ value }: { value: FeedbackRow['status'] }) {
   const map = {
     new: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
     in_review: 'bg-amber-50 text-amber-700',
-    actioned: 'bg-emerald-50 text-emerald-700',
+    actioned: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
     closed: 'bg-gray-100 text-gray-600',
   } as const
   return (
@@ -191,7 +191,7 @@ export default function AdminFeedbackPage() {
               Sentiment
             </p>
             <p className="text-xs font-semibold text-gray-700 mt-1 flex items-center gap-2">
-              <span className="text-emerald-600">{stats?.positive ?? 0}</span>
+              <span className="text-[#7B2D8E]">{stats?.positive ?? 0}</span>
               <span className="text-gray-400">·</span>
               <span className="text-gray-600">{stats?.neutral ?? 0}</span>
               <span className="text-gray-400">·</span>
@@ -351,7 +351,7 @@ export default function AdminFeedbackPage() {
                           {row.message}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-700">
+                      <div className="flex items-center gap-1 flex-shrink-0 self-start rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-700">
                         <Star className="w-3.5 h-3.5 text-primary fill-primary" />
                         <span className="font-semibold">{row.rating}</span>
                         <span className="text-gray-400">/10</span>
