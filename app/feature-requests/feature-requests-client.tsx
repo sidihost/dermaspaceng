@@ -29,6 +29,7 @@ import {
   Check,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useNotify } from '@/components/shared/notify'
 
 type FeatureRequest = {
   id: string
@@ -98,6 +99,7 @@ export default function FeatureRequestsClient() {
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
+  const notify = useNotify()
 
   const key = `/api/feature-requests?sort=${sort}&status=${status}`
   const { data, isLoading, mutate } = useSWR<BoardResponse>(key, fetcher, {
@@ -138,6 +140,9 @@ export default function FeatureRequestsClient() {
             : r,
         ),
       }
+      // `has_voted` reflects the state *before* this toggle, so the
+      // resulting action is the opposite.
+      const wasVoted = req.has_voted
       mutate(optimistic, false)
       try {
         const res = await fetch(`/api/feature-requests/${req.id}/vote`, {
@@ -145,11 +150,17 @@ export default function FeatureRequestsClient() {
         })
         if (!res.ok) throw new Error('vote failed')
         mutate()
+        if (wasVoted) {
+          notify.success('Vote removed', `“${req.title}” is no longer in your votes.`)
+        } else {
+          notify.success('Vote counted', `You’re now backing “${req.title}”.`)
+        }
       } catch {
         mutate() // roll back to server truth
+        notify.error('Could not save your vote', 'Please try again in a moment.')
       }
     },
-    [data, isSignedIn, mutate],
+    [data, isSignedIn, mutate, notify],
   )
 
   return (
@@ -453,6 +464,7 @@ function ComposerModal({
   const [category, setCategory] = useState('general')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const notify = useNotify()
 
   const submit = async () => {
     setError(null)
@@ -466,12 +478,15 @@ function ComposerModal({
       const json = await res.json()
       if (!res.ok) {
         setError(json.error || 'Something went wrong.')
+        notify.error('Could not post your idea', json.error || 'Please try again.')
         setSubmitting(false)
         return
       }
+      notify.success('Idea shared', 'Thanks! Your idea is now live on the roadmap.')
       onCreated()
     } catch {
       setError('Network error. Please try again.')
+      notify.error('Network error', 'Please check your connection and try again.')
       setSubmitting(false)
     }
   }

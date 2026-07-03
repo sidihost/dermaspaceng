@@ -51,6 +51,25 @@ export interface TransactionDetail {
   created_at: string
   updated_at?: string
   formattedAmount?: string
+  /** Present when this payment funded an appointment (matched by
+   *  the shared DS_ payment reference). Lets receipt surfaces show
+   *  the real service, date, and time. */
+  booking?: TransactionBooking | null
+}
+
+export interface TransactionBooking {
+  id: string
+  booking_reference: string
+  location_name: string
+  location_address?: string | null
+  /** 'YYYY-MM-DD' */
+  appointment_date: string
+  /** 'HH:MM' 24-hour */
+  appointment_time: string
+  /** minutes */
+  total_duration: number
+  status: string
+  services?: { treatment_name: string; duration: number }[]
 }
 
 interface TransactionDetailSheetProps {

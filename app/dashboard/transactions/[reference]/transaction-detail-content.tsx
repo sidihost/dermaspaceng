@@ -35,6 +35,7 @@ import {
   Gift,
   Landmark,
   LifeBuoy,
+  MapPin,
   RefreshCw,
   RotateCcw,
   Share2,
@@ -86,6 +87,45 @@ function formatDateTime(dateString: string) {
   })
 }
 
+// Booking dates arrive as plain 'YYYY-MM-DD' (no timezone). Parse the
+// parts manually so the displayed day never shifts across timezones.
+function formatAppointmentDate(dateString: string) {
+  const [y, m, d] = dateString.slice(0, 10).split('-').map(Number)
+  if (!y || !m || !d) return dateString
+  return new Date(y, m - 1, d).toLocaleDateString('en-NG', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+// '14:30' -> '2:30 PM'
+function formatAppointmentTime(time: string) {
+  const [h, min] = time.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(min)) return time
+  const period = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 === 0 ? 12 : h % 12
+  return `${hour12}:${String(min).padStart(2, '0')} ${period}`
+}
+
+function formatDuration(minutes: number) {
+  if (!minutes || minutes <= 0) return null
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m} min`
+  if (m === 0) return `${h} hr${h > 1 ? 's' : ''}`
+  return `${h} hr${h > 1 ? 's' : ''} ${m} min`
+}
+
+const BOOKING_STATUS_META: Record<string, { label: string; chip: string }> = {
+  pending: { label: 'Pending', chip: 'bg-amber-50 text-amber-700' },
+  confirmed: { label: 'Confirmed', chip: 'bg-[#F3E8F7] text-[#7B2D8E]' },
+  completed: { label: 'Completed', chip: 'bg-[#F3E8F7] text-[#7B2D8E]' },
+  cancelled: { label: 'Cancelled', chip: 'bg-gray-100 text-gray-600' },
+  no_show: { label: 'No show', chip: 'bg-gray-100 text-gray-600' },
+}
+
 const STATUS_META: Record<
   TransactionDetail['status'],
   { label: string; chip: string; Icon: typeof Check; note?: string }
@@ -128,6 +168,7 @@ function methodLabel(method: TransactionDetail['payment_method']) {
 }
 
 function categoryLabel(tx: TransactionDetail) {
+  if (tx.booking) return 'Booking'
   const desc = (tx.description ?? '').toLowerCase()
   if (desc.includes('wallet funding')) return 'Deposit'
   if (desc.includes('gift card')) return 'Gift Card'
@@ -152,6 +193,7 @@ function MethodIcon({
 }
 
 function TypeIcon({ tx }: { tx: TransactionDetail }) {
+  if (tx.booking) return <Calendar className="h-6 w-6" />
   const desc = (tx.description ?? '').toLowerCase()
   if (desc.includes('wallet funding')) return <Wallet className="h-6 w-6" />
   if (desc.includes('gift card')) return <Gift className="h-6 w-6" />
@@ -370,7 +412,7 @@ export default function TransactionDetailContent({
           <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10">
             <div
               className={cn(
-                'flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#F6F4F8] shadow-sm',
+                'flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#F6F4F8]',
                 isIncoming
                   ? 'bg-[#7B2D8E] text-white'
                   : 'bg-white text-[#7B2D8E]',
@@ -380,7 +422,7 @@ export default function TransactionDetailContent({
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white px-5 pt-11 pb-6 text-center shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+          <div className="rounded-2xl bg-white px-5 pt-11 pb-6 text-center border border-gray-100">
             <h1 className="text-[15px] font-semibold text-gray-900 text-balance leading-snug">
               {title}
             </h1>
@@ -419,7 +461,7 @@ export default function TransactionDetailContent({
         </div>
 
         {status.note && (
-          <p className="mt-3 rounded-xl bg-white px-4 py-3 text-xs text-gray-500 leading-relaxed text-pretty shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+          <p className="mt-3 rounded-xl bg-white px-4 py-3 text-xs text-gray-500 leading-relaxed text-pretty border border-gray-100">
             {status.note}
           </p>
         )}
@@ -430,7 +472,7 @@ export default function TransactionDetailContent({
         )}
 
         {/* ---- Transaction Details card ---- */}
-        <div className="mt-3 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+        <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
           <h2 className="text-[15px] font-bold text-gray-900">
             Transaction Details
           </h2>
@@ -513,8 +555,99 @@ export default function TransactionDetailContent({
           </div>
         </div>
 
+        {/* ---- Appointment card (only when this payment funded a booking) ---- */}
+        {tx.booking && (
+          <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[15px] font-bold text-gray-900">Appointment</h2>
+              {(() => {
+                const meta =
+                  BOOKING_STATUS_META[tx.booking.status] ??
+                  BOOKING_STATUS_META.pending
+                return (
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+                      meta.chip,
+                    )}
+                  >
+                    {meta.label}
+                  </span>
+                )
+              })()}
+            </div>
+
+            <div className="mt-1 divide-y divide-gray-50">
+              {tx.booking.services && tx.booking.services.length > 0 && (
+                <DetailRow
+                  label={tx.booking.services.length > 1 ? 'Services' : 'Service'}
+                >
+                  <span className="font-medium leading-relaxed">
+                    {tx.booking.services.map((s) => s.treatment_name).join(', ')}
+                  </span>
+                </DetailRow>
+              )}
+
+              <DetailRow label="Date">
+                <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
+                  <Calendar className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                  {formatAppointmentDate(tx.booking.appointment_date)}
+                </span>
+              </DetailRow>
+
+              <DetailRow label="Time">
+                <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
+                  <Clock className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                  {formatAppointmentTime(tx.booking.appointment_time)}
+                </span>
+              </DetailRow>
+
+              {formatDuration(tx.booking.total_duration) && (
+                <DetailRow label="Duration">
+                  <span className="font-medium">
+                    {formatDuration(tx.booking.total_duration)}
+                  </span>
+                </DetailRow>
+              )}
+
+              <DetailRow label="Location">
+                <span className="inline-flex items-start gap-1.5 font-medium">
+                  <MapPin className="h-3.5 w-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                  <span className="leading-relaxed">
+                    {tx.booking.location_name}
+                    {tx.booking.location_address && (
+                      <span className="block text-xs font-normal text-gray-400">
+                        {tx.booking.location_address}
+                      </span>
+                    )}
+                  </span>
+                </span>
+              </DetailRow>
+
+              <DetailRow label="Booking ref">
+                <span className="font-mono text-xs">
+                  {tx.booking.booking_reference}
+                </span>
+              </DetailRow>
+            </div>
+
+            <div
+              className="my-2 border-t border-dashed border-gray-200"
+              aria-hidden="true"
+            />
+
+            <Link
+              href={`/booking/${encodeURIComponent(tx.booking.booking_reference)}`}
+              className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
+            >
+              <Calendar className="h-4 w-4" />
+              View full booking
+            </Link>
+          </div>
+        )}
+
         {/* ---- More Actions card ---- */}
-        <div className="mt-3 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+        <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
           <h2 className="text-[15px] font-bold text-gray-900">More Actions</h2>
 
           <div className="mt-1">
@@ -576,7 +709,7 @@ export default function TransactionDetailContent({
       </main>
 
       {/* ---- Sticky Share Receipt ---- */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-[#F6F4F8]/95 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-[#F6F4F8] border-t border-gray-100 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         <div className="mx-auto w-full max-w-md">
           <button
             type="button"
