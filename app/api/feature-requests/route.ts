@@ -73,10 +73,33 @@ export async function GET(request: Request) {
       SELECT status, COUNT(*)::int AS n FROM feature_requests GROUP BY status
     `
 
+    // Personalisation payload — greet the signed-in client by name and
+    // surface how much they've contributed (ideas shared, votes cast).
+    let viewer: {
+      id: string
+      first_name: string | null
+      ideas_count: number
+      votes_count: number
+    } | null = null
+
+    if (viewerId) {
+      const [stats] = await sql`
+        SELECT
+          (SELECT COUNT(*)::int FROM feature_requests fr WHERE fr.user_id = ${viewerId}) AS ideas_count,
+          (SELECT COUNT(*)::int FROM feature_request_votes v WHERE v.user_id = ${viewerId}) AS votes_count
+      `
+      viewer = {
+        id: viewerId,
+        first_name: user?.first_name ?? null,
+        ideas_count: stats?.ideas_count ?? 0,
+        votes_count: stats?.votes_count ?? 0,
+      }
+    }
+
     return NextResponse.json({
       requests: rows,
       counts,
-      viewer: viewerId ? { id: viewerId } : null,
+      viewer,
     })
   } catch (err) {
     console.error('[FeatureRequests] GET failed:', err)
