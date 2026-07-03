@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import {
   ChevronUp,
@@ -369,24 +370,26 @@ function RequestCard({
 
       {/* Body */}
       <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-sm font-semibold text-gray-900 leading-snug text-balance">
-            {req.title}
-          </h3>
-          <span
-            className={cn(
-              'inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium',
-              meta.bg,
-              meta.text,
-            )}
-          >
-            <span className={cn('w-1.5 h-1.5 rounded-full', meta.dot)} aria-hidden />
-            {meta.label}
-          </span>
-        </div>
-        <p className="mt-1.5 text-[13px] text-gray-600 leading-relaxed line-clamp-3">
-          {req.description}
-        </p>
+        <Link href={`/feature-requests/${req.id}`} className="group block">
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-sm font-semibold text-gray-900 leading-snug text-balance group-hover:text-[#7B2D8E] transition-colors">
+              {req.title}
+            </h3>
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium',
+                meta.bg,
+                meta.text,
+              )}
+            >
+              <span className={cn('w-1.5 h-1.5 rounded-full', meta.dot)} aria-hidden />
+              {meta.label}
+            </span>
+          </div>
+          <p className="mt-1.5 text-[13px] text-gray-600 leading-relaxed line-clamp-3">
+            {req.description}
+          </p>
+        </Link>
 
         {req.admin_note && (
           <div className="mt-3 rounded-lg border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.04] px-3 py-2">
