@@ -235,11 +235,10 @@ function AdminRequestCard({
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex flex-col items-center justify-center w-14 shrink-0 rounded-xl border border-gray-200 py-2 text-gray-600">
-          <ChevronUp className="w-4 h-4 text-[#7B2D8E]" aria-hidden />
-          <span className="text-sm font-bold tabular-nums">{req.vote_count}</span>
-          <span className="text-[9px] uppercase tracking-wide text-gray-400">votes</span>
+      <div className="flex items-start gap-4">
+        <div className="flex flex-col items-center justify-center gap-0.5 w-12 h-14 shrink-0 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 text-[#7B2D8E]">
+          <ChevronUp className="w-4 h-4" aria-hidden />
+          <span className="text-sm font-bold leading-none tabular-nums">{req.vote_count}</span>
         </div>
 
         <div className="min-w-0 flex-1">
@@ -276,16 +275,33 @@ function AdminRequestCard({
             {req.description}
           </p>
 
-          <div className="mt-2 flex items-center gap-2 text-[11.5px] text-gray-400">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11.5px] text-gray-400">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-medium',
+                'bg-[#7B2D8E]/[0.06] text-[#7B2D8E]',
+              )}
+            >
+              <span className={cn('w-1.5 h-1.5 rounded-full', STATUS_DOT[req.status])} aria-hidden />
+              {STATUS_OPTIONS.find((s) => s.value === req.status)?.label ?? req.status}
+            </span>
+            <span aria-hidden>·</span>
             <span className="font-medium text-gray-500">{author}</span>
             <span aria-hidden>·</span>
             <span className="capitalize">{req.category}</span>
             <span aria-hidden>·</span>
             <span>{new Date(req.created_at).toLocaleDateString()}</span>
+            <span aria-hidden>·</span>
+            <span className="tabular-nums">
+              {req.vote_count} {req.vote_count === 1 ? 'vote' : 'votes'}
+            </span>
           </div>
 
           {/* Status pipeline */}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <p className="mt-3.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+            Move to status
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {STATUS_OPTIONS.map((s) => (
               <button
                 key={s.value}

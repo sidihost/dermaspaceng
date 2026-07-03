@@ -24,6 +24,8 @@ import {
   Search,
   Inbox,
   Lock,
+  Lightbulb,
+  Check,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -45,10 +47,17 @@ type FeatureRequest = {
   is_author: boolean
 }
 
+type Viewer = {
+  id: string
+  first_name: string | null
+  ideas_count: number
+  votes_count: number
+}
+
 type BoardResponse = {
   requests: FeatureRequest[]
   counts: { status: string; n: number }[]
-  viewer: { id: string } | null
+  viewer: Viewer | null
 }
 
 const STATUS_META: Record<
@@ -94,7 +103,8 @@ export default function FeatureRequestsClient() {
     revalidateOnFocus: false,
   })
 
-  const isSignedIn = Boolean(data?.viewer?.id)
+  const viewer = data?.viewer ?? null
+  const isSignedIn = Boolean(viewer?.id)
 
   const requests = useMemo(() => {
     const list = data?.requests ?? []
@@ -153,12 +163,14 @@ export default function FeatureRequestsClient() {
                 Product roadmap
               </span>
               <h1 className="mt-3 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight text-balance">
-                Help shape Dermaspace
+                {isSignedIn && viewer?.first_name
+                  ? `${greeting()}, ${viewer.first_name}`
+                  : 'Help shape Dermaspace'}
               </h1>
               <p className="mt-3 text-sm sm:text-base text-gray-600 leading-relaxed text-pretty">
-                Have an idea that would make booking treatments, managing your
-                account, or your visits better? Share it, upvote what matters to
-                you, and follow it all the way to launch.
+                {isSignedIn
+                  ? 'Your ideas help us decide what to build next. Share something new, upvote what matters to you, and follow it all the way to launch.'
+                  : 'Have an idea that would make booking treatments, managing your account, or your visits better? Share it, upvote what matters to you, and follow it all the way to launch.'}
               </p>
             </div>
             <button
@@ -170,6 +182,34 @@ export default function FeatureRequestsClient() {
               Share an idea
             </button>
           </div>
+
+          {/* Personalised contribution strip */}
+          {isSignedIn && viewer && (
+            <div className="mt-8 flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-2 h-9 pl-2.5 pr-3.5 rounded-full border border-gray-200 bg-white text-sm">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                  <Lightbulb className="w-3.5 h-3.5" aria-hidden />
+                </span>
+                <span className="font-semibold text-gray-900 tabular-nums">
+                  {viewer.ideas_count}
+                </span>
+                <span className="text-gray-500">
+                  {viewer.ideas_count === 1 ? 'idea shared' : 'ideas shared'}
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-2 h-9 pl-2.5 pr-3.5 rounded-full border border-gray-200 bg-white text-sm">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                  <ChevronUp className="w-3.5 h-3.5" aria-hidden />
+                </span>
+                <span className="font-semibold text-gray-900 tabular-nums">
+                  {viewer.votes_count}
+                </span>
+                <span className="text-gray-500">
+                  {viewer.votes_count === 1 ? 'vote cast' : 'votes cast'}
+                </span>
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -294,28 +334,37 @@ function RequestCard({
   onVote: () => void
 }) {
   const meta = STATUS_META[req.status] ?? STATUS_META.open
-  const author =
-    [req.first_name, req.last_name].filter(Boolean).join(' ') ||
-    req.username ||
-    'Client'
+  const author = req.is_author
+    ? 'You'
+    : [req.first_name, req.last_name].filter(Boolean).join(' ') ||
+      req.username ||
+      'Client'
 
   return (
-    <div className="flex items-stretch gap-3 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-[#7B2D8E]/30">
-      {/* Vote column */}
+    <div className="flex items-start gap-4 rounded-2xl border border-gray-200 bg-white p-4 transition-colors hover:border-[#7B2D8E]/30">
+      {/* Vote button — compact, square-ish, with a clear pressed state */}
       <button
         type="button"
         onClick={onVote}
         aria-pressed={req.has_voted}
         aria-label={req.has_voted ? 'Remove your vote' : 'Upvote this idea'}
         className={cn(
-          'flex flex-col items-center justify-center w-14 shrink-0 rounded-xl border transition-colors',
+          'group flex flex-col items-center justify-center gap-0.5 w-12 h-14 shrink-0 rounded-xl border transition-colors',
           req.has_voted
-            ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 text-[#7B2D8E]'
-            : 'border-gray-200 text-gray-500 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]',
+            ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-[#7B2D8E] hover:text-[#7B2D8E]',
         )}
       >
-        <ChevronUp className="w-4 h-4" aria-hidden />
-        <span className="text-sm font-bold tabular-nums">{req.vote_count}</span>
+        <ChevronUp
+          className={cn(
+            'w-4 h-4 transition-transform',
+            !req.has_voted && 'group-hover:-translate-y-0.5',
+          )}
+          aria-hidden
+        />
+        <span className="text-sm font-bold leading-none tabular-nums">
+          {req.vote_count}
+        </span>
       </button>
 
       {/* Body */}
@@ -350,8 +399,15 @@ function RequestCard({
           </div>
         )}
 
-        <div className="mt-3 flex items-center gap-2 text-[11.5px] text-gray-400">
-          <span className="font-medium text-gray-500">{author}</span>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11.5px] text-gray-400">
+          <span
+            className={cn(
+              'font-medium',
+              req.is_author ? 'text-[#7B2D8E]' : 'text-gray-500',
+            )}
+          >
+            {author}
+          </span>
           <span aria-hidden>·</span>
           <span>{formatCategory(req.category)}</span>
           {req.pinned && (
@@ -360,10 +416,24 @@ function RequestCard({
               <span className="text-[#7B2D8E] font-medium">Featured</span>
             </>
           )}
+          {req.has_voted && (
+            <span className="inline-flex items-center gap-1 ml-auto text-[#7B2D8E] font-medium">
+              <Check className="w-3 h-3" aria-hidden />
+              Voted
+            </span>
+          )}
         </div>
       </div>
     </div>
   )
+}
+
+// Time-of-day greeting for the personalised hero.
+function greeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
 }
 
 function ComposerModal({
