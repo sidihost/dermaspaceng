@@ -10,8 +10,9 @@
 
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { isFeatureEnabled } from '@/lib/feature-flags'
+import { getFeatureAccess } from '@/lib/feature-flags'
 import { FeatureUnavailable } from '@/components/shared/feature-unavailable'
+import { FeaturePreviewBanner } from '@/components/shared/feature-preview-banner'
 import BookingClient from './booking-client'
 
 // Force dynamic to prevent static prerendering since this page calls
@@ -19,8 +20,11 @@ import BookingClient from './booking-client'
 export const dynamic = 'force-dynamic'
 
 export default async function BookingPage() {
-  const enabled = await isFeatureEnabled('booking')
-  if (!enabled) {
+  // `getFeatureAccess` is role-aware: when the `booking` flag is in
+  // "Admin only" preview mode, admins + staff get `visible: true` with
+  // `previewOnly: true`, while regular visitors get `visible: false`.
+  const { visible, previewOnly } = await getFeatureAccess('booking')
+  if (!visible) {
     return (
       <>
         <Header />
@@ -32,5 +36,12 @@ export default async function BookingPage() {
       </>
     )
   }
-  return <BookingClient />
+  return (
+    <>
+      {previewOnly && (
+        <FeaturePreviewBanner label="Online booking is in admin-only preview — regular visitors can't see this page yet." />
+      )}
+      <BookingClient />
+    </>
+  )
 }

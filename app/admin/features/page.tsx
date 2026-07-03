@@ -3,9 +3,15 @@
 /**
  * /admin/features
  *
- * Single-page feature flag console. Admins can flip any feature on or
- * off site-wide. Changes propagate within ~60s thanks to the cached
- * `/api/feature-flags` response.
+ * Single-page feature flag console. Super admins set each feature's
+ * visibility to one of three states:
+ *   - Off          -> nobody sees it
+ *   - Admin only   -> only admins + staff see it (internal preview/testing)
+ *   - Everyone     -> live for all visitors
+ *
+ * "Admin only" is the testing mode: a feature can be exercised end-to-end
+ * by the team while the public still sees the "unavailable" screen.
+ * Changes propagate within ~60s thanks to the cached flag reads.
  *
  * Visual treatment matches the rest of the admin surface — flat white
  * cards, hairline borders, brand purple #7B2D8E for active state. No
@@ -14,9 +20,22 @@
 
 import useSWR from 'swr'
 import Link from 'next/link'
-import { Power, Loader2, Globe, LayoutDashboard, Shield, Search, Wrench, ArrowRight } from 'lucide-react'
+import {
+  Power,
+  Loader2,
+  Globe,
+  LayoutDashboard,
+  Shield,
+  Search,
+  Wrench,
+  ArrowRight,
+  EyeOff,
+  Users,
+  Eye,
+} from 'lucide-react'
 import { useState } from 'react'
-import { Switch } from '@/components/ui/switch'
+
+type Visibility = 'on' | 'preview' | 'off'
 
 type Flag = {
   key: string
@@ -24,6 +43,7 @@ type Flag = {
   description: string | null
   scope: 'site' | 'dashboard' | 'admin'
   enabled: boolean
+  visibility: Visibility
 }
 
 // Flags that exist in the `feature_flags` table but don't yet have a
@@ -43,7 +63,25 @@ const NOT_YET_WIRED_FLAGS = new Set<string>(['referrals'])
 // public site.
 const MANAGED_ELSEWHERE_FLAGS = new Set<string>(['maintenance'])
 
+const VISIBILITY_OPTIONS: {
+  value: Visibility
+  label: string
+  icon: typeof Eye
+}[] = [
+  { value: 'off', label: 'Off', icon: EyeOff },
+  { value: 'preview', label: 'Admin only', icon: Users },
+  { value: 'on', label: 'Everyone', icon: Globe },
+]
+
 const fetcher = (u: string) => fetch(u).then((r) => r.json())
+
+/** Normalise a flag row to a visibility value (handles legacy rows). */
+function toVisibility(f: Flag): Visibility {
+  if (f.visibility === 'on' || f.visibility === 'preview' || f.visibility === 'off') {
+    return f.visibility
+  }
+  return f.enabled ? 'on' : 'off'
+}
 
 export default function FeatureFlagsPage() {
   const { data, isLoading, mutate } = useSWR<{ flags: Flag[] }>(
@@ -54,20 +92,23 @@ export default function FeatureFlagsPage() {
   const [filter, setFilter] = useState<'all' | 'site' | 'dashboard' | 'admin'>('all')
   const [query, setQuery] = useState('')
 
-  const toggle = async (key: string, enabled: boolean) => {
+  const setVisibility = async (key: string, visibility: Visibility) => {
     setSavingKey(key)
-    // Optimistic update so the switch flips instantly.
+    // Optimistic update so the control reacts instantly.
     mutate(
-      (prev) => prev && {
-        flags: prev.flags.map((f) => (f.key === key ? { ...f, enabled } : f)),
-      },
+      (prev) =>
+        prev && {
+          flags: prev.flags.map((f) =>
+            f.key === key ? { ...f, visibility, enabled: visibility !== 'off' } : f,
+          ),
+        },
       { revalidate: false },
     )
     try {
       await fetch('/api/admin/feature-flags', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, enabled }),
+        body: JSON.stringify({ key, visibility }),
       })
     } catch {
       mutate()
@@ -78,10 +119,11 @@ export default function FeatureFlagsPage() {
   }
 
   // Strip out flags that are owned by another admin surface so we
-  // never present two switches that fight each other (see
+  // never present two controls that fight each other (see
   // MANAGED_ELSEWHERE_FLAGS docstring).
   const flags = (data?.flags ?? []).filter((f) => !MANAGED_ELSEWHERE_FLAGS.has(f.key))
-  const enabledCount = flags.filter((f) => f.enabled).length
+  const liveCount = flags.filter((f) => toVisibility(f) === 'on').length
+  const previewCount = flags.filter((f) => toVisibility(f) === 'preview').length
   const visible = flags.filter((f) => {
     if (filter !== 'all' && f.scope !== filter) return false
     if (query.trim()) {
@@ -101,6 +143,12 @@ export default function FeatureFlagsPage() {
     admin: { label: 'Admin', icon: Shield },
   }
 
+  const statusMeta: Record<Visibility, { label: string; className: string }> = {
+    on: { label: 'Everyone', className: 'text-[#7B2D8E]' },
+    preview: { label: 'Admins only', className: 'text-amber-600' },
+    off: { label: 'Off', className: 'text-gray-400' },
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -113,22 +161,43 @@ export default function FeatureFlagsPage() {
               Feature flags
             </h1>
             <p className="text-xs text-gray-500 mt-1 truncate">
-              Turn any feature on or off across the platform.
+              Set each feature to Off, Admin only, or Everyone.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-gray-500">
-            <span className="text-gray-900 font-semibold">{enabledCount}</span> / {flags.length} enabled
+            <span className="text-[#7B2D8E] font-semibold">{liveCount}</span> live
+            {previewCount > 0 && (
+              <>
+                {' · '}
+                <span className="text-amber-600 font-semibold">{previewCount}</span> in preview
+              </>
+            )}
           </span>
         </div>
       </header>
 
+      {/* Explainer for the "Admin only" state so the team knows what it does. */}
+      <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 px-4 py-3">
+        <span className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <Users className="w-4 h-4 text-amber-600" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-amber-900 leading-tight">
+            &ldquo;Admin only&rdquo; is your testing mode
+          </p>
+          <p className="text-[12px] text-amber-800/90 mt-0.5 leading-relaxed">
+            Set a feature to <span className="font-medium">Admin only</span> to test it end-to-end
+            while regular users still see the &ldquo;unavailable&rdquo; screen. Flip it to{' '}
+            <span className="font-medium">Everyone</span> when you&apos;re ready to launch.
+          </p>
+        </div>
+      </div>
+
       {/* Maintenance callout — replaces the old (broken) "maintenance"
           toggle that lived in this list. Anchored to the dedicated
-          settings panel so there's exactly one place to flip it.
-          Brand-purple tint instead of amber so it sits inside the
-          Dermaspace palette like every other admin surface. */}
+          settings panel so there's exactly one place to flip it. */}
       <Link
         href="/admin/settings"
         className="flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.06] px-4 py-3 hover:bg-[#7B2D8E]/10 transition-colors"
@@ -187,21 +256,22 @@ export default function FeatureFlagsPage() {
         <div className="grid gap-px bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
           {visible.map((flag) => {
             const Icon = scopeMeta[flag.scope].icon
+            const vis = toVisibility(flag)
             // Flags whose UI surface hasn't been built yet show a
-            // "Coming soon" pill and a disabled switch — toggling
-            // would persist a value that nothing reads, which is
-            // exactly the bug admins reported ("toggles have no
-            // effect"). Disabling here makes that explicit.
+            // "Coming soon" pill and a disabled control — changing
+            // them would persist a value that nothing reads.
             const notWired = NOT_YET_WIRED_FLAGS.has(flag.key)
+            const isLive = vis !== 'off' && !notWired
+            const status = statusMeta[vis]
             return (
               <div
                 key={flag.key}
-                className="bg-white px-5 py-4 flex items-start sm:items-center gap-4 flex-col sm:flex-row"
+                className="bg-white px-5 py-4 flex items-start gap-4 flex-col lg:flex-row lg:items-center"
               >
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <span
                     className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      flag.enabled && !notWired
+                      isLive
                         ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                         : 'bg-gray-100 text-gray-400'
                     }`}
@@ -218,9 +288,6 @@ export default function FeatureFlagsPage() {
                         {scopeMeta[flag.scope].label}
                       </span>
                       {notWired && (
-                        // Neutral slate, not amber — keeps brand
-                        // purple reserved for the "active" state and
-                        // reads cleanly as an inert/pending tag.
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5">
                           Coming soon
                         </span>
@@ -231,28 +298,53 @@ export default function FeatureFlagsPage() {
                     )}
                     {notWired && (
                       <p className="text-[11px] text-slate-500 mt-1">
-                        This feature isn&apos;t live yet — toggling won&apos;t change anything visitors see.
+                        This feature isn&apos;t live yet — changing this won&apos;t affect anything visitors see.
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 self-end sm:self-center">
+                <div className="flex items-center gap-3 self-stretch lg:self-center">
                   <span
-                    className={`text-[11px] font-semibold uppercase tracking-wide ${
-                      flag.enabled && !notWired ? 'text-[#7B2D8E]' : 'text-gray-400'
-                    }`}
+                    className={`text-[11px] font-semibold uppercase tracking-wide w-20 text-right ${status.className}`}
                   >
-                    {flag.enabled ? 'On' : 'Off'}
+                    {status.label}
                   </span>
                   {savingKey === flag.key && (
-                    <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 text-gray-400 animate-spin flex-shrink-0" />
                   )}
-                  <Switch
-                    checked={flag.enabled}
-                    onCheckedChange={(v) => toggle(flag.key, v)}
-                    disabled={savingKey === flag.key || notWired}
-                    className="data-[state=checked]:bg-[#7B2D8E]"
-                  />
+                  {/* 3-way segmented control */}
+                  <div
+                    role="radiogroup"
+                    aria-label={`${flag.label} visibility`}
+                    className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg"
+                  >
+                    {VISIBILITY_OPTIONS.map((opt) => {
+                      const OptIcon = opt.icon
+                      const selected = vis === opt.value
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          disabled={notWired || savingKey === flag.key}
+                          onClick={() => setVisibility(flag.key, opt.value)}
+                          className={`flex items-center gap-1.5 text-xs font-medium px-2.5 h-8 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            selected
+                              ? opt.value === 'off'
+                                ? 'bg-white text-gray-700'
+                                : opt.value === 'preview'
+                                  ? 'bg-white text-amber-600'
+                                  : 'bg-white text-[#7B2D8E]'
+                              : 'text-gray-500 hover:text-gray-900'
+                          }`}
+                        >
+                          <OptIcon className="w-3.5 h-3.5" aria-hidden />
+                          <span className="hidden sm:inline">{opt.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )

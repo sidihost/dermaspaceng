@@ -1,17 +1,24 @@
 import { NextResponse } from 'next/server'
-import { getAllFlags } from '@/lib/feature-flags'
+import { getEffectiveFlagMap } from '@/lib/feature-flags'
+
+// Role-aware: the map is resolved for the CURRENT viewer (admins + staff
+// can see 'preview' flags), so it must never be shared-cached across users.
+export const dynamic = 'force-dynamic'
 
 /**
  * Public read-only feature flag endpoint.
- * Returns a flat { key: enabled } map for cheap client-side checks.
+ * Returns a flat { key: enabled } map for cheap client-side checks,
+ * resolved for the current session's role.
  */
 export async function GET() {
-  const flags = await getAllFlags()
-  const map: Record<string, boolean> = {}
-  for (const f of flags) map[f.key] = f.enabled
-  return NextResponse.json({ flags: map }, {
-    // Browsers can hold onto this for a minute; admin toggles will
-    // propagate within that window without crushing the DB.
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
-  })
+  const map = await getEffectiveFlagMap()
+  return NextResponse.json(
+    { flags: map },
+    {
+      // Per-viewer result — keep it private to the browser only. The
+      // client hook still de-dupes and polls, and the underlying flag
+      // read is Redis-cached, so this stays cheap.
+      headers: { 'Cache-Control': 'private, no-store' },
+    },
+  )
 }
