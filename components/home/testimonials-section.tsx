@@ -13,7 +13,7 @@ const testimonials = [
   },
   {
     name: 'Jekein Lato-Unah',
-    source: 'Instagram',
+    source: 'Google Review',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/jekein-lato-unah-150x150.jpeg-Am611knEiHci6H0y3MYuTaVQ0D9dZE.webp',
     review: "Really nice services. Music playlist is awesome. I had a good time.",
   },
@@ -34,33 +34,16 @@ export default function TestimonialsSection() {
           badge="Reviews"
           title="What clients"
           highlight="say"
-          description="From Google and Instagram. We don't edit these."
+          description="Real Google reviews from our clients. We don't edit these."
         />
 
-        {/* Aggregate rating bar — a confident, editorial summary that
-            frames the individual cards below. Solid brand purple only,
-            no gradients, no coloured shadows. */}
-        <div className="mb-10 flex flex-col items-center justify-center gap-5 border-b border-gray-100 pb-10 sm:flex-row sm:gap-8">
-          <div className="flex items-center gap-3">
-            <span className="font-serif text-5xl font-semibold leading-none text-[#7B2D8E]">
-              4.9
-            </span>
-            <div>
-              <div className="flex gap-0.5" aria-hidden="true">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="h-4 w-4 fill-[#7B2D8E] text-[#7B2D8E]" />
-                ))}
-              </div>
-              <p className="mt-1 text-sm text-gray-500">1,200+ verified reviews</p>
-            </div>
-          </div>
-
-          <div className="hidden h-10 w-px bg-gray-200 sm:block" aria-hidden="true" />
-
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
-            <BadgeCheck className="h-5 w-5 text-[#7B2D8E]" />
-            <span>Verified across Google &amp; Instagram</span>
-          </div>
+        {/* Verified-source strip. We deliberately don't publish an
+            aggregate score or review count here — Dermaspace has no
+            verified public rating we can stand behind, so we let the
+            real, unedited reviews below speak for themselves. */}
+        <div className="mb-10 flex items-center justify-center gap-2 border-b border-gray-100 pb-10 text-sm font-medium text-gray-600">
+          <BadgeCheck className="h-5 w-5 text-[#7B2D8E]" />
+          <span>Verified Google reviews</span>
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">

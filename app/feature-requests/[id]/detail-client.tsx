@@ -25,6 +25,7 @@ import {
   Inbox,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useNotify } from '@/components/shared/notify'
 
 type FeatureRequest = {
   id: string
@@ -94,6 +95,7 @@ export default function FeatureRequestDetailClient({ id }: { id: string }) {
 
   const req = data?.request
   const isSignedIn = Boolean(data?.viewer?.id)
+  const notify = useNotify()
 
   const toggleVote = useCallback(async () => {
     if (!data || !req) return
@@ -101,6 +103,8 @@ export default function FeatureRequestDetailClient({ id }: { id: string }) {
       window.location.href = `/login?redirect=/feature-requests/${id}`
       return
     }
+    // `has_voted` is the state before this toggle.
+    const wasVoted = req.has_voted
     const optimistic: DetailResponse = {
       ...data,
       request: {
@@ -114,10 +118,16 @@ export default function FeatureRequestDetailClient({ id }: { id: string }) {
       const res = await fetch(`/api/feature-requests/${id}/vote`, { method: 'POST' })
       if (!res.ok) throw new Error('vote failed')
       mutate()
+      if (wasVoted) {
+        notify.success('Vote removed', 'You’re no longer backing this idea.')
+      } else {
+        notify.success('Vote counted', 'Thanks for backing this idea.')
+      }
     } catch {
       mutate()
+      notify.error('Could not save your vote', 'Please try again in a moment.')
     }
-  }, [data, req, isSignedIn, id, mutate])
+  }, [data, req, isSignedIn, id, mutate, notify])
 
   return (
     <div className="min-h-screen bg-gray-50">
