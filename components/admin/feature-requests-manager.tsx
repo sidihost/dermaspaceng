@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import useSWR from 'swr'
 import {
   ChevronUp,
@@ -22,6 +23,7 @@ import {
   Trash2,
   MessageSquare,
   ListTodo,
+  ArrowUpRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -243,10 +245,20 @@ function AdminRequestCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-900 leading-snug">
+            <Link
+              href={`/admin/feature-requests/${req.id}`}
+              className="group text-sm font-semibold text-gray-900 leading-snug hover:text-[#7B2D8E] transition-colors"
+            >
               {req.title}
-            </h3>
+            </Link>
             <div className="flex items-center gap-1 shrink-0">
+              <Link
+                href={`/admin/feature-requests/${req.id}`}
+                title="Open detail"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-[#7B2D8E] transition-colors"
+              >
+                <ArrowUpRight className="w-4 h-4" aria-hidden />
+              </Link>
               <button
                 type="button"
                 onClick={onPin}
