@@ -20,7 +20,9 @@ import { semanticSearch } from '@/lib/vector'
 import {
   scheduleConsultationReminder,
   cancelBookingReminder,
+  scheduleBookingReminder,
 } from '@/lib/reminders'
+import { getAvailableSlots } from '@/lib/booking'
 
 // Provider selection now lives in `lib/ai-chain.ts`. That module
 // exposes an ordered chain of text + tool-calling models — Mistral
@@ -1216,6 +1218,132 @@ const tools = {
     },
   }),
 
+  // Reschedule (move) an existing booking to a new date/time
+  rescheduleBooking: tool({
+    description:
+      "Move an existing booking for the logged-in user to a new date and/or time. Use when the user wants to reschedule, move, push back, or change the time of an appointment. Requires the booking reference (e.g. DS-AB12CD34) — if they don't have it, call getBookings first and let them pick. Ask for the new date (YYYY-MM-DD) and time (24h HH:MM) if not given. The new slot must be free and within the branch's opening hours; if it isn't, the tool returns the available times so you can offer alternatives.",
+    inputSchema: z.object({
+      bookingReference: z
+        .string()
+        .min(3)
+        .describe('The booking reference, e.g. DS-AB12CD34'),
+      newDate: z
+        .string()
+        .describe('New appointment date in YYYY-MM-DD format'),
+      newTime: z
+        .string()
+        .describe('New appointment start time in 24-hour HH:MM format, e.g. 14:30'),
+    }),
+    execute: async ({ bookingReference, newDate, newTime }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to reschedule a booking.', link: '/signin' }
+      }
+      try {
+        const sessions = await sql`
+          SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+        `
+        if (sessions.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+        const userId = sessions[0].user_id
+        const ref = bookingReference.trim().toUpperCase()
+
+        // Normalise the requested time to 24h HH:MM. Accepts "14:30",
+        // "2:30 PM", "2 PM" etc. so the model doesn't have to be perfect.
+        const tm = newTime.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i)
+        if (!tm) {
+          return { success: false, message: `"${newTime}" isn't a time I can read. Use a format like 14:30 or 2:30 PM.` }
+        }
+        let hour = parseInt(tm[1], 10)
+        const minute = tm[2] ? parseInt(tm[2], 10) : 0
+        const meridiem = tm[3]?.toUpperCase()
+        if (meridiem === 'PM' && hour < 12) hour += 12
+        if (meridiem === 'AM' && hour === 12) hour = 0
+        if (hour > 23 || minute > 59) {
+          return { success: false, message: `"${newTime}" isn't a valid time.` }
+        }
+        const time24 = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+
+        const date = newDate.trim().slice(0, 10)
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return { success: false, message: `"${newDate}" isn't a valid date. Use YYYY-MM-DD, e.g. 2026-07-10.` }
+        }
+
+        const existing = await sql`
+          SELECT id, status, location_id, location_name, total_duration,
+                 appointment_date, appointment_time
+          FROM bookings
+          WHERE user_id = ${userId} AND booking_reference = ${ref}
+          LIMIT 1
+        `
+        if (existing.length === 0) {
+          return {
+            success: false,
+            message: `No booking found with reference ${ref}. Check /dashboard for your bookings.`,
+          }
+        }
+        const b = existing[0]
+        if (b.status === 'cancelled') {
+          return { success: false, message: `Booking ${ref} is cancelled and can't be rescheduled. Would you like to book a new appointment?` }
+        }
+        if (b.status === 'completed') {
+          return { success: false, message: `Booking ${ref} is already completed and can't be rescheduled.` }
+        }
+
+        // Validate the target slot against real availability + opening
+        // hours, reusing the same engine the booking wizard uses so the
+        // rules stay in one place.
+        const { slots, error } = await getAvailableSlots({
+          locationId: b.location_id,
+          date,
+          duration: b.total_duration,
+        })
+        if (error) {
+          return { success: false, message: error }
+        }
+        const isSameSlot = date === String(b.appointment_date).slice(0, 10) && time24 === String(b.appointment_time).slice(0, 5)
+        if (!isSameSlot && !slots.includes(time24)) {
+          return {
+            success: false,
+            message: slots.length
+              ? `${time24} isn't available at ${b.location_name} on ${date}. Available times: ${slots.slice(0, 12).join(', ')}.`
+              : `There are no open slots at ${b.location_name} on ${date}. Try another day.`,
+            availableTimes: slots.slice(0, 12),
+          }
+        }
+
+        await sql`
+          UPDATE bookings
+          SET appointment_date = ${date},
+              appointment_time = ${time24},
+              updated_at = NOW()
+          WHERE id = ${b.id}
+        `
+
+        // Move the 24h reminder to match the new date/time. Cancel the
+        // old pending reminder first (idempotent), then schedule fresh.
+        // Both helpers are fail-soft so a QStash hiccup never breaks the
+        // reschedule itself.
+        await cancelBookingReminder(b.id)
+        await scheduleBookingReminder(b.id, date, time24)
+
+        return {
+          success: true,
+          reference: ref,
+          message: `Booking ${ref} is now ${date} at ${time24} (${b.location_name}). Your reminder was moved too.`,
+          newDate: date,
+          newTime: time24,
+          link: '/dashboard',
+        }
+      } catch (error) {
+        console.error('[v0] rescheduleBooking error:', error)
+        return { success: false, message: 'Could not reschedule the booking. Please try /dashboard.' }
+      }
+    },
+  }),
+
   // Update the logged-in user's profile (name, phone)
   updateProfile: tool({
     description:
@@ -1732,7 +1860,7 @@ BREVITY IS A FEATURE (this is a mobile chat, not an email — customers skim, th
 AGENTIC EXECUTION (you are an agent, not a form — ship outcomes, not excuses):
 I. DEFAULT TO ACTION. If the user's request can be fulfilled by calling 1–3 tools, CALL THEM on this turn. Do not ask permission for safe read actions (getBookings, getWalletBalance, getUserProfile, getLocations, getServices, showLocationsMap, getCurrentDateTime, getSupportTickets, getNotifications, searchProducts, searchServices). "Show me my bookings" → just call getBookings. "Where are you located?" → call showLocationsMap. Never stall with "would you like me to…" for a read the user already asked for.
 J. PARALLEL WHEN INDEPENDENT. If two tools don't depend on each other, call them in the SAME step so the user sees one integrated reply instead of two round-trips. "Am I set for tomorrow?" → getCurrentDateTime + getBookings in parallel. "How do I stand with my wallet?" → getWalletBalance + getTransactionHistory in parallel. "I just topped up, did it land?" → getWalletBalance + getTransactionHistory together.
-K. CHAIN UP TO THE FINISH LINE. Keep going until the user's goal is met — don't stop mid-chain. Reschedule flow: getBookings → cancelBooking(old) → createBooking(new) in one turn. Ticket flow when they already gave all four fields: summarise → createSupportTicket → acknowledge. Top-up flow: getWalletBalance → fundWallet(amount) → surface the Pay-now card.
+K. CHAIN UP TO THE FINISH LINE. Keep going until the user's goal is met — don't stop mid-chain. Reschedule flow: getBookings → rescheduleBooking(reference, newDate, newTime) in one turn — this moves the SAME booking, so never cancel-and-rebuild for a reschedule. Ticket flow when they already gave all four fields: summarise → createSupportTicket → acknowledge. Top-up flow: getWalletBalance → fundWallet(amount) → surface the Pay-now card.
 L. INFER INTENT, DON'T PARROT. Read between the lines. "Is my top-up through?" = check wallet AND transactions AND compare. "I'm running late to Ikoyi" = getCurrentDateTime + getBookings(today) and offer to notify the branch via createSupportTicket(category=booking, priority=high). "My skin is stressing me for a wedding in 3 weeks" = acknowledge the wedding, saveMemory(wedding date), searchProducts for the concern, suggest a facial.
 M. SELF-VERIFY SILENTLY. After a write (fundWallet, cancelBooking, updateProfile, createSupportTicket), trust the tool's own confirmation — don't immediately re-read unless the user asks. But DO re-read when the user asks "did it go through?" or "is it updated?" — that's the whole point of chaining.
 N. WRITES REQUIRE ONE CONFIRMATION BEAT. For DESTRUCTIVE or MONEY-MOVING actions (cancelBooking, logoutUser, fundWallet over ₦50k, updateProfile on email, forgetMemory), restate what you're about to do in ONE short sentence and wait for a clear "yes" / "go ahead" / "do it" before calling the tool. For low-stakes writes (saveMemory, updatePreferences, small fundWallet under ₦50k, joinBookingWaitlist, requestCallback) — just do it.
@@ -2224,6 +2352,7 @@ export async function POST(request: Request) {
       'getBookings',
       'createBooking',
       'cancelBooking',
+      'rescheduleBooking',
       'bookConsultation',
       'joinBookingWaitlist',
       'getUserProfile',
@@ -2239,7 +2368,7 @@ export async function POST(request: Request) {
     ] as const
     const categoryToolMap: Record<keyof AiPermissions, readonly string[]> = {
       wallet: ['getWalletBalance', 'getTransactionHistory', 'fundWallet'],
-      bookings: ['getBookings', 'createBooking', 'cancelBooking', 'bookConsultation', 'joinBookingWaitlist'],
+      bookings: ['getBookings', 'createBooking', 'cancelBooking', 'rescheduleBooking', 'bookConsultation', 'joinBookingWaitlist'],
       profile: ['getUserProfile', 'updateProfile', 'sendPasswordResetEmail', 'resendVerificationEmail'],
       // `requestLiveChat` was deliberately removed from this map —
       // see the comment where the tool used to be defined.

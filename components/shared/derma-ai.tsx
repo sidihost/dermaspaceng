@@ -371,7 +371,7 @@ const KNOWN_TOOL_NAMES = [
   'checkLoginStatus', 'sendPasswordResetEmail', 'resendVerificationEmail',
   'getNotifications', 'joinBookingWaitlist', 'bookConsultation',
   'createSupportTicket', 'searchServices', 'recommendByConcern', 'fundWallet',
-  'cancelBooking', 'updateProfile', 'updatePreferences', 'logoutUser',
+  'cancelBooking', 'rescheduleBooking', 'updateProfile', 'updatePreferences', 'logoutUser',
   // `requestLiveChat` was removed from the AI tool surface — see the
   // matching comment in app/api/chat/route.ts. We keep the rest of
   // this allow-list strictly in sync with the API so the leaked-tool
@@ -584,6 +584,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'getCurrentDateTime': return 'Checking the calendar'
     case 'fundWallet': return 'Preparing your top-up'
     case 'cancelBooking': return 'Cancelling your appointment'
+    case 'rescheduleBooking': return 'Moving your appointment'
     case 'updateProfile': return 'Updating your profile'
     case 'updatePreferences': return 'Saving your preferences'
     case 'logoutUser': return 'Preparing sign-out confirmation'
@@ -618,6 +619,7 @@ function guessToolFromText(raw: string): string | null {
   // my booking" doesn't route to getBookings.
   if (/(fund|top.?up|add.+(to|into).+wallet|recharge)/.test(text)) return 'fundWallet'
   if (/(cancel|cancell).+(booking|appointment|visit|session)/.test(text)) return 'cancelBooking'
+  if (/(reschedule|re-schedule|move|push back|change.+time|change.+date|shift).+(booking|appointment|visit|session|it)/.test(text)) return 'rescheduleBooking'
   if (/(log\s?out|sign\s?out|end session)/.test(text)) return 'logoutUser'
   if (/(forgot.+password|reset.+password|password reset)/.test(text)) return 'sendPasswordResetEmail'
   if (/(resend|re-send).+(verification|verify.+email)/.test(text)) return 'resendVerificationEmail'
