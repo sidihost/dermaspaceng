@@ -5,6 +5,7 @@ import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, 
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { ButterflyLogo } from './butterfly-logo'
 import { DermaLiveVoicePicker } from './derma-live-voice-picker'
 import { DEFAULT_LIVE_VOICE_ID, DERMA_LIVE_VOICES, resolveLiveVoice } from '@/lib/derma-live-voices'
@@ -645,7 +646,11 @@ function guessToolFromText(raw: string): string | null {
   // Spatial / visual intent → render the live map. We check this
   // BEFORE the plain getLocations regex so "show me on a map" and
   // "how do I get there" route to the richer UI.
-  if (/(show (me|us).+(map|where)|on.+map|open.+map|view.+map|see.+map|see where|pinpoint|plot)/.test(text)) return 'showLocationsMap'
+  // Page navigation intent → the AI actually drives the router. Checked
+  // before the map/location regexes so "take me to booking" doesn't get
+  // hijacked by the "take me" direction matcher below. Requires a real
+  // page keyword so it won't swallow "take me there" (a map request).
+  if (/(take me to|go to|open|navigate to|show me|bring me to|jump to).{0,20}(home ?page|homepage|dashboard|booking|book page|services|packages|membership|gift ?cards?|gallery|contact|about|consultation|settings|support|feedback|survey|laser|wallet|sign ?in|sign ?up)/.test(text)) return 'navigateToPage'
   if (/(direction|how do i get|get there|navigate|route|take me|drive to|get to (you|your|the spa))/.test(text)) return 'showLocationsMap'
   if (/(location|address|where.+(you|located)|which branch)/.test(text)) return 'getLocations'
   if (/(package|membership|deal|bundle|platinum|bridal|couples)/.test(text)) return 'getPackages'
@@ -2121,6 +2126,10 @@ export default function DermaAI({
   // a returning user starts Live (so we don't dump them into the
   // immersive picker every time) and any other transient confirmations.
   const notify = useNotify()
+  // Client-side router so the AI can actually take the user to a page
+  // (navigateToPage tool) instead of just handing them a link — SPA
+  // navigation keeps the app state warm and feels instant.
+  const router = useRouter()
   // Whether the parent is driving our open state. Captured once on first
   // render so we don't flip between controlled and uncontrolled modes
   // mid-flight (React's canonical controlled-component guideline).
@@ -5533,6 +5542,27 @@ export default function DermaAI({
         if (tr.toolName === 'forgetMemory' && r?.success && typeof r.fact === 'string') {
           const needle = (r.fact as string).toLowerCase()
           setMemories((prev) => prev.filter((m) => !m.toLowerCase().includes(needle)))
+        }
+        // navigateToPage — the AI decided the user should be taken to a
+        // page. Unlike a plain link, we actually drive the router here so
+        // the user lands there hands-free. We close the AI panel first so
+        // the destination is visible, wait a beat for the reply/TTS to be
+        // seen, then push. Guard against off-site or malformed paths —
+        // only same-origin absolute paths are allowed.
+        if (
+          tr.toolName === 'navigateToPage' &&
+          r?.success &&
+          r?.navigate === true &&
+          typeof r.path === 'string' &&
+          r.path.startsWith('/') &&
+          !r.path.startsWith('//')
+        ) {
+          const dest = r.path as string
+          setTimeout(() => {
+            setIsOpen(false)
+            setShowSidebar(false)
+            router.push(dest)
+          }, 900)
         }
         // NOTE: The Derma AI used to dispatch `openLiveChat` here in
         // response to a `requestLiveChat` tool result, which slid the

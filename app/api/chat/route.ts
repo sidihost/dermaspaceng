@@ -468,7 +468,9 @@ const tools = {
       page: z.enum([
         'home', 'services', 'booking', 'contact', 'about', 'packages',
         'facial', 'body', 'nail', 'waxing', 'membership', 'gift-cards',
-        'dashboard', 'wallet', 'settings', 'gallery', 'consultation'
+        'dashboard', 'wallet', 'settings', 'gallery', 'consultation',
+        'laser-tech', 'support', 'feedback', 'survey', 'signin', 'signup',
+        'forgot-password'
       ]).describe('Page to navigate to')
     }),
     execute: async ({ page }) => {
@@ -489,7 +491,14 @@ const tools = {
         wallet: { path: '/dashboard', description: 'Your wallet' },
         settings: { path: '/dashboard/settings', description: 'Account settings' },
         gallery: { path: '/gallery', description: 'Photo gallery' },
-        consultation: { path: '/consultation', description: 'Free skin consultation' }
+        consultation: { path: '/consultation', description: 'Free skin consultation' },
+        'laser-tech': { path: '/laser-tech', description: 'Laser technology services' },
+        support: { path: '/dashboard/support', description: 'Support tickets' },
+        feedback: { path: '/feedback', description: 'Leave feedback' },
+        survey: { path: '/survey', description: 'Customer survey' },
+        signin: { path: '/signin', description: 'Sign in' },
+        signup: { path: '/signup', description: 'Create an account' },
+        'forgot-password': { path: '/forgot-password', description: 'Reset your password' }
       }
       
       const { path, description } = pageLinks[page]
@@ -2014,7 +2023,7 @@ RESPONSE GUIDELINES:
 - When the user forgets their password, ask for the email they signed up with, then call sendPasswordResetEmail.
 - When the user didn't receive their verification email, call resendVerificationEmail (if they are signed in) or direct them to /signup if not.
 - For booking, gather service, preferred location (Victoria Island or Ikoyi), date, and time, then call createBooking. Always confirm details before finalizing.
-- For navigation, call navigateToPage so the UI can render a jump link.
+- NAVIGATION: When the user asks to go to, open, show, take me to, or visit a page ("take me to booking", "open my dashboard", "show me gift cards", "go to services"), call navigateToPage — the app will ACTUALLY navigate them there hands-free, it is not just a link. Say a short confirmation like "Taking you to your dashboard now." Only pages in the navigateToPage enum are supported; for any other path, mention it in text instead.
 - If an action requires sign-in and the user is not logged in, politely tell them and provide /signin.
 - Keep answers short and actionable. Offer one clear next step.
 
