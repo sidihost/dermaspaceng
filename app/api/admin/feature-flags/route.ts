@@ -3,7 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 // developer / Sidihost super admin so day-to-day admins can't flip
 // public-facing toggles by accident.
 import { requireSuperAdmin } from '@/lib/auth'
-import { getAllFlags, setFeatureEnabled, invalidateFeatureFlagCache } from '@/lib/feature-flags'
+import {
+  getAllFlags,
+  setFeatureEnabled,
+  setFeatureVisibility,
+  invalidateFeatureFlagCache,
+  type FeatureVisibility,
+} from '@/lib/feature-flags'
 import { sql } from '@/lib/db'
 
 export async function GET() {
@@ -19,11 +25,18 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   try {
     const admin = await requireSuperAdmin()
-    const { key, enabled, label, description } = await request.json()
+    const { key, enabled, visibility, label, description } = await request.json()
     if (!key || typeof key !== 'string') {
       return NextResponse.json({ error: 'Missing key' }, { status: 400 })
     }
-    if (typeof enabled === 'boolean') {
+    // Preferred: the 3-way visibility control (Off / Admin-only / Everyone).
+    if (typeof visibility === 'string') {
+      if (!['on', 'preview', 'off'].includes(visibility)) {
+        return NextResponse.json({ error: 'Invalid visibility' }, { status: 400 })
+      }
+      await setFeatureVisibility(key, visibility as FeatureVisibility, admin.id)
+    } else if (typeof enabled === 'boolean') {
+      // Backward-compatible boolean toggle.
       await setFeatureEnabled(key, enabled, admin.id)
     }
     if (typeof label === 'string' || typeof description === 'string') {
@@ -52,8 +65,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'key and label are required' }, { status: 400 })
     }
     await sql`
-      INSERT INTO feature_flags (key, label, description, scope, enabled, updated_by)
-      VALUES (${key}, ${label}, ${description ?? null}, ${scope}, ${enabled}, ${admin.id})
+      INSERT INTO feature_flags (key, label, description, scope, enabled, visibility, updated_by)
+      VALUES (${key}, ${label}, ${description ?? null}, ${scope}, ${enabled}, ${enabled ? 'on' : 'off'}, ${admin.id})
       ON CONFLICT (key) DO UPDATE SET
         label = EXCLUDED.label,
         description = EXCLUDED.description,

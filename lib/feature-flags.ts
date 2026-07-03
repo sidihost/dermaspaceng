@@ -26,6 +26,19 @@
 
 import { sql } from './db'
 import { delKey, getJson, KEYS, setJson } from './redis'
+import { getCurrentUserCached } from './auth'
+
+/**
+ * A flag's visibility is a 3-way state:
+ *   'on'      -> everyone sees it
+ *   'preview' -> only admins + staff see it (internal testing)
+ *   'off'     -> nobody sees it
+ *
+ * The legacy `enabled` boolean is kept in sync (enabled = visibility !== 'off')
+ * so older code that reads `enabled` still behaves, while the preview
+ * restriction is enforced by the role-aware helpers below.
+ */
+export type FeatureVisibility = 'on' | 'preview' | 'off'
 
 export type FeatureFlag = {
   key: string
@@ -33,6 +46,7 @@ export type FeatureFlag = {
   description: string | null
   scope: 'site' | 'dashboard' | 'admin'
   enabled: boolean
+  visibility: FeatureVisibility
   updated_at: string
 }
 
@@ -47,26 +61,41 @@ export async function getAllFlags(force = false): Promise<FeatureFlag[]> {
 
   // Layer 1: shared Redis cache. The whole `feature_flags` table fits
   // comfortably under Redis's payload limits — there'll never be more
-  // than a few dozen rows.
+  // than a few dozen rows. Redis being unavailable (e.g. env vars not
+  // set in a preview environment) must NOT break flag reads, so this is
+  // fully best-effort.
   if (!force) {
-    const cached = await getJson<FeatureFlag[]>(KEYS.featureFlags)
-    if (cached) {
-      memo = { at: Date.now(), rows: cached }
-      return cached
+    try {
+      const cached = await getJson<FeatureFlag[]>(KEYS.featureFlags)
+      if (cached) {
+        memo = { at: Date.now(), rows: cached }
+        return cached
+      }
+    } catch {
+      /* Redis unavailable — fall through to Postgres. */
     }
   }
 
   try {
     const rows = (await sql`
-      SELECT key, label, description, scope, enabled, updated_at
+      SELECT key, label, description, scope, enabled,
+             COALESCE(visibility, CASE WHEN enabled THEN 'on' ELSE 'off' END) AS visibility,
+             updated_at
       FROM feature_flags
       ORDER BY scope, label
     `) as unknown as FeatureFlag[]
 
     memo = { at: Date.now(), rows }
-    // Best-effort write-through. Failure here just means the next
-    // request takes the Postgres path — no correctness impact.
-    await setJson(KEYS.featureFlags, rows, REDIS_TTL_SECONDS)
+
+    // Best-effort write-through. A Redis failure here must never discard
+    // the rows we just read from Postgres — wrap it separately so the
+    // outer catch is reserved for real "can't read flags" failures.
+    try {
+      await setJson(KEYS.featureFlags, rows, REDIS_TTL_SECONDS)
+    } catch {
+      /* Redis unavailable — the next request just re-reads Postgres. */
+    }
+
     return rows
   } catch {
     // Table missing in dev / before migration runs — treat as empty so
@@ -75,12 +104,102 @@ export async function getAllFlags(force = false): Promise<FeatureFlag[]> {
   }
 }
 
+/**
+ * Whether the current session is allowed to see features that are in
+ * 'preview' (admin-only) mode. Admins and staff qualify; everyone else
+ * (regular users, signed-out, background jobs with no request context)
+ * does not.
+ */
+async function currentUserCanPreview(): Promise<boolean> {
+  try {
+    const user = await getCurrentUserCached()
+    return !!user && (user.role === 'admin' || user.role === 'staff')
+  } catch {
+    // No request context (cron/QStash/background) — treat as public.
+    return false
+  }
+}
+
+/** Resolve a visibility value against a preview-capable flag. */
+export function resolveVisibility(
+  visibility: FeatureVisibility,
+  canPreview: boolean,
+): boolean {
+  if (visibility === 'on') return true
+  if (visibility === 'off') return false
+  return canPreview // 'preview'
+}
+
+/**
+ * Role-aware feature check. Returns true when the CURRENT viewer should
+ * see the feature:
+ *   - 'on'      -> always
+ *   - 'off'     -> never
+ *   - 'preview' -> only admins + staff
+ *
+ * Unknown keys default to TRUE so a missing flag never silently takes
+ * down a feature. Because this resolves the current user, every server
+ * gate that already calls `isFeatureEnabled` (booking page, API routes,
+ * gift-cards, vouchers, signups) automatically supports admin preview
+ * with no further changes.
+ */
 export async function isFeatureEnabled(key: string): Promise<boolean> {
   const flags = await getAllFlags()
   const flag = flags.find((f) => f.key === key)
-  // Default to TRUE for unknown keys so a missing flag never silently
-  // takes down a feature in production.
-  return flag ? flag.enabled : true
+  if (!flag) return true
+  if (flag.visibility === 'on') return true
+  if (flag.visibility === 'off') return false
+  return currentUserCanPreview()
+}
+
+/**
+ * Like `isFeatureEnabled` but also reports whether the viewer is only
+ * seeing the feature because they're an admin/staff previewing it while
+ * it's hidden from the public. Used to render a "preview mode" banner.
+ */
+export async function getFeatureAccess(
+  key: string,
+): Promise<{ visible: boolean; previewOnly: boolean }> {
+  const flags = await getAllFlags()
+  const flag = flags.find((f) => f.key === key)
+  if (!flag) return { visible: true, previewOnly: false }
+  if (flag.visibility === 'on') return { visible: true, previewOnly: false }
+  if (flag.visibility === 'off') return { visible: false, previewOnly: false }
+  const canPreview = await currentUserCanPreview()
+  return { visible: canPreview, previewOnly: canPreview }
+}
+
+/**
+ * Build the flat { key: enabled } map the public/client endpoint serves,
+ * resolved for the current viewer. Resolves the user at most once, and
+ * only when at least one flag is actually in preview mode.
+ */
+export async function getEffectiveFlagMap(): Promise<Record<string, boolean>> {
+  const flags = await getAllFlags()
+  const hasPreview = flags.some((f) => f.visibility === 'preview')
+  const canPreview = hasPreview ? await currentUserCanPreview() : false
+  const map: Record<string, boolean> = {}
+  for (const f of flags) map[f.key] = resolveVisibility(f.visibility, canPreview)
+  return map
+}
+
+export async function setFeatureVisibility(
+  key: string,
+  visibility: FeatureVisibility,
+  updatedBy: string,
+): Promise<void> {
+  // Keep the legacy `enabled` boolean mirrored so any un-migrated reader
+  // still behaves (a preview flag reads as enabled; the role check is
+  // what restricts it).
+  await sql`
+    UPDATE feature_flags
+    SET visibility = ${visibility},
+        enabled = ${visibility !== 'off'},
+        updated_by = ${updatedBy},
+        updated_at = NOW()
+    WHERE key = ${key}
+  `
+  await invalidateFeatureFlagCache()
 }
 
 export async function setFeatureEnabled(
@@ -90,7 +209,10 @@ export async function setFeatureEnabled(
 ): Promise<void> {
   await sql`
     UPDATE feature_flags
-    SET enabled = ${enabled}, updated_by = ${updatedBy}, updated_at = NOW()
+    SET enabled = ${enabled},
+        visibility = ${enabled ? 'on' : 'off'},
+        updated_by = ${updatedBy},
+        updated_at = NOW()
     WHERE key = ${key}
   `
   await invalidateFeatureFlagCache()
@@ -98,5 +220,10 @@ export async function setFeatureEnabled(
 
 export async function invalidateFeatureFlagCache(): Promise<void> {
   memo = null
-  await delKey(KEYS.featureFlags)
+  try {
+    await delKey(KEYS.featureFlags)
+  } catch {
+    /* Redis unavailable — the in-process memo reset above is enough;
+       the short MEMO_TTL means other instances re-read Postgres soon. */
+  }
 }

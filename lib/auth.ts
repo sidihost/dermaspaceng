@@ -1,5 +1,6 @@
 import { sql } from '@/lib/db'
 import { cookies } from 'next/headers'
+import { cache } from 'react'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -275,6 +276,16 @@ export async function getCurrentUser(): Promise<User | null> {
     return null
   }
 }
+
+/**
+ * Request-memoized wrapper around getCurrentUser().
+ *
+ * Feature-flag checks can fire several times per render (header, footer,
+ * multiple gated sections). React's `cache()` dedupes the underlying
+ * session lookup to a single DB round-trip per request, so making flag
+ * resolution role-aware doesn't multiply session queries.
+ */
+export const getCurrentUserCached = cache(getCurrentUser)
 
 // Delete session (logout)
 export async function deleteSession(sessionId: string): Promise<void> {

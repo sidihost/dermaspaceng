@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { initializePayment, generateReference, toKobo } from '@/lib/paystack'
 import { createPendingTransaction, createAbandonedPayment } from '@/lib/wallet'
 import { getMembershipPlan } from '@/lib/membership-plans'
+import { getBaseUrl } from '@/lib/app-url'
 
 /*
  * POST /api/membership/subscribe
@@ -46,7 +47,12 @@ export async function POST(request: NextRequest) {
     // stands out from wallet-funding (`WF_`) and booking (`BK_`)
     // refs in the admin transactions list.
     const reference = generateReference('MS')
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/membership/verify?reference=${reference}`
+    // Derive the base URL from the request (falling back to
+    // NEXT_PUBLIC_APP_URL) so the Paystack callback never becomes
+    // "undefined/api/membership/verify" if the env var is unset —
+    // same hardening the wallet-funding flow already uses.
+    const baseUrl = getBaseUrl(request)
+    const callbackUrl = `${baseUrl}/api/membership/verify?reference=${reference}`
 
     // Wallet credit (Platinum only) + Glow Points award, stamped on
     // both the Paystack metadata and the pending transaction so the
@@ -135,7 +141,7 @@ export async function POST(request: NextRequest) {
         plan_id: plan.id,
         plan_name: plan.name,
       },
-      `${process.env.NEXT_PUBLIC_APP_URL}/membership/checkout?plan=${plan.id}`,
+      `${baseUrl}/membership/checkout?plan=${plan.id}`,
     )
 
     return NextResponse.json({

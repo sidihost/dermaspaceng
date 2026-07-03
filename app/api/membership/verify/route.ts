@@ -13,6 +13,7 @@ import { getMembershipPlan, type MembershipTierId } from '@/lib/membership-plans
 import { invalidateUserMe } from '@/lib/redis'
 import { sendMembershipConfirmation } from '@/lib/wallet-emails'
 import { awardGlowPoints } from '@/lib/glow-points'
+import { getBaseUrl } from '@/lib/app-url'
 
 /*
  * GET /api/membership/verify?reference=<paystack-ref>
@@ -33,7 +34,9 @@ import { awardGlowPoints } from '@/lib/glow-points'
  * already `completed` and short-circuits to the receipt.
  */
 export async function GET(request: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || ''
+  // Derive from the request (falling back to NEXT_PUBLIC_APP_URL) so
+  // redirects never point at "undefined/..." when the env var is unset.
+  const appUrl = getBaseUrl(request)
   const searchParams = request.nextUrl.searchParams
   const reference = searchParams.get('reference') || searchParams.get('trxref')
 
