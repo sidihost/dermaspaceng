@@ -471,6 +471,97 @@ export async function reindexServicesCatalog(): Promise<{
 }
 
 // ---------------------------------------------------------------------------
+// Derma AI SaaS — per-tenant knowledge (multi-tenant namespaces)
+// ---------------------------------------------------------------------------
+//
+// Each licensed company gets its own Upstash Vector *namespace* so their
+// trained Q&A knowledge is fully isolated — one tenant's data can never
+// surface in another tenant's (or in the main Dermaspace) answers. We
+// reuse the same index (and therefore the same bge-m3 server-side
+// embedding model), so training costs us nothing extra per tenant.
+//
+// Namespace convention: `saas_<tenantId>`.
+
+export function tenantNamespace(tenantId: string): string {
+  return `saas_${tenantId}`
+}
+
+export interface TenantKnowledgeHit {
+  id: string
+  question: string
+  answer: string
+  score: number
+}
+
+/** Index (create/replace) a single Q&A entry into a tenant's namespace. */
+export async function upsertTenantKnowledge(
+  tenantId: string,
+  entry: { id: string; question: string; answer: string },
+): Promise<void> {
+  try {
+    const idx = getVectorIndex().namespace(tenantNamespace(tenantId))
+    await idx.upsert({
+      id: entry.id,
+      // Embed the question + answer so a visitor's phrasing matches even
+      // when it doesn't mirror the stored question verbatim.
+      data: `Q: ${entry.question}\nA: ${entry.answer}`,
+      metadata: {
+        question: entry.question,
+        answer: entry.answer,
+      } as Record<string, string>,
+    })
+  } catch (err) {
+    console.warn(`[vector] upsertTenantKnowledge(${tenantId}) failed:`, err)
+  }
+}
+
+/** Remove one knowledge entry from a tenant's namespace. */
+export async function deleteTenantKnowledge(
+  tenantId: string,
+  id: string,
+): Promise<void> {
+  try {
+    const idx = getVectorIndex().namespace(tenantNamespace(tenantId))
+    await idx.delete(id)
+  } catch (err) {
+    console.warn(`[vector] deleteTenantKnowledge(${tenantId}) failed:`, err)
+  }
+}
+
+/** Semantic search over ONE tenant's trained knowledge. Fail-soft. */
+export async function searchTenantKnowledge(
+  tenantId: string,
+  query: string,
+  topK = 5,
+): Promise<TenantKnowledgeHit[]> {
+  const trimmed = query.trim()
+  if (!trimmed) return []
+  try {
+    const idx = getVectorIndex().namespace(tenantNamespace(tenantId))
+    const results = await idx.query({
+      data: trimmed,
+      topK,
+      includeMetadata: true,
+    })
+    return (results ?? []).flatMap((r) => {
+      const meta = (r.metadata ?? {}) as { question?: string; answer?: string }
+      if (!meta.answer) return []
+      return [
+        {
+          id: String(r.id),
+          question: meta.question ?? "",
+          answer: meta.answer,
+          score: r.score ?? 0,
+        },
+      ]
+    })
+  } catch (err) {
+    console.warn(`[vector] searchTenantKnowledge(${tenantId}) failed:`, err)
+    return []
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

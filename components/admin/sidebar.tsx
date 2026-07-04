@@ -29,6 +29,7 @@ import {
   Layers,
   Mail,
   Lightbulb,
+  Building2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -142,7 +143,10 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/addons', icon: Layers, label: 'Add-ons', badge: 'NEW', group: 'platform' },
   { href: '/admin/features', icon: Power, label: 'Feature Flags', badge: null, group: 'platform' },
   { href: '/admin/banners', icon: Megaphone, label: 'Banners', badge: null, group: 'platform' },
-  { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
+    { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
+    // Derma AI SaaS — licensed companies using our rebrandable assistant.
+    // Admins activate / suspend / renew the ₦35,000/yr subscription here.
+    { href: '/admin/saas', icon: Building2, label: 'Derma AI SaaS', badge: 'NEW', group: 'platform' },
   { href: '/admin/broadcast', icon: Send, label: 'Broadcast', badge: null, group: 'platform' },
   // Newsletter / email campaigns — compose and send monthly messages to
   // subscribers, manage the subscriber list, and pick from premade
