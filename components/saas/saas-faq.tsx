@@ -28,7 +28,7 @@ const FAQS = [
   },
   {
     q: 'What happens when I sign up?',
-    a: 'You can set up branding and training straight away for free. Your assistant starts answering live visitors once your \u20a635,000/year subscription is activated.',
+    a: 'Your 3-day free trial starts immediately \u2014 the assistant is live on your website from day one, fully branded and trained. After the trial, keep it running with the \u20a635,000/year subscription. Everything you set up is saved either way.',
   },
 ]
 

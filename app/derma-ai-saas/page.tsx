@@ -103,7 +103,7 @@ export default function SaasLandingPage() {
                   href="/derma-ai-saas/signup"
                   className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                 >
-                  Start now
+                  Start your 3-day free trial
                   <ArrowRight
                     className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                     aria-hidden="true"
@@ -117,7 +117,8 @@ export default function SaasLandingPage() {
                 </Link>
               </div>
               <p className="mt-6 text-sm text-muted-foreground">
-                One flat price. No usage fees, no API keys, no surprises.
+                3 days free, live from day one. Then one flat price &mdash; no usage fees, no API
+                keys, no surprises.
               </p>
             </div>
 
@@ -190,8 +191,9 @@ export default function SaasLandingPage() {
                   One plan. Everything in it.
                 </h2>
                 <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
-                  No tiers, no add-ons, no per-message billing. Set everything up free &mdash; your
-                  assistant goes live the moment your subscription is activated.
+                  No tiers, no add-ons, no per-message billing. Every account starts with a 3-day
+                  free trial &mdash; your assistant is live on your website from the moment you
+                  sign up.
                 </p>
                 <div className="mt-10 flex items-baseline gap-2">
                   <span className="font-serif text-6xl text-foreground md:text-7xl">
@@ -218,7 +220,7 @@ export default function SaasLandingPage() {
                   href="/derma-ai-saas/signup"
                   className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                 >
-                  Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  Start free trial <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -254,7 +256,7 @@ export default function SaasLandingPage() {
               href="/derma-ai-saas/signup"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-foreground px-7 py-3.5 text-base font-semibold text-primary transition-opacity hover:opacity-90"
             >
-              Create your assistant <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              Start your free trial <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </section>

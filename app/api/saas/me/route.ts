@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getCurrentTenant, isTenantActive } from '@/lib/saas-auth'
+import { getCurrentTenant, isTenantActive, isTenantOnTrial, trialDaysLeft } from '@/lib/saas-auth'
 import { saasSql } from '@/lib/saas-db'
 
 // GET /api/saas/me — current tenant profile + light usage stats for the
@@ -30,6 +30,9 @@ export async function GET() {
       publicKey: tenant.public_key,
       status: tenant.status,
       active: isTenantActive(tenant),
+      onTrial: isTenantOnTrial(tenant),
+      trialEndsAt: tenant.trial_ends_at,
+      trialDaysLeft: trialDaysLeft(tenant),
       subscriptionExpiresAt: tenant.subscription_expires_at,
       brandName: tenant.brand_name,
       assistantName: tenant.assistant_name,

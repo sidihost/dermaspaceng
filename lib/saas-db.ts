@@ -70,6 +70,8 @@ export function ensureSaasSchema(): Promise<void> {
         updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `
+    // 3-day free trial support (safe to run repeatedly).
+    await saasSql`ALTER TABLE derma_saas_tenants ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ`
     await saasSql`CREATE INDEX IF NOT EXISTS idx_saas_tenants_public_key ON derma_saas_tenants(public_key)`
     await saasSql`CREATE INDEX IF NOT EXISTS idx_saas_tenants_status ON derma_saas_tenants(status)`
 

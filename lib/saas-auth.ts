@@ -16,6 +16,7 @@ import { saasSql, ensureSaasSchema } from '@/lib/saas-db'
 export const SAAS_SESSION_COOKIE = 'saas_session'
 const SESSION_TTL_DAYS = 30
 export const SAAS_PLAN_PRICE_NAIRA = 35000
+export const SAAS_TRIAL_DAYS = 3
 
 export interface Tenant {
   id: string
@@ -23,9 +24,10 @@ export interface Tenant {
   contact_name: string
   contact_email: string
   public_key: string
-  status: 'pending' | 'active' | 'suspended'
+  status: 'pending' | 'trial' | 'active' | 'suspended'
   plan_price_kobo: number
   subscription_expires_at: string | null
+  trial_ends_at: string | null
   brand_name: string
   assistant_name: string
   brand_color: string
@@ -41,7 +43,7 @@ export interface Tenant {
 // Lazy fragment: only touches the SaaS client when a query actually runs.
 const tenantColumns = () => saasSql`
   id, company_name, contact_name, contact_email, public_key, status,
-  plan_price_kobo, subscription_expires_at, brand_name, assistant_name,
+  plan_price_kobo, subscription_expires_at, trial_ends_at, brand_name, assistant_name,
   brand_color, welcome_message, logo_url, business_context, launcher_label,
   allowed_domains, created_at, activated_at
 `
@@ -91,16 +93,20 @@ export async function createTenant(data: {
     const passwordHash = await hashPassword(data.password)
     const publicKey = generatePublicKey()
 
+    // Every new account starts on a free trial with the widget fully live.
+    const trialEndsAt = new Date(Date.now() + SAAS_TRIAL_DAYS * 24 * 60 * 60 * 1000)
+
     const rows = await saasSql`
       INSERT INTO derma_saas_tenants (
         company_name, contact_name, contact_email, password_hash, public_key,
-        brand_name, assistant_name, welcome_message
+        brand_name, assistant_name, welcome_message, status, trial_ends_at
       )
       VALUES (
         ${data.companyName.trim()}, ${data.contactName.trim()}, ${email},
         ${passwordHash}, ${publicKey},
         ${data.companyName.trim()}, 'Assistant',
-        ${'Hi! Welcome to ' + data.companyName.trim() + '. How can I help you today?'}
+        ${'Hi! Welcome to ' + data.companyName.trim() + '. How can I help you today?'},
+        'trial', ${trialEndsAt.toISOString()}
       )
       RETURNING ${tenantColumns()}
     `
@@ -209,8 +215,25 @@ export async function destroyTenantSession(): Promise<void> {
   }
 }
 
-/** True when the tenant may serve live widget traffic. */
+/** True when the tenant is on a free trial that has not yet expired. */
+export function isTenantOnTrial(t: Tenant): boolean {
+  return (
+    t.status === 'trial' &&
+    !!t.trial_ends_at &&
+    new Date(t.trial_ends_at).getTime() > Date.now()
+  )
+}
+
+/** Days remaining on the trial, rounded up. 0 when expired or not on trial. */
+export function trialDaysLeft(t: Tenant): number {
+  if (!t.trial_ends_at) return 0
+  const ms = new Date(t.trial_ends_at).getTime() - Date.now()
+  return ms > 0 ? Math.ceil(ms / (24 * 60 * 60 * 1000)) : 0
+}
+
+/** True when the tenant may serve live widget traffic (paid or trialing). */
 export function isTenantActive(t: Tenant): boolean {
+  if (isTenantOnTrial(t)) return true
   if (t.status !== 'active') return false
   if (t.subscription_expires_at) {
     return new Date(t.subscription_expires_at).getTime() > Date.now()

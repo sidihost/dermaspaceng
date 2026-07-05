@@ -35,8 +35,11 @@ interface TenantProfile {
   contactName: string
   contactEmail: string
   publicKey: string
-  status: 'pending' | 'active' | 'suspended'
+  status: 'pending' | 'trial' | 'active' | 'suspended'
   active: boolean
+  onTrial: boolean
+  trialEndsAt: string | null
+  trialDaysLeft: number
   subscriptionExpiresAt: string | null
   brandName: string
   assistantName: string
@@ -169,7 +172,7 @@ export function DashboardClient() {
         </nav>
 
         <div className="border-t border-border p-4">
-          <StatusPill active={profile.active} />
+          <StatusPill profile={profile} />
           <button type="button" onClick={logout} className={`${outlineBtn} mt-3 w-full`}>
             <LogOut className="h-4 w-4" aria-hidden="true" />
             Sign out
@@ -245,8 +248,16 @@ export function DashboardClient() {
   )
 }
 
-function StatusPill({ active }: { active: boolean }) {
-  return active ? (
+function StatusPill({ profile }: { profile: TenantProfile }) {
+  if (profile.onTrial) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-full border border-primary px-3 py-1.5 text-xs font-semibold text-primary">
+        <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+        Trial — {profile.trialDaysLeft}d left
+      </span>
+    )
+  }
+  return profile.active ? (
     <span className="inline-flex items-center gap-2 rounded-full border border-primary px-3 py-1.5 text-xs font-semibold text-primary">
       <Check className="h-3.5 w-3.5" aria-hidden="true" />
       Assistant live
@@ -254,7 +265,7 @@ function StatusPill({ active }: { active: boolean }) {
   ) : (
     <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground">
       <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-      Activation pending
+      {profile.status === 'trial' ? 'Trial ended' : 'Activation pending'}
     </span>
   )
 }
@@ -289,9 +300,11 @@ function OverviewSection({
         eyebrow="Overview"
         title={`Good to see you, ${firstName}.`}
         sub={
-          profile.active
-            ? 'Your assistant is live and answering visitors on your website.'
-            : 'Your workspace is ready to configure. Your assistant goes live once your subscription is activated.'
+          profile.onTrial
+            ? `Your assistant is live on your free trial — ${profile.trialDaysLeft} day${profile.trialDaysLeft === 1 ? '' : 's'} remaining.`
+            : profile.active
+              ? 'Your assistant is live and answering visitors on your website.'
+              : 'Your workspace is ready to configure. Your assistant goes live once your subscription is activated.'
         }
       />
 
@@ -1091,21 +1104,31 @@ function BillingSection({ profile }: { profile: TenantProfile }) {
       value:
         profile.status === 'active'
           ? 'Active'
-          : profile.status === 'suspended'
-            ? 'Suspended'
-            : 'Pending activation',
+          : profile.onTrial
+            ? `Free trial — ${profile.trialDaysLeft} day${profile.trialDaysLeft === 1 ? '' : 's'} left`
+            : profile.status === 'suspended'
+              ? 'Suspended'
+              : profile.status === 'trial'
+                ? 'Trial ended'
+                : 'Pending activation',
     },
     {
-      label: profile.active ? 'Renews / expires' : 'Activates',
-      value: profile.subscriptionExpiresAt
-        ? new Date(profile.subscriptionExpiresAt).toLocaleDateString(undefined, {
+      label: profile.onTrial ? 'Trial ends' : profile.active ? 'Renews / expires' : 'Activates',
+      value: profile.onTrial && profile.trialEndsAt
+        ? new Date(profile.trialEndsAt).toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
           })
-        : profile.active
-          ? 'No expiry set'
-          : 'After payment confirmation',
+        : profile.subscriptionExpiresAt
+          ? new Date(profile.subscriptionExpiresAt).toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })
+          : profile.active
+            ? 'No expiry set'
+            : 'After payment confirmation',
     },
     {
       label: 'Member since',
@@ -1140,12 +1163,35 @@ function BillingSection({ profile }: { profile: TenantProfile }) {
         </dl>
       </div>
 
+      {profile.onTrial && (
+        <div className="rounded-xl border border-primary p-6">
+          <h2 className="font-serif text-xl text-foreground">
+            Your free trial is live — {profile.trialDaysLeft} day
+            {profile.trialDaysLeft === 1 ? '' : 's'} remaining
+          </h2>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+            Your assistant is fully switched on during the trial. To keep it running after the
+            trial ends, pay &#8358;35,000 for the year and send proof of payment with your company
+            name to{' '}
+            <a
+              href="mailto:business@dermaspaceng.com"
+              className="font-semibold text-primary hover:underline"
+            >
+              business@dermaspaceng.com
+            </a>
+            . Everything you set up stays exactly as you left it.
+          </p>
+        </div>
+      )}
+
       {!profile.active && (
         <div className="rounded-xl border border-primary p-6">
-          <h2 className="font-serif text-xl text-foreground">Activate your assistant</h2>
+          <h2 className="font-serif text-xl text-foreground">
+            {profile.status === 'trial' ? 'Your trial has ended' : 'Activate your assistant'}
+          </h2>
           <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            To go live, pay &#8358;35,000 for the year and send proof of payment with your company
-            name to{' '}
+            To {profile.status === 'trial' ? 'switch your assistant back on' : 'go live'}, pay
+            &#8358;35,000 for the year and send proof of payment with your company name to{' '}
             <a
               href="mailto:business@dermaspaceng.com"
               className="font-semibold text-primary hover:underline"

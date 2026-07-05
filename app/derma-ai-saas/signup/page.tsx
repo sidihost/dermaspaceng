@@ -75,13 +75,14 @@ export default function SaasSignupPage() {
       <div className="flex items-center justify-center px-4 py-12 lg:px-12">
         <div className="w-full max-w-md">
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
-            Get started
+            3-day free trial
           </p>
           <h1 className="mt-4 text-pretty font-serif text-3xl text-foreground md:text-4xl">
             Create your workspace
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Set everything up free. Your assistant goes live once your subscription is activated.
+            Your assistant goes live the moment you sign up &mdash; free for 3 days, no card
+            required.
           </p>
 
           <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-5">
