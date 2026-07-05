@@ -8,9 +8,13 @@ import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { AuthPanel } from '@/components/saas/auth-panel'
 
+type Mode = 'saas' | 'dermaspace'
+
 export default function SaasLoginPage() {
   const router = useRouter()
+  const [mode, setMode] = useState<Mode>('saas')
   const [loading, setLoading] = useState(false)
+  const [ssoLoading, setSsoLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ email: '', password: '' })
 
@@ -21,20 +25,58 @@ export default function SaasLoginPage() {
     }
   }
 
+  function switchMode(next: Mode) {
+    setMode(next)
+    setError(null)
+  }
+
+  /**
+   * One-click SSO: if the visitor is already signed into dermaspaceng.com
+   * in this browser, this signs them straight into the SaaS dashboard.
+   * Otherwise we flip the form into Dermaspace-credentials mode.
+   */
+  async function continueWithDermaspace() {
+    if (ssoLoading || loading) return
+    setSsoLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/saas/sso/dermaspace', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) {
+        router.push('/derma-ai-saas/dashboard')
+        return
+      }
+      const data = await res.json().catch(() => ({}))
+      if (data?.error === 'not_signed_in') {
+        switchMode('dermaspace')
+      } else {
+        setError(data?.message || 'Could not sign in with Dermaspace. Please try again.')
+      }
+    } catch {
+      setError('Something went wrong. Please try again.')
+    } finally {
+      setSsoLoading(false)
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (loading) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/saas/login', {
+      const endpoint = mode === 'dermaspace' ? '/api/saas/sso/dermaspace' : '/api/saas/login'
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data?.error || 'Invalid email or password.')
+        setError(data?.message || data?.error || 'Invalid email or password.')
         return
       }
       router.push('/derma-ai-saas/dashboard')
@@ -62,13 +104,48 @@ export default function SaasLoginPage() {
             Welcome back
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Sign in to manage your assistant, branding and knowledge base.
+            {mode === 'dermaspace'
+              ? 'Enter your Dermaspace account details \u2014 the same ones you use on dermaspaceng.com.'
+              : 'Sign in to manage your assistant, branding and knowledge base.'}
           </p>
 
-          <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-5">
+          {mode === 'saas' && (
+            <>
+              <button
+                type="button"
+                onClick={continueWithDermaspace}
+                disabled={ssoLoading || loading}
+                className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full border border-primary px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+              >
+                <span
+                  className="flex h-5 w-5 items-center justify-center rounded-full bg-primary font-serif text-[11px] font-bold text-primary-foreground"
+                  aria-hidden="true"
+                >
+                  D
+                </span>
+                {ssoLoading ? 'Checking your Dermaspace session\u2026' : 'Continue with Dermaspace'}
+              </button>
+
+              <div className="mt-6 flex items-center gap-4" aria-hidden="true">
+                <span className="h-px flex-1 bg-border" />
+                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">or</span>
+                <span className="h-px flex-1 bg-border" />
+              </div>
+            </>
+          )}
+
+          {mode === 'dermaspace' && (
+            <p className="mt-6 rounded-lg border border-border px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+              Signing in with your <span className="font-semibold text-foreground">Dermaspace</span>{' '}
+              account. First time here? We&apos;ll set up your Derma AI workspace automatically with
+              a 3-day free trial.
+            </p>
+          )}
+
+          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label htmlFor="email" className="text-sm font-medium text-foreground">
-                Work email
+                {mode === 'dermaspace' ? 'Dermaspace email' : 'Work email'}
               </label>
               <input
                 id="email"
@@ -84,7 +161,7 @@ export default function SaasLoginPage() {
 
             <div className="flex flex-col gap-2">
               <label htmlFor="password" className="text-sm font-medium text-foreground">
-                Password
+                {mode === 'dermaspace' ? 'Dermaspace password' : 'Password'}
               </label>
               <input
                 id="password"
@@ -112,10 +189,26 @@ export default function SaasLoginPage() {
               disabled={loading}
               className="mt-1 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
             >
-              {loading ? 'Signing in\u2026' : 'Sign in'}
+              {loading
+                ? 'Signing in\u2026'
+                : mode === 'dermaspace'
+                  ? 'Sign in with Dermaspace'
+                  : 'Sign in'}
               {!loading && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
             </button>
           </form>
+
+          {mode === 'dermaspace' && (
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => switchMode('saas')}
+                className="font-semibold text-primary hover:underline"
+              >
+                Use your Derma AI account instead
+              </button>
+            </p>
+          )}
 
           <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
             New here?{' '}

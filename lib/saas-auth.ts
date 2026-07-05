@@ -117,6 +117,76 @@ export async function createTenant(data: {
   }
 }
 
+/**
+ * "Login with Dermaspace" — find (or create) the SaaS tenant that belongs
+ * to a main-site Dermaspace user. Lookup order:
+ *   1. tenant already linked via dermaspace_user_id
+ *   2. tenant whose contact_email matches (link it now)
+ *   3. brand-new tenant on a fresh 3-day trial
+ * The tenant gets a random, unusable password hash when created this way —
+ * these accounts always sign in through Dermaspace.
+ */
+export async function findOrCreateTenantForDermaspaceUser(user: {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+}): Promise<{ tenant: Tenant | null; error: string | null }> {
+  const email = user.email.trim().toLowerCase()
+  try {
+    await ensureSaasSchema()
+
+    // 1. Already linked.
+    const linked = await saasSql`
+      SELECT ${tenantColumns()} FROM derma_saas_tenants
+      WHERE dermaspace_user_id = ${user.id}
+    `
+    if (linked.length > 0) return { tenant: linked[0] as Tenant, error: null }
+
+    // 2. Same email — link the existing tenant to this Dermaspace account.
+    const byEmail = await saasSql`
+      SELECT ${tenantColumns()} FROM derma_saas_tenants
+      WHERE contact_email = ${email} AND dermaspace_user_id IS NULL
+    `
+    if (byEmail.length > 0) {
+      const rows = await saasSql`
+        UPDATE derma_saas_tenants
+        SET dermaspace_user_id = ${user.id}, updated_at = NOW()
+        WHERE id = ${(byEmail[0] as Tenant).id}
+        RETURNING ${tenantColumns()}
+      `
+      return { tenant: rows[0] as Tenant, error: null }
+    }
+
+    // 3. Create a new tenant on a fresh trial.
+    const fullName = `${user.firstName} ${user.lastName}`.trim() || 'Dermaspace member'
+    const companyName = fullName
+    const passwordHash = await hashPassword(randomBytes(32).toString('hex'))
+    const publicKey = generatePublicKey()
+    const trialEndsAt = new Date(Date.now() + SAAS_TRIAL_DAYS * 24 * 60 * 60 * 1000)
+
+    const rows = await saasSql`
+      INSERT INTO derma_saas_tenants (
+        company_name, contact_name, contact_email, password_hash, public_key,
+        brand_name, assistant_name, welcome_message, status, trial_ends_at,
+        dermaspace_user_id
+      )
+      VALUES (
+        ${companyName}, ${fullName}, ${email},
+        ${passwordHash}, ${publicKey},
+        ${companyName}, 'Assistant',
+        ${'Hi! Welcome to ' + companyName + '. How can I help you today?'},
+        'trial', ${trialEndsAt.toISOString()}, ${user.id}
+      )
+      RETURNING ${tenantColumns()}
+    `
+    return { tenant: rows[0] as Tenant, error: null }
+  } catch (err) {
+    console.error('[saas-auth] findOrCreateTenantForDermaspaceUser failed:', err)
+    return { tenant: null, error: 'Could not sign in with Dermaspace. Please try again.' }
+  }
+}
+
 export async function authenticateTenant(
   email: string,
   password: string,
