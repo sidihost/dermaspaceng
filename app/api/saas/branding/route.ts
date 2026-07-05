@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentTenant } from '@/lib/saas-auth'
-import { sql } from '@/lib/db'
+import { saasSql } from '@/lib/saas-db'
 
 // PUT /api/saas/branding — update the tenant's rebranding + AI context.
 export async function PUT(request: NextRequest) {
@@ -34,7 +34,7 @@ export async function PUT(request: NextRequest) {
     : tenant.brand_color
 
   try {
-    await sql`
+    await saasSql`
       UPDATE derma_saas_tenants SET
         brand_name = ${brandName},
         assistant_name = ${assistantName},

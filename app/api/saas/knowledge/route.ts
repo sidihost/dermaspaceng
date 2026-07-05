@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentTenant } from '@/lib/saas-auth'
-import { sql } from '@/lib/db'
+import { saasSql } from '@/lib/saas-db'
 import { upsertTenantKnowledge } from '@/lib/vector'
 
 // GET /api/saas/knowledge — list this tenant's training entries.
@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
-    const rows = await sql`
+    const rows = await saasSql`
       SELECT id, question, answer, created_at, updated_at
       FROM derma_saas_knowledge
       WHERE tenant_id = ${tenant.id}
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const rows = await sql`
+    const rows = await saasSql`
       INSERT INTO derma_saas_knowledge (tenant_id, question, answer)
       VALUES (${tenant.id}, ${question}, ${answer})
       RETURNING id, question, answer, created_at, updated_at

@@ -1,6 +1,12 @@
 -- ---------------------------------------------------------------------------
 -- 720-derma-saas.sql
 --
+-- ⚠ TARGETS THE DEDICATED SAAS DATABASE (SAAS_DATABASE_URL), NOT the main
+-- Dermaspace database. All SaaS data is fully isolated in its own Neon
+-- instance. The app also bootstraps this schema automatically on first
+-- use via lib/saas-db.ts ensureSaasSchema(), so running this file
+-- manually is optional.
+--
 -- Derma AI SaaS — multi-tenant layer that lets other companies license
 -- the Dermaspace Derma AI assistant for a flat annual fee (₦35,000/yr),
 -- rebrand it, embed it on their own website with a single <script> tag,

@@ -3,7 +3,7 @@ import { streamText, type ModelMessage, type LanguageModel } from 'ai'
 import { getTenantByPublicKey, isTenantActive, type Tenant } from '@/lib/saas-auth'
 import { getChatModelChain, pickFirstHealthyChatProvider } from '@/lib/ai-chain'
 import { searchTenantKnowledge } from '@/lib/vector'
-import { sql } from '@/lib/db'
+import { saasSql } from '@/lib/saas-db'
 import { rateLimit } from '@/lib/redis'
 
 export const maxDuration = 30
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
       onFinish: async ({ text }) => {
         // Best-effort transcript logging for tenant analytics.
         try {
-          await sql`
+          await saasSql`
             INSERT INTO derma_saas_conversations (tenant_id, visitor_id, user_message, ai_reply)
             VALUES (${tenant.id}, ${visitorId}, ${query.slice(0, 4000)}, ${(text ?? '').slice(0, 8000)})
           `

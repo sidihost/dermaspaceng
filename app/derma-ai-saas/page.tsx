@@ -8,230 +8,272 @@ import {
   MessagesSquare,
   Check,
   ArrowRight,
+  BarChart3,
 } from 'lucide-react'
 import { SaasNav } from '@/components/saas/saas-nav'
+import { WidgetDemo } from '@/components/saas/widget-demo'
+import { SaasFaq } from '@/components/saas/saas-faq'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 
 const features = [
   {
     icon: Palette,
     title: 'Fully rebrandable',
-    desc: 'Set your brand name, assistant name, colour, welcome message and logo. Your customers only ever see your brand.',
+    desc: 'Your name, your assistant, your colour, your welcome message, your logo. Customers only ever see your brand.',
   },
   {
     icon: BookOpen,
-    title: 'Train on your own data',
-    desc: 'Add your FAQs, policies and product answers as simple Q&A entries. The assistant learns them instantly.',
+    title: 'Trained on your business',
+    desc: 'Add your FAQs, prices and policies as simple Q&A entries. The assistant learns them the moment you save.',
   },
   {
     icon: Code2,
     title: 'One line to embed',
-    desc: 'Paste a single script tag on any website and the chat launcher appears — no developers required.',
+    desc: 'Paste a single script tag on any website and the launcher appears. No developers, no plugins, no builds.',
   },
   {
     icon: MessagesSquare,
-    title: 'No API keys, no AI bills',
-    desc: 'Every conversation runs on our AI credits. You never add a provider key or pay per message.',
+    title: 'No API keys, ever',
+    desc: 'Every conversation runs on our pooled AI credits. You never touch a provider key or pay per message.',
   },
   {
     icon: ShieldCheck,
-    title: 'Private & isolated',
-    desc: 'Your training data lives in its own isolated space. It never mixes with or leaks to any other company.',
+    title: 'Private and isolated',
+    desc: 'Your training data lives in its own isolated space in a dedicated database. It never mixes with anyone else\u2019s.',
   },
   {
-    icon: Globe,
-    title: 'Works everywhere',
-    desc: 'Runs on any website or platform. Restrict it to your own domains whenever you want tighter control.',
+    icon: BarChart3,
+    title: 'Every conversation logged',
+    desc: 'Read exactly what your customers asked and what your assistant replied, right from your dashboard.',
   },
 ]
 
 const steps = [
   {
-    n: '1',
+    n: '01',
     title: 'Create your account',
-    desc: 'Sign up in under a minute. No card details needed to start setting things up.',
+    desc: 'Sign up in under a minute. No card required while you set everything up and see how it feels.',
   },
   {
-    n: '2',
-    title: 'Rebrand & train',
-    desc: 'Add your colours and logo, then paste in the questions and answers your customers ask.',
+    n: '02',
+    title: 'Rebrand and train it',
+    desc: 'Set your colours and voice, then paste in the questions your customers actually ask \u2014 and your answers.',
   },
   {
-    n: '3',
-    title: 'Copy one line & go live',
-    desc: 'Drop the embed snippet on your site. Your branded assistant is instantly available to visitors.',
+    n: '03',
+    title: 'Paste one line of code',
+    desc: 'Drop the embed snippet on your website. Your branded assistant is live for every visitor, day and night.',
   },
 ]
 
 const included = [
   'Unlimited conversations on our AI credits',
-  'Full rebranding (name, colour, logo, messages)',
+  'Full rebranding \u2014 name, colour, logo, voice',
   'Unlimited Q&A training entries',
   'One-line website embed widget',
   'Private, isolated knowledge base',
-  'Conversation history',
+  'Full conversation history',
   'Domain allowlisting',
   'Priority updates to the AI engine',
 ]
 
 export default function SaasLandingPage() {
   return (
-    <div className="bg-white">
+    <div className="bg-background">
       <SaasNav />
 
-      {/* Hero */}
-      <section className="mx-auto max-w-7xl px-4 py-16 md:py-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#7B2D8E]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-[#7B2D8E]">
-            <ButterflyLogo className="h-4 w-4 text-[#7B2D8E]" />
-            Powered by Derma AI
-          </span>
-          <h1 className="mt-6 text-balance font-serif text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
-            Your own AI assistant, live on your website in minutes
-          </h1>
-          <p className="mt-5 text-pretty text-lg leading-relaxed text-gray-600">
-            License the same AI technology that powers Dermaspace. Rebrand it as your own, train it
-            on your business, and embed it anywhere — all running on our AI credits. No API keys, no
-            per-message bills.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/derma-ai-saas/signup"
-              className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-[#6B2278] sm:w-auto"
-            >
-              Start now
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-            </Link>
-            <Link
-              href="#pricing"
-              className="inline-flex w-full items-center justify-center rounded-full border border-gray-200 bg-white px-6 py-3 text-base font-semibold text-gray-900 transition-colors hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] sm:w-auto"
-            >
-              See pricing
-            </Link>
-          </div>
-          <p className="mt-4 text-sm text-gray-500">One flat price. No usage fees, ever.</p>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="border-y border-gray-200 bg-[#7B2D8E]/[0.03]">
-        <div className="mx-auto max-w-7xl px-4 py-16">
-          <h2 className="text-center font-serif text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
-            Up and running in three steps
-          </h2>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {steps.map((s) => (
-              <div key={s.n} className="rounded-2xl border border-gray-200 bg-white p-6">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7B2D8E] text-lg font-bold text-white">
-                  {s.n}
-                </span>
-                <h3 className="mt-4 text-lg font-semibold text-gray-900">{s.title}</h3>
-                <p className="mt-2 leading-relaxed text-gray-600">{s.desc}</p>
+      <main>
+        {/* ------------------------------------------------ Hero */}
+        <section className="border-b border-border">
+          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 md:py-24 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-16">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
+                Derma AI for Business
+              </p>
+              <h1 className="mt-6 text-balance font-serif text-5xl leading-[1.05] text-foreground md:text-6xl lg:text-7xl">
+                Your own AI concierge, on your website tonight.
+              </h1>
+              <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
+                License the same assistant that powers Dermaspace. Rebrand it as yours, teach it
+                your business, and embed it with a single line of code &mdash; all running on our AI
+                credits.
+              </p>
+              <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link
+                  href="/derma-ai-saas/signup"
+                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Start now
+                  <ArrowRight
+                    className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
+                </Link>
+                <Link
+                  href="#pricing"
+                  className="inline-flex items-center justify-center rounded-full border border-border px-7 py-3.5 text-base font-semibold text-foreground transition-colors hover:border-primary hover:text-primary"
+                >
+                  See pricing
+                </Link>
               </div>
-            ))}
+              <p className="mt-6 text-sm text-muted-foreground">
+                One flat price. No usage fees, no API keys, no surprises.
+              </p>
+            </div>
+
+            <div aria-label="Live demo of the chat widget">
+              <WidgetDemo />
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                A real preview of the widget your visitors will see &mdash; try it.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features */}
-      <section className="mx-auto max-w-7xl px-4 py-16">
-        <h2 className="text-center font-serif text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
-          Everything included
-        </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-center leading-relaxed text-gray-600">
-          A complete, done-for-you AI assistant platform. You bring your brand and your knowledge —
-          we handle the technology.
-        </p>
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <div key={f.title} className="rounded-2xl border border-gray-200 bg-white p-6">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                <f.icon className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <h3 className="mt-4 text-lg font-semibold text-gray-900">{f.title}</h3>
-              <p className="mt-2 leading-relaxed text-gray-600">{f.desc}</p>
+        {/* ------------------------------------------------ How it works */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
+                How it works
+              </p>
+              <h2 className="mt-4 text-balance font-serif text-3xl text-foreground md:text-5xl">
+                Live in three steps. No developers required.
+              </h2>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section id="pricing" className="border-t border-gray-200 bg-[#7B2D8E]/[0.03]">
-        <div className="mx-auto max-w-7xl px-4 py-16">
-          <h2 className="text-center font-serif text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">
-            Simple, flat pricing
-          </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-center leading-relaxed text-gray-600">
-            One plan. Everything included. No surprises.
-          </p>
-
-          <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-gray-200 bg-white p-8">
-            <div className="flex items-baseline justify-center gap-1">
-              <span className="text-2xl font-semibold text-gray-500">&#8358;</span>
-              <span className="text-5xl font-bold tracking-tight text-gray-900">35,000</span>
-              <span className="text-lg text-gray-500">/year</span>
-            </div>
-            <p className="mt-2 text-center text-gray-600">
-              Per company. Billed annually. Cancel anytime.
-            </p>
-
-            <ul className="mt-8 grid gap-3">
-              {included.map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E] text-white">
-                    <Check className="h-3 w-3" aria-hidden="true" />
-                  </span>
-                  <span className="text-gray-700">{item}</span>
-                </li>
+            <div className="mt-12 grid gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-3">
+              {steps.map((s) => (
+                <div key={s.n} className="bg-card p-8">
+                  <span className="font-serif text-5xl text-primary">{s.n}</span>
+                  <h3 className="mt-6 text-lg font-semibold text-foreground">{s.title}</h3>
+                  <p className="mt-2 leading-relaxed text-muted-foreground">{s.desc}</p>
+                </div>
               ))}
-            </ul>
+            </div>
+          </div>
+        </section>
 
+        {/* ------------------------------------------------ Features */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
+                Everything included
+              </p>
+              <h2 className="mt-4 text-balance font-serif text-3xl text-foreground md:text-5xl">
+                You bring the brand. We bring the technology.
+              </h2>
+            </div>
+            <div className="mt-12 grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((f) => (
+                <div key={f.title} className="bg-card p-8">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full border border-primary text-primary">
+                    <f.icon className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <h3 className="mt-5 text-lg font-semibold text-foreground">{f.title}</h3>
+                  <p className="mt-2 leading-relaxed text-muted-foreground">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------ Pricing */}
+        <section id="pricing" className="border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
+            <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
+                  Pricing
+                </p>
+                <h2 className="mt-4 text-balance font-serif text-3xl text-foreground md:text-5xl">
+                  One plan. Everything in it.
+                </h2>
+                <p className="mt-6 max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
+                  No tiers, no add-ons, no per-message billing. Set everything up free &mdash; your
+                  assistant goes live the moment your subscription is activated.
+                </p>
+                <div className="mt-10 flex items-baseline gap-2">
+                  <span className="font-serif text-6xl text-foreground md:text-7xl">
+                    &#8358;35,000
+                  </span>
+                  <span className="text-lg text-muted-foreground">/year</span>
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">Per company. Cancel anytime.</p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card p-8">
+                <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                  What&apos;s included
+                </p>
+                <ul className="mt-6 grid gap-4">
+                  {included.map((item) => (
+                    <li key={item} className="flex items-start gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0">
+                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
+                      <span className="leading-relaxed text-foreground">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/derma-ai-saas/signup"
+                  className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+                >
+                  Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------ FAQ */}
+        <section className="border-b border-border">
+          <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
+            <div className="grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">FAQ</p>
+                <h2 className="mt-4 text-balance font-serif text-3xl text-foreground md:text-5xl">
+                  Questions, answered.
+                </h2>
+              </div>
+              <SaasFaq />
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------ CTA band */}
+        <section className="bg-primary">
+          <div className="mx-auto flex max-w-7xl flex-col items-center gap-8 px-4 py-16 text-center md:py-24">
+            <h2 className="max-w-3xl text-balance font-serif text-3xl text-primary-foreground md:text-5xl">
+              Give every visitor an instant, personal answer.
+            </h2>
+            <p className="max-w-xl text-pretty text-lg leading-relaxed text-primary-foreground/80">
+              Join businesses using Derma AI to answer questions, capture leads and support
+              customers around the clock.
+            </p>
             <Link
               href="/derma-ai-saas/signup"
-              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-[#6B2278]"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-primary-foreground px-7 py-3.5 text-base font-semibold text-primary transition-opacity hover:opacity-90"
             >
-              Get started <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              Create your assistant <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
-            <p className="mt-3 text-center text-sm text-gray-500">
-              Set everything up first — your assistant goes live once your subscription is activated.
-            </p>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* CTA */}
-      <section className="mx-auto max-w-7xl px-4 py-16">
-        <div className="rounded-3xl bg-[#7B2D8E] px-6 py-12 text-center text-white">
-          <h2 className="text-balance font-serif text-2xl font-bold tracking-tight md:text-3xl">
-            Give your customers instant answers
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-pretty leading-relaxed text-white/85">
-            Join businesses using Derma AI to answer questions, capture leads and support customers
-            around the clock.
-          </p>
-          <Link
-            href="/derma-ai-saas/signup"
-            className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-base font-semibold text-[#7B2D8E] transition-opacity hover:opacity-90"
-          >
-            Create your assistant <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-gray-500 sm:flex-row">
+      <footer className="bg-background">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground sm:flex-row">
           <p className="flex items-center gap-2">
-            <ButterflyLogo className="h-4 w-4 text-[#7B2D8E]" />
-            Derma AI for Business — a Dermaspace product.
+            <ButterflyLogo className="h-4 w-4 text-primary" />
+            Derma AI for Business &mdash; a Dermaspace product.
           </p>
           <div className="flex items-center gap-4">
-            <Link href="/derma-ai-saas/login" className="hover:text-[#7B2D8E]">
+            <Link href="/derma-ai-saas/login" className="transition-colors hover:text-primary">
               Sign in
             </Link>
-            <Link href="/terms" className="hover:text-[#7B2D8E]">
+            <Link href="/terms" className="transition-colors hover:text-primary">
               Terms
             </Link>
-            <Link href="/privacy" className="hover:text-[#7B2D8E]">
+            <Link href="/privacy" className="transition-colors hover:text-primary">
               Privacy
             </Link>
           </div>

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCurrentTenant, isTenantActive } from '@/lib/saas-auth'
-import { sql } from '@/lib/db'
+import { saasSql } from '@/lib/saas-db'
 
 // GET /api/saas/me — current tenant profile + light usage stats for the
 // dashboard header.
@@ -13,9 +13,9 @@ export async function GET() {
   let knowledgeCount = 0
   let conversationCount = 0
   try {
-    const k = await sql`SELECT COUNT(*)::int AS c FROM derma_saas_knowledge WHERE tenant_id = ${tenant.id}`
+    const k = await saasSql`SELECT COUNT(*)::int AS c FROM derma_saas_knowledge WHERE tenant_id = ${tenant.id}`
     knowledgeCount = k[0]?.c ?? 0
-    const c = await sql`SELECT COUNT(*)::int AS c FROM derma_saas_conversations WHERE tenant_id = ${tenant.id}`
+    const c = await saasSql`SELECT COUNT(*)::int AS c FROM derma_saas_conversations WHERE tenant_id = ${tenant.id}`
     conversationCount = c[0]?.c ?? 0
   } catch {
     /* stats are best-effort */

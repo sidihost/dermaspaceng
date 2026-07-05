@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentTenant } from '@/lib/saas-auth'
-import { sql } from '@/lib/db'
+import { saasSql } from '@/lib/saas-db'
 import { upsertTenantKnowledge, deleteTenantKnowledge } from '@/lib/vector'
 
 // PUT /api/saas/knowledge/[id] — edit an existing training entry.
@@ -28,7 +28,7 @@ export async function PUT(
   }
 
   try {
-    const rows = await sql`
+    const rows = await saasSql`
       UPDATE derma_saas_knowledge
       SET question = ${question}, answer = ${answer}, updated_at = NOW()
       WHERE id = ${id} AND tenant_id = ${tenant.id}
@@ -57,7 +57,7 @@ export async function DELETE(
   }
   const { id } = await params
   try {
-    const rows = await sql`
+    const rows = await saasSql`
       DELETE FROM derma_saas_knowledge
       WHERE id = ${id} AND tenant_id = ${tenant.id}
       RETURNING id
