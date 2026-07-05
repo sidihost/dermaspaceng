@@ -5,13 +5,12 @@ import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * Marketing demo of the embeddable widget. This is a FAITHFUL React
- * replica of the real customer-facing widget (public/derma-widget.js):
- * same header, same bubble styles, same typing dots, same footer and
- * "Powered by Derma AI" credit — so what visitors see here is exactly
- * what their own customers will see. Scripted answers, no API calls.
- * The real widget uses fixed interface colors by design (it renders on
- * customers' websites), which is why they are mirrored verbatim here.
+ * Marketing demo of the embeddable widget. The chat panel is a FAITHFUL
+ * React replica of the real customer-facing widget (public/derma-widget.js):
+ * same header, bubble styles, typing dots, footer and "Powered by Derma AI"
+ * credit — rendered in the Dermaspace brand font (Lexend Deca), exactly like
+ * the live widget. Shown inside a desktop browser mockup on large screens
+ * and a phone mockup on small screens. Scripted answers, no API calls.
  */
 
 const BRAND = '#7B2D8E'
@@ -36,11 +35,11 @@ interface Msg {
 }
 
 /** The exact chat-bubble icon the real launcher uses. */
-function ChatIcon() {
+function ChatIcon({ size = 24 }: { size?: number }) {
   return (
     <svg
-      width="24"
-      height="24"
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -74,7 +73,11 @@ function SendIcon() {
   )
 }
 
-export function WidgetDemo() {
+/**
+ * The exact widget chat panel — shared by both mockups. Pixel-for-pixel
+ * replica of .panel / .header / .body / .msg / .foot in derma-widget.js.
+ */
+function ChatPanel({ className = '' }: { className?: string }) {
   const [messages, setMessages] = useState<Msg[]>([
     { role: 'assistant', text: 'Hi! Welcome to Amara Beauty Studio. How can I help you today?' },
   ])
@@ -127,126 +130,183 @@ export function WidgetDemo() {
   const remaining = QUESTIONS.filter((q) => !used.includes(q))
 
   return (
-    <div className="flex flex-col items-end gap-3">
-      {/* ------- Panel: replica of .panel in derma-widget.js ------- */}
-      <div className="flex h-[520px] w-full max-w-[380px] flex-col overflow-hidden rounded-2xl border border-[#e6e6e6] bg-white font-sans">
-        {/* Header — brand color, round logo, name + Online status, close btn */}
-        <div className="flex items-center gap-2.5 p-4" style={{ backgroundColor: BRAND }}>
-          <span
-            className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white/20 font-bold text-white"
-            aria-hidden="true"
-          >
-            A
-          </span>
-          <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-[15px] font-bold text-white">Amara Beauty Studio</p>
-            <p className="text-xs text-white/85">Online</p>
-          </div>
-          <span
-            className="flex rounded-lg p-1 text-white"
-            aria-hidden="true"
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </span>
-        </div>
-
-        {/* Body — replica of .body / .msg styles */}
-        <div
-          ref={scrollRef}
-          className="flex flex-1 flex-col gap-2.5 overflow-y-auto bg-[#f7f7f8] p-4"
-          aria-live="polite"
+    <div className={`flex flex-col overflow-hidden bg-white font-sans ${className}`}>
+      {/* Header — brand color, round logo, name + Online status, close btn */}
+      <div className="flex items-center gap-2.5 p-4" style={{ backgroundColor: BRAND }}>
+        <span
+          className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white/20 font-bold text-white"
+          aria-hidden="true"
         >
-          {messages.map((m, i) =>
-            m.role === 'user' ? (
-              <p
-                key={i}
-                className="max-w-[82%] self-end whitespace-pre-wrap rounded-[14px] rounded-br-[4px] px-[13px] py-2.5 text-sm leading-normal text-white"
-                style={{ backgroundColor: BRAND }}
-              >
-                {m.text}
-              </p>
-            ) : (
-              <p
-                key={i}
-                className="max-w-[82%] self-start whitespace-pre-wrap rounded-[14px] rounded-bl-[4px] border border-[#ececec] bg-white px-[13px] py-2.5 text-sm leading-normal text-[#1a1a1a]"
-              >
-                {m.text}
-              </p>
-            ),
-          )}
-          {typing && (
-            <span className="flex gap-1 self-start rounded-[14px] border border-[#ececec] bg-white px-3.5 py-3">
-              <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#b8b8b8]" />
-              <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#b8b8b8] [animation-delay:200ms]" />
-              <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#b8b8b8] [animation-delay:400ms]" />
-            </span>
-          )}
-
-          {/* Suggested questions (demo-only helper, styled like widget chips) */}
-          {remaining.length > 0 && !typing && (
-            <div className="mt-1 flex flex-wrap gap-2">
-              {remaining.map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => ask(q)}
-                  className="rounded-full border border-[#dcdce0] bg-white px-3 py-1.5 text-xs text-[#1a1a1a] transition-colors hover:border-[#7B2D8E] hover:text-[#7B2D8E]"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
+          A
+        </span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate text-[15px] font-bold text-white">Amara Beauty Studio</p>
+          <p className="text-xs text-white/85">Online</p>
         </div>
-
-        {/* Foot — replica of .foot: textarea + square send button */}
-        <div className="flex items-end gap-2 border-t border-[#ececec] bg-white p-3">
-          <textarea
-            rows={1}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Type your message..."
-            aria-label="Type your message"
-            className="max-h-[100px] flex-1 resize-none rounded-xl border border-[#dcdce0] bg-white px-3 py-2.5 text-sm text-[#1a1a1a] outline-none placeholder:text-[#9a9a9a] focus:border-[#7B2D8E]"
-          />
-          <button
-            type="button"
-            onClick={send}
-            disabled={typing}
-            aria-label="Send message"
-            className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-50"
-            style={{ backgroundColor: BRAND }}
+        <span className="flex rounded-lg p-1 text-white" aria-hidden="true">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <SendIcon />
-          </button>
-        </div>
-        <p className="bg-white pb-2.5 pt-1.5 text-center text-[11px] text-[#9a9a9a]">
-          Powered by Derma AI
-        </p>
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </span>
       </div>
 
-      {/* ------- Launcher pill: replica of .launcher ------- */}
-      <span
-        className="inline-flex items-center gap-2 rounded-full px-[18px] py-3.5 text-[15px] font-semibold leading-none text-white"
-        style={{ backgroundColor: BRAND }}
-        aria-hidden="true"
+      {/* Body — replica of .body / .msg styles */}
+      <div
+        ref={scrollRef}
+        className="flex flex-1 flex-col gap-2.5 overflow-y-auto bg-[#f7f7f8] p-4"
+        aria-live="polite"
       >
-        <ChatIcon />
-        Chat with us
-      </span>
+        {messages.map((m, i) =>
+          m.role === 'user' ? (
+            <p
+              key={i}
+              className="max-w-[82%] self-end whitespace-pre-wrap rounded-[14px] rounded-br-[4px] px-[13px] py-2.5 text-sm leading-normal text-white"
+              style={{ backgroundColor: BRAND }}
+            >
+              {m.text}
+            </p>
+          ) : (
+            <p
+              key={i}
+              className="max-w-[82%] self-start whitespace-pre-wrap rounded-[14px] rounded-bl-[4px] border border-[#ececec] bg-white px-[13px] py-2.5 text-sm leading-normal text-[#1a1a1a]"
+            >
+              {m.text}
+            </p>
+          ),
+        )}
+        {typing && (
+          <span className="flex gap-1 self-start rounded-[14px] border border-[#ececec] bg-white px-3.5 py-3">
+            <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#b8b8b8]" />
+            <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#b8b8b8] [animation-delay:200ms]" />
+            <span className="h-[7px] w-[7px] animate-pulse rounded-full bg-[#b8b8b8] [animation-delay:400ms]" />
+          </span>
+        )}
+
+        {/* Suggested questions (demo-only helper, styled like widget chips) */}
+        {remaining.length > 0 && !typing && (
+          <div className="mt-1 flex flex-wrap gap-2">
+            {remaining.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => ask(q)}
+                className="rounded-full border border-[#dcdce0] bg-white px-3 py-1.5 text-xs text-[#1a1a1a] transition-colors hover:border-[#7B2D8E] hover:text-[#7B2D8E]"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Foot — replica of .foot: textarea + square send button */}
+      <div className="flex items-end gap-2 border-t border-[#ececec] bg-white p-3">
+        <textarea
+          rows={1}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Type your message..."
+          aria-label="Type your message"
+          className="max-h-[100px] flex-1 resize-none rounded-xl border border-[#dcdce0] bg-white px-3 py-2.5 text-sm text-[#1a1a1a] outline-none placeholder:text-[#9a9a9a] focus:border-[#7B2D8E]"
+        />
+        <button
+          type="button"
+          onClick={send}
+          disabled={typing}
+          aria-label="Send message"
+          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl text-white disabled:opacity-50"
+          style={{ backgroundColor: BRAND }}
+        >
+          <SendIcon />
+        </button>
+      </div>
+      <p className="bg-white pb-2.5 pt-1.5 text-center text-[11px] text-[#9a9a9a]">
+        Powered by Derma AI
+      </p>
+    </div>
+  )
+}
+
+/** Flat placeholder blocks that suggest a customer's website behind the widget. */
+function FakeSite() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none flex h-full flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <div className="h-3 w-28 rounded-full bg-border" />
+        <div className="flex gap-2">
+          <div className="h-3 w-12 rounded-full bg-border" />
+          <div className="h-3 w-12 rounded-full bg-border" />
+          <div className="h-3 w-12 rounded-full bg-border" />
+        </div>
+      </div>
+      <div className="mt-4 h-6 w-3/5 rounded-full bg-border" />
+      <div className="h-3 w-4/5 rounded-full bg-muted" />
+      <div className="h-3 w-2/3 rounded-full bg-muted" />
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        <div className="h-24 rounded-xl bg-muted" />
+        <div className="h-24 rounded-xl bg-muted" />
+        <div className="h-24 rounded-xl bg-muted" />
+      </div>
+    </div>
+  )
+}
+
+export function WidgetDemo() {
+  return (
+    <div>
+      {/* ---------- Desktop: browser-window mockup ---------- */}
+      <div className="hidden lg:block">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          {/* Browser chrome */}
+          <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+            <div className="flex gap-1.5" aria-hidden="true">
+              <span className="h-3 w-3 rounded-full border border-border bg-muted" />
+              <span className="h-3 w-3 rounded-full border border-border bg-muted" />
+              <span className="h-3 w-3 rounded-full border border-border bg-muted" />
+            </div>
+            <div className="flex-1 rounded-full border border-border bg-background px-4 py-1.5 text-center text-xs text-muted-foreground">
+              amarabeautystudio.com
+            </div>
+          </div>
+          {/* Page + widget bottom-right, exactly like the embed */}
+          <div className="relative h-[600px] bg-background">
+            <FakeSite />
+            <div className="absolute bottom-5 right-5 flex flex-col items-end gap-3">
+              <ChatPanel className="h-[480px] w-[370px] rounded-2xl border border-[#e6e6e6]" />
+              <span
+                className="inline-flex items-center gap-2 rounded-full px-[18px] py-3.5 text-[15px] font-semibold leading-none text-white"
+                style={{ backgroundColor: BRAND }}
+                aria-hidden="true"
+              >
+                <ChatIcon />
+                Chat with us
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ---------- Mobile: phone mockup ---------- */}
+      <div className="mx-auto max-w-[360px] lg:hidden">
+        <div className="rounded-[2.5rem] border-[6px] border-foreground bg-foreground">
+          <div className="relative overflow-hidden rounded-[2.1rem] bg-background">
+            {/* Speaker notch */}
+            <div className="absolute left-1/2 top-2 z-10 h-1.5 w-16 -translate-x-1/2 rounded-full bg-foreground/20" aria-hidden="true" />
+            <ChatPanel className="h-[580px] w-full pt-3" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

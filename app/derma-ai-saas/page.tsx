@@ -85,20 +85,20 @@ export default function SaasLandingPage() {
       <main>
         {/* ------------------------------------------------ Hero */}
         <section className="border-b border-border">
-          <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 md:py-24 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-16">
-            <div>
+          <div className="mx-auto max-w-7xl px-4 py-16 md:py-24">
+            <div className="mx-auto max-w-3xl text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
                 Derma AI for Business
               </p>
               <h1 className="mt-6 text-balance font-serif text-5xl leading-[1.05] text-foreground md:text-6xl lg:text-7xl">
                 Your own AI concierge, on your website tonight.
               </h1>
-              <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
+              <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground">
                 License the same assistant that powers Dermaspace. Rebrand it as yours, teach it
                 your business, and embed it with a single line of code &mdash; all running on our AI
                 credits.
               </p>
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row sm:items-center">
                 <Link
                   href="/derma-ai-saas/signup"
                   className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90"
@@ -122,9 +122,9 @@ export default function SaasLandingPage() {
               </p>
             </div>
 
-            <div aria-label="Live demo of the chat widget">
+            <div className="mx-auto mt-16 max-w-5xl" aria-label="Live demo of the chat widget">
               <WidgetDemo />
-              <p className="mt-3 text-center text-xs text-muted-foreground">
+              <p className="mt-4 text-center text-xs text-muted-foreground">
                 A real preview of the widget your visitors will see &mdash; try it.
               </p>
             </div>

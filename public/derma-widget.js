@@ -77,8 +77,24 @@
     return yiq >= 140 ? '#111111' : '#ffffff'
   }
 
+  // Load the Dermaspace brand font (Lexend Deca) into the host page so the
+  // widget matches the Derma AI interface exactly. @font-face must live in
+  // the main document for fonts to reach the Shadow DOM.
+  function loadFont() {
+    if (document.getElementById('derma-widget-font')) return
+    var link = document.createElement('link')
+    link.id = 'derma-widget-font'
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600;700&display=swap'
+    document.head.appendChild(link)
+  }
+
+  var FONT_STACK =
+    '"Lexend Deca",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif'
+
   var host, root
   function build() {
+    loadFont()
     var onBrand = contrast(cfg.brandColor)
     host = document.createElement('div')
     host.setAttribute('data-derma-widget', '')
@@ -97,7 +113,9 @@
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>'
 
     var css =
-      '*{box-sizing:border-box;margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}' +
+      '*{box-sizing:border-box;margin:0;padding:0;font-family:' +
+      FONT_STACK +
+      '}' +
       '.launcher{display:flex;align-items:center;gap:8px;border:none;border-radius:9999px;padding:14px 18px;background:' +
       cfg.brandColor +
       ';color:' +

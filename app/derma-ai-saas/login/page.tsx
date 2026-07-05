@@ -115,14 +115,16 @@ export default function SaasLoginPage() {
                 type="button"
                 onClick={continueWithDermaspace}
                 disabled={ssoLoading || loading}
-                className="mt-8 inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full border border-primary px-6 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
+                className="mt-8 inline-flex h-12 w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:border-primary disabled:opacity-60"
               >
-                <span
-                  className="flex h-5 w-5 items-center justify-center rounded-full bg-primary font-serif text-[11px] font-bold text-primary-foreground"
+                <img
+                  src="/icons/icon-192x192.png"
+                  alt=""
+                  width={22}
+                  height={22}
+                  className="h-[22px] w-[22px] shrink-0 object-contain"
                   aria-hidden="true"
-                >
-                  D
-                </span>
+                />
                 {ssoLoading ? 'Checking your Dermaspace session\u2026' : 'Continue with Dermaspace'}
               </button>
 
