@@ -1,15 +1,15 @@
-import { sql } from '@/lib/db'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import bcrypt from 'bcryptjs'
-import { ensureSaasSchema } from '@/lib/saas-db'
+import { saasSql, ensureSaasSchema } from '@/lib/saas-db'
 
 // ---------------------------------------------------------------------------
 // lib/saas-auth.ts
 //
 // Authentication for the Derma AI SaaS tenant dashboard. This is a
 // SEPARATE identity system from the main Dermaspace `users` table — a
-// company that licenses Derma AI is not a spa customer. Sessions are
+// company that licenses Derma AI is not a spa customer. All tenant data
+// lives in the DEDICATED SaaS database (SAAS_DATABASE_URL). Sessions are
 // stored in derma_saas_sessions and carried in the `saas_session` cookie.
 // ---------------------------------------------------------------------------
 
@@ -38,12 +38,26 @@ export interface Tenant {
   activated_at: string | null
 }
 
-const TENANT_COLUMNS = sql`
+// Lazy fragment: only touches the SaaS client when a query actually runs.
+const tenantColumns = () => saasSql`
   id, company_name, contact_name, contact_email, public_key, status,
   plan_price_kobo, subscription_expires_at, brand_name, assistant_name,
   brand_color, welcome_message, logo_url, business_context, launcher_label,
   allowed_domains, created_at, activated_at
 `
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+export function validateEmail(email: string): boolean {
+  return EMAIL_RE.test(email.trim())
+}
+
+export function validatePassword(password: string): string | null {
+  if (!password || password.length < 8) {
+    return 'Password must be at least 8 characters.'
+  }
+  return null
+}
 
 export function generatePublicKey(): string {
   // URL-safe, non-secret identifier embedded in customer HTML.
@@ -60,17 +74,24 @@ export async function createTenant(data: {
   contactEmail: string
   password: string
 }): Promise<{ tenant: Tenant | null; error: string | null }> {
-  await ensureSaasSchema()
   const email = data.contactEmail.trim().toLowerCase()
+  if (!validateEmail(email)) {
+    return { tenant: null, error: 'Please enter a valid email address.' }
+  }
+  const pwError = validatePassword(data.password)
+  if (pwError) {
+    return { tenant: null, error: pwError }
+  }
   try {
-    const existing = await sql`SELECT id FROM derma_saas_tenants WHERE contact_email = ${email}`
+    await ensureSaasSchema()
+    const existing = await saasSql`SELECT id FROM derma_saas_tenants WHERE contact_email = ${email}`
     if (existing.length > 0) {
       return { tenant: null, error: 'An account with this email already exists.' }
     }
     const passwordHash = await hashPassword(data.password)
     const publicKey = generatePublicKey()
 
-    const rows = await sql`
+    const rows = await saasSql`
       INSERT INTO derma_saas_tenants (
         company_name, contact_name, contact_email, password_hash, public_key,
         brand_name, assistant_name, welcome_message
@@ -81,7 +102,7 @@ export async function createTenant(data: {
         ${data.companyName.trim()}, 'Assistant',
         ${'Hi! Welcome to ' + data.companyName.trim() + '. How can I help you today?'}
       )
-      RETURNING ${TENANT_COLUMNS}
+      RETURNING ${tenantColumns()}
     `
     return { tenant: rows[0] as Tenant, error: null }
   } catch (err) {
@@ -94,9 +115,9 @@ export async function authenticateTenant(
   email: string,
   password: string,
 ): Promise<{ tenant: Tenant | null; error: string | null }> {
-  await ensureSaasSchema()
   try {
-    const rows = await sql`
+    await ensureSaasSchema()
+    const rows = await saasSql`
       SELECT id, password_hash FROM derma_saas_tenants
       WHERE contact_email = ${email.trim().toLowerCase()}
     `
@@ -117,26 +138,28 @@ export async function authenticateTenant(
 
 export async function getTenantById(id: string): Promise<Tenant | null> {
   try {
-    const rows = await sql`SELECT ${TENANT_COLUMNS} FROM derma_saas_tenants WHERE id = ${id}`
+    const rows = await saasSql`SELECT ${tenantColumns()} FROM derma_saas_tenants WHERE id = ${id}`
     return (rows[0] as Tenant) ?? null
-  } catch {
+  } catch (err) {
+    console.error('[saas-auth] getTenantById failed:', err)
     return null
   }
 }
 
 export async function getTenantByPublicKey(publicKey: string): Promise<Tenant | null> {
-  await ensureSaasSchema()
   try {
-    const rows = await sql`SELECT ${TENANT_COLUMNS} FROM derma_saas_tenants WHERE public_key = ${publicKey}`
+    await ensureSaasSchema()
+    const rows = await saasSql`SELECT ${tenantColumns()} FROM derma_saas_tenants WHERE public_key = ${publicKey}`
     return (rows[0] as Tenant) ?? null
-  } catch {
+  } catch (err) {
+    console.error('[saas-auth] getTenantByPublicKey failed:', err)
     return null
   }
 }
 
 export async function createTenantSession(tenantId: string): Promise<string> {
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000)
-  const rows = await sql`
+  const rows = await saasSql`
     INSERT INTO derma_saas_sessions (tenant_id, expires_at)
     VALUES (${tenantId}, ${expiresAt.toISOString()})
     RETURNING id
@@ -161,13 +184,14 @@ export async function getCurrentTenant(): Promise<Tenant | null> {
     const sessionId = cookieStore.get(SAAS_SESSION_COOKIE)?.value
     if (!sessionId) return null
     await ensureSaasSchema()
-    const rows = await sql`
+    const rows = await saasSql`
       SELECT tenant_id FROM derma_saas_sessions
       WHERE id = ${sessionId} AND expires_at > NOW()
     `
     if (rows.length === 0) return null
     return getTenantById(rows[0].tenant_id as string)
-  } catch {
+  } catch (err) {
+    console.error('[saas-auth] getCurrentTenant failed:', err)
     return null
   }
 }
@@ -177,7 +201,7 @@ export async function destroyTenantSession(): Promise<void> {
     const cookieStore = await cookies()
     const sessionId = cookieStore.get(SAAS_SESSION_COOKIE)?.value
     if (sessionId) {
-      await sql`DELETE FROM derma_saas_sessions WHERE id = ${sessionId}`
+      await saasSql`DELETE FROM derma_saas_sessions WHERE id = ${sessionId}`
     }
     cookieStore.delete(SAAS_SESSION_COOKIE)
   } catch {
