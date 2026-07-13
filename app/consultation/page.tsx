@@ -163,6 +163,10 @@ export default function ConsultationPage() {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  // Set from the submit response so the confirmation screen can offer
+  // a private tracking link (anonymous) or the dashboard (signed-in).
+  const [trackToken, setTrackToken] = useState<string | null>(null)
+  const [submittedAnonymous, setSubmittedAnonymous] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [captchaToken, setCaptchaToken] = useState('')
   const [user, setUser] = useState<AuthUser | null>(null)
@@ -384,6 +388,17 @@ export default function ConsultationPage() {
         } catch {
           /* ignore */
         }
+        try {
+          const data = await res.json()
+          setTrackToken(data.trackToken ?? null)
+          // Fall back to the client-side auth check if the API doesn't
+          // report it, so signed-in users always see the dashboard CTA.
+          setSubmittedAnonymous(
+            typeof data.isAnonymous === 'boolean' ? data.isAnonymous : !user,
+          )
+        } catch {
+          setSubmittedAnonymous(!user)
+        }
         setIsSubmitted(true)
       }
     } catch {
@@ -409,9 +424,10 @@ export default function ConsultationPage() {
               You&apos;re all set, {formData.firstName}!
             </h1>
             <p className="text-sm text-gray-600 mb-6">
-              Your consultation request has been received. We&apos;ll send a
-              confirmation email shortly and our team will reach out within 24
-              hours to lock in your appointment.
+              Your consultation request has been received, and your personalised
+              AI skin analysis is ready. We&apos;ll send a confirmation email
+              shortly and our team will reach out within 24 hours to lock in your
+              appointment.
             </p>
 
             <div className="bg-white rounded-2xl p-4 border border-gray-200 text-left mb-6">
@@ -465,20 +481,66 @@ export default function ConsultationPage() {
               time={formData.time}
             />
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-              <Link
-                href="/"
-                className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
-              >
-                Back to Home
-              </Link>
-              <Link
-                href="/dashboard"
-                className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
-              >
-                Go to Dashboard
-              </Link>
-            </div>
+            {submittedAnonymous ? (
+              <>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+                  {trackToken && (
+                    <Link
+                      href={`/consultation/track/${trackToken}`}
+                      className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
+                    >
+                      View your skin analysis
+                    </Link>
+                  )}
+                  <Link
+                    href="/"
+                    className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
+                  >
+                    Back to Home
+                  </Link>
+                </div>
+
+                {/* Gentle sign-up nudge — no dashboard for anonymous users. */}
+                <div className="mt-6 bg-[#7B2D8E]/5 rounded-2xl p-4 border border-[#7B2D8E]/15 text-left">
+                  <p className="text-sm font-semibold text-gray-900">
+                    Get a more personalised experience
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed text-pretty">
+                    Create a free account to save your skin profile and keep all
+                    your consultations and recommendations in one place.
+                  </p>
+                  <Link
+                    href="/signup"
+                    className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors"
+                  >
+                    Create an account
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+
+                {trackToken && (
+                  <p className="text-[11px] text-gray-500 mt-4 text-pretty">
+                    Tip: bookmark your analysis page — we&apos;ve also emailed you
+                    the private link so you can check your status anytime.
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+                <Link
+                  href="/"
+                  className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
+                >
+                  Back to Home
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
+                >
+                  Go to Dashboard
+                </Link>
+              </div>
+            )}
           </div>
         </div>
         <Footer />
