@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { scheduleConsultationReminder } from '@/lib/reminders'
 import { notifyUser } from '@/lib/notifications'
 import { getDeviceInfo } from '@/lib/device-info'
+import { generateConsultationAnalysis } from '@/lib/consultation-ai'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -86,19 +87,41 @@ export async function POST(request: Request) {
     const isAnonymous = !userId
 
     const id = uuidv4()
+
+    // Public, unguessable token so anonymous customers can revisit a
+    // private tracking page (/consultation/track/<token>) without an
+    // account. Two UUIDs concatenated → 64 hex chars of entropy.
+    const trackToken = (uuidv4() + uuidv4()).replace(/-/g, '')
+
+    // Generate the AI skin analysis immediately so it's ready on the
+    // tracking page the moment the customer lands there. The helper
+    // never throws — it falls back to safe generic guidance if every
+    // AI provider is unavailable, so this can't break the booking.
+    const aiAnalysis = await generateConsultationAnalysis({
+      firstName,
+      concerns: Array.isArray(concerns) ? concerns : [],
+      notes,
+    }).catch((err) => {
+      console.error('[v0] consultation analysis threw unexpectedly', err)
+      return null
+    })
+
     await sql`
       INSERT INTO consultations (
         id, user_id, first_name, last_name, email, phone, location,
         appointment_date, appointment_time, concerns, notes,
         is_anonymous, user_agent, browser, os, device_type,
-        ip_address, geo_country, geo_city, geo_region
+        ip_address, geo_country, geo_city, geo_region,
+        track_token, ai_analysis, ai_generated_at
       )
       VALUES (
         ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
         ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''},
         ${isAnonymous}, ${device?.userAgent ?? null}, ${device?.browser ?? null},
         ${device?.os ?? null}, ${device?.deviceType ?? null}, ${device?.ipAddress ?? null},
-        ${device?.geoCountry ?? null}, ${device?.geoCity ?? null}, ${device?.geoRegion ?? null}
+        ${device?.geoCountry ?? null}, ${device?.geoCity ?? null}, ${device?.geoRegion ?? null},
+        ${trackToken}, ${aiAnalysis ? JSON.stringify(aiAnalysis) : null},
+        ${aiAnalysis ? new Date().toISOString() : null}
       )
     `
 
@@ -110,12 +133,19 @@ export async function POST(request: Request) {
       day: 'numeric'
     })
 
+    const appUrl = (
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      'https://www.dermaspaceng.com'
+    ).replace(/\/$/, '')
+
     await sendConsultationConfirmation({
       email,
       firstName,
       location: locationNames[location] || location,
       date: formattedDate,
-      time
+      time,
+      trackUrl: `${appUrl}/consultation/track/${trackToken}`,
     })
 
     // Enqueue the 1-hour-before reminder. Fire-and-forget — a QStash
@@ -145,7 +175,10 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Consultation request submitted successfully'
+      message: 'Consultation request submitted successfully',
+      trackToken,
+      isAnonymous,
+      analysis: aiAnalysis,
     })
 
   } catch (error) {

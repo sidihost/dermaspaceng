@@ -701,13 +701,28 @@ export async function sendConsultationConfirmation(data: {
   location: string
   date: string
   time: string
+  trackUrl?: string
 }): Promise<boolean> {
+  const trackBlock = data.trackUrl
+    ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="text-align: center;">
+          <a href="${data.trackUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 9999px;">Track your consultation</a>
+          <p style="margin: 12px 0 0; font-size: 12px; color: #888;">Your personalised AI skin analysis is ready on this private link.</p>
+        </td>
+      </tr>
+    </table>
+    `
+    : ''
+
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Consultation Requested</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.firstName},<br><br>
       Thank you for requesting a consultation with Dermaspace. Our team will review your request and confirm your appointment within 24 hours.
     </p>
+    ${trackBlock}
     
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; padding: 20px;">
       <tr>
