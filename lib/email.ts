@@ -1465,7 +1465,7 @@ export async function sendGiftCardConfirmation(data: {
     </ol>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      If you have any questions, please contact us at hello@dermaspaceng.com or call +234 906 183 6625.
+      If you have any questions, please contact us at hello@dermaspaceng.com or call 09013134945 / 09061836625.
     </p>
   `
   
@@ -1515,7 +1515,7 @@ export async function sendFormConfirmation(data: {
     </table>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Our team typically responds within 24-48 hours. For urgent inquiries, please call us at +234 906 183 6625.
+      Our team typically responds within 24-48 hours. For urgent inquiries, please call us at 09013134945 / 09061836625.
     </p>
   `
   
@@ -1611,7 +1611,7 @@ export async function sendGiftCardPaymentReceipt(data: {
     </ol>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Keep this email as your payment receipt. If you have any questions, please contact us at hello@dermaspaceng.com or call +234 906 183 6625.
+      Keep this email as your payment receipt. If you have any questions, please contact us at hello@dermaspaceng.com or call 09013134945 / 09061836625.
     </p>
   `
   
@@ -1665,7 +1665,7 @@ export async function sendGiftCardPaymentCancelled(data: {
     </table>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Need help? Contact us at hello@dermaspaceng.com or call +234 906 183 6625.
+      Need help? Contact us at hello@dermaspaceng.com or call 09013134945 / 09061836625.
     </p>
   `
   
