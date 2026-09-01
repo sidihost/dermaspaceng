@@ -298,7 +298,7 @@ function getEmailTemplate(
                     ${footerIcon('mail')}<a href="mailto:hello@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">hello@dermaspaceng.com</a>
                   </td>
                   <td class="ds-footer-cell" valign="top" style="padding-right: 12px; vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
-                    ${footerIcon('phone')}<a href="tel:+2348167764757" style="color:${BRAND_COLOR};font-weight:600;">+234 816 776 4757</a>
+                    ${footerIcon('phone')}<a href="tel:+2349013134945" style="color:${BRAND_COLOR};font-weight:600;">09013134945 / 09061836625</a>
                   </td>
                   <td class="ds-footer-cell" valign="top" style="vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
                     ${footerIcon('globe')}<a href="${PUBLIC_ORIGIN}" style="color:${BRAND_COLOR};font-weight:600;">dermaspaceng.com</a>
@@ -747,7 +747,7 @@ export async function sendConsultationConfirmation(data: {
     </table>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      If you need to reschedule or cancel, please contact us at info@dermaspaceng.com or call +234 816 776 4757.
+      If you need to reschedule or cancel, please contact us at info@dermaspaceng.com or call 09013134945 / 09061836625.
     </p>
   `
   
@@ -1141,7 +1141,7 @@ export async function sendBookingReminder(data: {
     </table>
 
     <p style="margin: 0 0 16px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
-      Please arrive 10 minutes early. If you need to reschedule, reply to this email or call <strong>+234 816 776 4757</strong> as soon as possible.
+      Please arrive 10 minutes early. If you need to reschedule, reply to this email or call <strong>09013134945 / 09061836625</strong> as soon as possible.
     </p>
   `
   return sendEmail({
@@ -1179,7 +1179,7 @@ export async function sendConsultationReminder(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #888;">
-      If something has come up, please call <strong>+234 816 776 4757</strong> so we can free the slot for someone else.
+      If something has come up, please call <strong>09013134945 / 09061836625</strong> so we can free the slot for someone else.
     </p>
   `
   return sendEmail({
@@ -2425,7 +2425,7 @@ export async function sendTicketConfirmation(data: {
     </table>
     
     <p style="margin: 0; font-size: 14px; color: #65676b; line-height: 1.5;">
-      Our typical response time is within 24-48 hours. For urgent matters, please call us directly at +234 816 776 4757.
+      Our typical response time is within 24-48 hours. For urgent matters, please call us directly at 09013134945 / 09061836625.
     </p>
     
     <p style="margin: 24px 0 0; font-size: 14px; color: #1c1e21; line-height: 1.5;">
