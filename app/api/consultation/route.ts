@@ -47,9 +47,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // The date arrives as an ISO timestamp from the form. Normalize it to a
-    // YYYY-MM-DD calendar date and read its weekday in UTC so it matches the
-    // Lagos-day the customer picked (UTC+1, no DST).
+    // The form sends a YYYY-MM-DD calendar date. Normalize it and read its
+    // weekday in UTC so it matches the Lagos-day the customer picked (UTC+1,
+    // no DST) without applying a timezone conversion.
     const appointmentDate = String(date).slice(0, 10)
     const parsedAppointmentDate = new Date(`${appointmentDate}T00:00:00.000Z`)
     const isValidDate =

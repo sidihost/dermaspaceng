@@ -62,6 +62,14 @@ function isConsultationBookingDate(date: Date | null): boolean {
   return Boolean(date && CONSULTATION_BOOKING_DAYS.includes(date.getDay()))
 }
 
+// Calendar selections represent a local calendar day. Sending `toISOString()`
+// shifts midnight selections back a day in time zones ahead of UTC (including
+// Lagos), which made a selected Wednesday arrive at the API as Tuesday.
+function toAppointmentDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 const locations = [
   {
     id: 'vi',
@@ -165,6 +173,7 @@ export default function ConsultationPage() {
 
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   // Set from the submit response so the confirmation screen can offer
   // a private tracking link (anonymous) or the dashboard (signed-in).
@@ -371,14 +380,20 @@ export default function ConsultationPage() {
   }
 
   const handleSubmit = async () => {
+    if (!formData.date || !isConsultationBookingDate(formData.date)) {
+      setSubmissionError('Please select a Wednesday through Saturday appointment date.')
+      return
+    }
+
     setIsSubmitting(true)
+    setSubmissionError('')
     try {
       const res = await fetch('/api/consultation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          date: formData.date?.toISOString(),
+          date: toAppointmentDate(formData.date),
           captchaToken,
         }),
       })
@@ -400,9 +415,14 @@ export default function ConsultationPage() {
           setSubmittedAnonymous(!user)
         }
         setIsSubmitted(true)
+      } else {
+        const data = await res.json().catch(() => null)
+        setSubmissionError(
+          data?.error || 'We could not submit your consultation. Please try again.',
+        )
       }
     } catch {
-      alert('Something went wrong. Please try again.')
+      setSubmissionError('Something went wrong. Please check your connection and try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -1012,6 +1032,15 @@ export default function ConsultationPage() {
             </div>
 
             <HCaptcha onVerify={setCaptchaToken} />
+
+            {submissionError && (
+              <p
+                role="alert"
+                className="rounded-lg bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700"
+              >
+                {submissionError}
+              </p>
+            )}
 
             <p className="text-[11px] text-gray-500 text-center text-pretty">
               By confirming you agree to receive appointment confirmations and
