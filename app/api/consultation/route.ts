@@ -18,12 +18,10 @@ const locationNames: Record<string, string> = {
   ikoyi: 'Ikoyi - 9 Agbeke Rotinwa Cl, Dolphin Estate'
 }
 
-// Weekday numbers each clinic is CLOSED on (0 = Sun ... 6 = Sat).
-// Ikoyi is closed Sundays and Mondays; VI is closed Sundays.
-const locationClosedDays: Record<string, number[]> = {
-  vi: [0],
-  ikoyi: [0, 1],
-}
+// Consultations are offered Wednesday through Saturday, irrespective of the
+// clinic's general opening hours. This server-side check prevents requests
+// from bypassing the calendar in the browser.
+const consultationBookingDays = [3, 4, 5, 6]
 
 export async function POST(request: Request) {
   try {
@@ -49,14 +47,19 @@ export async function POST(request: Request) {
       )
     }
 
-    // Reject dates that fall on a day the chosen clinic is closed.
-    // The date arrives as 'YYYY-MM-DD'; read the weekday in UTC so it
-    // matches the Lagos-day the customer picked (UTC+1, no DST).
-    const closedDays = locationClosedDays[location] ?? [0]
-    const requestedWeekday = new Date(`${String(date).slice(0, 10)}T00:00:00.000Z`).getUTCDay()
-    if (closedDays.includes(requestedWeekday)) {
+    // The date arrives as an ISO timestamp from the form. Normalize it to a
+    // YYYY-MM-DD calendar date and read its weekday in UTC so it matches the
+    // Lagos-day the customer picked (UTC+1, no DST).
+    const appointmentDate = String(date).slice(0, 10)
+    const parsedAppointmentDate = new Date(`${appointmentDate}T00:00:00.000Z`)
+    const isValidDate =
+      /^\d{4}-\d{2}-\d{2}$/.test(appointmentDate) &&
+      !Number.isNaN(parsedAppointmentDate.getTime()) &&
+      parsedAppointmentDate.toISOString().slice(0, 10) === appointmentDate
+    const requestedWeekday = parsedAppointmentDate.getUTCDay()
+    if (!isValidDate || !consultationBookingDays.includes(requestedWeekday)) {
       return NextResponse.json(
-        { error: 'This clinic is closed on the selected day. Please pick another date.' },
+        { error: 'Consultations are available Wednesday through Saturday. Please pick another date.' },
         { status: 400 }
       )
     }
@@ -116,7 +119,7 @@ export async function POST(request: Request) {
       )
       VALUES (
         ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
-        ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''},
+        ${appointmentDate}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''},
         ${isAnonymous}, ${device?.userAgent ?? null}, ${device?.browser ?? null},
         ${device?.os ?? null}, ${device?.deviceType ?? null}, ${device?.ipAddress ?? null},
         ${device?.geoCountry ?? null}, ${device?.geoCity ?? null}, ${device?.geoRegion ?? null},
@@ -126,7 +129,7 @@ export async function POST(request: Request) {
     `
 
     // Send confirmation email
-    const formattedDate = new Date(date).toLocaleDateString('en-US', {
+    const formattedDate = new Date(`${appointmentDate}T00:00:00.000Z`).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -151,7 +154,7 @@ export async function POST(request: Request) {
     // Enqueue the 1-hour-before reminder. Fire-and-forget — a QStash
     // failure here MUST NOT break the user's confirmation response.
     // The helper logs warnings internally and we ignore the promise.
-    void scheduleConsultationReminder(id, date, time)
+    void scheduleConsultationReminder(id, appointmentDate, time)
 
     // Drop an in-app notification so the customer's bell badge lights
     // up the moment they submit. Signed-in customers only — anonymous
