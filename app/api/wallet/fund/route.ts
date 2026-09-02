@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { initializePayment, generateReference, toKobo } from '@/lib/paystack'
-import { createPendingTransaction, createAbandonedPayment } from '@/lib/wallet'
+import {
+  createPendingTransaction,
+  createAbandonedPayment,
+  updateTransactionStatus,
+} from '@/lib/wallet'
 import { getBaseUrl } from '@/lib/app-url'
 
 // POST /api/wallet/fund - Initialize wallet funding via Paystack
@@ -15,10 +19,17 @@ export async function POST(request: NextRequest) {
     
     const { amount } = await request.json()
     
-    if (!amount || amount < 100) {
+    if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount < 100) {
       return NextResponse.json(
-        { error: 'Minimum funding amount is N100' },
+        { error: 'Enter a whole-naira amount of at least N100' },
         { status: 400 }
+      )
+    }
+
+    if (amount > 10_000_000) {
+      return NextResponse.json(
+        { error: 'Maximum funding amount is N10,000,000' },
+        { status: 400 },
       )
     }
     
@@ -36,7 +47,28 @@ export async function POST(request: NextRequest) {
     const baseUrl = getBaseUrl(request)
     const callbackUrl = `${baseUrl}/api/wallet/verify?reference=${reference}`
     
-    // Initialize Paystack payment
+    // Record the pending funding before exposing a Paystack checkout URL.
+    // If the database is unavailable, the customer must not be sent to a
+    // payment page that cannot later be reconciled and credited.
+    const pendingTransaction = await createPendingTransaction(
+      user.id,
+      amount,
+      'credit',
+      'paystack',
+      'Wallet funding via Paystack',
+      reference,
+      reference,
+      { type: 'wallet_funding' },
+    )
+
+    if (!pendingTransaction) {
+      return NextResponse.json(
+        { error: 'Unable to prepare your wallet funding. Please try again.' },
+        { status: 503 },
+      )
+    }
+
+    // Initialize Paystack payment only after the pending ledger entry exists.
     const paymentResponse = await initializePayment({
       email: user.email,
       amount: toKobo(amount),
@@ -60,24 +92,21 @@ export async function POST(request: NextRequest) {
       },
     })
     
-    if (!paymentResponse || !paymentResponse.status) {
+    if (
+      !paymentResponse?.status ||
+      !paymentResponse.data?.authorization_url ||
+      !paymentResponse.data?.reference
+    ) {
+      await updateTransactionStatus(
+        pendingTransaction.id,
+        'failed',
+        'Paystack could not initialize this payment',
+      )
       return NextResponse.json(
         { error: 'Failed to initialize payment' },
-        { status: 500 }
+        { status: 502 }
       )
     }
-    
-    // Create pending transaction
-    await createPendingTransaction(
-      user.id,
-      amount,
-      'credit',
-      'paystack',
-      'Wallet funding via Paystack',
-      reference,
-      paymentResponse.data.reference,
-      { type: 'wallet_funding' }
-    )
     
     // Create abandoned payment record for recovery
     await createAbandonedPayment(

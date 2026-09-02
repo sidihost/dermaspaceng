@@ -79,7 +79,7 @@ export interface WalletSettings {
 }
 
 // Wallet functions
-export async function getOrCreateWallet(userId: number): Promise<Wallet> {
+export async function getOrCreateWallet(userId: number | string): Promise<Wallet> {
   const result = await query<Wallet>(
     'SELECT * FROM wallets WHERE user_id = $1',
     [userId]
@@ -361,10 +361,10 @@ export async function getTransactionById(transactionId: number): Promise<Transac
 }
 
 export async function createPendingTransaction(
-  userId: number,
+  userId: number | string,
   amount: number,
   type: 'credit' | 'debit',
-  paymentMethod: 'wallet' | 'paystack',
+  paymentMethod: 'wallet' | 'paystack' | 'bank_transfer',
   description: string,
   paymentReference: string,
   paystackReference?: string,
@@ -496,7 +496,7 @@ export async function getTransactionByReference(reference: string): Promise<Tran
 
 // Abandoned payment functions
 export async function createAbandonedPayment(
-  userId: number,
+  userId: number | string,
   paymentType: 'booking' | 'gift_card' | 'wallet_funding' | 'service',
   amount: number,
   itemDetails: Record<string, unknown>,

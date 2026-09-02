@@ -288,6 +288,30 @@ function PaymentStatusContent() {
         {subcopy}
       </p>
 
+      {tx.status === 'cancelled' && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.25 }}
+          className="mt-5 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/5 px-4 py-3.5 text-left"
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-[#7B2D8E]/10">
+              <Wallet className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-900">
+                Your wallet balance is unchanged
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-600">
+                No payment was completed. You can return to your wallet and
+                try again whenever you&apos;re ready.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Amount */}
       <p
         className={`mt-6 text-4xl sm:text-5xl font-bold tracking-tight ${
