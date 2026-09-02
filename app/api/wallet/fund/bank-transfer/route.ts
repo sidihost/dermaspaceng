@@ -31,6 +31,7 @@ import {
 import {
   createPendingTransaction,
   createAbandonedPayment,
+  updateTransactionStatus,
 } from '@/lib/wallet'
 import { getBaseUrl } from '@/lib/app-url'
 
@@ -43,9 +44,9 @@ export async function POST(request: NextRequest) {
 
     const { amount } = await request.json()
 
-    if (!amount || typeof amount !== 'number' || amount < 100) {
+    if (!Number.isFinite(amount) || !Number.isInteger(amount) || amount < 100) {
       return NextResponse.json(
-        { error: 'Minimum funding amount is N100' },
+        { error: 'Enter a whole-naira amount of at least N100' },
         { status: 400 },
       )
     }
@@ -56,13 +57,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    if (!process.env.PAYSTACK_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'Payments are not configured yet. Please contact support.' },
+        { status: 503 },
+      )
+    }
+
     // Use a distinct prefix so the bank-transfer leg is easy to
     // identify in the transactions table when debugging.
     const reference = generateReference('WBT') // Wallet Bank Transfer
 
-    // Reserve the virtual account FIRST. If Paystack rejects the
-    // charge we don't want to leave an orphan pending transaction
-    // sitting in the user's history.
+    // Create the pending ledger entry before reserving a transfer account.
+    // A customer must never receive bank details that can accept money when
+    // we have no corresponding transaction to reconcile and credit.
+    const pendingTransaction = await createPendingTransaction(
+      user.id,
+      amount,
+      'credit',
+      'bank_transfer',
+      'Wallet funding via Bank Transfer',
+      reference,
+      reference,
+      { type: 'wallet_funding', channel: 'bank_transfer' },
+    )
+
+    if (!pendingTransaction) {
+      return NextResponse.json(
+        { error: 'Unable to prepare your bank transfer. Please try again.' },
+        { status: 503 },
+      )
+    }
+
+    // Reserve the virtual account after the durable pending entry exists.
     const charge = await initializeBankTransfer({
       email: user.email,
       amount: toKobo(amount),
@@ -87,27 +114,16 @@ export async function POST(request: NextRequest) {
     })
 
     if (!charge) {
+      await updateTransactionStatus(
+        pendingTransaction.id,
+        'failed',
+        'Paystack could not reserve a transfer account',
+      )
       return NextResponse.json(
         { error: 'Could not reserve a transfer account. Please try the card option.' },
         { status: 502 },
       )
     }
-
-    // Now create the pending transaction. `payment_method` is
-    // 'bank_transfer' so the wallet UI and admin views can show
-    // the right channel label, but every downstream credit path
-    // keeps working because we record the same `reference` and
-    // `paystack_reference` shape as the card flow.
-    await createPendingTransaction(
-      user.id,
-      amount,
-      'credit',
-      'bank_transfer',
-      'Wallet funding via Bank Transfer',
-      reference,
-      charge.reference,
-      { type: 'wallet_funding', channel: 'bank_transfer' },
-    )
 
     // Reuse the abandoned-payment recovery rail so a customer who
     // initiates a transfer but doesn't complete it gets the same

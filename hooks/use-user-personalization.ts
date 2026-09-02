@@ -2,6 +2,7 @@
 
 import useSWR from 'swr'
 import { getPersonalizedTips, getPersonalizedLaserTips, type SkinTip } from '@/lib/skin-tips'
+import { useAuth } from '@/hooks/use-auth'
 
 interface User {
   id: string
@@ -63,6 +64,11 @@ const fetcher = async (url: string) => {
 }
 
 export function useUserPersonalization() {
+  // Seed the logged-in state from the shared auth cache. Pages such as
+  // /locations can now render the signed-in experience immediately instead
+  // of briefly offering a signed-in customer a "Sign in" CTA while this
+  // hook's richer profile request is still in flight.
+  const { user: cachedAuthUser, isAuthenticated } = useAuth()
   const { data: authData, isLoading: authLoading } = useSWR<AuthResponse | null>(
     '/api/auth/me',
     fetcher,
@@ -83,8 +89,8 @@ export function useUserPersonalization() {
     }
   )
 
-  const isLoggedIn = !!authData?.user
-  const user = authData?.user || null
+  const isLoggedIn = isAuthenticated || !!authData?.user
+  const user = authData?.user || cachedAuthUser || null
   const preferences = authData?.preferences || null
   const recentBookings = bookingData?.bookings || []
 

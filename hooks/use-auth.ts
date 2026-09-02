@@ -153,8 +153,17 @@ export function useAuth(): AuthState {
   // to wire up its own listener.
   useEffect(() => {
     const onUpdate = () => { void mutate() }
+    const onLogout = () => {
+      // Apply the signed-out state synchronously. Revalidating here would
+      // keep a cached user visible until the server responds with 401.
+      void mutate({ user: null }, { revalidate: false })
+    }
     window.addEventListener('user-updated', onUpdate)
-    return () => window.removeEventListener('user-updated', onUpdate)
+    window.addEventListener('auth-logout', onLogout)
+    return () => {
+      window.removeEventListener('user-updated', onUpdate)
+      window.removeEventListener('auth-logout', onLogout)
+    }
   }, [mutate])
 
   const user: UserData | null = data?.user ?? null

@@ -264,11 +264,23 @@ export default function Header() {
     const onUserUpdated = () => {
       fetchUser()
     }
+    const onAuthLogout = () => {
+      // Do not wait for `/api/auth/me` to return 401 after a sign-out.
+      // The shared logout helper has already cleared local auth state, so
+      // update this independently cached header state in the same frame.
+      cachedUser = null
+      setUser(null)
+      setIsAuthLoading(false)
+      setShowProfileDropdown(false)
+      setIsMobileMenuOpen(false)
+    }
     window.addEventListener('user-updated', onUserUpdated)
+    window.addEventListener('auth-logout', onAuthLogout)
 
     return () => {
       cancelled = true
       window.removeEventListener('user-updated', onUserUpdated)
+      window.removeEventListener('auth-logout', onAuthLogout)
     }
   }, [])
 

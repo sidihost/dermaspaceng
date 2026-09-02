@@ -136,6 +136,13 @@ function showSigningOutOverlay(): void {
  *                    on the auth page.
  */
 export async function logoutAndRedirect(redirectTo: string = '/'): Promise<void> {
+  // Clear every client-side representation of the signed-in user before
+  // navigating. This makes headers, bottom navigation, and other mounted
+  // auth consumers switch to their signed-out state immediately instead of
+  // waiting for the logout route's network request to finish.
+  clearCachedUser()
+  window.dispatchEvent(new Event('auth-logout'))
+
   // Immediate feedback for the gap between tap and the /logout page
   // painting, then hand off. The overlay is torn down by the full
   // navigation that follows.
@@ -158,16 +165,20 @@ export async function logoutAndRedirect(redirectTo: string = '/'): Promise<void>
  * leave the user stranded on a "logging out" screen forever.
  */
 export async function performLogout(redirectTo: string = '/'): Promise<void> {
+  // The logout page is deliberately visible for a short moment. Clear local
+  // auth state first so a slow network request cannot preserve a stale user
+  // in another mounted surface or in the page we navigate to afterwards.
+  try {
+    clearCachedUser()
+    window.dispatchEvent(new Event('auth-logout'))
+  } catch {
+    /* browser globals unavailable — continue with the server logout */
+  }
+
   try {
     await fetch('/api/auth/logout', { method: 'POST' })
   } catch {
     /* network failure — proceed to local cleanup anyway */
-  }
-
-  try {
-    clearCachedUser()
-  } catch {
-    /* localStorage disabled (private mode) — the next /me 401 clears it */
   }
 
   window.location.href = redirectTo

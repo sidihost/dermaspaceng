@@ -14,6 +14,7 @@ import {
   Heart,
 } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
+import { useAuth } from '@/hooks/use-auth'
 
 // Leaflet has no SSR, so we dynamically import it on the client only. A tiny
 // inline fallback keeps the page from visibly "popping" while the bundle loads.
@@ -89,7 +90,12 @@ function toBranchId(value?: string | null): BranchId | null {
 }
 
 export default function LocationsMap() {
-  const { user, preferences, isLoggedIn } = useUserPersonalization()
+  // The shared auth hook is seeded from the local display cache, so the map
+  // can render a signed-in state immediately instead of waiting for this
+  // page's independent personalization request to finish.
+  const { user: authUser } = useAuth()
+  const { preferences } = useUserPersonalization()
+  const isLoggedIn = Boolean(authUser)
 
   // Preferred branch derived from DB preferences; falls back to VI for guests.
   const preferredId = toBranchId(preferences?.preferredLocation)
@@ -109,9 +115,11 @@ export default function LocationsMap() {
     [activeId]
   )
 
-  // Whether the user has a saved home branch — this is what drives the
-  // personalised hero above the map.
-  const isPersonalised = isLoggedIn && Boolean(preferredId)
+  // A signed-in customer should always see their authenticated state on the
+  // map. A saved branch adds extra context, but must not be required just to
+  // avoid incorrectly showing a "Sign in" CTA.
+  const isPersonalised = isLoggedIn
+  const hasPreferredBranch = Boolean(preferredId)
 
   return (
     <main className="relative flex flex-col bg-white">
@@ -125,7 +133,7 @@ export default function LocationsMap() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E]/10 mb-2">
-                {isPersonalised ? (
+                {hasPreferredBranch ? (
                   <>
                     <Home className="w-3 h-3 text-[#7B2D8E]" />
                     <span className="text-[10px] font-semibold text-[#7B2D8E] uppercase tracking-widest">
@@ -145,8 +153,19 @@ export default function LocationsMap() {
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight text-balance">
                 {isPersonalised ? (
                   <>
-                    {user?.firstName ? `${user.firstName}, your spa is` : 'Your spa is'}{' '}
-                    <span className="text-[#7B2D8E]">{activeBranch.name}</span>
+                    {hasPreferredBranch ? (
+                      <>
+                        {authUser?.firstName
+                          ? `${authUser.firstName}, your spa is`
+                          : 'Your spa is'}{' '}
+                        <span className="text-[#7B2D8E]">{activeBranch.name}</span>
+                      </>
+                    ) : (
+                      <>
+                        {authUser?.firstName ? `Welcome, ${authUser.firstName}` : 'Welcome'}{' '}
+                        <span className="text-[#7B2D8E]">to Dermaspace</span>
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -156,9 +175,11 @@ export default function LocationsMap() {
               </h1>
 
               <p className="mt-1 text-xs sm:text-sm text-gray-600 max-w-lg text-pretty">
-                {isPersonalised
+                {hasPreferredBranch
                   ? 'Live directions from wherever you are, plus a one-tap route into the salon.'
-                  : 'Two locations in Lagos. Tap a pin to switch branches or use the directions button to get live navigation.'}
+                  : isPersonalised
+                    ? 'Choose a branch below to get live directions or book your next visit.'
+                    : 'Two locations in Lagos. Tap a pin to switch branches or use the directions button to get live navigation.'}
               </p>
             </div>
 

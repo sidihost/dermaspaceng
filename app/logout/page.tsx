@@ -32,11 +32,11 @@ function LogoutRunner() {
   const redirectTo = safeRedirect(params.get('redirect'))
 
   React.useEffect(() => {
-    // Small, deliberate beat so the message is readable rather than a
-    // sub-100ms flash before the hard navigation kicks in.
+    // Small, deliberate beat so the message is readable without delaying
+    // the signed-out state after the user has explicitly tapped Sign out.
     const t = window.setTimeout(() => {
       void performLogout(redirectTo)
-    }, 600)
+    }, 250)
     return () => window.clearTimeout(t)
   }, [redirectTo])
 
