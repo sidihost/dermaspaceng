@@ -53,22 +53,33 @@ interface AuthUser {
 
 const DRAFT_KEY = 'dermaspace-consultation-draft'
 
+// Consultations are offered Wednesday through Saturday only. Keep this
+// separate from clinic opening hours: a clinic may be open while the
+// consultation team is unavailable.
+const CONSULTATION_BOOKING_DAYS = [3, 4, 5, 6]
+
+function isConsultationBookingDate(date: Date | null): boolean {
+  return Boolean(date && CONSULTATION_BOOKING_DAYS.includes(date.getDay()))
+}
+
+// Calendar selections represent a local calendar day. Sending `toISOString()`
+// shifts midnight selections back a day in time zones ahead of UTC (including
+// Lagos), which made a selected Wednesday arrive at the API as Tuesday.
+function toAppointmentDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 const locations = [
   {
     id: 'vi',
     name: 'Victoria Island',
     address: '237b Muri Okunola St, Victoria Island, Lagos',
-    // Weekday numbers we do NOT accept bookings on (0 = Sun).
-    // VI is open every day (Sun & Mon: 1pm–7pm, Tue–Thu: 10am–7pm,
-    // Fri & Sat: 10am–10pm).
-    closedDays: [] as number[],
   },
   {
     id: 'ikoyi',
     name: 'Ikoyi',
     address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
-    // Ikoyi is closed on Sundays (0) and Mondays (1).
-    closedDays: [0, 1],
   },
 ]
 
@@ -162,6 +173,7 @@ export default function ConsultationPage() {
 
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submissionError, setSubmissionError] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   // Set from the submit response so the confirmation screen can offer
   // a private tracking link (anonymous) or the dashboard (signed-in).
@@ -320,10 +332,7 @@ export default function ConsultationPage() {
   const isDateDisabled = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
     if (date < today) return true // Disable past dates
-    // Disable days the selected clinic is closed (Ikoyi: Sun & Mon, VI: open daily).
-    const selected = locations.find((l) => l.id === formData.location)
-    const closedDays = selected?.closedDays ?? []
-    return closedDays.includes(date.getDay())
+    return !isConsultationBookingDate(date)
   }
 
   const formatDate = (date: Date) =>
@@ -348,7 +357,7 @@ export default function ConsultationPage() {
       case 1:
         return formData.location !== ''
       case 2:
-        return formData.date !== null && formData.time !== ''
+        return isConsultationBookingDate(formData.date) && formData.time !== ''
       case 3:
         return Boolean(
           formData.firstName &&
@@ -371,14 +380,20 @@ export default function ConsultationPage() {
   }
 
   const handleSubmit = async () => {
+    if (!formData.date || !isConsultationBookingDate(formData.date)) {
+      setSubmissionError('Please select a Wednesday through Saturday appointment date.')
+      return
+    }
+
     setIsSubmitting(true)
+    setSubmissionError('')
     try {
       const res = await fetch('/api/consultation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          date: formData.date?.toISOString(),
+          date: toAppointmentDate(formData.date),
           captchaToken,
         }),
       })
@@ -400,9 +415,14 @@ export default function ConsultationPage() {
           setSubmittedAnonymous(!user)
         }
         setIsSubmitted(true)
+      } else {
+        const data = await res.json().catch(() => null)
+        setSubmissionError(
+          data?.error || 'We could not submit your consultation. Please try again.',
+        )
       }
     } catch {
-      alert('Something went wrong. Please try again.')
+      setSubmissionError('Something went wrong. Please check your connection and try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -661,13 +681,9 @@ export default function ConsultationPage() {
                     type="button"
                   onClick={() =>
                     setFormData((prev) => {
-                      // If the previously chosen date falls on a day the
-                      // newly selected clinic is closed, clear it so the
-                      // user is forced to repick a valid day.
-                      const closedDays =
-                        locations.find((l) => l.id === location.id)?.closedDays ?? []
-                      const dateStillValid =
-                        prev.date && !closedDays.includes(prev.date.getDay())
+                      // Keep a previous selection only when consultations
+                      // are available on that day.
+                      const dateStillValid = isConsultationBookingDate(prev.date)
                       return {
                         ...prev,
                         location: location.id,
@@ -720,7 +736,7 @@ export default function ConsultationPage() {
                 Pick a date & time
               </h2>
               <p className="text-sm text-gray-500">
-                We&apos;re open Monday through Saturday. Sundays are off.
+                Consultations are available Wednesday through Saturday.
               </p>
             </div>
 
@@ -1016,6 +1032,15 @@ export default function ConsultationPage() {
             </div>
 
             <HCaptcha onVerify={setCaptchaToken} />
+
+            {submissionError && (
+              <p
+                role="alert"
+                className="rounded-lg bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700"
+              >
+                {submissionError}
+              </p>
+            )}
 
             <p className="text-[11px] text-gray-500 text-center text-pretty">
               By confirming you agree to receive appointment confirmations and
