@@ -17,7 +17,6 @@ import {
 import { HAPTICS } from '@/lib/haptics'
 import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission, onShake } from '@/lib/use-shake-to-feedback'
 import { useNotify } from './notify'
-import { clearCachedUser } from '@/lib/auth-cache'
 import { logoutAndRedirect } from '@/lib/logout'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
@@ -1879,27 +1878,13 @@ function LogoutConfirmCard({ message }: { message: string }) {
     if (state !== 'idle') return
     setState('signing-out')
     try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-    } catch (err) {
-      console.error('[derma-ai] logout fetch failed:', err)
-    }
-    try {
       localStorage.removeItem('derma-account-consent')
     } catch {
       /* localStorage not available in some environments */
     }
-    // Wipe the cached user payload so the home page's first paint
-    // after this redirect doesn't briefly flash the previous user
-    // before /api/auth/me's 401 lands. We don't use logoutAndRedirect
-    // here because we want to keep the existing 1.4s "Signed out"
-    // acknowledgement visible — just borrow its cache-clear step.
-    try { clearCachedUser() } catch { /* ignore */ }
-    setState('done')
-    // Short delay so the "Signed out" acknowledgement is actually
-    // visible before the page navigates away.
-    setTimeout(() => {
-      window.location.href = '/'
-    }, 1400)
+    // Same instant path as every other Sign out button: clear local
+    // auth state, end the session, and go straight to the homepage.
+    await logoutAndRedirect('/')
   }
 
   if (cancelled) {

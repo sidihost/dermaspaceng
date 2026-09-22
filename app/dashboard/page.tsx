@@ -61,7 +61,6 @@ export default function DashboardPage() {
     }
   }, [])
   const [isLoading, setIsLoading] = useState(true)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [user, setUser] = useState<{
     id: string
     firstName: string
@@ -355,20 +354,11 @@ export default function DashboardPage() {
   }
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
-    // Shared helper: POSTs /api/auth/logout, wipes the localStorage
-    // user cache, and hard-redirects so SWR / module caches drop.
-    // Without the cache wipe the home page's first paint flashed
-    // the just-logged-out user before /api/auth/me's 401 landed.
     await logoutAndRedirect('/')
   }
 
   if (isLoading) {
     return <PageLoader label="Loading..." />
-  }
-
-  if (isLoggingOut) {
-    return <PageLoader label="Logging out..." />
   }
 
   return (
