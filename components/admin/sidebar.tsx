@@ -17,7 +17,6 @@ import {
   ChevronLeft,
   LogOut,
   CreditCard,
-  Loader2,
   Power,
   Megaphone,
   Tag,
@@ -353,7 +352,6 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
   }, [permissions])
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   // Optimistic mirror of the avatar — flipped the second the picker
   // saves, so the rail updates without waiting for the next /me poll.
@@ -488,23 +486,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
   }, [isMobileOpen])
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
-    // Use the shared helper so the localStorage user cache is wiped
-    // before the redirect — without this, the home page's first paint
-    // briefly shows the just-logged-out admin's name/avatar before
-    // /api/auth/me's 401 lands and clears it.
     await logoutAndRedirect('/')
-  }
-
-  if (isLoggingOut) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-[#7B2D8E] animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Logging out…</p>
-        </div>
-      </div>
-    )
   }
 
   return (

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Sparkles, Star } from 'lucide-react'
 
 const slides = [
   {
@@ -32,6 +32,9 @@ const slides = [
   },
 ]
 
+const SLIDE_DURATION_MS = 6000
+const PROGRESS_TICK_MS = 100
+
 /**
  * Splits a string into animated characters.
  * Each character is wrapped in a span with a staggered reveal delay.
@@ -51,10 +54,7 @@ function AnimatedText({
   className?: string
 }) {
   return (
-    <span
-      className={`inline-block ${className}`}
-      aria-label={text}
-    >
+    <span className={`inline-block ${className}`} aria-label={text}>
       {text.split('').map((char, i) => (
         <span
           key={`${char}-${i}`}
@@ -106,15 +106,16 @@ export default function Hero() {
   }, [currentSlide, goToSlide])
 
   useEffect(() => {
+    const increment = (PROGRESS_TICK_MS / SLIDE_DURATION_MS) * 100
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           nextSlide()
           return 0
         }
-        return prev + 1.67
+        return prev + increment
       })
-    }, 100)
+    }, PROGRESS_TICK_MS)
     return () => clearInterval(progressInterval)
   }, [nextSlide])
 
@@ -126,6 +127,7 @@ export default function Hero() {
   }
 
   const active = slides[currentSlide]
+  const upNext = [1, 2].map((offset) => (currentSlide + offset) % slides.length)
 
   // Duration to finish the character stagger before drawing the underline
   const titleStepMs = 28
@@ -133,84 +135,83 @@ export default function Hero() {
   const underlineDelay = highlightDelay + active.highlight.length * titleStepMs + 120
 
   return (
-    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden">
-      {/* Background Slider */}
+    <section
+      className="relative isolate overflow-hidden bg-[#2A0C3A] h-[calc(100svh-7.25rem)] min-h-[600px] max-h-[840px] sm:min-h-[640px] lg:min-h-[700px]"
+      aria-roledescription="carousel"
+      aria-label="Featured treatments"
+    >
+      {/* Background slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
           <div
-            key={index}
-            className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
+            key={slide.image}
+            className={`absolute inset-0 transition-opacity duration-[1100ms] ease-[cubic-bezier(0.4,0,0.2,1)] ${
               index === currentSlide ? 'opacity-100' : 'opacity-0'
             }`}
+            aria-hidden={index !== currentSlide}
           >
             <Image
               src={slide.image}
               alt={slide.title}
               fill
-              className={`object-cover transition-transform duration-[6000ms] ease-out ${
-                index === currentSlide ? 'scale-105' : 'scale-100'
+              sizes="100vw"
+              className={`object-cover object-[65%_center] sm:object-center transition-transform ease-out ${
+                index === currentSlide ? 'scale-100' : 'scale-110'
               }`}
+              style={{ transitionDuration: `${SLIDE_DURATION_MS + 1200}ms` }}
               priority={index === 0}
             />
           </div>
         ))}
 
-        {/* Cinematic overlays — tinted with deep Dermaspace plum instead
-            of neutral black so the hero reads as brand colour at a
-            glance. The plum is dark enough (≈ #2A0C3A) to keep white
-            copy legible on bright photography while still carrying the
-            purple warmth of #7B2D8E. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{ background: 'rgba(42, 12, 58, 0.35)' }}
-        />
+        {/* Cinematic plum overlays — brand-tinted (#2A0C3A) rather than
+            neutral black so the hero reads as Dermaspace at a glance while
+            keeping white copy legible over bright photography. */}
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(100deg, rgba(42,12,58,0.65) 0%, rgba(42,12,58,0.32) 45%, rgba(42,12,58,0.05) 100%)',
+              'linear-gradient(100deg, rgba(42,12,58,0.82) 0%, rgba(42,12,58,0.55) 38%, rgba(42,12,58,0.18) 68%, rgba(42,12,58,0.05) 100%)',
           }}
         />
-        {/* Top fade — ensures the eyebrow stays legible on slides
-            where the upper portion of the photo is a warm skin tone
-            or bright background. Without this, text-white/95 blends
-            into the image and reads as dull brown. */}
         <div
           aria-hidden="true"
-          className="absolute inset-x-0 top-0 h-28 sm:h-32"
+          className="absolute inset-x-0 bottom-0 h-[62%]"
           style={{
             background:
-              'linear-gradient(180deg, rgba(42,12,58,0.48) 0%, rgba(42,12,58,0) 100%)',
+              'linear-gradient(180deg, rgba(42,12,58,0) 0%, rgba(42,12,58,0.55) 55%, rgba(42,12,58,0.92) 100%)',
           }}
         />
-        {/* Edge vignette */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 pointer-events-none"
+          className="absolute inset-x-0 top-0 h-32"
           style={{
             background:
-              'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(42,12,58,0.38) 100%)',
+              'linear-gradient(180deg, rgba(42,12,58,0.45) 0%, rgba(42,12,58,0) 100%)',
           }}
         />
-        {/* Soft spotlight anchored to the left content column — a warm
-            plum-tinted glow that lifts the headline and CTAs off the
-            photography and adds a little depth, without darkening the
-            image like another flat overlay would. */}
+        {/* Purple spotlight behind the headline column */}
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(60% 90% at 22% 60%, rgba(123,45,142,0.30) 0%, transparent 60%)',
+              'radial-gradient(55% 70% at 18% 62%, rgba(123,45,142,0.38) 0%, transparent 65%)',
+          }}
+        />
+        {/* Fine grain keeps flat gradients from banding on large screens */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none opacity-[0.07] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
           }}
         />
       </div>
 
-      {/* --- Signature spa ambient layers --- */}
-
-      {/* Rising steam wisps (right side) */}
+      {/* Rising steam wisps */}
       <div
         aria-hidden="true"
         className="absolute bottom-0 right-0 w-1/2 h-full pointer-events-none overflow-hidden"
@@ -235,22 +236,15 @@ export default function Hero() {
         ))}
       </div>
 
-      {/* Drifting petals — larger, more numerous, with a soft halo so
-          they stay visible against both bright skin tones and dark
-          backgrounds in the spa photography. A gentle drop-shadow on
-          each SVG acts as the halo without the overhead of a second
-          element per petal. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-      >
+      {/* Drifting petals */}
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
         {[
-          { top: '-6%',  left: '12%', delay: '0s',    dur: '16s', size: 11 },
-          { top: '-8%',  left: '28%', delay: '3.5s',  dur: '20s', size: 9  },
+          { top: '-6%', left: '12%', delay: '0s', dur: '16s', size: 11 },
+          { top: '-8%', left: '28%', delay: '3.5s', dur: '20s', size: 9 },
           { top: '-10%', left: '46%', delay: '1.2s', dur: '22s', size: 12 },
-          { top: '-6%',  left: '62%', delay: '7s',    dur: '18s', size: 9  },
+          { top: '-6%', left: '62%', delay: '7s', dur: '18s', size: 9 },
           { top: '-10%', left: '78%', delay: '4.2s', dur: '24s', size: 10 },
-          { top: '-8%',  left: '90%', delay: '10s',   dur: '19s', size: 11 },
+          { top: '-8%', left: '90%', delay: '10s', dur: '19s', size: 11 },
         ].map((p, i) => (
           <span
             key={i}
@@ -261,121 +255,58 @@ export default function Hero() {
               width: p.size,
               height: p.size * 1.4,
               animation: `hero-petal ${p.dur} linear ${p.delay} infinite`,
-              // Soft white halo keeps brand-purple petals readable on
-              // darker parts of the photography without changing colour.
               filter:
                 'drop-shadow(0 0 5px rgba(255,255,255,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
             }}
           >
             <svg viewBox="0 0 10 14" className="w-full h-full">
-              <path
-                d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
-                fill="rgba(123, 45, 142, 0.78)"
-              />
+              <path d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z" fill="rgba(200, 150, 215, 0.85)" />
             </svg>
           </span>
         ))}
       </div>
 
-      {/* Left edge vertical wordmark (desktop only) */}
+      {/* Left-edge vertical wordmark (desktop) */}
       <div
         aria-hidden="true"
-        className="hidden lg:flex absolute left-5 top-0 bottom-24 items-center pointer-events-none"
+        className="hidden xl:flex absolute left-6 top-0 bottom-28 items-center pointer-events-none"
       >
         <span
-          className="text-[10px] font-medium uppercase tracking-[0.5em] text-white/50 whitespace-nowrap"
+          className="text-[10px] font-medium uppercase tracking-[0.5em] text-white/45 whitespace-nowrap"
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
         >
           Dermaspace · Estd. 2014
         </span>
       </div>
 
-      {/* Right edge vertical slide meter (desktop only) */}
-      <div
-        aria-hidden="true"
-        className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 flex-col items-center gap-3 pointer-events-none"
-      >
-        {slides.map((_, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span
-              className={`font-mono text-[10px] tabular-nums transition-colors duration-500 ${
-                i === currentSlide ? 'text-white' : 'text-white/40'
-              }`}
-            >
-              {String(i + 1).padStart(2, '0')}
-            </span>
-            <span
-              className={`block w-px origin-center transition-all duration-500 ${
-                i === currentSlide
-                  ? 'h-10 bg-white'
-                  : 'h-4 bg-white/40'
-              }`}
-              style={
-                i === currentSlide
-                  ? { animation: 'hero-tick-pulse 2.8s ease-in-out infinite' }
-                  : undefined
-              }
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10 h-full flex flex-col">
-        <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
+      {/* Main content */}
+      <div className="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col">
+        <div className="flex-1 flex items-end pb-24 sm:pb-28 lg:pb-32 pt-10">
+          <div className="w-full grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-10 items-end">
+            {/* Copy */}
             <div className="max-w-2xl">
-              {/* Eyebrow — hairlines grow on both sides */}
+              {/* Eyebrow */}
               <div
                 key={`eyebrow-${currentSlide}`}
-                className="relative mb-3 sm:mb-4 flex items-center gap-3"
+                className="mb-4 sm:mb-5 inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 backdrop-blur-md pl-1.5 pr-3.5 py-1.5"
+                style={{ animation: 'hero-char-in 520ms ease-out both' }}
               >
-                <span
-                  className="h-px bg-white/70"
-                  style={{
-                    animation: 'hero-char-in 520ms ease-out both',
-                    width: '32px',
-                  }}
-                />
-                <span
-                  className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
-                  style={{
-                    animation: 'hero-char-in 520ms ease-out 120ms both',
-                    // Soft shadow keeps the eyebrow readable on any
-                    // photo the slider lands on, regardless of the
-                    // background tone under its position.
-                    textShadow: '0 1px 10px rgba(0,0,0,0.6)',
-                  }}
-                >
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7B2D8E] text-white">
+                  <Sparkles className="h-3 w-3" strokeWidth={2.5} />
+                </span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.28em] text-white">
                   {active.eyebrow}
                 </span>
-                <span
-                  className="h-px bg-white/20 flex-1 max-w-[80px]"
-                  style={{
-                    animation: 'hero-char-in 520ms ease-out 220ms both',
-                  }}
-                />
               </div>
 
-              {/* Title with per-character reveal */}
-              <div
-                key={`title-${currentSlide}`}
-                className="relative mb-3 sm:mb-4"
-              >
-                <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.08] tracking-tight text-balance">
-                  <AnimatedText
-                    text={active.title}
-                    baseDelay={0}
-                    step={titleStepMs}
-                  />
+              {/* Title */}
+              <div key={`title-${currentSlide}`} className="mb-4 sm:mb-5">
+                <h1 className="font-sans text-[2.5rem] leading-[1.02] sm:text-5xl md:text-6xl lg:text-[4.25rem] font-semibold text-white tracking-tight text-balance">
+                  <AnimatedText text={active.title} baseDelay={0} step={titleStepMs} />
                   <br />
                   <span
                     className="relative inline-block pb-3 sm:pb-4"
-                    style={{
-                      // Soft shadow so the italic text stays legible over
-                      // bright highlights in the photography.
-                      textShadow: '0 2px 20px rgba(0,0,0,0.35)',
-                    }}
+                    style={{ textShadow: '0 2px 24px rgba(42,12,58,0.5)' }}
                   >
                     <span className="font-serif italic font-normal text-white">
                       <AnimatedText
@@ -385,7 +316,7 @@ export default function Hero() {
                         italic
                       />
                       <span
-                        className="text-[#7B2D8E] inline-block"
+                        className="text-[#C88AD6] inline-block"
                         style={{
                           animation: `hero-char-in 500ms ease-out ${underlineDelay}ms both`,
                         }}
@@ -394,7 +325,7 @@ export default function Hero() {
                       </span>
                     </span>
 
-                    {/* Ornate hand-drawn underline — sits below descenders */}
+                    {/* Hand-drawn underline */}
                     <svg
                       aria-hidden="true"
                       className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
@@ -404,7 +335,7 @@ export default function Hero() {
                       <path
                         d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
                         fill="none"
-                        stroke="#7B2D8E"
+                        stroke="#C88AD6"
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeDasharray="240"
@@ -418,12 +349,9 @@ export default function Hero() {
               </div>
 
               {/* Description */}
-              <div
-                key={`desc-${currentSlide}`}
-                className="relative mb-4 sm:mb-5 min-h-[48px] sm:min-h-[52px]"
-              >
+              <div key={`desc-${currentSlide}`} className="mb-6 sm:mb-7 min-h-[48px]">
                 <p
-                  className="text-sm sm:text-base text-white/85 max-w-md leading-relaxed"
+                  className="text-[15px] sm:text-lg text-white/80 max-w-md leading-relaxed"
                   style={{
                     animation: `hero-char-in 700ms ease-out ${underlineDelay + 150}ms both`,
                   }}
@@ -432,158 +360,203 @@ export default function Hero() {
                 </p>
               </div>
 
-              {/* CTA Buttons */}
+              {/* CTAs */}
               <div
                 key={`cta-${currentSlide}`}
-                className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-5"
+                className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8"
                 style={{
                   animation: `hero-char-in 700ms ease-out ${underlineDelay + 280}ms both`,
                 }}
               >
                 <button
                   onClick={scrollToBooking}
-                  className="group relative overflow-hidden inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-sm hover:shadow-md"
+                  className="group relative overflow-hidden inline-flex items-center gap-3 pl-6 pr-1.5 py-1.5 bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-[0_12px_40px_-12px_rgba(42,12,58,0.7)] hover:shadow-[0_18px_48px_-12px_rgba(42,12,58,0.8)] hover:-translate-y-0.5"
                 >
-                  {/* Diagonal shine that sweeps across the button on hover */}
                   <span
                     aria-hidden="true"
                     className="pointer-events-none absolute top-0 -left-3/4 h-full w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-[#7B2D8E]/15 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[260%]"
                   />
                   <span className="relative">Book Appointment</span>
-                  <span className="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#7B2D8E] text-white transition-transform duration-300 group-hover:translate-x-0.5">
+                  <span className="relative flex items-center justify-center w-9 h-9 rounded-full bg-[#7B2D8E] text-white transition-transform duration-300 group-hover:translate-x-0.5">
                     <ArrowRight className="w-4 h-4" />
                   </span>
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-full border border-white/40 hover:bg-white/10 hover:border-white/60 transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-6 py-3 text-white text-sm font-semibold rounded-full border border-white/30 bg-white/5 backdrop-blur-md hover:bg-white/15 hover:border-white/50 transition-all duration-300"
                 >
                   View Services
                 </Link>
               </div>
 
-              {/* Trust Indicators - Hidden on mobile */}
+              {/* Trust row */}
               <div
                 key={`trust-${currentSlide}`}
-                className="hidden sm:flex flex-wrap items-center gap-x-6 gap-y-2"
+                className="flex flex-wrap items-center gap-x-5 gap-y-3"
                 style={{
                   animation: `hero-char-in 700ms ease-out ${underlineDelay + 400}ms both`,
                 }}
               >
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-white/80">
-                      <Image
-                        src="/images/client-1.jpg"
-                        alt="Happy client"
-                        width={28}
-                        height={28}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                    <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-white/80">
-                      <Image
-                        src="/images/client-2.jpg"
-                        alt="Happy client"
-                        width={28}
-                        height={28}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                    <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-white/80">
-                      <Image
-                        src="/images/client-3.jpg"
-                        alt="Happy client"
-                        width={28}
-                        height={28}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                    <div className="w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-white/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex -space-x-2.5">
+                    {['/images/client-1.jpg', '/images/client-2.jpg', '/images/client-3.jpg'].map(
+                      (src) => (
+                        <div
+                          key={src}
+                          className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#2A0C3A]/60 outline outline-1 outline-white/40"
+                        >
+                          <Image
+                            src={src}
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="object-cover w-full h-full"
+                          />
+                        </div>
+                      ),
+                    )}
+                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-[10px] font-bold ring-2 ring-[#2A0C3A]/60 outline outline-1 outline-white/40">
                       5K+
                     </div>
                   </div>
-                  <span className="text-xs sm:text-sm text-white/85">
-                    Happy Clients
-                  </span>
-                </div>
-
-                <span aria-hidden="true" className="h-4 w-px bg-white/25" />
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-0.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="w-3.5 h-3.5 text-white fill-white"
-                      />
-                    ))}
+                  <div className="leading-tight">
+                    <div className="flex items-center gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="w-3 h-3 text-[#F2C94C] fill-[#F2C94C]" />
+                      ))}
+                      <span className="ml-1.5 text-xs font-semibold text-white">4.9</span>
+                    </div>
+                    <p className="text-[11px] text-white/70">from 5,000+ happy clients</p>
                   </div>
-                  <span className="text-xs sm:text-sm text-white/85">
-                    4.9 Rating
-                  </span>
                 </div>
 
-                <span aria-hidden="true" className="h-4 w-px bg-white/25" />
+                <span aria-hidden="true" className="hidden sm:block h-6 w-px bg-white/20" />
 
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-white/80" />
-                  <span className="text-xs sm:text-sm text-white/85">
-                    2 Locations in Lagos
+                <div className="hidden sm:flex items-center gap-2 text-white/80">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 border border-white/15">
+                    <MapPin className="w-3.5 h-3.5" />
                   </span>
+                  <span className="text-xs font-medium">2 locations in Lagos</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Up next — desktop only */}
+            <div className="hidden lg:flex flex-col items-end gap-3">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-white/50">
+                Up next
+              </span>
+              <div className="flex gap-3">
+                {upNext.map((index) => {
+                  const slide = slides[index]
+                  return (
+                    <button
+                      key={slide.image}
+                      type="button"
+                      onClick={() => goToSlide(index)}
+                      className="group relative w-[172px] h-[112px] rounded-2xl overflow-hidden ring-1 ring-white/25 hover:ring-white/60 transition-all duration-300 hover:-translate-y-1 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.6)] text-left"
+                      aria-label={`Show ${slide.eyebrow} slide`}
+                    >
+                      <Image
+                        src={slide.image}
+                        alt=""
+                        fill
+                        sizes="172px"
+                        className="object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0"
+                        style={{
+                          background:
+                            'linear-gradient(180deg, rgba(42,12,58,0) 30%, rgba(42,12,58,0.85) 100%)',
+                        }}
+                      />
+                      <div className="absolute inset-x-0 bottom-0 p-3 flex items-end justify-between gap-2">
+                        <div>
+                          <p className="text-[9px] uppercase tracking-[0.22em] text-white/60">
+                            {String(index + 1).padStart(2, '0')}
+                          </p>
+                          <p className="text-xs font-semibold text-white">{slide.eyebrow}</p>
+                        </div>
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15 border border-white/25 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <ArrowRight className="h-3 w-3" />
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Navigation Bar */}
-        <div className="bg-white border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
-              {/* Slide Counter + Progress */}
-              <div className="flex items-center gap-3">
-                <span className="font-serif text-2xl font-semibold text-[#7B2D8E] tabular-nums">
-                  {String(currentSlide + 1).padStart(2, '0')}
-                </span>
-                <div className="w-16 sm:w-24 h-[3px] bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <span className="text-xs font-medium text-gray-400 tabular-nums">
-                  / {String(slides.length).padStart(2, '0')}
-                </span>
-              </div>
+      {/* Glass control bar */}
+      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#2A0C3A]/40 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-4 py-3.5 sm:py-4">
+            {/* Counter */}
+            <div className="flex items-baseline gap-1.5 shrink-0">
+              <span className="font-serif text-2xl sm:text-3xl text-white tabular-nums leading-none">
+                {String(currentSlide + 1).padStart(2, '0')}
+              </span>
+              <span className="text-xs text-white/50 tabular-nums">
+                / {String(slides.length).padStart(2, '0')}
+              </span>
+            </div>
 
-              {/* Current Slide Label — desktop only */}
-              <div className="hidden md:flex items-center gap-2">
-                <span className="text-[11px] uppercase tracking-[0.22em] font-medium text-gray-400">
-                  Now showing
-                </span>
-                <span className="text-sm font-medium text-gray-900">
-                  {active.eyebrow}
-                </span>
-              </div>
+            {/* Slide tabs with progress */}
+            <div className="flex-1 flex items-center justify-center gap-1 sm:gap-6 min-w-0">
+              {slides.map((slide, index) => {
+                const isActive = index === currentSlide
+                return (
+                  <button
+                    key={slide.image}
+                    type="button"
+                    onClick={() => goToSlide(index)}
+                    aria-label={`Go to slide ${index + 1}: ${slide.eyebrow}`}
+                    aria-current={isActive ? 'true' : undefined}
+                    className="group flex flex-col items-stretch gap-2 min-w-0 flex-1 sm:flex-none sm:w-32 px-1 py-1"
+                  >
+                    <span
+                      className={`hidden sm:block text-[11px] uppercase tracking-[0.2em] font-medium truncate text-center transition-colors duration-300 ${
+                        isActive ? 'text-white' : 'text-white/45 group-hover:text-white/75'
+                      }`}
+                    >
+                      {slide.eyebrow}
+                    </span>
+                    <span className="block h-[3px] rounded-full bg-white/15 overflow-hidden">
+                      <span
+                        className={`block h-full rounded-full ${
+                          isActive
+                            ? 'bg-white transition-[width] duration-100 ease-linear'
+                            : 'bg-white/0 transition-colors duration-300 group-hover:bg-white/40 w-full'
+                        }`}
+                        style={isActive ? { width: `${progress}%` } : undefined}
+                      />
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
 
-              {/* Navigation Arrows */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={prevSlide}
-                  className="w-10 h-10 rounded-full border border-gray-200 hover:border-[#7B2D8E] hover:text-[#7B2D8E] flex items-center justify-center text-gray-600 transition-all duration-300"
-                  aria-label="Previous slide"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="w-10 h-10 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
-                  aria-label="Next slide"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
+            {/* Arrows */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={prevSlide}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-white/25 bg-white/5 hover:bg-white/15 flex items-center justify-center text-white transition-all duration-300"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#7B2D8E] hover:bg-[#8F3AA5] flex items-center justify-center text-white transition-all duration-300 shadow-[0_8px_24px_-8px_rgba(123,45,142,0.9)]"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>

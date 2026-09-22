@@ -14,7 +14,6 @@ import {
   FileText,
   LogOut,
   Bell,
-  Loader2,
   BookOpen,
   CalendarCheck,
   Users,
@@ -106,7 +105,6 @@ const navItems = [
 export function StaffSidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   // Live "pending tasks" widget at the bottom of the sidebar — used to
   // be hard-coded "12 / 5". Now we hit the same dashboard endpoint the
@@ -144,22 +142,7 @@ export function StaffSidebar() {
   }, [])
 
   const handleLogout = async () => {
-    setIsLoggingOut(true)
-    // Shared helper — wipes the localStorage user cache before
-    // redirecting so the next page paint reads as signed-out
-    // immediately instead of flashing the previous user.
     await logoutAndRedirect("/")
-  }
-
-  if (isLoggingOut) {
-    return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-[#7B2D8E] animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Logging out...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
