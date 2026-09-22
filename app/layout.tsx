@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
@@ -30,26 +29,6 @@ import './globals.css'
 // ("`ssr: false` is not allowed with `next/dynamic` in Server
 // Components") and was the reason the Derma AI chat panel never
 // appeared when users tapped the floating launcher.
-
-const lexendDeca = Lexend_Deca({
-  subsets: ["latin"],
-  variable: '--font-lexend',
-  display: 'swap',
-});
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-poppins',
-  display: 'swap',
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-playfair',
-  display: 'swap',
-});
 
 export const viewport: Viewport = {
   themeColor: '#7B2D8E',
@@ -147,7 +126,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable} ${playfair.variable}`}>
+    <html lang="en">
       <head>
         {/* ─────────────────────────────────────────────────────────────
             Inline pre-React error reporter.

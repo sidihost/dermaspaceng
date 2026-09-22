@@ -44,6 +44,10 @@
   --derma-purple-dark: #5A1D6A;
   --derma-cream: #ffffff;
   --derma-gray: #6B7280;
+  /* Use local fallbacks so builds do not depend on next/font fetching Google. */
+  --font-lexend: Arial, Helvetica, sans-serif;
+  --font-poppins: Arial, Helvetica, sans-serif;
+  --font-playfair: Georgia, 'Times New Roman', serif;
 }
 
 .dark {
