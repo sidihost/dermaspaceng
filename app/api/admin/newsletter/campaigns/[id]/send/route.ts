@@ -6,18 +6,18 @@ import { sendNewsletterCampaign } from '@/lib/email'
 /*
  * POST /api/admin/newsletter/campaigns/[id]/send
  *
- * Promote a draft to "sent" by walking the active-subscriber list
- * and dispatching the campaign email to each address. We do this
- * inline (not via a queue) — Dermaspace's list is small enough at
- * launch that a few seconds of HTTP wait is fine, and it keeps the
- * deploy footprint simple. When the list outgrows that, swap the
- * inner loop for a QStash enqueue without changing the request /
- * response shape.
+ * Dispatch a campaign to its audience and flip it to "sent". The
+ * audience is either the marketing opt-in list or every registered
+ * user (see below). We do this inline (not via a queue) —
+ * Dermaspace's list is small enough that a few seconds of HTTP wait
+ * is fine, and it keeps the deploy footprint simple. When the list
+ * outgrows that, swap the inner loop for a QStash enqueue without
+ * changing the request / response shape.
  *
- * Idempotency: the unique constraint on
- * (campaign_id, email) inside `newsletter_campaign_logs` means a
- * second click of "Send" on a partially-sent campaign skips already-
- * delivered rows automatically.
+ * Idempotency: before each run we load the set of addresses already
+ * logged `sent` for this campaign and skip them, so clicking "Send"
+ * again on a partial or retried campaign only reaches the addresses
+ * that haven't succeeded yet.
  */
 
 const PUBLIC_ORIGIN =
@@ -25,9 +25,10 @@ const PUBLIC_ORIGIN =
   'https://www.dermaspaceng.com'
 
 // Be conservative — anything bigger than this on a single request
-// risks SMTP throttling and Vercel's serverless function timeout.
-// At launch our list is well under 500 so this is effectively
-// unlimited; bigger lists should swap to a QStash queue.
+// risks SMTP throttling and Vercel's serverless function timeout. We
+// refuse (rather than truncate) audiences above the cap so a campaign
+// can never claim "sent" while silently skipping users; bigger lists
+// should swap to a QStash queue.
 const MAX_RECIPIENTS_PER_REQUEST = 2000
 
 export const maxDuration = 300
@@ -58,9 +59,15 @@ export async function POST(
       return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
     }
     const c = campaignRows[0]
-    if (c.status !== 'draft') {
+    // A campaign may be (re)sent from `draft`, or retried from `failed` /
+    // `sent` after a partial delivery. We never send from `sending` — that
+    // means another request is already walking the list. Re-sends are
+    // safe: already-delivered recipients are skipped below, so a retry
+    // only reaches the addresses that failed (or never got logged) the
+    // first time.
+    if (c.status === 'sending') {
       return NextResponse.json(
-        { error: `Campaign cannot be sent from status "${c.status}"` },
+        { error: 'Campaign is already sending' },
         { status: 409 },
       )
     }
@@ -96,7 +103,7 @@ export async function POST(
           AND u.deleted_at IS NULL
           AND COALESCE(p.notification_promotions, true) = true
         ORDER BY lower(u.email) ASC
-        LIMIT ${MAX_RECIPIENTS_PER_REQUEST}
+        LIMIT ${MAX_RECIPIENTS_PER_REQUEST + 1}
       `
       recipients = rows.map((r) => ({
         subscriberId: null,
@@ -113,12 +120,27 @@ export async function POST(
           AND email IS NOT NULL
           AND email <> ''
         ORDER BY id ASC
-        LIMIT ${MAX_RECIPIENTS_PER_REQUEST}
+        LIMIT ${MAX_RECIPIENTS_PER_REQUEST + 1}
       `
       recipients = rows.map((r) => ({
         subscriberId: r.id as number,
         email: (r.email as string).trim(),
       }))
+    }
+
+    // We fetch one past the cap on purpose: if we get that extra row the
+    // audience genuinely exceeds what a single inline request can safely
+    // deliver. Refuse rather than silently truncating — otherwise the
+    // campaign would report "sent" while leaving later users un-mailed.
+    if (recipients.length > MAX_RECIPIENTS_PER_REQUEST) {
+      return NextResponse.json(
+        {
+          error:
+            `This audience has more than ${MAX_RECIPIENTS_PER_REQUEST} recipients. ` +
+            'Split it into smaller sends (or wire the QStash queue) before blasting.',
+        },
+        { status: 422 },
+      )
     }
 
     if (recipients.length === 0) {
@@ -138,11 +160,23 @@ export async function POST(
       UPDATE newsletter_campaigns
       SET status = 'sending',
           recipient_count = ${recipients.length},
-          sent_count = 0,
-          failed_count = 0,
           last_error = NULL
       WHERE id = ${id}::uuid
     `
+
+    // Skip anyone this campaign already delivered to. This is what makes
+    // a retry (or a double-click that slipped past the status guard)
+    // safe — we only touch addresses that don't yet have a `sent` log
+    // row. The set is small relative to the list, so an in-memory lookup
+    // keeps the hot loop free of a per-recipient SELECT.
+    const deliveredRows = await sql`
+      SELECT lower(email) AS email
+      FROM newsletter_campaign_logs
+      WHERE campaign_id = ${id}::uuid AND status = 'sent'
+    `
+    const alreadyDelivered = new Set(
+      deliveredRows.map((r) => r.email as string),
+    )
 
     let sentCount = 0
     let failedCount = 0
@@ -151,6 +185,11 @@ export async function POST(
     for (const recipient of recipients) {
       const email = recipient.email
       const subId = recipient.subscriberId
+
+      if (alreadyDelivered.has(email.toLowerCase())) {
+        sentCount += 1
+        continue
+      }
 
       // Per-recipient unsubscribe link — token-less for now (we'll
       // add a signed token when the public unsubscribe page lands).
@@ -212,14 +251,28 @@ export async function POST(
       }
     }
 
+    // Re-derive the final counters straight from the delivery log so a
+    // retry reports lifetime totals (sent on the first pass + sent on
+    // this one) rather than only what this request touched.
+    const tallyRows = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'sent')::int   AS sent_count,
+        COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count
+      FROM newsletter_campaign_logs
+      WHERE campaign_id = ${id}::uuid
+    `
+    const totalSent = Number(tallyRows[0]?.sent_count ?? sentCount)
+    const totalFailed = Number(tallyRows[0]?.failed_count ?? failedCount)
+
     // Final status flip. We mark `sent` even when some recipients
     // failed because the campaign itself is done — the per-recipient
-    // failures are inspectable via newsletter_campaign_logs.
+    // failures are inspectable via newsletter_campaign_logs and can be
+    // retried by sending the campaign again.
     await sql`
       UPDATE newsletter_campaigns
-      SET status = ${failedCount === recipients.length ? 'failed' : 'sent'},
-          sent_count = ${sentCount},
-          failed_count = ${failedCount},
+      SET status = ${totalSent === 0 ? 'failed' : 'sent'},
+          sent_count = ${totalSent},
+          failed_count = ${totalFailed},
           last_error = ${lastError},
           sent_at = NOW()
       WHERE id = ${id}::uuid
@@ -228,8 +281,8 @@ export async function POST(
     return NextResponse.json({
       ok: true,
       recipientCount: recipients.length,
-      sentCount,
-      failedCount,
+      sentCount: totalSent,
+      failedCount: totalFailed,
     })
   } catch (error) {
     console.error('[newsletter/campaigns send] failed', error)
