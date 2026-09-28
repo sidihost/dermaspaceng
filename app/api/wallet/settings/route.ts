@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getOrCreateWalletSettings, updateWalletSettings } from '@/lib/wallet'
+import { sql } from '@/lib/db'
+
+// The /dashboard/settings "Promotional Emails" toggle historically read and
+// wrote `wallet_settings.promotional_emails`, which nothing else consumed.
+// The newsletter broadcast recipient query keys its opt-out off
+// `user_preferences.notification_promotions`, so flipping the toggle had no
+// effect on marketing mail. We treat `user_preferences.notification_promotions`
+// as the single source of truth here: GET projects it onto the toggle, PUT
+// mirrors the toggle back onto it. Wallet settings stay untouched so the
+// wallet surfaces that also read the row keep working.
 
 // GET /api/wallet/settings - Get wallet settings
 export async function GET() {
@@ -12,10 +22,30 @@ export async function GET() {
     }
     
     const settings = await getOrCreateWalletSettings(user.id)
-    
+
+    // Project the authoritative marketing opt-out onto the toggle. Fall back
+    // to the wallet column when there's no preferences row yet (legacy users
+    // who have never opened settings), preserving the existing value. Wrapped
+    // defensively: if migration 730 hasn't run the table is absent and we
+    // must not take the whole settings page down over a cosmetic toggle.
+    let promotions = settings.promotional_emails
+    try {
+      const prefRows = await sql`
+        SELECT notification_promotions
+        FROM user_preferences
+        WHERE user_id = ${user.id}
+        LIMIT 1
+      `
+      if (prefRows.length > 0 && prefRows[0].notification_promotions !== null) {
+        promotions = Boolean(prefRows[0].notification_promotions)
+      }
+    } catch {
+      // user_preferences not migrated yet — keep the wallet value.
+    }
+
     return NextResponse.json({
       success: true,
-      settings,
+      settings: { ...settings, promotional_emails: promotions },
     })
   } catch (error) {
     console.error('Get wallet settings error:', error)
@@ -104,7 +134,26 @@ export async function PUT(request: NextRequest) {
         { status: 500 }
       )
     }
-    
+
+    // Mirror the marketing toggle onto the authoritative preferences column
+    // the newsletter broadcast filters on, so opting out here actually stops
+    // "all registered users" campaigns. The upsert preserves any other
+    // preferences already stored for this user. Non-fatal: if migration 730
+    // hasn't run, the wallet save itself should still succeed.
+    if (updates.promotional_emails !== undefined) {
+      try {
+        await sql`
+          INSERT INTO user_preferences (user_id, notification_promotions)
+          VALUES (${user.id}, ${updates.promotional_emails})
+          ON CONFLICT (user_id) DO UPDATE SET
+            notification_promotions = ${updates.promotional_emails},
+            updated_at = NOW()
+        `
+      } catch (err) {
+        console.error('[wallet/settings] failed to mirror promo opt-out', err)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       settings: updatedSettings,

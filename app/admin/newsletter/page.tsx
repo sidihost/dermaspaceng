@@ -520,6 +520,10 @@ function CampaignsTab({ notify }: { notify: ReturnType<typeof useNotify> }) {
                       {c.subject}
                     </p>
                     <CampaignStatusPill status={c.status} />
+                    <span className="inline-flex items-center gap-1 text-[10.5px] text-gray-500 uppercase tracking-wider">
+                      <Tag className="w-3 h-3" />
+                      {c.audience === 'customers' ? 'All users' : 'Subscribers'}
+                    </span>
                   </div>
                   {c.headline && (
                     <p className="text-[12px] text-gray-600 mt-0.5 truncate">{c.headline}</p>
@@ -932,11 +936,15 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
   const sendBlast = useCallback(async () => {
     const audienceNoun =
       form.audience === 'customers'
-        ? 'every active customer'
-        : 'every active subscriber'
+        ? 'every registered user'
+        : 'every newsletter subscriber'
+    const reach =
+      selectedAudienceCount === undefined
+        ? ''
+        : ` (~${selectedAudienceCount.toLocaleString('en-NG')} people)`
     if (
       !window.confirm(
-        `Send this campaign to ${audienceNoun}? This cannot be undone.`,
+        `Send this campaign to ${audienceNoun}${reach}? This cannot be undone.`,
       )
     ) {
       return
@@ -954,7 +962,7 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
       }
       const result = await res.json()
       const recipientNoun =
-        form.audience === 'customers' ? 'customers' : 'subscribers'
+        form.audience === 'customers' ? 'users' : 'subscribers'
       notify.success(
         `Sent to ${result.sentCount}/${result.recipientCount} ${recipientNoun}` +
           (result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''),
@@ -965,7 +973,7 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
     } finally {
       setSending(false)
     }
-  }, [save, notify, onClose, form.audience])
+  }, [save, notify, onClose, form.audience, selectedAudienceCount])
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end">
@@ -1078,6 +1086,79 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
                 </div>
               </div>
             )}
+
+            {/* Audience picker — who this campaign reaches. Previously the
+                composer always sent to the marketing opt-in list; the
+                "all registered users" option was supported by the API but
+                never surfaced here, so the broadcast-to-everyone feature
+                was unreachable from the console. Shows a live reach count
+                per option so the admin commits with eyes open. */}
+            <FormField
+              label="Audience"
+              hint="Who receives this campaign · counts update live"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {(
+                  [
+                    {
+                      value: 'subscribers',
+                      icon: Mail,
+                      label: 'Newsletter subscribers',
+                      blurb: 'People who opted in to marketing email.',
+                      count: audienceCounts?.subscribers,
+                    },
+                    {
+                      value: 'customers',
+                      icon: Users,
+                      label: 'All registered users',
+                      blurb: 'Every active account, minus promo opt-outs.',
+                      count: audienceCounts?.customers,
+                    },
+                  ] as const
+                ).map(opt => {
+                  const selected = form.audience === opt.value
+                  const OptIcon = opt.icon
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={isReadOnly || undefined}
+                      onClick={() => update('audience', opt.value)}
+                      className={cn(
+                        'text-left rounded-xl border p-3 transition-colors disabled:opacity-60',
+                        selected
+                          ? 'border-[#7B2D8E] ring-1 ring-[#7B2D8E] bg-[#7B2D8E]/5'
+                          : 'border-gray-200 hover:border-[#7B2D8E]/50',
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span
+                          className={cn(
+                            'inline-flex items-center justify-center w-8 h-8 rounded-lg',
+                            selected
+                              ? 'bg-[#7B2D8E] text-white'
+                              : 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
+                          )}
+                        >
+                          <OptIcon className="w-4 h-4" />
+                        </span>
+                        <span className="text-[12.5px] font-semibold text-gray-900 tabular-nums">
+                          {opt.count === undefined
+                            ? '…'
+                            : opt.count.toLocaleString('en-NG')}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-semibold text-gray-900 leading-tight">
+                        {opt.label}
+                      </p>
+                      <p className="text-[10.5px] text-gray-500 leading-snug mt-0.5">
+                        {opt.blurb}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            </FormField>
 
             <FormField label="Subject" required hint="Inbox subject line · max 200 chars">
               <input
