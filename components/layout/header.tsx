@@ -223,7 +223,7 @@ export default function Header() {
 
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
         if (cancelled) return
         if (res.ok) {
           const data = await res.json()
@@ -274,13 +274,24 @@ export default function Header() {
       setShowProfileDropdown(false)
       setIsMobileMenuOpen(false)
     }
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== null && !e.key.startsWith('dermaspace.auth.user')) return
+      fetchUser()
+    }
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) fetchUser()
+    }
     window.addEventListener('user-updated', onUserUpdated)
     window.addEventListener('auth-logout', onAuthLogout)
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('pageshow', onPageShow)
 
     return () => {
       cancelled = true
       window.removeEventListener('user-updated', onUserUpdated)
       window.removeEventListener('auth-logout', onAuthLogout)
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('pageshow', onPageShow)
     }
   }, [])
 

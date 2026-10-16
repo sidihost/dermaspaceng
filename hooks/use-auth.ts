@@ -64,7 +64,7 @@ interface AuthState {
  *   load doesn't paint a phantom user that no longer has a session.
  */
 const fetcher = async (url: string) => {
-  const res = await fetch(url, { credentials: 'include' })
+  const res = await fetch(url, { credentials: 'include', cache: 'no-store' })
   if (!res.ok) {
     if (res.status === 401) {
       clearCachedUser()
@@ -158,11 +158,25 @@ export function useAuth(): AuthState {
       // keep a cached user visible until the server responds with 401.
       void mutate({ user: null }, { revalidate: false })
     }
+    // Another tab signed out (cache key removed) or in — mirror it here.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== null && !e.key.startsWith('dermaspace.auth.user')) return
+      if (!readCachedUser()) onLogout()
+      else void mutate()
+    }
+    // Page restored from the back/forward cache: its auth state may be stale.
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) void mutate()
+    }
     window.addEventListener('user-updated', onUpdate)
     window.addEventListener('auth-logout', onLogout)
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('pageshow', onPageShow)
     return () => {
       window.removeEventListener('user-updated', onUpdate)
       window.removeEventListener('auth-logout', onLogout)
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('pageshow', onPageShow)
     }
   }, [mutate])
 
