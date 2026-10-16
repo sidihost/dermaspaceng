@@ -45,6 +45,7 @@ function SignInForm() {
     const detail = searchParams.get('detail')
     const map: Record<string, string> = {
       x_auth_failed: "X declined the sign-in. Please try again.",
+      x_cancelled: "You cancelled the X sign-in. Pick a method to continue.",
       x_not_configured: "X sign-in isn't configured yet — please use email or Google.",
       microsoft_auth_failed: "Microsoft declined the sign-in. Please try again.",
       microsoft_not_configured:
@@ -68,14 +69,14 @@ function SignInForm() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
             setShowToast(true)
             setTimeout(() => {
-              window.location.href = redirectTo
-            }, 2000)
+              window.location.replace(redirectTo)
+            }, 600)
           } else {
             setIsCheckingAuth(false)
           }

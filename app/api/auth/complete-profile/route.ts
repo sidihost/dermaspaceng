@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { invalidateUserMe } from '@/lib/redis'
+import { sendWelcomeEmail } from '@/lib/email'
+import { isXPlaceholderEmail } from '@/lib/x-oauth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,6 +41,7 @@ export async function POST(request: NextRequest) {
     const updates: string[] = []
     const values: (string | boolean | null)[] = []
     let paramIndex = 1
+    let newRealEmail: string | null = null
 
     // Always update profile_complete and updated_at. Also pin
     // signup_step at 4 (the terminal step) so the admin console
@@ -52,6 +55,29 @@ export async function POST(request: NextRequest) {
       updates.push(`phone = $${paramIndex}`)
       values.push(phone.trim())
       paramIndex++
+    }
+
+    // X sign-ups start with a synthetic address; they must swap it for a
+    // real one here. Other users can't change email through this route.
+    if (isXPlaceholderEmail(user.email)) {
+      const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+        return NextResponse.json({ error: 'Please provide a valid email address' }, { status: 400 })
+      }
+      const taken = await query(
+        `SELECT id FROM users WHERE LOWER(email) = $1 AND id != $2 LIMIT 1`,
+        [email, user.id],
+      )
+      if (taken.rows.length > 0) {
+        return NextResponse.json(
+          { error: 'That email is already linked to another account. Sign in with it instead.' },
+          { status: 400 },
+        )
+      }
+      updates.push(`email = $${paramIndex}`)
+      values.push(email)
+      paramIndex++
+      newRealEmail = email
     }
 
     if (firstName) {
@@ -148,6 +174,13 @@ export async function POST(request: NextRequest) {
     // next render (avoids the avatar-still-not-set flash right after
     // a successful complete-profile call).
     invalidateUserMe(user.id).catch(() => {})
+
+    if (newRealEmail) {
+      sendWelcomeEmail({
+        email: newRealEmail,
+        firstName: (firstName || user.first_name || 'there').trim(),
+      }).catch((err) => console.error('[complete-profile] welcome email failed:', err))
+    }
 
     return NextResponse.json({ success: true, message: 'Profile completed successfully' })
     

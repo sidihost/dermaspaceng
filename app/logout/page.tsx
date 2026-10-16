@@ -31,13 +31,12 @@ function LogoutRunner() {
   const params = useSearchParams()
   const redirectTo = safeRedirect(params.get('redirect'))
 
+  const started = React.useRef(false)
+
   React.useEffect(() => {
-    // Small, deliberate beat so the message is readable without delaying
-    // the signed-out state after the user has explicitly tapped Sign out.
-    const t = window.setTimeout(() => {
-      void performLogout(redirectTo)
-    }, 250)
-    return () => window.clearTimeout(t)
+    if (started.current) return
+    started.current = true
+    void performLogout(redirectTo)
   }, [redirectTo])
 
   return null

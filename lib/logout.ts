@@ -147,7 +147,7 @@ export async function logoutAndRedirect(redirectTo: string = '/'): Promise<void>
   // painting, then hand off. The overlay is torn down by the full
   // navigation that follows.
   showSigningOutOverlay()
-  window.location.href = `/logout?redirect=${encodeURIComponent(redirectTo)}`
+  window.location.replace(`/logout?redirect=${encodeURIComponent(redirectTo)}`)
 }
 
 /**
@@ -176,10 +176,18 @@ export async function performLogout(redirectTo: string = '/'): Promise<void> {
   }
 
   try {
-    await fetch('/api/auth/logout', { method: 'POST' })
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      keepalive: true,
+    })
   } catch {
     /* network failure — proceed to local cleanup anyway */
   }
 
-  window.location.href = redirectTo
+  // Clear again in case another tab re-wrote the cache mid-request, then
+  // `replace` so Back can't restore a signed-in page from history.
+  clearCachedUser()
+  window.location.replace(redirectTo)
 }

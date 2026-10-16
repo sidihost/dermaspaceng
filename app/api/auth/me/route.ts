@@ -89,13 +89,30 @@ interface CachedUserRow {
   glow_points: string | number | null
 }
 
+const NO_STORE = 'private, no-store, max-age=0'
+
+function unauthenticated(error: string, status = 401) {
+  return NextResponse.json(
+    { error },
+    { status, headers: { 'Cache-Control': NO_STORE } },
+  )
+}
+
+function isPlaceholderEmail(email: unknown): boolean {
+  if (typeof email !== 'string') return true
+  return (
+    (email.startsWith('pending+') && email.endsWith('@dermaspaceng.invalid')) ||
+    /^x_[^@]+@users\.dermaspaceng\.com$/i.test(email)
+  )
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('session_id')?.value
 
     if (!sessionId) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+      return unauthenticated('Not authenticated')
     }
 
     // STAGE 1 — live session check. Tiny single-row PK lookup; can't
@@ -107,7 +124,7 @@ export async function GET() {
       LIMIT 1
     `
     if (sessionRows.length === 0) {
-      return NextResponse.json({ error: 'Session expired' }, { status: 401 })
+      return unauthenticated('Session expired')
     }
     const userId = sessionRows[0].user_id as string
 
@@ -193,7 +210,7 @@ export async function GET() {
     if (!session) {
       // Defensive — session row pointed at a missing user. Treat as
       // expired so the client clears its state.
-      return NextResponse.json({ error: 'Session expired' }, { status: 401 })
+      return unauthenticated('Session expired')
     }
 
     // Re-shape preferences for the response. We keep the legacy
@@ -301,10 +318,7 @@ export async function GET() {
         // out to the seeded admin rows we placeholder.
         mustChangePassword: session.must_change_password === true,
         emailVerified: session.email_verified === true,
-        emailIsPlaceholder:
-          typeof session.email === 'string' &&
-          session.email.startsWith('pending+') &&
-          session.email.endsWith('@dermaspaceng.invalid'),
+        emailIsPlaceholder: isPlaceholderEmail(session.email),
         // Membership block — flat shape that matches what the
         // dashboard membership card and the "Member" stat tile
         // expect. We always return an object (with `tier: null`
@@ -338,16 +352,13 @@ export async function GET() {
       avatarIntroDismissed,
     })
 
-    // Browser-side private cache — within the same tab the response
-    // can be reused for ~30 seconds without re-hitting the origin.
-    // Different users never share a cache entry because the body is
-    // gated by the HttpOnly `session_id` cookie. The 'user-updated'
-    // event in the client forces SWR to refetch with a cache-busting
-    // request when the user themselves edits their profile.
-    response.headers.set('Cache-Control', 'private, max-age=30, must-revalidate')
+    // Never let the browser HTTP cache reuse this response: a cached 200
+    // would keep showing the signed-in user after logout (and the previous
+    // user after switching accounts) until a hard refresh.
+    response.headers.set('Cache-Control', NO_STORE)
     return response
   } catch (error) {
     console.error('Auth check error:', error)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return unauthenticated('Server error', 500)
   }
 }

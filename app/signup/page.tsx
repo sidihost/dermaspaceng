@@ -95,14 +95,14 @@ function SignUpForm() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
             setShowToast(true)
             setTimeout(() => {
-              router.push(redirectTo)
-            }, 2000)
+              router.replace(redirectTo)
+            }, 600)
           } else {
             setIsCheckingAuth(false)
           }

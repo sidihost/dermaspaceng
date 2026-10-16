@@ -77,7 +77,10 @@ interface MeUser {
   username?: string | null
   avatarUrl?: string | null
   gender?: 'male' | 'female' | null
+  emailIsPlaceholder?: boolean
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const SOCIAL_PLATFORMS = [
   { key: 'website', label: 'Website', placeholder: 'https://yourdomain.com' },
@@ -101,6 +104,8 @@ export default function CompleteProfilePage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [phone, setPhone] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const needsEmail = Boolean(user?.emailIsPlaceholder)
   const [country, setCountry] = useState<(typeof COUNTRY_CODES)[number]>(COUNTRY_CODES[0])
   const [showCountry, setShowCountry] = useState(false)
 
@@ -126,9 +131,9 @@ export default function CompleteProfilePage() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
         if (!res.ok) {
-          router.push('/signin')
+          router.replace('/signin')
           return
         }
         const data = await res.json()
@@ -212,7 +217,10 @@ export default function CompleteProfilePage() {
         return true
       case 'about':
         return Boolean(
-          firstName.trim() && lastName.trim() && phone.replace(/\D/g, '').length >= 7,
+          firstName.trim() &&
+            lastName.trim() &&
+            phone.replace(/\D/g, '').length >= 7 &&
+            (!needsEmail || EMAIL_PATTERN.test(newEmail.trim())),
         )
       case 'username':
         // The user must pick a username — same rule as the legacy form.
@@ -223,7 +231,7 @@ export default function CompleteProfilePage() {
       default:
         return false
     }
-  }, [step, firstName, lastName, phone, username, usernameAvailable])
+  }, [step, firstName, lastName, phone, username, usernameAvailable, needsEmail, newEmail])
 
   const goNext = () => {
     if (!canAdvance) return
@@ -261,6 +269,7 @@ export default function CompleteProfilePage() {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           phone: fullPhone,
+          email: needsEmail ? newEmail.trim() : undefined,
           username: username.trim(),
           avatarUrl: avatarUrl || user?.avatarUrl || null,
           bio: bio.trim() || undefined,
@@ -277,10 +286,13 @@ export default function CompleteProfilePage() {
           setStep('username')
           setUsernameAvailable(false)
           setUsernameMessage(data.error)
+        } else if (typeof data.error === 'string' && data.error.toLowerCase().includes('email')) {
+          setStep('about')
         }
         return
       }
-      router.push('/dashboard')
+      window.dispatchEvent(new Event('user-updated'))
+      router.replace('/dashboard')
     } catch {
       setSubmitError('Network error. Please try again.')
     } finally {
@@ -350,7 +362,10 @@ export default function CompleteProfilePage() {
               phone={phone}
               country={country}
               showCountry={showCountry}
-              email={user?.email || ''}
+              email={needsEmail ? '' : user?.email || ''}
+              needsEmail={needsEmail}
+              newEmail={newEmail}
+              onNewEmail={setNewEmail}
               onFirstName={setFirstName}
               onLastName={setLastName}
               onPhone={(v) => setPhone(v.replace(/[^\d]/g, ''))}
@@ -568,6 +583,9 @@ function AboutStep({
   country,
   showCountry,
   email,
+  needsEmail,
+  newEmail,
+  onNewEmail,
   onFirstName,
   onLastName,
   onPhone,
@@ -580,6 +598,9 @@ function AboutStep({
   country: (typeof COUNTRY_CODES)[number]
   showCountry: boolean
   email: string
+  needsEmail: boolean
+  newEmail: string
+  onNewEmail: (v: string) => void
   onFirstName: (v: string) => void
   onLastName: (v: string) => void
   onPhone: (v: string) => void
@@ -614,6 +635,24 @@ function AboutStep({
             />
           </Field>
         </div>
+
+        {needsEmail ? (
+          <Field label="Email">
+            <input
+              type="email"
+              inputMode="email"
+              value={newEmail}
+              onChange={(e) => onNewEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              autoComplete="email"
+              required
+            />
+            <p className="mt-1 text-[11px] text-gray-500">
+              X doesn&apos;t share your email, so we need it for booking confirmations.
+            </p>
+          </Field>
+        ) : null}
 
         <Field label="Phone">
           <div className="flex">
