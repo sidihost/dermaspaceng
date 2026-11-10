@@ -34,6 +34,7 @@ import {
   Eye,
 } from 'lucide-react'
 import { useState } from 'react'
+import { ChristmasToggleCard } from '@/components/admin/christmas-toggle-card'
 
 type Visibility = 'on' | 'preview' | 'off'
 
@@ -194,6 +195,9 @@ export default function FeatureFlagsPage() {
           </p>
         </div>
       </div>
+
+      {/* Seasonal & Holiday Features Control */}
+      <ChristmasToggleCard />
 
       {/* Maintenance callout — replaces the old (broken) "maintenance"
           toggle that lived in this list. Anchored to the dedicated

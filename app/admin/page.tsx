@@ -21,7 +21,6 @@ import { useAuth } from '@/hooks/use-auth'
 // payload doesn't have to balloon.
 import { AdminOpsOverview } from '@/components/admin/ops-overview'
 import { OperationsPanel } from '@/components/admin/operations-panel'
-import { ChristmasToggleCard } from '@/components/admin/christmas-toggle-card'
 
 interface Stats {
   users: { total: number; recent: number; growth: number }
@@ -255,11 +254,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Christmas & Festive Animation Control */}
-      <section>
-        <ChristmasToggleCard />
       </section>
 
       {/* Action Center — surfaces the things that actually need a

@@ -73,8 +73,8 @@ export default function ChristmasAnimation() {
 
     window.addEventListener('resize', handleResize, { passive: true })
 
-    // Flat colors from Dermaspace palette: White, Brand Purple, Champagne Gold
-    const COLORS = ['#FFFFFF', '#FFFFFF', '#FFFFFF', '#7B2D8E', '#D4AF37']
+    // Flat colors from Dermaspace palette: White, Brand Purple, Deep Plum Purple
+    const COLORS = ['#FFFFFF', '#FFFFFF', '#FFFFFF', '#7B2D8E', '#5A1D6A']
 
     // Particle count for silky 60fps performance
     const count = width < 640 ? 24 : 48
@@ -108,7 +108,7 @@ export default function ChristmasAnimation() {
         rotationSpeed: (Math.random() - 0.5) * 0.012,
         opacity: Math.random() * 0.5 + 0.4,
         color: type === 'bell'
-          ? (Math.random() > 0.3 ? '#D4AF37' : '#FFFFFF')
+          ? (Math.random() > 0.4 ? '#7B2D8E' : '#FFFFFF')
           : COLORS[Math.floor(Math.random() * COLORS.length)],
         type,
       })
@@ -165,7 +165,7 @@ export default function ChristmasAnimation() {
       const clapperX = Math.sin(swayOffset * 2.2) * (size * 0.28)
       context.beginPath()
       context.arc(clapperX, size * 0.72, size * 0.16, 0, Math.PI * 2)
-      context.fillStyle = color === '#D4AF37' ? '#7B2D8E' : '#D4AF37'
+      context.fillStyle = color === '#7B2D8E' ? '#FFFFFF' : '#7B2D8E'
       context.fill()
 
       // 5. Tiny festive bow at the top loop

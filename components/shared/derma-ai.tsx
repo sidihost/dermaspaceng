@@ -6171,26 +6171,31 @@ export default function DermaAI({
               aria-label="Close chat history"
             />
           )}
-          {/* Sidebar — slide-in on mobile, persistent on md+ when in
-              page mode (so the chat-history rail is always visible on
-              the dedicated /derma-ai route, like ChatGPT / Claude).
-              In floating mode the sidebar keeps its original behaviour
-              of toggling on both breakpoints. */}
-          <div className={`absolute md:relative inset-y-0 left-0 ${
-            isPageMode ? 'w-72' : 'w-72'
-          } flex flex-col transition-transform duration-300 z-10 ${
-            showSidebar ? 'translate-x-0' : '-translate-x-full'
-          } ${isPageMode ? 'md:translate-x-0' : ''}`}
-          style={{
-            // Flat off-white rail. Was a soft brand-tinted lavender
-            // (#FAF4FB) which fought with the brand-coloured active
-            // pill and the empty-state tile for attention. A neutral
-            // off-white lets the brand colour land only where it
-            // matters (active row, new-chat button, butterfly mark)
-            // and gives the rail a quietly premium feel.
-            background: '#FBFBFC',
-            boxShadow: 'inset -1px 0 0 rgba(17, 17, 17, 0.06)',
-          }}>
+          {/* Sidebar — slide-in on mobile, toggleable or persistent on md+
+              When closed in floating mode, it collapses to 0-width and is removed
+              from layout flow on desktop so the chat fills the full width without
+              leaving an empty white void or compressing the conversation. */}
+          <div
+            className={`inset-y-0 left-0 flex flex-col z-10 flex-shrink-0 transition-all duration-300 ${
+              isPageMode
+                ? showSidebar
+                  ? 'relative w-72 min-w-0 translate-x-0'
+                  : 'relative w-0 min-w-0 max-w-0 overflow-hidden -translate-x-full invisible pointer-events-none'
+                : showSidebar
+                  ? 'absolute md:relative w-72 min-w-0 translate-x-0'
+                  : 'absolute md:hidden w-0 min-w-0 max-w-0 overflow-hidden -translate-x-full invisible pointer-events-none'
+            }`}
+            style={{
+              // Flat off-white rail. Was a soft brand-tinted lavender
+              // (#FAF4FB) which fought with the brand-coloured active
+              // pill and the empty-state tile for attention. A neutral
+              // off-white lets the brand colour land only where it
+              // matters (active row, new-chat button, butterfly mark)
+              // and gives the rail a quietly premium feel.
+              background: '#FBFBFC',
+              boxShadow: showSidebar ? 'inset -1px 0 0 rgba(17, 17, 17, 0.06)' : 'none',
+            }}
+          >
             {/* Brand header — single line on the rail: butterfly +
                 "Derma AI" + close. The two-line "Your skin concierge"
                 eyebrow was visually noisy on a 288px-wide drawer; the
