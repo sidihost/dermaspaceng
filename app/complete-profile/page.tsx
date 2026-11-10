@@ -42,6 +42,7 @@ import {
   ChevronDown,
   Hand,
 } from 'lucide-react'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 // Same brand wordmark used in the staff & admin consoles, so the
 // onboarding flow reads as part of Dermaspace instead of a stripped-down
@@ -310,18 +311,15 @@ export default function CompleteProfilePage() {
       <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/85 backdrop-blur">
         <div className="mx-auto flex max-w-xl items-center justify-between px-5 py-3.5">
           <Link href="/" aria-label="Dermaspace home" className="flex items-center">
-            {/* Plain <img> on purpose — matches /signin, /signup and the
-                main site header where this same blob asset is rendered
-                without next/image. The blob host isn't whitelisted in
-                next.config remotePatterns, so going through next/image
-                would silently fall back to a broken state and the user
-                would see the bare "Dermaspace" text again. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={DERMASPACE_LOGO || "/placeholder.svg"}
-              alt="Dermaspace"
-              className="h-7 w-auto"
-            />
+            <div className="relative inline-block">
+              <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={DERMASPACE_LOGO || "/placeholder.svg"}
+                alt="Dermaspace"
+                className="h-7 w-auto"
+              />
+            </div>
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E]">
             <Hand className="h-3 w-3" aria-hidden="true" />

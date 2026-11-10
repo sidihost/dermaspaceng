@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Globe, Mail } from 'lucide-react'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 export const metadata = {
   title: 'Not Available in Your Region | Dermaspace',
@@ -11,11 +12,14 @@ export default function BlockedPage() {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
         <Link href="/" className="inline-block mb-8">
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-            alt="Dermaspace"
-            className="h-12 w-auto mx-auto"
-          />
+          <div className="relative inline-block">
+            <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1.5" />
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-12 w-auto mx-auto"
+            />
+          </div>
         </Link>
         
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">

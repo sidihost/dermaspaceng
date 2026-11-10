@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { ChristmasLogoHat } from "@/components/shared/christmas-logo-hat"
 import {
   LayoutDashboard,
   Gift,
@@ -184,14 +185,17 @@ export function StaffSidebar() {
           </button>
 
           <Link href="/staff" className="flex items-center gap-2 min-w-0">
-            <Image
-              src={DERMASPACE_LOGO}
-              alt="Dermaspace"
-              width={112}
-              height={28}
-              priority
-              className="h-7 w-auto object-contain"
-            />
+            <div className="relative inline-block">
+              <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1" />
+              <Image
+                src={DERMASPACE_LOGO}
+                alt="Dermaspace"
+                width={112}
+                height={28}
+                priority
+                className="h-7 w-auto object-contain"
+              />
+            </div>
             <span className="hidden xs:inline-block text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5">
               Staff
             </span>
@@ -222,14 +226,17 @@ export function StaffSidebar() {
         {/* Logo — actual brand wordmark, not a gradient "D" tile. */}
         <div className="flex h-20 items-center gap-3 border-b border-gray-100 px-5">
           <Link href="/staff" className="flex items-center gap-2 group min-w-0" onClick={() => setMobileOpen(false)}>
-            <Image
-              src={DERMASPACE_LOGO}
-              alt="Dermaspace"
-              width={140}
-              height={36}
-              priority
-              className="h-9 w-auto object-contain"
-            />
+            <div className="relative inline-block">
+              <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+              <Image
+                src={DERMASPACE_LOGO}
+                alt="Dermaspace"
+                width={140}
+                height={36}
+                priority
+                className="h-9 w-auto object-contain"
+              />
+            </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5 whitespace-nowrap">
               Staff
             </span>

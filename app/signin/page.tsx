@@ -8,6 +8,7 @@ import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 import PageLoader from '@/components/shared/page-loader'
 import Header from '@/components/layout/header'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -271,11 +272,14 @@ function SignInForm() {
           className="flex justify-center mb-5 sm:mb-6 lg:hidden"
           aria-label="Dermaspace home"
         >
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-            alt="Dermaspace"
-            className="h-8 w-auto"
-          />
+          <div className="relative inline-block">
+            <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-8 w-auto"
+            />
+          </div>
         </Link>
 
         {/* Card shell. On mobile it's a naked div (no border, no

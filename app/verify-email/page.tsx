@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Mail, ArrowRight, Loader2 } from 'lucide-react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 // ---------------------------------------------------------------------------
 // Standalone email-verification page.
@@ -140,11 +141,14 @@ function VerifyEmailInner() {
       <div className="max-w-md w-full my-auto">
         <div className="text-center">
           <Link href="/" className="inline-block mb-6" aria-label="Dermaspace home">
-            <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-              alt="Dermaspace"
-              className="h-9 w-auto mx-auto"
-            />
+            <div className="relative inline-block">
+              <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                alt="Dermaspace"
+                className="h-9 w-auto mx-auto"
+              />
+            </div>
           </Link>
           <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
             <Mail className="w-8 h-8 text-[#7B2D8E]" />

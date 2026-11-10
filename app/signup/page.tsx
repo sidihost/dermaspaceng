@@ -9,8 +9,8 @@ import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import PageLoader from '@/components/shared/page-loader'
 import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
-import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 import Header from '@/components/layout/header'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -347,11 +347,14 @@ function SignUpForm() {
         <div className="max-w-md w-full">
           <div className="text-center">
             <Link href="/" className="inline-block mb-6" aria-label="Dermaspace home">
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-                alt="Dermaspace"
-                className="h-9 w-auto mx-auto"
-              />
+              <div className="relative inline-block">
+                <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+                <img
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                  alt="Dermaspace"
+                  className="h-9 w-auto mx-auto"
+                />
+              </div>
             </Link>
             <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
               <Mail className="w-8 h-8 text-[#7B2D8E]" />
@@ -483,11 +486,14 @@ function SignUpForm() {
           className="flex justify-center mb-5 sm:mb-6 lg:hidden"
           aria-label="Dermaspace home"
         >
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-            alt="Dermaspace"
-            className="h-8 w-auto"
-          />
+          <div className="relative inline-block">
+            <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-8 w-auto"
+            />
+          </div>
         </Link>
 
         <div className="sm:bg-white sm:border sm:border-gray-200/80 sm:rounded-2xl sm:p-8 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(123,45,142,0.15)]">

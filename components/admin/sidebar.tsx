@@ -35,6 +35,7 @@ import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import { TeamAvatarPicker } from '@/components/admin/team-avatar-picker'
 import { NotificationBell } from '@/components/shared/notification-bell'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 import type { AdminPermissions } from '@/lib/admin-permissions'
 import { logoutAndRedirect } from '@/lib/logout'
 
@@ -543,14 +544,17 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
           </button>
 
           <Link href="/admin" className="flex items-center gap-2 group min-w-0">
-            <Image
-              src={DERMASPACE_LOGO}
-              alt="Dermaspace"
-              width={112}
-              height={28}
-              priority
-              className="h-7 w-auto object-contain"
-            />
+            <div className="relative inline-block">
+              <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1" />
+              <Image
+                src={DERMASPACE_LOGO}
+                alt="Dermaspace"
+                width={112}
+                height={28}
+                priority
+                className="h-7 w-auto object-contain"
+              />
+            </div>
             <span className="hidden xs:inline-block text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5">
               {userRole}
             </span>
@@ -625,14 +629,17 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
               href="/admin"
               className="flex items-center gap-2 group min-w-0"
             >
-              <Image
-                src={DERMASPACE_LOGO}
-                alt="Dermaspace"
-                width={140}
-                height={36}
-                priority
-                className="h-9 w-auto object-contain"
-              />
+              <div className="relative inline-block">
+                <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+                <Image
+                  src={DERMASPACE_LOGO}
+                  alt="Dermaspace"
+                  width={140}
+                  height={36}
+                  priority
+                  className="h-9 w-auto object-contain"
+                />
+              </div>
               <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5 whitespace-nowrap">
                 {userRole}
               </span>
@@ -641,9 +648,10 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
           {isCollapsed && (
             <Link
               href="/admin"
-              className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center"
+              className="relative w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center group"
               aria-label="Dermaspace admin"
             >
+              <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
               <span className="text-white font-bold text-lg">D</span>
             </Link>
           )}

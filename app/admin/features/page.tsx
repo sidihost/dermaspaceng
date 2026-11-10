@@ -32,9 +32,9 @@ import {
   EyeOff,
   Users,
   Eye,
+  Bell,
 } from 'lucide-react'
 import { useState } from 'react'
-import { ChristmasToggleCard } from '@/components/admin/christmas-toggle-card'
 
 type Visibility = 'on' | 'preview' | 'off'
 
@@ -196,9 +196,6 @@ export default function FeatureFlagsPage() {
         </div>
       </div>
 
-      {/* Seasonal & Holiday Features Control */}
-      <ChristmasToggleCard />
-
       {/* Maintenance callout — replaces the old (broken) "maintenance"
           toggle that lived in this list. Anchored to the dedicated
           settings panel so there's exactly one place to flip it. */}
@@ -259,7 +256,7 @@ export default function FeatureFlagsPage() {
       ) : (
         <div className="grid gap-px bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
           {visible.map((flag) => {
-            const Icon = scopeMeta[flag.scope].icon
+            const Icon = flag.key === 'festive' || flag.key === 'christmas_animation' ? Bell : scopeMeta[flag.scope].icon
             const vis = toVisibility(flag)
             // Flags whose UI surface hasn't been built yet show a
             // "Coming soon" pill and a disabled control — changing

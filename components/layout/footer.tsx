@@ -38,7 +38,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
             <div className="flex flex-col gap-4 max-w-md">
               <Link href="/" className="inline-block relative group">
-                <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1.5" />
+                <ChristmasLogoHat className="w-8 h-8 -top-3.5 -left-1.5" />
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
                   alt="Dermaspace"

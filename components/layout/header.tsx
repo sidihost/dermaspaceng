@@ -419,7 +419,7 @@ export default function Header() {
             <div className="flex items-center justify-between h-14">
               {/* Logo */}
               <Link href="/" className="relative flex-shrink-0 group">
-                <ChristmasLogoHat className="w-5 h-5 -top-2.5 -left-1 sm:w-6 sm:h-6 sm:-top-3 sm:-left-1.5" />
+                <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1 sm:w-7 sm:h-7 sm:-top-3.5 sm:-left-1" />
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                   alt="Dermaspace"
@@ -577,7 +577,7 @@ export default function Header() {
           <div className="flex items-center justify-between h-16 lg:h-[68px]">
             {/* Logo */}
             <Link href="/" className="relative flex-shrink-0 group">
-              <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1.5 lg:w-7 lg:h-7 lg:-top-3.5 lg:-left-2" />
+              <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1 lg:w-8 lg:h-8 lg:-top-4 lg:-left-1.5" />
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                 alt="Dermaspace"
@@ -975,13 +975,16 @@ export default function Header() {
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
           <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-              alt="Dermaspace"
-              width={100}
-              height={30}
-              className="h-7 w-auto"
-            />
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="relative inline-block">
+              <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1" />
+              <Image
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                alt="Dermaspace"
+                width={100}
+                height={30}
+                className="h-7 w-auto"
+              />
+            </Link>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
               className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"

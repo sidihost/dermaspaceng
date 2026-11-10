@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Lock, Eye, EyeOff, Check, AlertCircle } from 'lucide-react'
 import PageLoader from '@/components/shared/page-loader'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -135,11 +136,14 @@ function ResetPasswordForm() {
       <div className="px-6 py-8 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
         <div className="w-full max-w-md mx-auto">
           <Link href="/" className="block mb-5">
-            <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-              alt="Dermaspace"
-              className="h-9 w-auto"
-            />
+            <div className="relative inline-block">
+              <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                alt="Dermaspace"
+                className="h-9 w-auto"
+              />
+            </div>
           </Link>
 
           <h1 className="text-xl font-bold text-gray-900 mb-1">Set New Password</h1>

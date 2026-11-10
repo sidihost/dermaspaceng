@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense, KeyboardEvent, ClipboardEvent } 
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft, HelpCircle } from 'lucide-react'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 /**
  * Two-Factor Authentication screen.
@@ -177,11 +178,14 @@ function TwoFactorForm() {
         </Link>
 
         <Link href="/" className="flex items-center" aria-label="Dermaspace home">
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-            alt="Dermaspace"
-            className="h-8 w-auto md:h-9"
-          />
+          <div className="relative inline-block">
+            <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-8 w-auto md:h-9"
+            />
+          </div>
         </Link>
 
         <Link

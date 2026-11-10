@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 export default function Preloader() {
   const [isLoading, setIsLoading] = useState(true)
@@ -27,14 +28,17 @@ export default function Preloader() {
       aria-live="polite"
     >
       <div className="flex flex-col items-center px-6">
-        <Image
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
-          alt="Dermaspace"
-          width={180}
-          height={60}
-          className="h-12 sm:h-14 w-auto"
-          priority
-        />
+        <div className="relative inline-block">
+          <ChristmasLogoHat className="w-10 h-10 -top-5 -left-1.5 sm:w-12 sm:h-12 sm:-top-6 sm:-left-2" />
+          <Image
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
+            alt="Dermaspace"
+            width={180}
+            height={60}
+            className="h-12 sm:h-14 w-auto"
+            priority
+          />
+        </div>
 
         <div className="mt-5 w-44 h-0.5 bg-gray-100 rounded-full overflow-hidden">
           <div className="h-full bg-[#7B2D8E] rounded-full animate-loading-bar" />

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Fingerprint, X, Shield, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 interface PasskeySetupPromptProps {
   onComplete: () => void
@@ -94,12 +95,15 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
     return (
       <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
         <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md px-6 pt-5 pb-8 sm:pb-6 text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-            alt="Dermaspace"
-            className="mx-auto h-6 w-auto mb-5"
-          />
+          <div className="relative inline-block mx-auto mb-5">
+            <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-6 w-auto"
+            />
+          </div>
           <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
             <Check className="w-6 h-6 text-[#7B2D8E]" />
           </div>
@@ -128,12 +132,15 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
         {/* Brand wordmark — keeps the modal visually anchored to the
             rest of the signup wizard (which shows the same logo in
             its header) instead of feeling like an unrelated dialog. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-          alt="Dermaspace"
-          className="mx-auto h-6 w-auto mb-4"
-        />
+        <div className="relative inline-block mx-auto mb-4">
+          <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+            alt="Dermaspace"
+            className="h-6 w-auto"
+          />
+        </div>
 
         <div className="text-center mb-4">
           <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
