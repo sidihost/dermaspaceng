@@ -15,6 +15,18 @@ import { sql } from '@/lib/db'
 export async function GET() {
   try {
     await requireSuperAdmin()
+    await sql`
+      INSERT INTO feature_flags (key, label, description, scope, enabled, visibility)
+      VALUES (
+        'christmas-animation',
+        'Christmas snowfall',
+        'Subtle, brand-colored snowfall on public pages',
+        'site',
+        FALSE,
+        'off'
+      )
+      ON CONFLICT (key) DO NOTHING
+    `
     const flags = await getAllFlags(true)
     return NextResponse.json({ flags })
   } catch {

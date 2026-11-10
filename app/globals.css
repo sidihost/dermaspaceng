@@ -734,6 +734,48 @@
   transform: translateX(-50%);
 }
 
+/* Admin-controlled snowfall uses only the existing brand palette and never blocks interaction. */
+.christmas-snowfall {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  overflow: hidden;
+  pointer-events: none;
+  contain: paint;
+}
+
+.christmas-snowfall__flake {
+  position: absolute;
+  top: -0.75rem;
+  left: var(--snow-left);
+  width: var(--snow-size);
+  height: var(--snow-size);
+  border-radius: 50%;
+  background: var(--snow-color);
+  opacity: 0;
+  animation: christmas-snowfall var(--snow-duration) linear var(--snow-delay) infinite;
+}
+
+@keyframes christmas-snowfall {
+  0% {
+    transform: translate3d(0, -2vh, 0);
+    opacity: 0;
+  }
+  12%, 88% {
+    opacity: var(--snow-opacity);
+  }
+  100% {
+    transform: translate3d(var(--snow-drift), 112vh, 0);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .christmas-snowfall {
+    display: none !important;
+  }
+}
+
 /* Gradient text */
 .gradient-text {
   background: linear-gradient(135deg, var(--derma-purple), var(--derma-purple-light));
