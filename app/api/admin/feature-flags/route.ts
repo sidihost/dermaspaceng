@@ -22,8 +22,8 @@ export async function GET() {
         'Christmas snowfall',
         'Subtle, brand-colored snowfall on public pages',
         'site',
-        FALSE,
-        'off'
+        TRUE,
+        'on'
       )
       ON CONFLICT (key) DO NOTHING
     `

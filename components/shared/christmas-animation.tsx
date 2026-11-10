@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation'
 import type { CSSProperties } from 'react'
-import { useFeatureFlags } from '@/lib/use-feature-flags'
+import { useFeature } from '@/lib/use-feature-flags'
 
 const SNOWFLAKE_COUNT = 28
 const SNOW_COLORS = [
@@ -40,12 +40,12 @@ function getSnowflakeStyle(index: number): SnowflakeStyle {
 
 export function ChristmasAnimation() {
   const pathname = usePathname()
-  const { flags } = useFeatureFlags()
+  const isSnowfallEnabled = useFeature('christmas-animation')
   const isPrivatePage = PRIVATE_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   )
 
-  if (flags['christmas-animation'] !== true || isPrivatePage) return null
+  if (!isSnowfallEnabled || isPrivatePage) return null
 
   return (
     <div className="christmas-snowfall" aria-hidden="true">
