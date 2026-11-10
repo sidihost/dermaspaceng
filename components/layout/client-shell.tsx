@@ -28,7 +28,7 @@
 
 import dynamic from 'next/dynamic'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
-import { useFeatureFlag } from '@/lib/use-feature-flag'
+import { useFeatureFlag, useFeatureFlags } from '@/lib/use-feature-flag'
 import { LegalAcceptanceGate } from '@/components/legal/legal-acceptance-gate'
 
 const AmbientMusic = dynamic(
@@ -54,6 +54,14 @@ const ShakeToFeedback = dynamic(
   { ssr: false, loading: () => null },
 )
 
+// Seasonal Christmas snowfall overlay. Decorative only — the chunk
+// only downloads for visitors once an admin flips the
+// `christmas_animation` flag on in /admin/features.
+const ChristmasAnimation = dynamic(
+  () => import('@/components/shared/christmas-animation'),
+  { ssr: false, loading: () => null },
+)
+
 // Global "Signed in as <user>" banner — only renders when an admin
 // has temporarily impersonated a customer to investigate an issue.
 // Self-gates via /api/admin/impersonate/status so a regular session
@@ -70,8 +78,26 @@ export default function ClientShell() {
   // assistant never hides during the brief pre-hydration window
   // (see `useFeatureFlag` doc comment for the safety rationale).
   const aiEnabled = useFeatureFlag('ai_chat')
+  // Seasonal overlay is opt-IN: unlike `useFeatureFlag`, which defaults
+  // to true while the flag map is loading (right for kill-switches),
+  // we read the bulk map and require an explicit `true`. That way the
+  // snowfall never flashes on for the split second before flags
+  // resolve — a visitor sees it only once an admin has turned it on.
+  const flags = useFeatureFlags()
+  const christmasEnabled = flags['christmas_animation'] === true
   return (
     <>
+      {/* Christmas snowfall — opt-in seasonal overlay. Renders nothing
+          unless an admin has set the flag to Everyone (or Admin only
+          while previewing). Purely decorative: pointer-events-none,
+          aria-hidden, and it self-suppresses on admin/staff/auth
+          routes. Wrapped in its own boundary so a canvas/context
+          failure can never take down the rest of the chrome. */}
+      {christmasEnabled && (
+        <RootErrorBoundary label="christmas-animation">
+          <ChristmasAnimation />
+        </RootErrorBoundary>
+      )}
       <RootErrorBoundary label="ambient-music">
         <AmbientMusic />
       </RootErrorBoundary>
