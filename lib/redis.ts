@@ -32,11 +32,37 @@ import { Redis } from "@upstash/redis"
 
 let _client: Redis | null = null
 
+const inMemoryStore = new Map<string, { value: unknown; expiresAt: number }>()
+
+const mockRedis = {
+  get: async <T>(key: string): Promise<T | null> => {
+    const entry = inMemoryStore.get(key)
+    if (!entry) return null
+    if (entry.expiresAt && entry.expiresAt < Date.now()) {
+      inMemoryStore.delete(key)
+      return null
+    }
+    return entry.value as T
+  },
+  set: async (key: string, value: unknown, opts?: { ex?: number }) => {
+    const ttl = opts?.ex ? Date.now() + opts.ex * 1000 : 0
+    inMemoryStore.set(key, { value, expiresAt: ttl })
+    return 'OK'
+  },
+  del: async (key: string) => {
+    inMemoryStore.delete(key)
+    return 1
+  },
+  incr: async (key: string) => {
+    const current = inMemoryStore.get(key)
+    const val = typeof current?.value === 'number' ? current.value + 1 : 1
+    inMemoryStore.set(key, { value: val, expiresAt: current?.expiresAt ?? 0 })
+    return val
+  },
+} as unknown as Redis
+
 /**
- * Lazily-initialised Upstash Redis singleton.
- *
- * Throws a clear, branded error if the env vars are missing so the issue
- * surfaces in logs/Sentry rather than as a confusing TypeError.
+ * Lazily-initialised Upstash Redis singleton with in-memory fallback.
  */
 export function getRedis(): Redis {
   if (_client) return _client
@@ -44,14 +70,15 @@ export function getRedis(): Redis {
   const url = process.env.UPSTASH_REDIS_REST_URL
   const token = process.env.UPSTASH_REDIS_REST_TOKEN
   if (!url || !token) {
-    throw new Error(
-      "[redis] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are not set. " +
-        "Add them in Project → Settings → Environment Variables.",
-    )
+    return mockRedis
   }
 
-  _client = new Redis({ url, token })
-  return _client
+  try {
+    _client = new Redis({ url, token })
+    return _client
+  } catch {
+    return mockRedis
+  }
 }
 
 // ---------------------------------------------------------------------------

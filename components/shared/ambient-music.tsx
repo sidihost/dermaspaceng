@@ -107,7 +107,10 @@ export default function AmbientMusic() {
               className={`w-[3px] rounded-full ${isPlaying ? 'bg-white' : 'bg-current'}`}
               style={{
                 height: isPlaying ? undefined : '4px',
-                animation: isPlaying ? `soundwave 0.5s ease-in-out infinite` : 'none',
+                animationName: isPlaying ? 'soundwave' : 'none',
+                animationDuration: '0.5s',
+                animationTimingFunction: 'ease-in-out',
+                animationIterationCount: 'infinite',
                 animationDelay: `${i * 80}ms`,
               }}
             />

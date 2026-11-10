@@ -1,0 +1,8 @@
+{
+  "name": "Dermaspace Esthetic & Wellness Centre",
+  "description": "Boutique spa and wellness centre in Victoria Island and Ikoyi, Lagos, offering luxury facial treatments, massages, nail care, waxing, and online booking with seasonal experiences.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ],
+  "permissions": []
+}

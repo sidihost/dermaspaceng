@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Phone, Mail, MapPin, Clock } from 'lucide-react'
+import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 import { useAuth } from '@/hooks/use-auth'
 import { useFeatureFlags } from '@/lib/use-feature-flag'
 
@@ -36,7 +37,8 @@ export default function Footer() {
         <div className="flex flex-col gap-6 pb-10 border-b border-white/20">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
             <div className="flex flex-col gap-4 max-w-md">
-              <Link href="/" className="inline-block">
+              <Link href="/" className="inline-block relative group">
+                <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1.5" />
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
                   alt="Dermaspace"

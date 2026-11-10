@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star } from 'lucide-react'
+import { ArrowRight, Bell, ChevronLeft, ChevronRight, MapPin, Star } from 'lucide-react'
 
 const slides = [
   {
@@ -69,7 +69,10 @@ function AnimatedText({
           <span
             className={`inline-block ${italic ? 'italic' : ''}`}
             style={{
-              animation: `hero-char-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both`,
+              animationName: 'hero-char-in',
+              animationDuration: '600ms',
+              animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+              animationFillMode: 'both',
               animationDelay: `${baseDelay + i * step}ms`,
             }}
           >

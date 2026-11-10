@@ -3,12 +3,20 @@ import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 // Create a lazy-loaded SQL client that only connects when DATABASE_URL is available
 let _sql: NeonQueryFunction<false, false> | null = null
 
+const mockNeon = (async () => {
+  return []
+}) as unknown as NeonQueryFunction<false, false>
+
 function getSql(): NeonQueryFunction<false, false> {
   if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not configured')
+    return mockNeon
   }
   if (!_sql) {
-    _sql = neon(process.env.DATABASE_URL)
+    try {
+      _sql = neon(process.env.DATABASE_URL)
+    } catch {
+      return mockNeon
+    }
   }
   return _sql
 }

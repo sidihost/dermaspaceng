@@ -63,6 +63,12 @@ const ImpersonationBanner = dynamic(
   { ssr: false, loading: () => null },
 )
 
+// Festive Christmas Snowfall animation — controlled via Admin Dashboard
+const ChristmasAnimation = dynamic(
+  () => import('@/components/shared/christmas-animation'),
+  { ssr: false, loading: () => null },
+)
+
 export default function ClientShell() {
   // Admin kill-switch — when an operator toggles "Derma AI chat"
   // OFF in /admin/features, the floating launcher disappears
@@ -72,6 +78,9 @@ export default function ClientShell() {
   const aiEnabled = useFeatureFlag('ai_chat')
   return (
     <>
+      <RootErrorBoundary label="christmas-animation">
+        <ChristmasAnimation />
+      </RootErrorBoundary>
       <RootErrorBoundary label="ambient-music">
         <AmbientMusic />
       </RootErrorBoundary>
