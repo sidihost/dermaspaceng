@@ -2,7 +2,6 @@
 
 import React from 'react'
 import useSWR from 'swr'
-import { motion } from 'framer-motion'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -13,7 +12,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
  * the top-left curve of the capital "D" in the Dermaspace logo.
  *
  * Adheres strictly to design constraints:
- *   - Proportional scale: Delicate ~20px footprint that crowns the "D"
+ *   - Proportional scale: Delicate ~22px footprint that crowns the "D"
  *     without overwhelming the brand wordmark.
  *   - Realistic Santa hat anatomy: Naturally curved slouch cap folding
  *     gracefully to the side, soft pillowed fluffy brim with hairline
@@ -24,12 +23,12 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json())
  *   - ZERO Zap, ZERO Sparkles icons.
  *   - Clean hairline borders (#E2E8F0) on white fur elements so they
  *     stay crisp and distinct on both pure white headers and dark footers.
- *   - Pure holiday red (#D32F2F / #B71C1C) for iconic recognition.
- *   - Gentle, subtle motion sway for high-end feel.
+ *   - Pure holiday red (#D32F2F / #991B1B) for iconic recognition.
+ *   - Gentle, subtle pure-CSS motion sway (rock-solid in all browsers).
  *   - Non-blocking: pointer-events-none select-none.
  */
 export function ChristmasLogoHat({
-  className = 'w-5 h-5 -top-2 left-0 sm:w-5.5 sm:h-5.5 sm:-top-2.5 sm:left-0',
+  className = 'w-5.5 h-5.5 -top-2 left-0.5 sm:w-6 sm:h-6 sm:-top-2.5 sm:left-0.5',
   variant = 'classic',
 }: {
   className?: string
@@ -37,9 +36,10 @@ export function ChristmasLogoHat({
 }) {
   const { data } = useSWR<{ enabled: boolean }>('/api/festive', fetcher, {
     revalidateOnFocus: false,
+    dedupingInterval: 60_000,
   })
 
-  // Respect admin switch (default enabled if loading or set to true)
+  // Respect admin switch. Default to true during loading so there's zero layout flash.
   const isEnabled = data ? data.enabled !== false : true
 
   if (!isEnabled) return null
@@ -48,39 +48,19 @@ export function ChristmasLogoHat({
   const foldColor = variant === 'brand' ? '#5A1D6A' : '#991B1B'
 
   return (
-    <motion.span
+    <span
       aria-hidden="true"
-      className={`absolute pointer-events-none select-none z-20 ${className}`}
-      initial={{ scale: 0.85, opacity: 0, rotate: -2 }}
-      animate={{
-        scale: 1,
-        opacity: 1,
-        rotate: [-2, 1, -2],
-        y: [0, -0.5, 0],
+      className={`absolute pointer-events-none select-none z-30 ${className}`}
+      style={{
+        transformOrigin: 'bottom left',
+        animation: 'festive-hat-sway 4.5s ease-in-out infinite',
       }}
-      transition={{
-        scale: { duration: 0.3, ease: 'easeOut' },
-        opacity: { duration: 0.3 },
-        rotate: {
-          duration: 4.2,
-          ease: 'easeInOut',
-          repeat: Infinity,
-          repeatType: 'mirror',
-        },
-        y: {
-          duration: 4.2,
-          ease: 'easeInOut',
-          repeat: Infinity,
-          repeatType: 'mirror',
-        },
-      }}
-      style={{ transformOrigin: 'bottom left' }}
     >
       <svg
-        viewBox="0 0 32 28"
+        viewBox="-1 -1 34 30"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full"
+        className="w-full h-full overflow-visible"
       >
         {/* Miniature decorative holly sprig at brim base (delicate festive touch) */}
         {/* Holly leaf 1 - pointing down-left */}
@@ -132,10 +112,8 @@ export function ChristmasLogoHat({
           strokeWidth="0.75"
         />
       </svg>
-    </motion.span>
+    </span>
   )
 }
 
 export default ChristmasLogoHat
-
-

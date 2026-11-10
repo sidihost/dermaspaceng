@@ -22,6 +22,8 @@ interface EmailOptions {
   html: string
 }
 
+const PUBLIC_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com').replace(/\/$/, '')
+
 // Clean, full-width email template like Facebook
 function getEmailTemplate(content: string) {
   return `
@@ -45,7 +47,7 @@ function getEmailTemplate(content: string) {
           <!-- Header with Logo -->
           <tr>
             <td style="padding: 16px 24px; border-bottom: 1px solid #e5e5e5;">
-              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp" alt="Dermaspace Esthetic And Wellness Centre" width="118" height="24" style="display: block; width: 118px; max-width: 118px; height: 24px; border: 0; outline: none;" />
+              <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="Dermaspace Esthetic &amp; Wellness Centre" width="138" height="28" style="display: block; width: 138px; max-width: 138px; height: 28px; border: 0; outline: none;" />
             </td>
           </tr>
           

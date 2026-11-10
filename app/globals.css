@@ -1348,3 +1348,22 @@ input[type='search']::-ms-reveal {
 .prose-email :where(strong) { font-weight: 700; }
 .prose-email :where(em) { font-style: italic; }
 
+/* Holiday Santa hat gentle sway animation on logo (100% browser compatible) */
+@keyframes festive-hat-sway {
+  0%, 100% {
+    transform: rotate(-2deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.2deg) translateY(-0.6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes festive-hat-sway {
+    0%, 100% {
+      transform: none;
+    }
+  }
+}
+
+

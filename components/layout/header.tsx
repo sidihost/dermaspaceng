@@ -418,8 +418,8 @@ export default function Header() {
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex items-center justify-between h-14">
               {/* Logo */}
-              <Link href="/" className="relative flex-shrink-0 group">
-                <ChristmasLogoHat className="w-5 h-5 -top-2 left-0 sm:w-5.5 sm:h-5.5 sm:-top-2.5 sm:left-0" />
+              <Link href="/" className="relative inline-flex items-center flex-shrink-0 group py-1">
+                <ChristmasLogoHat className="w-5.5 h-5.5 -top-2 left-0.5 sm:w-6 sm:h-6 sm:-top-2.5 sm:left-0.5" />
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                   alt="Dermaspace"
@@ -576,8 +576,8 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 lg:px-6 xl:px-8">
           <div className="flex items-center justify-between h-16 lg:h-[68px]">
             {/* Logo */}
-            <Link href="/" className="relative flex-shrink-0 group">
-              <ChristmasLogoHat className="w-5 h-5 -top-2 left-0 lg:w-5.5 lg:h-5.5 lg:-top-2.5 lg:left-0" />
+            <Link href="/" className="relative inline-flex items-center flex-shrink-0 group py-1">
+              <ChristmasLogoHat className="w-5.5 h-5.5 -top-2 left-0.5 lg:w-6 lg:h-6 lg:-top-2.5 lg:left-0.5" />
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                 alt="Dermaspace"
@@ -975,8 +975,8 @@ export default function Header() {
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
           <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100">
-            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="relative inline-block">
-              <ChristmasLogoHat className="w-5 h-5 -top-2 left-0" />
+            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="relative inline-flex items-center py-1">
+              <ChristmasLogoHat className="w-5 h-5 -top-1.5 left-0.5" />
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                 alt="Dermaspace"
