@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Mail, ArrowLeft, Check } from 'lucide-react'
-import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -103,14 +102,11 @@ export default function ForgotPasswordPage() {
           </Link>
 
           <Link href="/" className="block mb-5">
-            <div className="relative inline-block">
-              <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
-              <img
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-                alt="Dermaspace"
-                className="h-9 w-auto"
-              />
-            </div>
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-9 w-auto"
+            />
           </Link>
 
           <h1 className="text-xl font-bold text-gray-900 mb-1">Reset Password</h1>

@@ -263,9 +263,9 @@ function getEmailTemplate(
                document. A hairline underneath still separates header
                from body so the structure doesn't collapse. -->
           <tr>
-            <td class="ds-header" align="center" style="padding: 24px 28px; border-bottom: 1px solid #efeaf2; text-align: center;">
+            <td class="ds-header" align="center" style="padding: 18px 24px; border-bottom: 1px solid #efeaf2; text-align: center;">
               <a href="${PUBLIC_ORIGIN}" style="text-decoration: none; display: inline-block;">
-                <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp" alt="Dermaspace Esthetic & Wellness Centre" height="40" style="display: block; height: 40px; width: auto; border: 0; outline: none; margin: 0 auto;" />
+                <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp" alt="Dermaspace Esthetic &amp; Wellness Centre" width="118" height="24" style="display: block; width: 118px; max-width: 118px; height: 24px; border: 0; outline: none; margin: 0 auto;" />
               </a>
             </td>
           </tr>

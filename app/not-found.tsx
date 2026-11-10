@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Home, ArrowLeft, Search, Phone } from 'lucide-react'
-import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 export default function NotFound() {
   return (
@@ -12,16 +11,13 @@ export default function NotFound() {
       <header className="py-6 px-4">
         <div className="max-w-6xl mx-auto">
           <Link href="/">
-            <div className="relative inline-block">
-              <ChristmasLogoHat className="w-8 h-8 -top-3.5 -left-1.5" />
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
-                alt="Dermaspace"
-                width={140}
-                height={42}
-                className="h-10 w-auto"
-              />
-            </div>
+            <Image
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
+              alt="Dermaspace"
+              width={140}
+              height={42}
+              className="h-10 w-auto"
+            />
           </Link>
         </div>
       </header>

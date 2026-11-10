@@ -545,7 +545,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
 
           <Link href="/admin" className="flex items-center gap-2 group min-w-0">
             <div className="relative inline-block">
-              <ChristmasLogoHat className="w-6 h-6 -top-3 -left-1" />
+              <ChristmasLogoHat className="w-5 h-5 -top-2 left-0" />
               <Image
                 src={DERMASPACE_LOGO}
                 alt="Dermaspace"
@@ -630,7 +630,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
               className="flex items-center gap-2 group min-w-0"
             >
               <div className="relative inline-block">
-                <ChristmasLogoHat className="w-7 h-7 -top-3.5 -left-1" />
+                <ChristmasLogoHat className="w-5 h-5 -top-2 left-0" />
                 <Image
                   src={DERMASPACE_LOGO}
                   alt="Dermaspace"
@@ -651,7 +651,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
               className="relative w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center group"
               aria-label="Dermaspace admin"
             >
-              <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
+              <ChristmasLogoHat className="w-5 h-5 -top-2 left-0.5" />
               <span className="text-white font-bold text-lg">D</span>
             </Link>
           )}

@@ -10,7 +10,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
-import { Bell, Loader2, EyeOff, Users, Globe } from 'lucide-react'
+import { Snowflake, Loader2, EyeOff, Users, Globe } from 'lucide-react'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -76,7 +76,7 @@ export function ChristmasToggleCard() {
               : 'bg-gray-100 text-gray-400'
           }`}
         >
-          <Bell className="w-4 h-4" />
+          <Snowflake className="w-4 h-4" />
         </span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

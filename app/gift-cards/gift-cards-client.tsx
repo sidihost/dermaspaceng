@@ -8,7 +8,6 @@ import Footer from '@/components/layout/footer'
 import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
-import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 // Service-based amounts
 const giftCardAmounts = [
@@ -258,7 +257,6 @@ export default function GiftCardsClient() {
                     {/* Top Row */}
                     <div className="relative flex items-center justify-between gap-2 mb-6">
                       <div className="relative inline-block">
-                        <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
                         <Image
                           src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                           alt="Dermaspace"

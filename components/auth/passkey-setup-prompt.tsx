@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { Fingerprint, X, Shield, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
-import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 interface PasskeySetupPromptProps {
   onComplete: () => void
@@ -96,7 +95,6 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
       <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
         <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md px-6 pt-5 pb-8 sm:pb-6 text-center">
           <div className="relative inline-block mx-auto mb-5">
-            <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
@@ -133,7 +131,6 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
             rest of the signup wizard (which shows the same logo in
             its header) instead of feeling like an unrelated dialog. */}
         <div className="relative inline-block mx-auto mb-4">
-          <ChristmasLogoHat className="w-6 h-6 -top-2.5 -left-1" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"

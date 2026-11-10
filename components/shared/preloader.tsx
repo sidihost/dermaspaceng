@@ -29,7 +29,7 @@ export default function Preloader() {
     >
       <div className="flex flex-col items-center px-6">
         <div className="relative inline-block">
-          <ChristmasLogoHat className="w-10 h-10 -top-5 -left-1.5 sm:w-12 sm:h-12 sm:-top-6 sm:-left-2" />
+          <ChristmasLogoHat className="w-7 h-7 -top-3.5 left-0 sm:w-8 sm:h-8 sm:-top-4 sm:left-0" />
           <Image
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
             alt="Dermaspace"
