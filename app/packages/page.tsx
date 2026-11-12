@@ -1,17 +1,50 @@
 'use client'
 
-// Package cards redesigned: clean tier-accent layout, no shadows or decorative icons.
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, Check, ArrowRight, Users, User, Heart, Gift, Layers } from 'lucide-react'
+import { Clock, Check, ArrowRight, Users, User, Heart, Gift, Flower2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useGeo } from '@/lib/geo-context'
 import FavoriteButton from '@/components/favorite-button'
+import {
+  CardHangingOrnament,
+  CardSnowflakeWatermark,
+  HolidayCornerSnowflakes,
+  HolidayHeroDivider,
+  PackagesHeroFestiveArt,
+} from '@/components/packages/christmas-package-accents'
 
-const singlePackages = [
+interface UserData {
+  firstName: string
+  lastName: string
+}
+
+interface Preferences {
+  preferredServices?: string[]
+  companionType?: string // 'single' | 'couple' – drives which section we lead with
+}
+
+interface SpaPackage {
+  name: string
+  type: 'Single' | 'Couple'
+  price: number
+  duration: string
+  features: string[]
+  popular: boolean
+  color: string
+}
+
+function getTimeGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+const singlePackages: SpaPackage[] = [
   {
     name: 'Gold Experience',
     type: 'Single',
@@ -32,9 +65,7 @@ const singlePackages = [
     price: 110000,
     duration: '2 Hours 50 Mins',
     // Silver is a "pick one" between the massage OR the body scrub — not
-    // both. This was mis-listed as four separate inclusions, which the
-    // Ikoyi client relied on and triggered a refund request. Matches the
-    // official marketing card.
+    // both. Explicit OR wording matches the official marketing card.
     features: [
       '1 Hour Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
@@ -57,7 +88,7 @@ const singlePackages = [
   },
 ]
 
-const couplePackages = [
+const couplePackages: SpaPackage[] = [
   {
     name: 'Gold Experience',
     type: 'Couple',
@@ -77,9 +108,6 @@ const couplePackages = [
     type: 'Couple',
     price: 210000,
     duration: '2 Hours 50 Mins',
-    // Explicit OR wording to match the single Silver card and the
-    // official marketing print. The old slash-separated line was being
-    // misread as "massage and scrub" rather than "massage or scrub".
     features: [
       '1 Hour Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
@@ -102,17 +130,7 @@ const couplePackages = [
   },
 ]
 
-interface UserData {
-  firstName: string
-  lastName: string
-}
-
-interface Preferences {
-  preferredServices?: string[]
-  companionType?: string // 'single' | 'couple' – drives which section we lead with
-}
-
-function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; formatPrice: (amount: number) => string }) {
+function PackageCard({ pkg, formatPrice }: { pkg: SpaPackage; formatPrice: (amount: number) => string }) {
   const TypeIcon = pkg.type === 'Couple' ? Users : User
 
   return (
@@ -125,6 +143,12 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
     >
       {/* Tier accent bar — uses each package's own color */}
       <div className="h-1 w-full" style={{ backgroundColor: pkg.color }} />
+
+      {/* Removable Christmas ornament accent suspended from the tier bar */}
+      <CardHangingOrnament popular={pkg.popular} accentColor={pkg.color} rightClass="right-12" />
+
+      {/* Removable subtle snowflake watermark in lower card whitespace */}
+      <CardSnowflakeWatermark popular={pkg.popular} />
 
       {/* Favorite toggle pinned to the top-right. Composite itemId
           ("{name}-{type}") keeps Gold Single / Gold Couple distinct in
@@ -140,10 +164,11 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
         />
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        {/* Eyebrow: tier dot + type + (optional) Most Popular flag. pr-9
-            leaves room for the favorite heart so it never collides. */}
-        <div className="flex items-center gap-2 pr-9">
+      {/* Subtle flat header band on the popular tier */}
+      <div className={`relative flex flex-1 flex-col p-4 ${pkg.popular ? 'bg-[#7B2D8E]/[0.02]' : ''}`}>
+        {/* Eyebrow: tier dot + type + (optional) Popular flag. pr-16
+            leaves room for the hanging ornament and favorite heart. */}
+        <div className="flex items-center gap-2 pr-16">
           <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
             <span className="h-2 w-2 rounded-full" style={{ backgroundColor: pkg.color }} />
             <TypeIcon className="w-3 h-3" />
@@ -173,7 +198,7 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
             {pkg.duration}
           </span>
           <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
-            <Layers className="h-3.5 w-3.5 shrink-0" />
+            <Flower2 className="h-3.5 w-3.5 shrink-0" />
             {pkg.features.length} treatment{pkg.features.length > 1 ? 's' : ''}
           </span>
         </div>
@@ -181,7 +206,7 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
         {/* Divider */}
         <div className="mt-4 mb-4 h-px w-full bg-gray-100" />
 
-        <ul className="space-y-2 mb-4 flex-1">
+        <ul className="space-y-2 mb-5 flex-1 relative z-[1]">
           {pkg.features.map((feature) => (
             <li key={feature} className="flex items-start gap-2">
               <span className="mt-0.5 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10">
@@ -208,14 +233,6 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
       </div>
     </div>
   )
-}
-
-// Time-based greeting shared by the personalized hero states.
-function getTimeGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Good morning'
-  if (hour < 17) return 'Good afternoon'
-  return 'Good evening'
 }
 
 export default function PackagesPage() {
@@ -252,15 +269,11 @@ export default function PackagesPage() {
     load()
   }, [])
 
-  // Surface "favorite" state if the user has already told us packages /
-  // spa experiences are a thing they love. We pattern-match on a few
-  // likely preference keys so this works whether the app stores them as
-  // "packages", "spa-packages" or "experiences".
   const isFavoriteCategory = preferences?.preferredServices?.some((p) =>
     ['packages', 'spa-packages', 'experiences', 'spa'].includes(p)
   )
-
   const prefersCouple = preferences?.companionType === 'couple'
+
   const leadPackages = prefersCouple ? couplePackages : singlePackages
   const followPackages = prefersCouple ? singlePackages : couplePackages
   const leadHeading = prefersCouple ? 'Couple Packages' : 'Single Packages'
@@ -274,29 +287,22 @@ export default function PackagesPage() {
     <main>
       <Header />
 
-      {/* Hero Section — guests see the generic marketing block; logged-in
-          members see a personal greeting, a favorite-category flag when
-          relevant, and a CTA back into their dashboard. Matches the
-          language / layout of the subservice hero so the two feel related. */}
+      {/* Hero Section — solid brand purple with removable flat Christmas ornament framing */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
-        <div className="absolute top-1/2 left-8 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
+        <PackagesHeroFestiveArt />
 
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           {isAuthLoading ? (
-            // Skeleton placeholders prevent layout shift while /api/auth/me
-            // resolves. Keeps the hero height stable whether we end up
-            // rendering the guest or member version.
             <>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+                <Gift className="w-3.5 h-3.5 text-white" />
                 <span className="text-xs font-medium text-white uppercase tracking-widest">Spa Packages</span>
               </div>
               <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
                 Choose Your Experience
               </h1>
-              <p className="text-sm md:text-base text-white/80">
-                Carefully curated packages for ultimate relaxation
+              <p className="text-sm md:text-base text-white/85 max-w-lg mx-auto">
+                Carefully curated spa packages for ultimate relaxation
               </p>
             </>
           ) : user ? (
@@ -304,7 +310,7 @@ export default function PackagesPage() {
               {isFavoriteCategory ? (
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/25 mb-4">
                   <Heart className="w-3.5 h-3.5 text-white fill-white" />
-                  <span className="text-xs font-medium text-white uppercase tracking-widest">Your Favorite</span>
+                  <span className="text-xs font-medium text-white uppercase tracking-widest">Your Favorite Category</span>
                 </div>
               ) : (
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
@@ -324,10 +330,10 @@ export default function PackagesPage() {
 
               <p className="text-sm md:text-base text-white/90 max-w-lg mx-auto">
                 {isFavoriteCategory
-                  ? 'We curated these experiences around what you already love. Pick where you want to unwind next.'
+                  ? 'You love our packages — here are the latest tiers tailored to your preferences.'
                   : prefersCouple
-                    ? `Couple experiences are up first — because sharing a day together beats almost anything else.`
-                    : `Here are experiences we think you'll love. Book a single session or bring someone along.`}
+                    ? `Couple experiences are up first — because sharing a spa day together beats almost anything else.`
+                    : `Curated bundles that combine our signature treatments for deeper relaxation and better value.`}
               </p>
 
               {/* Contextual CTAs into the member's world. */}
@@ -356,25 +362,21 @@ export default function PackagesPage() {
               <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
                 Choose Your <span className="text-white/90">Experience</span>
               </h1>
-              <p className="text-sm md:text-base text-white/80">
-                Carefully curated packages for ultimate relaxation
+              <p className="text-sm md:text-base text-white/85 max-w-lg mx-auto">
+                Carefully curated spa packages for ultimate relaxation
               </p>
             </>
           )}
 
-          {/* Shared decorative divider below the hero content. */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
-          </div>
+          {/* Removable holiday snowflake divider */}
+          <HolidayHeroDivider />
         </div>
       </section>
 
       {/* Lead section — swaps order based on the member's companion type
           preference so the first thing a "couple" member sees is the
           couple packages. Guests / single members see singles first. */}
-      <section className="py-12 bg-white">
+      <section id={prefersCouple ? 'couples' : 'single'} className="py-12 bg-white">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
@@ -394,7 +396,7 @@ export default function PackagesPage() {
         </div>
       </section>
 
-      <section className="py-12 bg-white border-t border-gray-100">
+      <section id={prefersCouple ? 'single' : 'couples'} className="py-12 bg-white border-t border-gray-100">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
@@ -414,39 +416,45 @@ export default function PackagesPage() {
         </div>
       </section>
 
-      {/* Gift Cards */}
-      <section className="py-12 bg-white">
+      {/* Gift Cards Callout — flat framed surface with removable corner snowflakes */}
+      <section className="py-12 bg-white border-t border-gray-100">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-8 items-center">
-            <div className="relative aspect-[4/3] max-w-xs mx-auto lg:mx-0 rounded-xl overflow-hidden">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/f52f1634-hero-1.png-OVi0BQIsdP8fE20E3t5LI9cQ6RGcgA.webp"
-                alt="Gift Cards"
-                fill
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
-                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
+          <div className="relative overflow-hidden rounded-2xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.025] p-6 sm:p-8">
+            <HolidayCornerSnowflakes />
+            <div className="relative grid lg:grid-cols-2 gap-8 items-center">
+              <div className="relative aspect-[4/3] w-full max-w-xs mx-auto lg:mx-0 rounded-xl overflow-hidden bg-white border border-[#7B2D8E]/10 p-3">
+                <Image
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/f52f1634-hero-1.png-OVi0BQIsdP8fE20E3t5LI9cQ6RGcgA.webp"
+                  alt="Gift Cards"
+                  fill
+                  sizes="320px"
+                  referrerPolicy="no-referrer"
+                  className="object-contain"
+                />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">
-                {user ? `Gift wellness to someone you love` : 'Give the Gift of Wellness'}
-              </h2>
-              <p className="text-sm text-gray-600 mb-5">
-                {user
-                  ? `Send a Dermaspace gift card in ${user.firstName}'s name and let them choose their perfect spa experience.`
-                  : 'Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience.'}
-              </p>
-              <Button
-                asChild
-                className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-lg px-5 h-9 text-xs"
-              >
-                <Link href="/contact" className="flex items-center gap-2">
-                  Inquire About Gift Cards
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </Button>
+              <div>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#7B2D8E]/10 border border-[#7B2D8E]/15 mb-4">
+                  <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">
+                  {user ? `Gift wellness to someone you love` : 'Give the Gift of Wellness'}
+                </h2>
+                <p className="text-sm text-gray-600 mb-5">
+                  {user
+                    ? `Send a Dermaspace gift card in ${user.firstName}'s name and let them choose their perfect spa experience.`
+                    : 'Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience.'}
+                </p>
+                <Button
+                  asChild
+                  className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-lg px-5 h-9 text-xs"
+                >
+                  <Link href="/contact" className="flex items-center gap-2">
+                    Inquire About Gift Cards
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
