@@ -14,6 +14,7 @@ import {
   CardSnowflakeWatermark,
   HolidayCornerSnowflakes,
   HolidayHeroDivider,
+  PackageBookButton,
   PackagesHeroFestiveArt,
 } from '@/components/packages/christmas-package-accents'
 
@@ -217,19 +218,7 @@ function PackageCard({ pkg, formatPrice }: { pkg: SpaPackage; formatPrice: (amou
           ))}
         </ul>
 
-        <Button
-          asChild
-          className={`group/btn w-full rounded-lg h-10 text-sm font-semibold transition-colors ${
-            pkg.popular
-              ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
-              : 'bg-white text-[#7B2D8E] border border-[#7B2D8E]/30 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E]'
-          }`}
-        >
-          <Link href="/booking" className="flex items-center justify-center gap-2">
-            Book Now
-            <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-          </Link>
-        </Button>
+        <PackageBookButton href="/booking" popular={pkg.popular} />
       </div>
     </div>
   )

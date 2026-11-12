@@ -357,7 +357,8 @@ export default function LaserPageContent() {
                 src="/images/laser-hair-removal-ng.jpg"
                 alt="Laser Hair Removal at Dermaspace"
                 fill
-                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                sizes="(max-width: 768px) 100vw, 66vw"
+                className="object-cover object-[center_22%] group-hover:scale-[1.03] transition-transform duration-700"
               />
               {/* Flat dark scrim — used to be a 3-stop linear-gradient
                   (`bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25
@@ -395,6 +396,7 @@ export default function LaserPageContent() {
                 src="/images/carbon-peel-ng.jpg"
                 alt="Hollywood Carbon Peel"
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-[#1F0828]/30" />

@@ -7,6 +7,7 @@ import { useGeo } from '@/lib/geo-context'
 import {
   CardHangingOrnament,
   CardSnowflakeWatermark,
+  PackageBookButton,
 } from '@/components/packages/christmas-package-accents'
 
 const packages = [
@@ -139,17 +140,7 @@ export default function PackagesSection() {
                     ))}
                   </ul>
 
-                  <Link
-                    href="/booking"
-                    className={`group/btn flex items-center justify-center gap-2 w-full h-10 text-center text-sm font-semibold rounded-lg transition-colors ${
-                      pkg.popular
-                        ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
-                        : 'bg-white text-[#7B2D8E] border border-[#7B2D8E]/30 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E]'
-                    }`}
-                  >
-                    Book Now
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-                  </Link>
+                  <PackageBookButton href="/booking" popular={pkg.popular} />
                 </div>
               </div>
             )

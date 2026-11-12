@@ -1,11 +1,40 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Bell, ChevronLeft, ChevronRight, MapPin, Star } from 'lucide-react'
+import useSWR from 'swr'
+import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star } from 'lucide-react'
 
-const slides = [
+// Toggle to false (or turn off Festive in Admin) to revert the hero back to the 3 standard slides.
+const CHRISTMAS_HERO_SLIDE_ENABLED = true
+
+const festiveFetcher = (url: string) => fetch(url).then((r) => r.json())
+
+interface HeroSlide {
+  image: string
+  eyebrow: string
+  title: string
+  highlight: string
+  description: string
+  secondaryLabel: string
+  secondaryHref: string
+  festive?: boolean
+}
+
+const CHRISTMAS_SLIDE: HeroSlide = {
+  image: '/images/hero-christmas-luxury-3d.jpg',
+  eyebrow: 'Christmas at Dermaspace',
+  title: 'Wrapped in calm,',
+  highlight: 'gifted with glow',
+  description:
+    'Treat yourself or someone special to restorative spa rituals, festive packages, and gift cards this season.',
+  secondaryLabel: 'Explore Packages',
+  secondaryHref: '/packages',
+  festive: true,
+}
+
+const BASE_SLIDES: HeroSlide[] = [
   {
     image: '/images/hero-1.jpg',
     eyebrow: 'Skin Care',
@@ -13,6 +42,8 @@ const slides = [
     highlight: 'like yours',
     description:
       'Facials, peels and treatments for Lagos weather and Lagos skin. No gimmicks, just results you can see.',
+    secondaryLabel: 'View Services',
+    secondaryHref: '/services',
   },
   {
     image: '/images/hero-2.jpg',
@@ -21,6 +52,8 @@ const slides = [
     highlight: 'off your shoulders',
     description:
       'Massages, scrubs and steam in a quiet room. You walk out lighter than you walked in.',
+    secondaryLabel: 'View Services',
+    secondaryHref: '/services',
   },
   {
     image: '/images/hero-3.jpg',
@@ -29,6 +62,8 @@ const slides = [
     highlight: 'knows your skin',
     description:
       'We listen first, recommend second, and build a plan that fits your life.',
+    secondaryLabel: 'View Services',
+    secondaryHref: '/services',
   },
 ]
 
@@ -85,41 +120,67 @@ function AnimatedText({
 }
 
 export default function Hero() {
+  const { data: festiveData } = useSWR<{ enabled: boolean }>(
+    CHRISTMAS_HERO_SLIDE_ENABLED ? '/api/festive' : null,
+    festiveFetcher,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    },
+  )
+
+  const showChristmasSlide =
+    CHRISTMAS_HERO_SLIDE_ENABLED && (festiveData ? festiveData.enabled !== false : true)
+
+  const slides = useMemo(
+    () => (showChristmasSlide ? [CHRISTMAS_SLIDE, ...BASE_SLIDES] : BASE_SLIDES),
+    [showChristmasSlide],
+  )
+
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [progress, setProgress] = useState(0)
+  const progressRef = useRef(0)
+
+  const safeSlideIndex = currentSlide % slides.length
 
   const goToSlide = useCallback(
     (index: number) => {
-      if (isTransitioning || index === currentSlide) return
-      setIsTransitioning(true)
+      if (index === safeSlideIndex) return
       setCurrentSlide(index)
+      progressRef.current = 0
       setProgress(0)
-      setTimeout(() => setIsTransitioning(false), 600)
     },
-    [isTransitioning, currentSlide],
+    [safeSlideIndex],
   )
 
   const nextSlide = useCallback(() => {
-    goToSlide((currentSlide + 1) % slides.length)
-  }, [currentSlide, goToSlide])
+    setCurrentSlide((prev) => (prev + 1) % slides.length)
+    progressRef.current = 0
+    setProgress(0)
+  }, [slides.length])
 
   const prevSlide = useCallback(() => {
-    goToSlide((currentSlide - 1 + slides.length) % slides.length)
-  }, [currentSlide, goToSlide])
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)
+    progressRef.current = 0
+    setProgress(0)
+  }, [slides.length])
 
   useEffect(() => {
+    if (isPaused) return
     const progressInterval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          nextSlide()
-          return 0
-        }
-        return prev + 1.67
-      })
+      const nextVal = progressRef.current + 1.67
+      if (nextVal >= 100) {
+        progressRef.current = 0
+        setProgress(0)
+        setCurrentSlide((prev) => (prev + 1) % slides.length)
+      } else {
+        progressRef.current = nextVal
+        setProgress(nextVal)
+      }
     }, 100)
     return () => clearInterval(progressInterval)
-  }, [nextSlide])
+  }, [isPaused, slides.length])
 
   const scrollToBooking = () => {
     const bookingSection = document.getElementById('booking-section')
@@ -128,7 +189,7 @@ export default function Hero() {
     }
   }
 
-  const active = slides[currentSlide]
+  const active = slides[safeSlideIndex]
 
   // Duration to finish the character stagger before drawing the underline
   const titleStepMs = 28
@@ -136,50 +197,71 @@ export default function Hero() {
   const underlineDelay = highlightDelay + active.highlight.length * titleStepMs + 120
 
   return (
-    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden">
+    <section
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
+    >
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
           <div
-            key={index}
+            key={slide.image}
             className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
-              index === currentSlide ? 'opacity-100' : 'opacity-0'
+              index === safeSlideIndex ? 'opacity-100' : 'opacity-0'
             }`}
           >
             <Image
               src={slide.image}
               alt={slide.title}
               fill
+              sizes="100vw"
               className={`object-cover transition-transform duration-[6000ms] ease-out ${
-                index === currentSlide ? 'scale-105' : 'scale-100'
+                slide.festive
+                  ? 'object-[78%_54%] md:object-[center_54%]'
+                  : 'object-[center_28%]'
+              } ${
+                index === safeSlideIndex
+                  ? slide.festive
+                    ? 'scale-[1.015]'
+                    : 'scale-105'
+                  : 'scale-100'
               }`}
               priority={index === 0}
             />
           </div>
         ))}
 
-        {/* Cinematic overlays — tinted with deep Dermaspace plum instead
-            of neutral black so the hero reads as brand colour at a
-            glance. The plum is dark enough (≈ #2A0C3A) to keep white
-            copy legible on bright photography while still carrying the
-            purple warmth of #7B2D8E. */}
+        {/* Cinematic overlays — dimmed slightly on the 3D festive slide so the
+            festive 3D still-life stays vibrant on the right, while keeping crisp
+            contrast under the left-column text. */}
         <div
           aria-hidden="true"
-          className="absolute inset-0"
-          style={{ background: 'rgba(42, 12, 58, 0.35)' }}
+          className="absolute inset-0 transition-opacity duration-700"
+          style={{
+            background: active.festive
+              ? 'rgba(42, 12, 58, 0.22)'
+              : 'rgba(42, 12, 58, 0.35)',
+          }}
         />
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{
-            background:
-              'linear-gradient(100deg, rgba(42,12,58,0.65) 0%, rgba(42,12,58,0.32) 45%, rgba(42,12,58,0.05) 100%)',
+            background: active.festive
+              ? 'linear-gradient(95deg, rgba(42,12,58,0.88) 0%, rgba(42,12,58,0.56) 46%, rgba(42,12,58,0.04) 80%)'
+              : 'linear-gradient(100deg, rgba(42,12,58,0.65) 0%, rgba(42,12,58,0.32) 45%, rgba(42,12,58,0.05) 100%)',
           }}
         />
+        {active.festive && (
+          <div
+            aria-hidden="true"
+            className="sm:hidden absolute inset-0 bg-[#2A0C3A]/35"
+          />
+        )}
         {/* Top fade — ensures the eyebrow stays legible on slides
             where the upper portion of the photo is a warm skin tone
-            or bright background. Without this, text-white/95 blends
-            into the image and reads as dull brown. */}
+            or bright background. */}
         <div
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-28 sm:h-32"
@@ -197,10 +279,7 @@ export default function Hero() {
               'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(42,12,58,0.38) 100%)',
           }}
         />
-        {/* Soft spotlight anchored to the left content column — a warm
-            plum-tinted glow that lifts the headline and CTAs off the
-            photography and adds a little depth, without darkening the
-            image like another flat overlay would. */}
+        {/* Soft spotlight anchored to the left content column */}
         <div
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
@@ -293,33 +372,40 @@ export default function Hero() {
         </span>
       </div>
 
-      {/* Right edge vertical slide meter (desktop only) */}
+      {/* Right edge vertical slide meter (desktop only, interactive) */}
       <div
-        aria-hidden="true"
-        className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 flex-col items-center gap-3 pointer-events-none"
+        className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 z-20 flex-col items-end gap-2.5"
       >
-        {slides.map((_, i) => (
-          <div key={i} className="flex items-center gap-2">
+        {slides.map((slide, i) => (
+          <button
+            key={slide.eyebrow}
+            type="button"
+            onClick={() => goToSlide(i)}
+            aria-label={`Jump to slide ${i + 1}: ${slide.eyebrow}`}
+            className="group/meter flex items-center gap-2 py-0.5 cursor-pointer"
+          >
             <span
-              className={`font-mono text-[10px] tabular-nums transition-colors duration-500 ${
-                i === currentSlide ? 'text-white' : 'text-white/40'
+              className={`font-mono text-[10px] tabular-nums transition-colors duration-300 ${
+                i === safeSlideIndex
+                  ? 'text-white font-semibold'
+                  : 'text-white/45 group-hover/meter:text-white/80'
               }`}
             >
               {String(i + 1).padStart(2, '0')}
             </span>
             <span
               className={`block w-px origin-center transition-all duration-500 ${
-                i === currentSlide
+                i === safeSlideIndex
                   ? 'h-10 bg-white'
-                  : 'h-4 bg-white/40'
+                  : 'h-4 bg-white/40 group-hover/meter:bg-white/75'
               }`}
               style={
-                i === currentSlide
+                i === safeSlideIndex
                   ? { animation: 'hero-tick-pulse 2.8s ease-in-out infinite' }
                   : undefined
               }
             />
-          </div>
+          </button>
         ))}
       </div>
 
@@ -330,7 +416,7 @@ export default function Hero() {
             <div className="max-w-2xl">
               {/* Eyebrow — hairlines grow on both sides */}
               <div
-                key={`eyebrow-${currentSlide}`}
+                key={`eyebrow-${safeSlideIndex}`}
                 className="relative mb-3 sm:mb-4 flex items-center gap-3"
               >
                 <span
@@ -344,9 +430,6 @@ export default function Hero() {
                   className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
                   style={{
                     animation: 'hero-char-in 520ms ease-out 120ms both',
-                    // Soft shadow keeps the eyebrow readable on any
-                    // photo the slider lands on, regardless of the
-                    // background tone under its position.
                     textShadow: '0 1px 10px rgba(0,0,0,0.6)',
                   }}
                 >
@@ -362,7 +445,7 @@ export default function Hero() {
 
               {/* Title with per-character reveal */}
               <div
-                key={`title-${currentSlide}`}
+                key={`title-${safeSlideIndex}`}
                 className="relative mb-3 sm:mb-4"
               >
                 <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.08] tracking-tight text-balance">
@@ -422,7 +505,7 @@ export default function Hero() {
 
               {/* Description */}
               <div
-                key={`desc-${currentSlide}`}
+                key={`desc-${safeSlideIndex}`}
                 className="relative mb-4 sm:mb-5 min-h-[48px] sm:min-h-[52px]"
               >
                 <p
@@ -437,7 +520,7 @@ export default function Hero() {
 
               {/* CTA Buttons */}
               <div
-                key={`cta-${currentSlide}`}
+                key={`cta-${safeSlideIndex}`}
                 className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-5"
                 style={{
                   animation: `hero-char-in 700ms ease-out ${underlineDelay + 280}ms both`,
@@ -458,16 +541,16 @@ export default function Hero() {
                   </span>
                 </button>
                 <Link
-                  href="/services"
+                  href={active.secondaryHref}
                   className="inline-flex items-center gap-2 px-5 py-2.5 text-white text-sm font-semibold rounded-full border border-white/40 hover:bg-white/10 hover:border-white/60 transition-all duration-300"
                 >
-                  View Services
+                  {active.secondaryLabel}
                 </Link>
               </div>
 
               {/* Trust Indicators - Hidden on mobile */}
               <div
-                key={`trust-${currentSlide}`}
+                key={`trust-${safeSlideIndex}`}
                 className="hidden sm:flex flex-wrap items-center gap-x-6 gap-y-2"
                 style={{
                   animation: `hero-char-in 700ms ease-out ${underlineDelay + 400}ms both`,
@@ -547,7 +630,7 @@ export default function Hero() {
               {/* Slide Counter + Progress */}
               <div className="flex items-center gap-3">
                 <span className="font-serif text-2xl font-semibold text-[#7B2D8E] tabular-nums">
-                  {String(currentSlide + 1).padStart(2, '0')}
+                  {String(safeSlideIndex + 1).padStart(2, '0')}
                 </span>
                 <div className="w-16 sm:w-24 h-[3px] bg-gray-200 rounded-full overflow-hidden">
                   <div
@@ -560,28 +643,37 @@ export default function Hero() {
                 </span>
               </div>
 
-              {/* Current Slide Label — desktop only */}
-              <div className="hidden md:flex items-center gap-2">
-                <span className="text-[11px] uppercase tracking-[0.22em] font-medium text-gray-400">
-                  Now showing
-                </span>
-                <span className="text-sm font-medium text-gray-900">
-                  {active.eyebrow}
-                </span>
+              {/* Mobile Slide Dots */}
+              <div className="flex md:hidden items-center gap-1.5" aria-label="Hero slide pagination">
+                {slides.map((slide, i) => (
+                  <button
+                    key={slide.eyebrow}
+                    type="button"
+                    onClick={() => goToSlide(i)}
+                    aria-label={`Go to slide ${i + 1}: ${slide.eyebrow}`}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      i === safeSlideIndex
+                        ? 'w-6 bg-[#7B2D8E]'
+                        : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+                    }`}
+                  />
+                ))}
               </div>
 
               {/* Navigation Arrows */}
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={prevSlide}
-                  className="w-10 h-10 rounded-full border border-gray-200 hover:border-[#7B2D8E] hover:text-[#7B2D8E] flex items-center justify-center text-gray-600 transition-all duration-300"
+                  className="w-10 h-10 rounded-full border border-gray-200 hover:border-[#7B2D8E] hover:text-[#7B2D8E] flex items-center justify-center text-gray-600 transition-colors duration-200"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
+                  type="button"
                   onClick={nextSlide}
-                  className="w-10 h-10 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
+                  className="w-10 h-10 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] flex items-center justify-center text-white transition-colors duration-200"
                   aria-label="Next slide"
                 >
                   <ChevronRight className="w-5 h-5" />
