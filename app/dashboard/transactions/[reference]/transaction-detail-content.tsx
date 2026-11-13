@@ -36,6 +36,7 @@ import {
   Landmark,
   LifeBuoy,
   MapPin,
+  Printer,
   RefreshCw,
   RotateCcw,
   Share2,
@@ -169,6 +170,7 @@ function methodLabel(method: TransactionDetail['payment_method']) {
 
 function categoryLabel(tx: TransactionDetail) {
   if (tx.booking) return 'Booking'
+  if (tx.giftCard) return 'Gift Card'
   const desc = (tx.description ?? '').toLowerCase()
   if (desc.includes('wallet funding')) return 'Deposit'
   if (desc.includes('gift card')) return 'Gift Card'
@@ -361,6 +363,7 @@ export default function TransactionDetailContent({
       title,
       `Amount: ${tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}`,
       `Status: ${status.label}`,
+      ...(tx.invoice?.invoice_number ? [`Invoice: ${tx.invoice.invoice_number}`] : []),
       `Reference: ${txReference}`,
       `Date: ${formatDateTime(tx.created_at)}`,
     ].join('\n')
@@ -460,9 +463,11 @@ export default function TransactionDetailContent({
           </div>
         </div>
 
-        {status.note && (
+        {(tx.status === 'pending' || tx.status === 'cancelled') && (
           <p className="mt-3 rounded-xl bg-white px-4 py-3 text-xs text-gray-500 leading-relaxed text-pretty border border-gray-100">
-            {status.note}
+            {tx.status === 'pending' && tx.type === 'debit'
+              ? 'Waiting for confirmation from Paystack. Your order will be finalized automatically once payment clears.'
+              : status.note}
           </p>
         )}
         {tx.status === 'failed' && tx.error_message && (
@@ -478,10 +483,30 @@ export default function TransactionDetailContent({
           </h2>
 
           <div className="mt-1 divide-y divide-gray-50">
-            <DetailRow label={isIncoming ? 'Credited to' : 'Paid from'}>
+            <DetailRow
+              label={
+                isIncoming
+                  ? 'Credited to'
+                  : tx.payment_method === 'wallet'
+                    ? 'Paid from'
+                    : 'Paid via'
+              }
+            >
               <span className="inline-flex items-center gap-1.5 font-medium">
-                <Wallet className="h-3.5 w-3.5 text-[#7B2D8E]" />
-                Wallet Balance
+                {isIncoming || tx.payment_method === 'wallet' ? (
+                  <>
+                    <Wallet className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                    Wallet Balance
+                  </>
+                ) : (
+                  <>
+                    <MethodIcon
+                      method={tx.payment_method}
+                      className="h-3.5 w-3.5 text-[#7B2D8E]"
+                    />
+                    {methodLabel(tx.payment_method)}
+                  </>
+                )}
               </span>
             </DetailRow>
 
@@ -549,11 +574,76 @@ export default function TransactionDetailContent({
               </DetailRow>
             )}
 
+            {tx.invoice?.invoice_number && (
+              <DetailRow label="Invoice no.">
+                <button
+                  type="button"
+                  onClick={() => copy(tx.invoice!.invoice_number, 'inv')}
+                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-[#7B2D8E] transition-colors min-w-0"
+                  aria-label="Copy invoice number"
+                >
+                  <span className="truncate max-w-[160px]">
+                    {tx.invoice.invoice_number}
+                  </span>
+                  {copiedField === 'inv' ? (
+                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                  )}
+                </button>
+              </DetailRow>
+            )}
+
             <DetailRow label="Transaction date">
               <span className="tabular-nums">{formatDateTime(tx.created_at)}</span>
             </DetailRow>
           </div>
         </div>
+
+        {/* ---- Gift Card details card (only when payment funded a gift card) ---- */}
+        {tx.giftCard && (
+          <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[15px] font-bold text-gray-900">Gift Card</h2>
+              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-[#F3E8F7] text-[#7B2D8E] capitalize">
+                {tx.giftCard.status || 'processing'}
+              </span>
+            </div>
+
+            <div className="mt-1 divide-y divide-gray-50">
+              {tx.giftCard.recipient_name && (
+                <DetailRow label="Recipient">
+                  <span className="font-medium">{tx.giftCard.recipient_name}</span>
+                </DetailRow>
+              )}
+              {tx.giftCard.recipient_email && (
+                <DetailRow label="Recipient email">
+                  <span className="break-all">{tx.giftCard.recipient_email}</span>
+                </DetailRow>
+              )}
+              {tx.giftCard.occasion && (
+                <DetailRow label="Occasion">
+                  <span>{tx.giftCard.occasion}</span>
+                </DetailRow>
+              )}
+              {tx.giftCard.design_name && (
+                <DetailRow label="Design">
+                  <span>{tx.giftCard.design_name}</span>
+                </DetailRow>
+              )}
+              {tx.giftCard.delivery_method && (
+                <DetailRow label="Delivery">
+                  <span className="capitalize">
+                    {tx.giftCard.delivery_method}
+                    {tx.giftCard.delivery_date
+                      ? ` · ${formatAppointmentDate(tx.giftCard.delivery_date)}`
+                      : ''}
+                  </span>
+                </DetailRow>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ---- Appointment card (only when this payment funded a booking) ---- */}
         {tx.booking && (
@@ -708,13 +798,22 @@ export default function TransactionDetailContent({
         </div>
       </main>
 
-      {/* ---- Sticky Share Receipt ---- */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-[#F6F4F8] border-t border-gray-100 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <div className="mx-auto w-full max-w-md">
+      {/* ---- Sticky Share & Print Receipt ---- */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-[#F6F4F8] border-t border-gray-100 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 print:hidden">
+        <div className="mx-auto w-full max-w-md flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center justify-center gap-2 h-13 px-4 rounded-full border border-[#7B2D8E]/25 bg-white text-sm font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors flex-shrink-0"
+            aria-label="Print receipt"
+          >
+            <Printer className="h-4 w-4" />
+            Print
+          </button>
           <button
             type="button"
             onClick={shareReceipt}
-            className="flex w-full items-center justify-center gap-2 h-13 rounded-full py-3.5 text-[15px] font-semibold text-white transition-colors"
+            className="flex flex-1 items-center justify-center gap-2 h-13 rounded-full py-3.5 text-[15px] font-semibold text-white transition-colors"
             style={{ backgroundColor: BRAND }}
           >
             {shared ? (

@@ -20,7 +20,11 @@ interface PaymentMethodModalProps {
   description: string
   paymentType: 'booking' | 'gift_card' | 'service'
   itemDetails?: Record<string, unknown>
-  onSuccess?: () => void
+  onSuccess?: (result?: {
+    transactionReference?: string
+    invoiceNumber?: string | null
+    paymentMethod?: 'wallet' | 'paystack'
+  }) => void
   onCancel?: () => void
 }
 
@@ -56,7 +60,7 @@ export function PaymentMethodModal({
       const res = await fetch('/api/wallet')
       if (res.ok) {
         const data = await res.json()
-        setWalletBalance(data.balance || 0)
+        setWalletBalance(Number(data.wallet?.balance ?? data.balance ?? 0))
       }
     } catch {
       setWalletBalance(0)
@@ -97,11 +101,18 @@ export function PaymentMethodModal({
       
       if (res.ok && data.success) {
         setSuccess(true)
+        const txRef =
+          data.transaction?.payment_reference || data.transaction?.reference || ''
+        const invNum = data.invoice?.number ?? null
         setTimeout(() => {
-          onSuccess?.()
+          onSuccess?.({
+            transactionReference: txRef || undefined,
+            invoiceNumber: invNum,
+            paymentMethod: 'wallet',
+          })
           resetState()
           onClose()
-        }, 2000)
+        }, 1200)
       } else {
         setError(data.error || 'Payment failed')
       }
@@ -279,8 +290,8 @@ export function PaymentMethodModal({
                   )}
                 >
                   <div className="flex items-start gap-3 sm:gap-4">
-                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-[#00C3F7]/10 flex-shrink-0">
-                      <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-[#00C3F7]" />
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-[#7B2D8E]/10 flex-shrink-0">
+                      <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-[#7B2D8E]" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">

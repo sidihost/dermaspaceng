@@ -25,22 +25,35 @@ export async function GET(
 
     const { id } = await params
     const rows = await sql`
-      SELECT * FROM transactions WHERE id = ${id} LIMIT 1
+      SELECT *, reference AS payment_reference FROM transactions WHERE id = ${id} LIMIT 1
     `
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
     }
 
     const tx = rows[0] as Record<string, unknown>
+    let invoice: Record<string, unknown> | null = null
+    try {
+      const invRows = await sql`
+        SELECT id, invoice_number, total AS amount, status, items, created_at
+        FROM invoices
+        WHERE transaction_id = ${String(tx.id)}
+        LIMIT 1
+      `
+      invoice = (invRows[0] as Record<string, unknown>) || null
+    } catch {
+      invoice = null
+    }
+
     // user_id is VARCHAR(36)/UUID in the DB, so it must be passed to
-    // getUserById as a string. The previous `Number(tx.user_id)` turned
-    // every id into NaN, which is why the detail page always showed
-    // "Unknown" for the user.
+    // getUserById as a string.
     const txUser = await getUserById(String(tx.user_id))
+    const numericAmount = Number(tx.amount) || 0
     return NextResponse.json({
       transaction: {
         ...tx,
-        formattedAmount: formatCurrency(Number(tx.amount), String(tx.currency || 'NGN')),
+        amount: numericAmount,
+        formattedAmount: formatCurrency(numericAmount, String(tx.currency || 'NGN')),
         formattedDate: new Date(String(tx.created_at)).toLocaleDateString('en-NG', {
           year: 'numeric',
           month: 'short',
@@ -48,6 +61,7 @@ export async function GET(
           hour: '2-digit',
           minute: '2-digit',
         }),
+        invoice,
         user: txUser
           ? {
               id: txUser.id,

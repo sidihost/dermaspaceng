@@ -31,6 +31,7 @@ import {
   CreditCard,
   Landmark,
   Banknote,
+  Receipt,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -237,7 +238,9 @@ function PaymentStatusContent() {
 
   const subcopy =
     tx.status === 'completed'
-      ? `${formatCurrency(tx.amount, tx.currency)} has been added to your wallet. A receipt has been sent to your email.`
+      ? tx.type === 'debit'
+        ? `Your payment of ${formatCurrency(tx.amount, tx.currency)} is confirmed. A receipt has been sent to your email.`
+        : `${formatCurrency(tx.amount, tx.currency)} has been added to your wallet. A receipt has been sent to your email.`
       : tx.status === 'cancelled'
         ? 'You cancelled this payment before it completed. No money left your account.'
         : tx.status === 'failed'
@@ -245,7 +248,7 @@ function PaymentStatusContent() {
             'Your payment could not be processed. You have not been charged.'
           : stillChecking
             ? "This usually takes a few seconds. We're confirming with your bank — please don't close this page."
-            : "Your bank hasn't confirmed this payment yet. If you completed it, your wallet will be credited automatically — no action needed."
+            : "Your bank hasn't confirmed this payment yet. If you completed it, your payment will be finalized automatically — no action needed."
 
   return (
     <StatusShell>
@@ -401,7 +404,18 @@ function PaymentStatusContent() {
       )}
 
       {/* Actions */}
-      <div className="mt-7 flex flex-col sm:flex-row gap-2 justify-center">
+      <div className="mt-7 flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+        {tx.status === 'completed' && reference && (
+          <Link
+            href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
+            className="w-full sm:w-auto"
+          >
+            <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
+              <Receipt className="h-4 w-4" />
+              View Receipt
+            </Button>
+          </Link>
+        )}
         {(tx.status === 'cancelled' || tx.status === 'failed') && (
           <Link href={`/dashboard/wallet?fund=${tx.amount}`} className="w-full sm:w-auto">
             <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
@@ -412,9 +426,9 @@ function PaymentStatusContent() {
         )}
         <Link href="/dashboard/wallet" className="w-full sm:w-auto">
           <Button
-            variant={tx.status === 'completed' || isPending ? 'default' : 'outline'}
+            variant={isPending ? 'default' : 'outline'}
             className={`w-full gap-2 ${
-              tx.status === 'completed' || isPending
+              isPending
                 ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A]'
                 : 'border-gray-200'
             }`}

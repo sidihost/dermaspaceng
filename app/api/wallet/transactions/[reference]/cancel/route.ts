@@ -5,27 +5,11 @@ import {
   updateTransactionStatus,
 } from '@/lib/wallet'
 import { finalizeWalletFunding } from '@/lib/wallet-funding'
+import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
 
 export const dynamic = 'force-dynamic'
 
-// POST /api/wallet/transactions/[reference]/cancel
-//
-// Lets the signed-in user explicitly cancel one of their own PENDING
-// Paystack fundings — the "I closed the checkout, stop showing this as
-// pending" action.
-//
-// Why this exists: when a customer cancels/closes the Paystack
-// checkout, Paystack often keeps reporting the charge as
-// `pending`/`ongoing` for a while before flipping to `abandoned`. Our
-// reconcile sweep can only mirror what Paystack says, so the row sits
-// at "pending" even though the customer KNOWS they cancelled. This
-// endpoint resolves it immediately.
-//
-// Safety: we NEVER cancel blindly. We re-verify with Paystack first —
-// if the charge actually succeeded we credit the wallet (idempotently,
-// via finalizeWalletFunding) instead of cancelling, so a customer can
-// never cancel away money they actually paid.
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ reference: string }> },
@@ -50,7 +34,6 @@ export async function POST(
     }
 
     if (tx.status !== 'pending') {
-      // Already in a final state — return it so the UI can refresh.
       return NextResponse.json({
         success: true,
         status: tx.status,
@@ -68,23 +51,34 @@ export async function POST(
     const data = verification?.data
 
     if (data?.status === 'success') {
-      // The money actually arrived — credit instead of cancelling.
       const amount = fromKobo(data.amount)
-      await finalizeWalletFunding({
-        userId: tx.user_id,
-        amount,
-        paymentReference:
-          tx.payment_reference ||
-          (tx as { reference?: string }).reference ||
-          data.reference,
-        paystackReference: data.reference,
-        customerEmail: data.customer?.email,
-        channelLabel:
-          (tx.metadata as { channel?: string } | null)?.channel ===
-          'bank_transfer'
-            ? 'Bank Transfer'
-            : 'Paystack',
-      })
+      const txType = (tx.metadata as { type?: string } | null)?.type
+      const channelLabel =
+        (tx.metadata as { channel?: string } | null)?.channel === 'bank_transfer'
+          ? 'Bank Transfer'
+          : 'Paystack'
+
+      if (txType === 'gift_card') {
+        await finalizeGiftCardPaystackPayment({
+          transaction: tx,
+          paystackReference: data.reference,
+          amount,
+          customerEmail: data.customer?.email,
+          channelLabel,
+        })
+      } else {
+        await finalizeWalletFunding({
+          userId: tx.user_id,
+          amount,
+          paymentReference:
+            tx.payment_reference ||
+            (tx as { reference?: string }).reference ||
+            data.reference,
+          paystackReference: data.reference,
+          customerEmail: data.customer?.email,
+          channelLabel,
+        })
+      }
       return NextResponse.json({
         success: true,
         status: 'completed',

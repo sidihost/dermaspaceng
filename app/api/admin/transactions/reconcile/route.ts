@@ -1,17 +1,19 @@
 /**
  * POST /api/admin/transactions/reconcile
  *
- * Admin-triggered reconciliation for a single transaction. Lets an
- * admin re-check a stuck pending charge with Paystack on demand
- * (from the transaction detail page) instead of waiting for the
- * cron sweep. Reuses the same idempotent single-transaction path as
- * the cron and the user-facing reconcile, so it can never double-credit.
+ * Admin-triggered reconciliation for a single transaction OR all
+ * pending Paystack/bank-transfer transactions (`{ action: 'reconcile_all' }`).
+ * Reuses the exact same idempotent reconciliation path as the cron
+ * sweep so it can never double-credit or duplicate gift cards/invoices.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getTransactionById } from '@/lib/wallet'
-import { reconcileOnePending } from '@/lib/reconcile-payments'
+import {
+  reconcileOnePending,
+  reconcilePendingFundings,
+} from '@/lib/reconcile-payments'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +23,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
 
     const body = await request.json().catch(() => ({}))
+
+    if (body.action === 'reconcile_all') {
+      const result = await reconcilePendingFundings({
+        minAgeSeconds: 30,
+        maxAgeHours: 24 * 365,
+        limit: 200,
+        expireOlderThanHours: 24 * 30,
+      })
+      return NextResponse.json({ success: true, ...result })
+    }
+
     // Transaction ids are VARCHAR(36)/UUID strings, not numbers.
     const id = typeof body.id === 'string' ? body.id.trim() : ''
     if (!id) {
@@ -39,7 +52,8 @@ export async function POST(request: NextRequest) {
     }
 
     const outcome = await reconcileOnePending(tx)
-    return NextResponse.json({ success: true, outcome })
+    const txType = (tx.metadata as { type?: string } | null)?.type
+    return NextResponse.json({ success: true, outcome, txType: txType || tx.type })
   } catch (error) {
     console.error('[admin/transactions/reconcile] error:', error)
     return NextResponse.json({ error: 'Reconciliation failed' }, { status: 500 })

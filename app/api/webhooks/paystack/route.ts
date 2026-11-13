@@ -5,6 +5,7 @@ import {
   updateTransactionStatus,
 } from '@/lib/wallet'
 import { finalizeWalletFunding } from '@/lib/wallet-funding'
+import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
 import { getUserById } from '@/lib/auth'
 import { sendPaymentFailedEmail } from '@/lib/wallet-emails'
 import { confirmBookingPayment, markBookingPaymentFailed, getBookingByReference } from '@/lib/booking'
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
         break
         
       default:
-        console.log('Unhandled webhook event:', event.event)
+        console.info('[paystack-webhook] ignored event:', event.event)
     }
     
     return NextResponse.json({ received: true })
@@ -61,11 +62,6 @@ async function handleChargeSuccess(data: {
   metadata?: { user_id?: number; type?: string; booking_id?: string; booking_reference?: string }
 }) {
   try {
-    // Bookings live in their own table with their own state machine —
-    // when Paystack tells us a booking charge succeeded, the only
-    // thing we need to do is flip the booking row to confirmed.
-    // `confirmBookingPayment` is idempotent so retrying webhook
-    // deliveries (Paystack does this aggressively) is safe.
     if (data.metadata?.type === 'booking') {
       const result = await confirmBookingPayment({
         paymentReference: data.reference,
@@ -95,28 +91,39 @@ async function handleChargeSuccess(data: {
     const amount = fromKobo(data.amount)
     const userId = transaction.user_id
     
-    // Credit wallet if this is a wallet funding transaction
     const metadata = transaction.metadata as { type?: string; channel?: string } | null
-    if (metadata?.type === 'wallet_funding') {
-      // All crediting + emails + invoice + abandoned cleanup live in
-      // one idempotent helper shared with the /verify redirect and the
-      // bank-transfer poll. Paystack retries webhooks aggressively, so
-      // if the reference was already finalised this returns a clean
-      // no-op (no double credit, no duplicate email/invoice).
+    const txType = metadata?.type || data.metadata?.type
+    const channelLabel = metadata?.channel === 'bank_transfer' ? 'Bank Transfer' : 'Paystack'
+
+    if (txType === 'wallet_funding' || (!txType && transaction.type === 'credit')) {
       const result = await finalizeWalletFunding({
         userId,
         amount,
         paymentReference: transaction.payment_reference || data.reference,
         paystackReference: data.reference,
-        customerEmail: data.customer.email,
-        channelLabel:
-          metadata.channel === 'bank_transfer' ? 'Bank Transfer' : 'Paystack',
+        customerEmail: data.customer?.email,
+        channelLabel,
       })
       if (result.alreadyProcessed) {
         console.log('[paystack-webhook] already processed', data.reference)
       }
+    } else if (txType === 'gift_card') {
+      const gcResult = await finalizeGiftCardPaystackPayment({
+        transaction,
+        paystackReference: data.reference,
+        amount,
+        customerEmail: data.customer?.email,
+        channelLabel,
+      })
+      if (gcResult.alreadyProcessed) {
+        console.log('[paystack-webhook] gift card already processed', data.reference)
+      }
+    } else if (txType === 'membership_subscription') {
+      // Membership activation + Glow Points + Platinum wallet credit are
+      // handled atomically by /api/membership/verify. Do not flip status
+      // to completed here or the verify callback would skip activation.
+      console.log('[paystack-webhook] deferring membership activation to verify route:', data.reference)
     } else {
-      // For other payment types, just mark as completed
       await updateTransactionStatus(transaction.id, 'completed')
     }
   } catch (error) {

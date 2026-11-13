@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
-import { requireAdminOrStaff, getCurrentUser } from '@/lib/auth'
+import { requireAdminOrStaff } from '@/lib/auth'
+import { ensureGiftCardSchema } from '@/lib/gift-cards'
 
 const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
     await requireAdminOrStaff()
+    await ensureGiftCardSchema()
 
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || ''

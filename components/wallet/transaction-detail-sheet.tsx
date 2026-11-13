@@ -51,6 +51,24 @@ export interface TransactionDetail {
   created_at: string
   updated_at?: string
   formattedAmount?: string
+  metadata?: Record<string, unknown> | null
+  invoice?: {
+    id: number | string
+    invoice_number: string
+    amount?: number
+    status: string
+  } | null
+  giftCard?: {
+    recipient_name?: string
+    recipient_email?: string | null
+    occasion?: string | null
+    design_name?: string | null
+    delivery_method?: string | null
+    delivery_date?: string | null
+    status?: string | null
+    payment_status?: string | null
+    invoice_number?: string | null
+  } | null
   /** Present when this payment funded an appointment (matched by
    *  the shared DS_ payment reference). Lets receipt surfaces show
    *  the real service, date, and time. */
@@ -248,9 +266,11 @@ export function TransactionDetailSheet({
           </DrawerHeader>
 
           {/* Contextual note for pending / cancelled */}
-          {status.note && (
+          {(tx.status === 'pending' || tx.status === 'cancelled') && (
             <p className="mt-4 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs text-gray-600 leading-relaxed text-pretty">
-              {status.note}
+              {tx.status === 'pending' && tx.type === 'debit'
+                ? 'Waiting for confirmation from Paystack. Your order will be finalized automatically once payment clears.'
+                : status.note}
             </p>
           )}
           {tx.status === 'failed' && tx.error_message && (
@@ -311,6 +331,33 @@ export function TransactionDetailSheet({
                 </button>
               </Row>
             )}
+            {tx.invoice?.invoice_number && (
+              <Row label="Invoice no.">
+                <button
+                  type="button"
+                  onClick={() => copy(tx.invoice!.invoice_number, 'inv')}
+                  className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
+                  aria-label="Copy invoice number"
+                >
+                  <span className="truncate max-w-[150px]">
+                    {tx.invoice.invoice_number}
+                  </span>
+                  {copiedField === 'inv' ? (
+                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 flex-shrink-0" />
+                  )}
+                </button>
+              </Row>
+            )}
+            {tx.giftCard?.recipient_name && (
+              <Row label="Recipient">
+                <span className="text-gray-900 text-right truncate max-w-[180px]">
+                  {tx.giftCard.recipient_name}
+                  {tx.giftCard.occasion ? ` · ${tx.giftCard.occasion}` : ''}
+                </span>
+              </Row>
+            )}
           </div>
 
           {/* Actions */}
@@ -334,6 +381,17 @@ export function TransactionDetailSheet({
                 <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
                   <RefreshCw className="h-4 w-4" />
                   Try again
+                </Button>
+              </Link>
+            )}
+            {tx.status === 'completed' && reference && (
+              <Link
+                href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
+                onClick={() => onOpenChange(false)}
+              >
+                <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
+                  View receipt &amp; invoice
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             )}

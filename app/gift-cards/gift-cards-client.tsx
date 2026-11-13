@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet, Receipt } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
 
@@ -56,10 +56,80 @@ export default function GiftCardsClient() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentError, setPaymentError] = useState('')
+  const [completedReceiptRef, setCompletedReceiptRef] = useState('')
+  const [completedInvoiceNumber, setCompletedInvoiceNumber] = useState<string | null>(null)
+  const [completedPaymentMethod, setCompletedPaymentMethod] = useState<string>('')
+  const [completedDetails, setCompletedDetails] = useState<{
+    amount: number
+    recipientName: string
+    occasion: string
+    designName: string
+  } | null>(null)
 
   useEffect(() => {
     checkAuth()
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const paymentOutcome = params.get('payment')
+      const ref = params.get('reference')
+
+      if (paymentOutcome) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+
+      if (paymentOutcome === 'success' && ref) {
+        hydratePaystackOrder(ref)
+      } else if (paymentOutcome === 'failed') {
+        setPaymentError('Your card payment could not be completed. No funds were charged.')
+      } else if (paymentOutcome === 'cancelled') {
+        setPaymentError('Payment was cancelled before completion.')
+      }
+    }
   }, [])
+
+  const hydratePaystackOrder = async (ref: string) => {
+    try {
+      let res = await fetch(`/api/wallet/transactions/${encodeURIComponent(ref)}`, {
+        cache: 'no-store',
+        credentials: 'include',
+      })
+      if (res.status === 404) {
+        await fetch('/api/wallet/reconcile', { credentials: 'include' }).catch(() => {})
+        res = await fetch(`/api/wallet/transactions/${encodeURIComponent(ref)}`, {
+          cache: 'no-store',
+          credentials: 'include',
+        })
+      }
+      if (res.ok) {
+        const data = await res.json()
+        const tx = data.transaction
+        if (tx && tx.status === 'completed') {
+          const gc = tx.giftCard
+          const metaDetails = (tx.metadata?.itemDetails || {}) as Record<string, unknown>
+          setCompletedReceiptRef(tx.payment_reference || tx.reference || ref)
+          setCompletedInvoiceNumber(tx.invoice?.invoice_number || gc?.invoice_number || null)
+          setCompletedPaymentMethod(tx.payment_method === 'wallet' ? 'Wallet' : 'Card / Paystack')
+          setCompletedDetails({
+            amount: Number(tx.amount) || 0,
+            recipientName: String(gc?.recipient_name || metaDetails.recipientName || 'Recipient'),
+            occasion: String(gc?.occasion || metaDetails.occasion || 'Special Occasion'),
+            designName: String(gc?.design_name || metaDetails.designName || 'Custom Design'),
+          })
+          setIsSubmitted(true)
+          return
+        }
+      }
+      // Fallback: show confirmation shell with reference link so user can verify receipt
+      setCompletedReceiptRef(ref)
+      setCompletedPaymentMethod('Card / Paystack')
+      setIsSubmitted(true)
+    } catch {
+      setCompletedReceiptRef(ref)
+      setCompletedPaymentMethod('Card / Paystack')
+      setIsSubmitted(true)
+    }
+  }
 
   const checkAuth = async () => {
     try {
@@ -90,13 +160,24 @@ export default function GiftCardsClient() {
     setShowPaymentModal(true)
   }
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = async (paymentResult?: {
+    transactionReference?: string
+    invoiceNumber?: string | null
+    paymentMethod?: 'wallet' | 'paystack'
+  }) => {
     setShowPaymentModal(false)
+    const txRef = paymentResult?.transactionReference
+    if (!txRef) {
+      setPaymentError('Missing payment reference. Please check your transaction history.')
+      return
+    }
+
     setIsSubmitting(true)
+    setPaymentError('')
 
     try {
-      // Create the gift card after successful payment
-      await fetch('/api/gift-card-request', {
+      // Persist the paid gift card request after verified wallet debit
+      const res = await fetch('/api/gift-card-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,12 +195,28 @@ export default function GiftCardsClient() {
           personalMessage,
           deliveryMethod,
           deliveryDate,
-          isPaid: true
+          isPaid: true,
+          transactionReference: txRef,
         })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setPaymentError(data.error || 'Payment succeeded, but saving your gift card order failed. Contact support with reference ' + txRef)
+        return
+      }
+
+      setCompletedReceiptRef(txRef)
+      setCompletedInvoiceNumber(data.invoiceNumber || paymentResult?.invoiceNumber || null)
+      setCompletedPaymentMethod('Wallet')
+      setCompletedDetails({
+        amount: finalAmount,
+        recipientName,
+        occasion: selectedOccasion,
+        designName: selectedDesign.name,
       })
       setIsSubmitted(true)
     } catch {
-      setPaymentError('Failed to create gift card. Please contact support.')
+      setPaymentError('Failed to finalize gift card order. Please contact support with reference ' + txRef)
     } finally {
       setIsSubmitting(false)
     }
@@ -127,6 +224,20 @@ export default function GiftCardsClient() {
 
   const handlePaymentCancel = () => {
     setShowPaymentModal(false)
+  }
+
+  const resetOrderForm = () => {
+    setIsSubmitted(false)
+    setCompletedReceiptRef('')
+    setCompletedInvoiceNumber(null)
+    setCompletedPaymentMethod('')
+    setCompletedDetails(null)
+    setRecipientName('')
+    setRecipientEmail('')
+    setRecipientPhone('')
+    setPersonalMessage('')
+    setDeliveryDate('')
+    setPaymentError('')
   }
 
   if (isLoading) {
@@ -138,31 +249,89 @@ export default function GiftCardsClient() {
   }
 
   if (isSubmitted) {
+    const summaryAmount = completedDetails?.amount ?? finalAmount
+    const summaryRecipient = completedDetails?.recipientName || recipientName || 'Recipient'
+    const summaryOccasion = completedDetails?.occasion || selectedOccasion
+    const summaryDesign = completedDetails?.designName || selectedDesign.name
+
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center px-4 pt-24">
+        <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center px-4 pt-24 pb-12">
           <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-xl">
             <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
               <Check className="w-8 h-8 text-[#7B2D8E]" />
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Gift Card Order Confirmed!</h2>
             <p className="text-sm text-gray-600 mb-6">
-              Your gift card request has been sent. You will receive payment details via email within 24 hours.
+              Your payment is confirmed and your gift card is being prepared. A receipt has been sent to your email.
             </p>
-            <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm">
-              <div className="space-y-1.5">
-                <p className="text-gray-700"><strong>Amount:</strong> {formatPrice(finalAmount)}</p>
-                <p className="text-gray-700"><strong>For:</strong> {recipientName}</p>
-                <p className="text-gray-700"><strong>Occasion:</strong> {selectedOccasion}</p>
+            <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm border border-[#7B2D8E]/10">
+              <div className="space-y-2">
+                {summaryAmount > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">Amount</span>
+                    <span className="font-semibold text-gray-900">{formatPrice(summaryAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">For</span>
+                  <span className="font-medium text-gray-900 text-right">{summaryRecipient}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Occasion</span>
+                  <span className="text-gray-900 text-right">{summaryOccasion}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">Design</span>
+                  <span className="text-gray-900 text-right">{summaryDesign}</span>
+                </div>
+                {completedPaymentMethod && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">Paid via</span>
+                    <span className="text-gray-900 text-right">{completedPaymentMethod}</span>
+                  </div>
+                )}
+                {completedInvoiceNumber && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">Invoice</span>
+                    <span className="font-mono text-xs text-gray-900 text-right">{completedInvoiceNumber}</span>
+                  </div>
+                )}
+                {completedReceiptRef && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">Reference</span>
+                    <span className="font-mono text-xs text-gray-900 text-right truncate max-w-[180px]">{completedReceiptRef}</span>
+                  </div>
+                )}
               </div>
             </div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors text-sm"
-            >
-              Back to Home
-            </Link>
+            <div className="flex flex-col gap-2.5">
+              {completedReceiptRef && (
+                <Link
+                  href={`/dashboard/transactions/${encodeURIComponent(completedReceiptRef)}`}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors text-sm"
+                >
+                  <Receipt className="w-4 h-4" />
+                  View Receipt
+                </Link>
+              )}
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={resetOrderForm}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+                >
+                  Order Another
+                </button>
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
+                >
+                  Back to Home
+                </Link>
+              </div>
+            </div>
           </div>
         </main>
         <Footer />
@@ -592,8 +761,10 @@ export default function GiftCardsClient() {
             personalMessage,
             design: selectedDesign.id,
             designName: selectedDesign.name,
+            designGradient: selectedDesign.gradient,
             occasion: selectedOccasion,
             font: selectedFont.id,
+            fontName: selectedFont.name,
             deliveryMethod,
             deliveryDate
           }}

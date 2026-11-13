@@ -150,13 +150,14 @@ export async function creditWallet(
                AND user_id = $3
                AND type = 'credit'
                AND status = 'pending'
-            RETURNING id, wallet_id, amount
+            RETURNING id, user_id, wallet_id, amount
          ), credited AS (
             UPDATE wallets w
-               SET balance = balance + c.amount,
+               SET balance = COALESCE(w.balance, 0) + c.amount,
                    updated_at = NOW()
               FROM claimed c
              WHERE w.id = c.wallet_id
+                OR (c.wallet_id IS NULL AND w.user_id = c.user_id)
             RETURNING w.id
          )
          SELECT id FROM claimed`,
@@ -186,16 +187,8 @@ export async function creditWallet(
         if (existing.rows[0]) {
           // A row exists for this reference but it wasn't 'pending'
           // (e.g. it was marked 'failed' by an out-of-order webhook,
-          // or it's a race we lost). We MUST NOT fall through to the
-          // unguarded legacy credit below — that path bumps the
-          // balance and THEN inserts a row whose `reference` is UNIQUE,
-          // so the insert would throw and leave the balance changed
-          // with no ledger entry. Instead, recover it with a second
-          // ATOMIC claim keyed on the row id: flip any non-completed
-          // state to 'completed' and add the balance in one statement.
-          // Only the first caller matches a row; everyone else gets a
-          // clean no-op. Safe because we only reach creditWallet after
-          // Paystack confirmed the charge succeeded.
+          // or it's a race we lost). Recover it atomically in one
+          // statement so status flip and wallet credit happen together.
           const reclaim = await query<{ id: number }>(
             `WITH claimed AS (
                 UPDATE transactions
@@ -204,13 +197,14 @@ export async function creditWallet(
                        updated_at = NOW()
                  WHERE id = $1
                    AND status <> 'completed'
-                RETURNING id, wallet_id, amount
+                RETURNING id, user_id, wallet_id, amount
              ), credited AS (
                 UPDATE wallets w
-                   SET balance = balance + c.amount,
+                   SET balance = COALESCE(w.balance, 0) + c.amount,
                        updated_at = NOW()
                   FROM claimed c
                  WHERE w.id = c.wallet_id
+                    OR (c.wallet_id IS NULL AND w.user_id = c.user_id)
                 RETURNING w.id
              )
              SELECT id FROM claimed`,
@@ -239,22 +233,25 @@ export async function creditWallet(
       }
     }
 
-    // Create the ledger row FIRST. `reference` is UNIQUE, so if this
-    // reference was already credited the INSERT throws here — before
-    // we ever touch the balance — which prevents a duplicate credit
-    // from leaving the balance changed without a matching record.
+    // Create the ledger row FIRST. `reference` is UNIQUE + NOT NULL,
+    // so generate a fallback if none was supplied and insert before
+    // incrementing the wallet balance.
+    const effectiveReference =
+      paymentReference ||
+      `CRD_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
     const txResult = await query<Transaction>(
       `INSERT INTO transactions (
         user_id, wallet_id, type, amount, currency, status, 
         payment_method, reference, paystack_reference, description
       ) VALUES ($1, $2, 'credit', $3, 'NGN', 'completed', 'paystack', $4, $5, $6)
       RETURNING *, reference AS payment_reference`,
-      [userId, wallet.id, amount, paymentReference, paystackReference, description]
+      [userId, wallet.id, amount, effectiveReference, paystackReference || null, description]
     )
 
     // Ledger row created — now apply the balance.
     await query(
-      'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE wallets SET balance = COALESCE(balance, 0) + $1, updated_at = NOW() WHERE id = $2',
       [amount, wallet.id]
     )
     
@@ -269,33 +266,55 @@ export async function debitWallet(
   userId: number,
   amount: number,
   description: string,
-  paymentReference?: string
+  paymentReference?: string,
+  metadata?: Record<string, unknown>
 ): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
   try {
+    const numericAmount = Number(amount)
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return { success: false, error: 'Invalid debit amount' }
+    }
+
     const wallet = await getOrCreateWallet(userId)
-    
-    if (wallet.balance < amount) {
+    const debitReference =
+      paymentReference ||
+      `DBT_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
+    // Atomic balance guard + deduction + ledger creation in one Postgres
+    // statement so concurrent requests can never overdraw the wallet or
+    // leave a deduction without a transaction record.
+    const txResult = await query<Transaction>(
+      `WITH debited AS (
+         UPDATE wallets
+            SET balance = COALESCE(balance, 0) - $1,
+                updated_at = NOW()
+          WHERE id = $2
+            AND COALESCE(balance, 0) >= $1
+         RETURNING id
+       ), ins AS (
+         INSERT INTO transactions (
+           user_id, wallet_id, type, amount, currency, status,
+           payment_method, reference, description, metadata
+         )
+         SELECT $3, d.id, 'debit', $1, 'NGN', 'completed', 'wallet', $4, $5, $6
+         FROM debited d
+         RETURNING *, reference AS payment_reference
+       )
+       SELECT * FROM ins`,
+      [
+        numericAmount,
+        wallet.id,
+        userId,
+        debitReference,
+        description,
+        metadata ? JSON.stringify(metadata) : null,
+      ]
+    )
+
+    if (txResult.rows.length === 0) {
       return { success: false, error: 'Insufficient wallet balance' }
     }
-    
-    // Update wallet balance
-    await query(
-      'UPDATE wallets SET balance = balance - $1, updated_at = NOW() WHERE id = $2',
-      [amount, wallet.id]
-    )
-    
-    // Create transaction record. `reference` is NOT NULL in the DB, so
-    // fall back to a generated reference when the caller didn't supply one.
-    const debitReference = paymentReference || `DBT_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    const txResult = await query<Transaction>(
-      `INSERT INTO transactions (
-        user_id, wallet_id, type, amount, currency, status, 
-        payment_method, reference, description
-      ) VALUES ($1, $2, 'debit', $3, 'NGN', 'completed', 'wallet', $4, $5)
-      RETURNING *, reference AS payment_reference`,
-      [userId, wallet.id, amount, debitReference, description]
-    )
-    
+
     return { success: true, transaction: txResult.rows[0] }
   } catch (error) {
     console.error('Debit wallet error:', error)
@@ -314,7 +333,7 @@ export async function refundToWallet(
     
     // Update wallet balance
     await query(
-      'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+      'UPDATE wallets SET balance = COALESCE(balance, 0) + $1, updated_at = NOW() WHERE id = $2',
       [amount, wallet.id]
     )
     
@@ -399,6 +418,19 @@ export async function createPendingTransaction(
  *   - `maxAgeHours` ignores ancient rows (the abandoned-payment cron
  *     and `expireStalePendingFundings` handle those).
  */
+export async function getUserMonthlySpending(userId: number | string): Promise<number> {
+  const result = await query<{ total: string }>(
+    `SELECT COALESCE(SUM(amount), 0) AS total
+       FROM transactions
+      WHERE user_id = $1
+        AND type = 'debit'
+        AND status = 'completed'
+        AND created_at >= date_trunc('month', NOW())`,
+    [userId],
+  )
+  return parseFloat(result.rows[0]?.total || '0') || 0
+}
+
 export async function getPendingFundingTransactions(
   minAgeSeconds = 60,
   // Look back far enough to catch every stranded pending. The old 72h
@@ -412,8 +444,12 @@ export async function getPendingFundingTransactions(
     `SELECT *, reference AS payment_reference
        FROM transactions
       WHERE status = 'pending'
-        AND type = 'credit'
-        AND payment_method = 'paystack'
+        AND payment_method IN ('paystack', 'bank_transfer')
+        AND (
+          (type = 'credit' AND COALESCE(metadata->>'type', 'wallet_funding') = 'wallet_funding')
+          OR
+          (type = 'debit' AND metadata->>'type' = 'gift_card')
+        )
         AND created_at <= NOW() - ($1 || ' seconds')::interval
         AND created_at >= NOW() - ($2 || ' hours')::interval
       ORDER BY created_at ASC
@@ -423,21 +459,6 @@ export async function getPendingFundingTransactions(
   return result.rows
 }
 
-/**
- * Cancel pending Paystack fundings that are too old to ever complete.
- *
- * A Paystack checkout link is only good for a short time; once the
- * customer abandons it the charge will never move to `success`, so a
- * row that has sat at `pending` past `olderThanHours` is dead weight
- * that clutters the wallet with permanent "Pending" entries.
- *
- * This is the safety net the reconciler's comment always promised but
- * which was never implemented — the reason the Jun 7–10 fundings were
- * stranded. We ONLY touch `credit` / `paystack` rows that are still
- * `pending`, and we set a clear `error_message` so the UI can explain
- * what happened. Reconciliation runs first, so anything that genuinely
- * succeeded is credited before it could ever be expired here.
- */
 export async function expireStalePendingFundings(
   olderThanHours = 24,
   userId?: string | number,
@@ -449,18 +470,23 @@ export async function expireStalePendingFundings(
       params.push(userId)
       userClause = ` AND user_id = $${params.length}`
     }
-    const result = await query(
+    const result = await query<{ id: number }>(
       `UPDATE transactions
           SET status = 'cancelled',
               error_message = 'Payment session expired before it was completed',
               updated_at = NOW()
         WHERE status = 'pending'
-          AND type = 'credit'
-          AND payment_method = 'paystack'
-          AND created_at <= NOW() - ($1 || ' hours')::interval${userClause}`,
+          AND payment_method IN ('paystack', 'bank_transfer')
+          AND (
+            (type = 'credit' AND COALESCE(metadata->>'type', 'wallet_funding') = 'wallet_funding')
+            OR
+            (type = 'debit' AND metadata->>'type' = 'gift_card')
+          )
+          AND created_at <= NOW() - ($1 || ' hours')::interval${userClause}
+        RETURNING id`,
       params,
     )
-    return result.rowCount ?? 0
+    return result.rowCount ?? result.rows.length
   } catch (error) {
     console.error('Expire stale pending fundings error:', error)
     return 0
@@ -752,7 +778,7 @@ export async function getAllTransactions(
   filters?: {
     status?: string
     type?: string
-    userId?: number
+    userId?: string | number
     startDate?: string
     endDate?: string
     search?: string

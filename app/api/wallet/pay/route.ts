@@ -5,6 +5,7 @@ import {
   debitWallet, 
   createInvoice,
   getOrCreateWalletSettings,
+  getUserMonthlySpending,
   formatCurrency
 } from '@/lib/wallet'
 import { sendPaymentConfirmation, sendInvoiceEmail, sendBudgetAlert } from '@/lib/wallet-emails'
@@ -18,21 +19,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { amount, description, itemType, itemDetails } = await request.json()
-    
-    if (!amount || amount <= 0) {
+    const { amount, description, itemType, paymentType, itemDetails } = await request.json()
+    const resolvedType = itemType || paymentType || 'service'
+    const numericAmount = Number(amount)
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
     }
     
     // Check wallet balance
-    const balance = await getWalletBalance(user.id)
-    if (balance < amount) {
+    const balance = Number(await getWalletBalance(user.id)) || 0
+    if (balance < numericAmount) {
       return NextResponse.json(
         { 
           error: 'Insufficient wallet balance',
           balance,
-          required: amount,
-          shortfall: amount - balance,
+          required: numericAmount,
+          shortfall: numericAmount - balance,
         },
         { status: 400 }
       )
@@ -41,9 +44,8 @@ export async function POST(request: NextRequest) {
     // Check budget settings
     const settings = await getOrCreateWalletSettings(user.id)
     if (settings.monthly_budget) {
-      // This would need to calculate monthly spending - simplified for now
-      const monthlySpending = 0 // Would query transactions for current month
-      const newTotal = monthlySpending + amount
+      const monthlySpending = await getUserMonthlySpending(user.id)
+      const newTotal = monthlySpending + numericAmount
       
       if (newTotal > settings.monthly_budget) {
         return NextResponse.json(
@@ -51,84 +53,105 @@ export async function POST(request: NextRequest) {
             error: 'This payment would exceed your monthly budget',
             budget: settings.monthly_budget,
             currentSpending: monthlySpending,
-            paymentAmount: amount,
+            paymentAmount: numericAmount,
           },
           { status: 400 }
         )
       }
       
-      // Check if approaching budget threshold
       const threshold = settings.monthly_budget * (settings.budget_alert_threshold / 100)
       if (newTotal >= threshold && settings.email_notifications) {
-        // Send budget alert
-        await sendBudgetAlert({
-          email: user.email,
-          firstName: user.first_name,
-          budget: settings.monthly_budget,
-          spent: newTotal,
-          percentage: Math.round((newTotal / settings.monthly_budget) * 100),
-        })
+        try {
+          await sendBudgetAlert({
+            email: user.email,
+            firstName: user.first_name,
+            budget: settings.monthly_budget,
+            spent: newTotal,
+            percentage: Math.round((newTotal / settings.monthly_budget) * 100),
+          })
+        } catch (err) {
+          console.error('[wallet/pay] budget alert email failed:', err)
+        }
       }
     }
     
-    // Debit wallet
+    // Debit wallet atomically with full metadata
     const result = await debitWallet(
       user.id,
-      amount,
-      description || `Payment for ${itemType || 'service'}`,
-      `PAY_${Date.now()}`
+      numericAmount,
+      description || `Payment for ${resolvedType}`,
+      `PAY_${Date.now()}_${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      {
+        type: resolvedType,
+        ...(itemDetails ? { itemDetails } : {}),
+      }
     )
     
-    if (!result.success) {
+    if (!result.success || !result.transaction) {
       return NextResponse.json(
         { error: result.error || 'Payment failed' },
         { status: 400 }
       )
     }
     
-    // Create invoice
-    const invoice = await createInvoice(
-      user.id,
-      result.transaction!.id,
-      amount,
-      itemDetails?.items || [{ description: description || itemType, amount, quantity: 1 }],
-      {
-        name: `${user.first_name} ${user.last_name}`,
-        email: user.email,
-        payment_method: 'Wallet',
-        item_type: itemType,
-      }
-    )
+    const newBalance = Math.max(0, balance - numericAmount)
+    const invoiceItems =
+      Array.isArray(itemDetails?.items) && itemDetails.items.length > 0
+        ? itemDetails.items
+        : [{ description: description || resolvedType, amount: numericAmount, quantity: 1 }]
+
+    // Create invoice (best effort — never fail after money was debited)
+    let invoice = null
+    try {
+      invoice = await createInvoice(
+        user.id,
+        result.transaction.id,
+        numericAmount,
+        invoiceItems,
+        {
+          name: `${user.first_name} ${user.last_name}`.trim(),
+          email: user.email,
+          payment_method: 'Wallet',
+          payment_reference: result.transaction.payment_reference || '',
+          item_type: resolvedType,
+        }
+      )
+    } catch (err) {
+      console.error('[wallet/pay] invoice creation failed:', err)
+    }
     
-    // Send confirmation email
-    await sendPaymentConfirmation({
-      email: user.email,
-      firstName: user.first_name,
-      amount,
-      description: description || `Payment for ${itemType || 'service'}`,
-      newBalance: balance - amount,
-      reference: result.transaction!.payment_reference || '',
-    })
-    
-    // Send invoice email
-    if (invoice) {
-      await sendInvoiceEmail({
+    // Send confirmation & invoice emails (best effort)
+    try {
+      await sendPaymentConfirmation({
         email: user.email,
         firstName: user.first_name,
-        invoiceNumber: invoice.invoice_number,
-        amount,
-        items: itemDetails?.items || [{ description: description || itemType, amount, quantity: 1 }],
-        paymentMethod: 'Wallet',
-        paymentReference: result.transaction!.payment_reference || '',
+        amount: numericAmount,
+        description: description || `Payment for ${resolvedType}`,
+        newBalance,
+        reference: result.transaction.payment_reference || '',
       })
+      
+      if (invoice) {
+        await sendInvoiceEmail({
+          email: user.email,
+          firstName: user.first_name,
+          invoiceNumber: invoice.invoice_number,
+          amount: numericAmount,
+          items: invoiceItems,
+          paymentMethod: 'Wallet',
+          paymentReference: result.transaction.payment_reference || '',
+        })
+      }
+    } catch (err) {
+      console.error('[wallet/pay] email failed:', err)
     }
     
     return NextResponse.json({
       success: true,
       transaction: result.transaction,
       invoice: invoice ? { number: invoice.invoice_number, id: invoice.id } : null,
-      newBalance: balance - amount,
-      formattedBalance: formatCurrency(balance - amount),
+      newBalance,
+      formattedBalance: formatCurrency(newBalance),
     })
   } catch (error) {
     console.error('Wallet pay error:', error)

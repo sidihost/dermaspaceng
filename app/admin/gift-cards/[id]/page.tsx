@@ -37,6 +37,10 @@ interface GiftCardRequest {
   assigned_first_name: string | null
   assigned_last_name: string | null
   notes: string | null
+  payment_reference?: string | null
+  payment_method?: string | null
+  payment_status?: string | null
+  invoice_number?: string | null
   created_at: string
 }
 
@@ -198,6 +202,49 @@ export default function GiftCardDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Payment & Invoice */}
+          {(req.payment_status || req.payment_method || req.payment_reference || req.invoice_number) && (
+            <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-medium text-gray-900 text-sm">Payment &amp; Invoice</h2>
+                {req.payment_status && (
+                  <Badge
+                    variant="outline"
+                    className={
+                      req.payment_status === 'paid'
+                        ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20 capitalize'
+                        : 'bg-amber-50 text-amber-700 border-amber-200 capitalize'
+                    }
+                  >
+                    {req.payment_status}
+                  </Badge>
+                )}
+              </div>
+              <div className="grid sm:grid-cols-2 gap-2 text-xs text-gray-600">
+                {req.payment_method && (
+                  <p>
+                    <span className="text-gray-400">Method:</span>{' '}
+                    <span className="font-medium text-gray-800 capitalize">
+                      {req.payment_method.replace('_', ' ')}
+                    </span>
+                  </p>
+                )}
+                {req.invoice_number && (
+                  <p>
+                    <span className="text-gray-400">Invoice:</span>{' '}
+                    <span className="font-mono font-medium text-gray-800">{req.invoice_number}</span>
+                  </p>
+                )}
+                {req.payment_reference && (
+                  <p className="sm:col-span-2 break-all">
+                    <span className="text-gray-400">Reference:</span>{' '}
+                    <span className="font-mono font-medium text-gray-800">{req.payment_reference}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {req.personal_message && (
             <div>

@@ -1250,6 +1250,9 @@ export async function sendGiftCardRequestToAdmin(data: {
   personalMessage: string
   deliveryMethod: string
   deliveryDate: string
+  isPaid?: boolean
+  paymentMethod?: string
+  paymentReference?: string
 }): Promise<boolean> {
   // Safely handle values that could be undefined
   const displayDesignName = data.designName || data.design || 'Not specified'
@@ -1261,9 +1264,11 @@ export async function sendGiftCardRequestToAdmin(data: {
   const displayDeliveryMethod = data.deliveryMethod || 'Email'
 
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Gift Card Request</h2>
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">${data.isPaid ? 'New Paid Gift Card Order' : 'New Gift Card Request'}</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
-      A new gift card request has been submitted. Please review the details below and process the order.
+      ${data.isPaid
+        ? `A gift card order has been paid (${data.paymentMethod || 'Online'}${data.paymentReference ? ` · Ref: ${data.paymentReference}` : ''}). Please review the details below and prepare delivery.`
+        : 'A new gift card request has been submitted. Please review the details below and process the order.'}
     </p>
     
     <!-- Gift Card Visual Preview -->
@@ -1385,13 +1390,15 @@ export async function sendGiftCardRequestToAdmin(data: {
     ` : ''}
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Please process this request and send payment instructions to the sender at ${displaySenderEmail}.
+      ${data.isPaid
+        ? `Payment has already been verified (${data.paymentMethod || 'Online'}${data.paymentReference ? ` · Ref: ${data.paymentReference}` : ''}). Please create and deliver the gift card.`
+        : `Please process this request and send payment instructions to the sender at ${displaySenderEmail}.`}
     </p>
   `
   
   return sendEmail({
     to: 'admin@dermaspaceng.com',
-    subject: `New Gift Card Request - N${data.amount.toLocaleString()} - ${displaySenderName}`,
+    subject: `${data.isPaid ? 'Paid Gift Card Order' : 'New Gift Card Request'} - N${data.amount.toLocaleString()} - ${displaySenderName}`,
     html: getEmailTemplate(content)
   })
 }
@@ -1430,10 +1437,10 @@ export async function sendGiftCardConfirmation(data: {
       </tr>
     </table>
     
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
       <tr>
         <td style="padding: 20px;">
-          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #166534; text-transform: uppercase;">Order Summary</h3>
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase;">Order Summary</h3>
           <table role="presentation" cellspacing="0" cellpadding="0">
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666; width: 120px;">Gift Card Value:</td>
@@ -1553,8 +1560,8 @@ export async function sendGiftCardPaymentReceipt(data: {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="text-align: center;">
-          <div style="display: inline-block; width: 64px; height: 64px; background-color: #dcfce7; border-radius: 50%; line-height: 64px; text-align: center;">
-            <span style="color: #16a34a; font-size: 28px;">&#10003;</span>
+          <div style="display: inline-block; width: 64px; height: 64px; background-color: #f8f5fa; border: 1px solid #ece5f0; border-radius: 50%; line-height: 64px; text-align: center;">
+            <span style="color: #7B2D8E; font-size: 28px;">&#10003;</span>
           </div>
         </td>
       </tr>
@@ -3126,7 +3133,7 @@ export async function sendBookingReceipt(data: {
         </td>
         <td style="vertical-align: top; text-align: right;">
           <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">STATUS</div>
-          <div style="display: inline-block; background-color: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-top: 4px;">Confirmed</div>
+          <div style="display: inline-block; background-color: #f3e8f7; color: ${BRAND_COLOR}; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-top: 4px;">Confirmed</div>
         </td>
       </tr>
     </table>
@@ -3259,11 +3266,11 @@ export async function sendBookingCancellation(data: {
   const refundHtml =
     refundKobo > 0
       ? `
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #ecfdf5; border-radius: 12px; border: 1px solid #bbf7d0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #e6d4ec;">
           <tr>
             <td style="padding: 16px 20px;">
-              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: #047857; text-transform: uppercase; letter-spacing: 1px;">Refund</p>
-              <p style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: #047857;">${fmtNairaForEmail(
+              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 1px;">Refund</p>
+              <p style="margin: 0 0 6px; font-size: 18px; font-weight: 700; color: ${BRAND_COLOR};">${fmtNairaForEmail(
                 refundKobo,
               )}</p>
               <p style="margin: 0; font-size: 13px; color: #4a4a4a; line-height: 1.6;">

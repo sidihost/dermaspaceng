@@ -129,6 +129,10 @@ export default function AdminTransactionsPage() {
   const [total, setTotal] = useState(0)
   const limit = 20
 
+  // Bulk reconciliation
+  const [reconcilingAll, setReconcilingAll] = useState(false)
+  const [reconcileSummary, setReconcileSummary] = useState<string | null>(null)
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -158,8 +162,8 @@ export default function AdminTransactionsPage() {
       params.append('limit', limit.toString())
       params.append('offset', ((page - 1) * limit).toString())
       if (search) params.append('search', search)
-      if (statusFilter) params.append('status', statusFilter)
-      if (typeFilter) params.append('type', typeFilter)
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter)
+      if (typeFilter && typeFilter !== 'all') params.append('type', typeFilter)
       if (dateFrom) params.append('startDate', dateFrom)
       if (dateTo) params.append('endDate', dateTo)
 
@@ -190,7 +194,7 @@ export default function AdminTransactionsPage() {
   }
 
   // ---- Derived chart data (built from the loaded page) ------------------
-  // 7-day revenue trend — sum of completed credit/refund amounts per day.
+  // 7-day revenue trend — completed payments (debits) minus refunds in NGN.
   const revenueTrend = useMemo(() => {
     const days: { key: string; label: string; revenue: number }[] = []
     const now = new Date()
@@ -207,12 +211,15 @@ export default function AdminTransactionsPage() {
     const byKey = new Map(days.map((d) => [d.key, d]))
     for (const t of transactions) {
       if (t.status !== 'completed') continue
-      if (t.type === 'debit') continue
+      if (t.type !== 'debit' && t.type !== 'refund') continue
       const key = new Date(t.created_at).toISOString().split('T')[0]
       const bucket = byKey.get(key)
-      if (bucket) bucket.revenue += t.amount / 100
+      if (bucket) {
+        const amt = Number(t.amount) || 0
+        bucket.revenue += t.type === 'refund' ? -amt : amt
+      }
     }
-    return days
+    return days.map((d) => ({ ...d, revenue: Math.max(0, d.revenue) }))
   }, [transactions])
 
   // Payment-method mix across the loaded transactions.
@@ -299,6 +306,32 @@ export default function AdminTransactionsPage() {
     a.click()
   }
 
+  const handleReconcileAll = async () => {
+    if (reconcilingAll) return
+    setReconcilingAll(true)
+    setReconcileSummary(null)
+    try {
+      const res = await fetch('/api/admin/transactions/reconcile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reconcile_all' }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setReconcileSummary(data.error || 'Reconciliation failed')
+      } else {
+        setReconcileSummary(
+          `Checked ${data.checked ?? 0}: ${data.credited ?? 0} confirmed, ${data.failed ?? 0} failed, ${data.cancelled ?? 0} cancelled, ${data.stillPending ?? 0} still pending.`,
+        )
+        await fetchTransactions()
+      }
+    } catch {
+      setReconcileSummary('Failed to reconcile pending transactions')
+    } finally {
+      setReconcilingAll(false)
+    }
+  }
+
   const totalPages = Math.ceil(total / limit) || 1
 
   return (
@@ -314,11 +347,34 @@ export default function AdminTransactionsPage() {
             Monitor all payment transactions and wallet activities across every customer.
           </p>
         </div>
-        <Button onClick={exportToCSV} variant="outline" className="gap-2 self-start sm:self-auto">
-          <Download className="h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <Button
+            onClick={handleReconcileAll}
+            disabled={reconcilingAll}
+            className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
+          >
+            <RefreshCw className={cn('h-4 w-4', reconcilingAll && 'animate-spin')} />
+            {reconcilingAll ? 'Reconciling…' : 'Reconcile Pending'}
+          </Button>
+          <Button onClick={exportToCSV} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </header>
+
+      {reconcileSummary && (
+        <div className="rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 px-4 py-3 text-sm text-[#5A1D6A] flex items-center justify-between gap-3">
+          <span>{reconcileSummary}</span>
+          <button
+            type="button"
+            onClick={() => setReconcileSummary(null)}
+            className="text-xs font-semibold hover:underline flex-shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* KPI tiles */}
       {stats && (

@@ -22,12 +22,12 @@ export const dynamic = 'force-dynamic'
 
 async function runJob() {
   // Re-check fundings that are at least a minute old (so we never race
-  // a live checkout) and at most 72h old (older rows are handled by the
-  // abandoned-payment flow). 100 per sweep keeps each run bounded.
+  // a live checkout) and up to 30 days old so stranded pending payments
+  // are never left behind. 200 per sweep keeps each run bounded.
   return reconcilePendingFundings({
     minAgeSeconds: 60,
-    maxAgeHours: 72,
-    limit: 100,
+    maxAgeHours: 24 * 30,
+    limit: 200,
   })
 }
 

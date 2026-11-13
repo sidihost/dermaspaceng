@@ -39,6 +39,7 @@ import {
   type Transaction,
 } from './wallet'
 import { finalizeWalletFunding } from './wallet-funding'
+import { finalizeGiftCardPaystackPayment } from './gift-cards'
 import { verifyPayment, fromKobo } from './paystack'
 
 export interface ReconcileResult {
@@ -65,6 +66,13 @@ function channelLabelFor(tx: Transaction): string {
 export async function reconcileOnePending(
   tx: Transaction,
 ): Promise<'credited' | 'failed' | 'cancelled' | 'pending' | 'error'> {
+  const txType = (tx.metadata as { type?: string } | null)?.type
+  // Membership subscriptions require tier + Glow Points activation via
+  // /api/membership/verify — never finalize them as plain wallet top-ups.
+  if (txType === 'membership_subscription') {
+    return 'pending'
+  }
+
   // Prefer Paystack's own reference when we have it, otherwise our
   // reference (Paystack accepts either on the verify endpoint when the
   // transaction was initialized with our reference).
@@ -81,6 +89,17 @@ export async function reconcileOnePending(
 
     if (data.status === 'success') {
       const amount = fromKobo(data.amount)
+      if (txType === 'gift_card') {
+        const gcResult = await finalizeGiftCardPaystackPayment({
+          transaction: tx,
+          paystackReference: data.reference,
+          amount,
+          customerEmail: data.customer?.email,
+          channelLabel: channelLabelFor(tx),
+        })
+        return gcResult.finalized || gcResult.alreadyProcessed ? 'credited' : 'error'
+      }
+
       const result = await finalizeWalletFunding({
         userId: tx.user_id,
         amount,

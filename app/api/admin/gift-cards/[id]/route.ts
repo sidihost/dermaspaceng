@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
+import { ensureGiftCardSchema } from '@/lib/gift-cards'
 
 /**
  * Admin gift-card detail API.
@@ -16,6 +17,7 @@ export async function GET(
 ) {
   try {
     await requireAdminOrStaff()
+    await ensureGiftCardSchema()
     const { id } = await params
     const rows = await sql`
       SELECT

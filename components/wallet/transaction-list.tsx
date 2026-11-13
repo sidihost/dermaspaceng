@@ -23,7 +23,7 @@ import {
 } from './transaction-detail-sheet'
 
 interface Transaction {
-  id: number
+  id: number | string
   type: 'credit' | 'debit' | 'refund'
   amount: number
   currency: string
@@ -179,37 +179,45 @@ export function TransactionList({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
           >
-            {/* Icon */}
-            <div className={cn('flex h-12 w-12 items-center justify-center rounded-full', styles.icon)}>
-              {getTransactionIcon(transaction.type, transaction.description)}
-            </div>
-            
-            {/* Details */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-foreground truncate">
-                  {transaction.description || `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} Transaction`}
-                </p>
-                {getStatusIcon(transaction.status)}
+            <button
+              type="button"
+              onClick={() => openDetail(transaction)}
+              className="w-full text-left flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50 cursor-pointer"
+            >
+              {/* Icon */}
+              <div className={cn('flex h-12 w-12 items-center justify-center rounded-full flex-shrink-0', styles.icon)}>
+                {getTransactionIcon(transaction.type, transaction.description)}
               </div>
-              <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="capitalize">{transaction.payment_method.replace('_', ' ')}</span>
-                <span>•</span>
-                <span>{transaction.formattedDate || formatDate(transaction.created_at)}</span>
+              
+              {/* Details */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-foreground truncate">
+                    {transaction.description || `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} Transaction`}
+                  </p>
+                  {getStatusIcon(transaction.status)}
+                </div>
+                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="capitalize">{transaction.payment_method.replace('_', ' ')}</span>
+                  <span>•</span>
+                  <span>{transaction.formattedDate || formatDate(transaction.created_at)}</span>
+                </div>
               </div>
-            </div>
-            
-            {/* Amount */}
-            <div className="text-right">
-              <p className={cn('font-semibold', styles.amount)}>
-                {styles.prefix}{transaction.formattedAmount || formatCurrency(transaction.amount, transaction.currency)}
-              </p>
-              {transaction.status !== 'completed' && (
-                <p className="text-xs capitalize text-muted-foreground">{transaction.status}</p>
-              )}
-            </div>
+              
+              {/* Amount */}
+              <div className="text-right flex items-center gap-2 flex-shrink-0">
+                <div>
+                  <p className={cn('font-semibold', styles.amount)}>
+                    {styles.prefix}{transaction.formattedAmount || formatCurrency(transaction.amount, transaction.currency)}
+                  </p>
+                  {transaction.status !== 'completed' && (
+                    <p className="text-xs capitalize text-muted-foreground">{transaction.status}</p>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+              </div>
+            </button>
           </motion.div>
         )
       })}
@@ -240,6 +248,12 @@ export function TransactionList({
           Load More Transactions
         </button>
       )}
+
+      <TransactionDetailSheet
+        transaction={selected as TransactionDetail | null}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
     </div>
   )
 }

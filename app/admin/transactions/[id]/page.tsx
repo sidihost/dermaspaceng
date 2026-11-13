@@ -40,6 +40,7 @@ interface Transaction {
   created_at: string
   formattedAmount: string
   formattedDate: string
+  invoice?: { invoice_number: string; status: string } | null
   user: { id: number; name: string; email: string } | null
 }
 
@@ -135,7 +136,9 @@ export default function TransactionDetailPage() {
       if (!res.ok) throw new Error(data.error || 'Re-check failed')
       setRecheckMsg(
         data.outcome === 'credited'
-          ? 'Payment confirmed and wallet credited.'
+          ? data.txType === 'gift_card' || tx?.type === 'debit'
+            ? 'Payment confirmed and finalized.'
+            : 'Payment confirmed and wallet credited.'
           : data.outcome === 'failed'
             ? 'Paystack reports this payment failed.'
             : data.outcome === 'cancelled'
@@ -287,6 +290,14 @@ export default function TransactionDetailPage() {
             value={tx.paystack_reference}
             copied={copied === 'pref'}
             onCopy={() => copy(tx.paystack_reference!, 'pref')}
+          />
+        )}
+        {tx.invoice?.invoice_number && (
+          <CopyRow
+            label="Invoice no."
+            value={tx.invoice.invoice_number}
+            copied={copied === 'inv'}
+            onCopy={() => copy(tx.invoice!.invoice_number, 'inv')}
           />
         )}
       </div>

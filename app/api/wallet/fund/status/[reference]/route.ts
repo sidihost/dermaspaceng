@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getTransactionByReference } from '@/lib/wallet'
 import { finalizeWalletFunding } from '@/lib/wallet-funding'
+import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
 
 type Status = 'pending' | 'completed' | 'failed' | 'expired'
@@ -48,8 +49,6 @@ export async function GET(
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
     }
     if (String(tx.user_id) !== String(user.id)) {
-      // Don't leak whether the reference exists — return 404 to
-      // anyone who doesn't own the row.
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
     }
 
@@ -64,21 +63,8 @@ export async function GET(
     } else if (tx.status === 'cancelled') {
       status = 'expired'
     } else {
-      // Still pending — actively confirm with Paystack instead of
-      // waiting for the webhook. Bank-transfer funding used to rely
-      // ENTIRELY on the webhook to credit the wallet, which meant a
-      // missing/misconfigured webhook (or one Paystack never
-      // delivered) left the customer's money in limbo: the transfer
-      // succeeded but their balance never moved.
-      //
-      // Now, when Paystack's verify says the charge succeeded, we
-      // credit the wallet right here via `finalizeWalletFunding`.
-      // That helper is idempotent (it claims the pending row
-      // atomically), so even if the webhook lands at the exact same
-      // moment only ONE of them actually credits — no double-credit,
-      // no duplicate email/invoice. The poll becomes a reliable
-      // fallback rather than a passive observer.
       try {
+        const txType = (tx.metadata as { type?: string } | null)?.type
         const v = await verifyPayment(reference)
         if (v?.data?.status === 'success') {
           const amount = fromKobo(v.data.amount)
@@ -87,18 +73,31 @@ export async function GET(
             'bank_transfer'
               ? 'Bank Transfer'
               : 'Paystack'
-          const result = await finalizeWalletFunding({
-            userId: tx.user_id,
-            amount,
-            paymentReference: reference,
-            paystackReference: v.data.reference,
-            customerEmail: v.data.customer?.email,
-            channelLabel,
-          })
-          // Whether we credited just now or the webhook beat us to
-          // it, the funding is done — tell the client to stop polling.
-          status =
-            result.credited || result.alreadyProcessed ? 'completed' : 'pending'
+
+          if (txType === 'gift_card') {
+            const gcResult = await finalizeGiftCardPaystackPayment({
+              transaction: tx,
+              paystackReference: v.data.reference,
+              amount,
+              customerEmail: v.data.customer?.email,
+              channelLabel,
+            })
+            status =
+              gcResult.finalized || gcResult.alreadyProcessed
+                ? 'completed'
+                : 'pending'
+          } else if (txType !== 'membership_subscription') {
+            const result = await finalizeWalletFunding({
+              userId: tx.user_id,
+              amount,
+              paymentReference: reference,
+              paystackReference: v.data.reference,
+              customerEmail: v.data.customer?.email,
+              channelLabel,
+            })
+            status =
+              result.credited || result.alreadyProcessed ? 'completed' : 'pending'
+          }
         } else if (v?.data?.status === 'failed') {
           status = 'failed'
           reason = v.data.gateway_response || 'Payment failed'

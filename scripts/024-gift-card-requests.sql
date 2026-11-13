@@ -30,8 +30,13 @@ ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(36);
 ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS user_id VARCHAR(36);
+ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(120);
+ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50);
+ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unpaid';
+ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
 
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_gift_card_requests_status ON gift_card_requests(status);
 CREATE INDEX IF NOT EXISTS idx_gift_card_requests_assigned ON gift_card_requests(assigned_to);
 CREATE INDEX IF NOT EXISTS idx_gift_card_requests_created ON gift_card_requests(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_gift_card_requests_payment_ref ON gift_card_requests(payment_reference) WHERE payment_reference IS NOT NULL;

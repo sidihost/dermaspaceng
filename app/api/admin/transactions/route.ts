@@ -22,15 +22,22 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
-    const status = searchParams.get('status') || undefined
-    const type = searchParams.get('type') || undefined
-    const userId = searchParams.get('userId') ? parseInt(searchParams.get('userId')!, 10) : undefined
+    const status = searchParams.get('status')
+    const type = searchParams.get('type')
+    const userId = searchParams.get('userId') || undefined
     const startDate = searchParams.get('startDate') || undefined
     const endDate = searchParams.get('endDate') || undefined
     const search = searchParams.get('search') || undefined
     
     const { transactions, total } = await getAllTransactions(
-      { status, type, userId, startDate, endDate, search },
+      {
+        status: status && status !== 'all' ? status : undefined,
+        type: type && type !== 'all' ? type : undefined,
+        userId,
+        startDate,
+        endDate,
+        search,
+      },
       limit,
       offset
     )
@@ -39,9 +46,11 @@ export async function GET(request: NextRequest) {
     const transactionsWithUser = await Promise.all(
       transactions.map(async (tx) => {
         const txUser = await getUserById(String(tx.user_id))
+        const numericAmount = Number(tx.amount) || 0
         return {
           ...tx,
-          formattedAmount: formatCurrency(tx.amount, tx.currency),
+          amount: numericAmount,
+          formattedAmount: formatCurrency(numericAmount, tx.currency),
           formattedDate: new Date(tx.created_at).toLocaleDateString('en-NG', {
             year: 'numeric',
             month: 'short',

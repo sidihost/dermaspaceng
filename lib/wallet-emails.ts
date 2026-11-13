@@ -130,14 +130,14 @@ export async function sendWalletFundingConfirmation(data: {
       Your Dermaspace wallet has been funded successfully. You can now use your wallet balance to book services and purchase gift cards.
     </p>
     
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
       <tr>
         <td style="padding: 20px;">
-          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #166534; text-transform: uppercase; letter-spacing: 1px;">Transaction Details</h3>
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Transaction Details</h3>
           <table role="presentation" cellspacing="0" cellpadding="0">
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Amount Funded:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #166534; font-weight: 600;">${formatCurrency(data.amount)}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">${formatCurrency(data.amount)}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">New Balance:</td>
