@@ -378,7 +378,7 @@ const KNOWN_TOOL_NAMES = [
   // this allow-list strictly in sync with the API so the leaked-tool
   // prefix stripper never accidentally eats real prose.
   'getCurrentDateTime', 'requestCallback', 'getSupportTickets',
-  'searchProducts', 'saveMemory', 'forgetMemory',
+  'searchProducts', 'saveMemory', 'forgetMemory', 'getWebsiteInfo',
 ] as const
 
 const LEAKED_TOOL_PREFIX_RE = new RegExp(
@@ -600,6 +600,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'checkLoginStatus': return 'Checking if you\u2019re signed in'
     case 'saveMemory': return 'Remembering that'
     case 'forgetMemory': return 'Forgetting that'
+    case 'getWebsiteInfo': return 'Checking Dermaspace info'
     default: return 'Thinking'
   }
 }
@@ -653,6 +654,7 @@ function guessToolFromText(raw: string): string | null {
   if (/(take me to|go to|open|navigate to|show me|bring me to|jump to).{0,20}(home ?page|homepage|dashboard|booking|book page|services|packages|membership|gift ?cards?|gallery|contact|about|consultation|settings|support|feedback|survey|laser|wallet|sign ?in|sign ?up)/.test(text)) return 'navigateToPage'
   if (/(direction|how do i get|get there|navigate|route|take me|drive to|get to (you|your|the spa))/.test(text)) return 'showLocationsMap'
   if (/(location|address|where.+(you|located)|which branch)/.test(text)) return 'getLocations'
+  if (/(founder|co-founder|who founded|who owns|ceo|coo|leadership|about dermaspace|when.+founded)/.test(text)) return 'getWebsiteInfo'
   if (/(package|membership|deal|bundle|platinum|bridal|couples)/.test(text)) return 'getPackages'
   if (/(gift card|gift voucher|gift.+dermaspace)/.test(text)) return 'getGiftCards'
   if (/(service|treatment|facial|massage|nail|waxing|price list|what.+offer)/.test(text)) return 'getServices'
@@ -736,6 +738,7 @@ function ToolResultCard({
       case 'joinBookingWaitlist': return 'Booking Waitlist'
       case 'bookConsultation': return 'Consultation'
       case 'searchServices': return 'Service Search'
+      case 'getWebsiteInfo': return 'Dermaspace Info'
       default: return 'Info'
     }
   }

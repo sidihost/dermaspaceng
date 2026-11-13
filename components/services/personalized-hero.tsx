@@ -1,6 +1,6 @@
 'use client'
 
-import { Heart, User } from 'lucide-react'
+import { Flower2, Heart, User, Wand2 } from 'lucide-react'
 
 interface PersonalizedHeroProps {
   isLoggedIn: boolean
@@ -62,6 +62,11 @@ export default function PersonalizedHero({
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-semibold tracking-[0.15em] text-white uppercase mb-4">
+            {pageType === 'laser' ? (
+              <Wand2 className="w-3 h-3" aria-hidden="true" />
+            ) : (
+              <Flower2 className="w-3 h-3" aria-hidden="true" />
+            )}
             {guestChip}
           </span>
         )}

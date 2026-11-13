@@ -22,7 +22,16 @@ import {
   cancelBookingReminder,
   scheduleBookingReminder,
 } from '@/lib/reminders'
-import { getAvailableSlots } from '@/lib/booking'
+import { getAvailableSlots, listLocations } from '@/lib/booking'
+import { getMergedCatalog } from '@/lib/services-catalog-db'
+import { isFeatureEnabled } from '@/lib/feature-flags'
+import { MEMBERSHIP_PLANS, formatNgn, formatGlowPoints } from '@/lib/membership-plans'
+import {
+  WEBSITE_FACTS,
+  formatServicesCatalogForAI,
+  searchMergedCatalogForAI,
+} from '@/lib/derma-knowledge'
+import { buildLiveWebsiteKnowledgePrompt } from '@/lib/derma-live-context'
 
 // Provider selection now lives in `lib/ai-chain.ts`. That module
 // exposes an ordered chain of text + tool-calling models — Mistral
@@ -225,93 +234,56 @@ const tools = {
     },
   }),
 
-  // Get services info
+  // Get services info (live merged catalog + admin DB overrides)
   getServices: tool({
-    description: 'Get information about Dermaspace services. Use when user asks about treatments, services, facials, massages, prices, or what we offer.',
+    description: 'Get live information about Dermaspace services, treatments, prices, and durations from the official catalog. Use when user asks about treatments, services, facials, massages, nails, waxing, laser, prices, or what we offer.',
     inputSchema: z.object({
-      category: z.enum(['facial', 'body', 'nail', 'waxing', 'all']).describe('Service category to get info about')
+      category: z.enum(['facial', 'body', 'nail', 'waxing', 'laser', 'all']).describe('Service category to get info about')
     }),
     execute: async ({ category }) => {
-      const services = {
-        facial: {
-          name: 'Facial Treatments',
-          services: [
-            { name: 'Deep Cleansing Facial', price: '₦15,000 - ₦25,000', duration: '60-90 mins' },
-            { name: 'Hydrating Facial', price: '₦18,000 - ₦30,000', duration: '60 mins' },
-            { name: 'Anti-Aging Facial', price: '₦25,000 - ₦45,000', duration: '75 mins' },
-            { name: 'Acne Treatment', price: '₦20,000 - ₦35,000', duration: '60 mins' },
-            { name: 'LED Light Therapy', price: '₦15,000 - ₦25,000', duration: '30-45 mins' },
-            { name: 'Microdermabrasion', price: '₦30,000 - ₦50,000', duration: '45-60 mins' }
-          ],
-          link: '/services/facial-treatments'
-        },
-        body: {
-          name: 'Body Treatments',
-          services: [
-            { name: 'Swedish Massage', price: '₦20,000 - ₦35,000', duration: '60 mins' },
-            { name: 'Deep Tissue Massage', price: '₦25,000 - ₦40,000', duration: '60-90 mins' },
-            { name: 'Hot Stone Massage', price: '₦30,000 - ₦45,000', duration: '75 mins' },
-            { name: 'Aromatherapy', price: '₦25,000 - ₦40,000', duration: '60 mins' },
-            { name: 'Body Scrub', price: '₦18,000 - ₦30,000', duration: '45 mins' },
-            { name: 'Detox Body Wrap', price: '₦35,000 - ₦55,000', duration: '90 mins' }
-          ],
-          link: '/services/body-treatments'
-        },
-        nail: {
-          name: 'Nail Care',
-          services: [
-            { name: 'Classic Manicure', price: '₦5,000 - ₦8,000', duration: '30 mins' },
-            { name: 'Gel Manicure', price: '₦10,000 - ₦15,000', duration: '45 mins' },
-            { name: 'Classic Pedicure', price: '₦7,000 - ₦12,000', duration: '45 mins' },
-            { name: 'Gel Pedicure', price: '₦12,000 - ₦18,000', duration: '60 mins' },
-            { name: 'Nail Art', price: '₦3,000+', duration: 'varies' }
-          ],
-          link: '/services/nail-care'
-        },
-        waxing: {
-          name: 'Waxing Services',
-          services: [
-            { name: 'Face Waxing', price: '₦3,000 - ₦8,000', duration: '15-30 mins' },
-            { name: 'Arms Waxing', price: '₦8,000 - ₦12,000', duration: '30 mins' },
-            { name: 'Legs Waxing', price: '₦12,000 - ₦20,000', duration: '45-60 mins' },
-            { name: 'Bikini Waxing', price: '₦10,000 - ₦18,000', duration: '30 mins' },
-            { name: 'Full Body Wax', price: '₦35,000 - ₦55,000', duration: '90+ mins' }
-          ],
-          link: '/services/waxing'
-        }
-      }
-      
-      if (category === 'all') {
-        return { success: true, services: Object.values(services), overviewLink: '/services' }
-      }
-      
-      return { success: true, ...services[category] }
+      const catalog = await getMergedCatalog()
+      return formatServicesCatalogForAI(catalog, category)
     }
   }),
 
-  // Get location info
+  // Get location info (reads active locations from DB, falling back to canonical website facts)
   getLocations: tool({
     description: 'Get Dermaspace location information, addresses, hours, and contact details. Use when user asks where we are, our address, hours, or how to reach us.',
     inputSchema: z.object({}),
     execute: async () => {
+      const activeLocations = await listLocations().catch(() => [])
+      const canonicalByName = new Map(
+        WEBSITE_FACTS.contact.branches.map((b) => [b.name.toLowerCase(), b]),
+      )
+
+      const locations =
+        activeLocations.length > 0
+          ? activeLocations.map((loc) => {
+              const fallback = canonicalByName.get(loc.name.toLowerCase())
+              return {
+                name: loc.name,
+                address: loc.address || fallback?.address || '',
+                phone: loc.phone || fallback?.phone || '',
+                hours:
+                  fallback?.hours ||
+                  `${loc.opens_at} - ${loc.closes_at}`,
+                active: loc.is_active,
+              }
+            })
+          : WEBSITE_FACTS.contact.branches.map((b) => ({
+              name: b.name,
+              address: b.address,
+              phone: b.phone,
+              hours: b.hours,
+              active: false,
+            }))
+
       return {
         success: true,
-        locations: [
-          {
-            name: 'Victoria Island',
-            address: '237B Muri Okunola Street, Victoria Island, Lagos',
-            phone: '+234 906 183 6625',
-            hours: 'Sun & Mon: 1PM - 7PM, Tue-Thu: 10AM - 7PM, Fri-Sat: 10AM - 10PM'
-          },
-          {
-            name: 'Ikoyi',
-            address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
-            phone: '+234 901 313 4945',
-            hours: 'Tue-Thu: 10AM - 7PM, Fri-Sat: 10AM - 10PM (Closed Sun & Mon)'
-          }
-        ],
-        email: 'hello@dermaspaceng.com',
-        contactLink: '/contact'
+        locations,
+        email: WEBSITE_FACTS.contact.publicEmail,
+        supportEmail: WEBSITE_FACTS.contact.supportEmail,
+        contactLink: '/contact',
       }
     }
   }),
@@ -360,6 +332,14 @@ const tools = {
       preferredTime: z.string().describe('Preferred time for the appointment')
     }),
     execute: async ({ service, location, preferredDate, preferredTime }) => {
+      if (!(await isFeatureEnabled('booking'))) {
+        return {
+          success: false,
+          paused: true,
+          message: 'Online booking is currently paused on the website. Please check back soon or call +234 906 183 6625.',
+        }
+      }
+
       const cookieStore = await cookies()
       const sessionId = cookieStore.get('session_id')?.value
       
@@ -429,34 +409,32 @@ const tools = {
     }
   }),
 
-  // Get packages/memberships
+  // Get canonical packages & memberships
   getPackages: tool({
-    description: 'Get information about spa packages and membership options. Use when user asks about packages, memberships, deals, or special offers.',
+    description: 'Get exact canonical information about Dermaspace spa packages (Single & Couple Gold, Silver, Bronze Experiences) and annual membership tiers (Silver, Gold, Platinum). Use whenever user asks about packages, memberships, pricing, or perks.',
     inputSchema: z.object({}),
     execute: async () => {
       return {
         success: true,
-        packages: [
-          {
-            name: 'Platinum Membership',
-            benefits: ['20% off all services', 'Priority booking', 'Exclusive member events', 'Birthday special'],
-            price: '₦50,000/month'
-          },
-          {
-            name: 'Couples Package',
-            description: 'Perfect for date nights or special occasions',
-            includes: ['2 Swedish Massages', '2 Facials', 'Complimentary refreshments'],
-            price: '₦85,000'
-          },
-          {
-            name: 'Bridal Package',
-            description: 'Pre-wedding pampering',
-            includes: ['Full body massage', 'Bridal facial', 'Manicure & Pedicure', 'Hair treatment'],
-            price: '₦150,000'
-          }
-        ],
+        packages: WEBSITE_FACTS.packages.map((p) => ({
+          name: `${p.name} (${p.type})`,
+          type: p.type,
+          duration: p.duration,
+          includes: p.features,
+          price: formatNgn(p.priceNaira),
+          popular: Boolean(p.popular),
+        })),
+        memberships: MEMBERSHIP_PLANS.map((m) => ({
+          name: `${m.name} Membership`,
+          price: `${formatNgn(m.price)}/year`,
+          validity: `${m.validityMonths} months`,
+          glowPointsOnSignup: formatGlowPoints(m.glowPointsOnSignup),
+          tagline: m.tagline,
+          siteWideOnly: m.siteWideOnly,
+          benefits: m.benefits,
+        })),
         packagesLink: '/packages',
-        membershipLink: '/membership'
+        membershipLink: '/membership',
       }
     }
   }),
@@ -470,10 +448,25 @@ const tools = {
         'facial', 'body', 'nail', 'waxing', 'membership', 'gift-cards',
         'dashboard', 'wallet', 'settings', 'gallery', 'consultation',
         'laser-tech', 'support', 'feedback', 'survey', 'signin', 'signup',
-        'forgot-password'
+        'forgot-password', 'blog', 'locations', 'privacy', 'terms'
       ]).describe('Page to navigate to')
     }),
     execute: async ({ page }) => {
+      const flagGateMap: Record<string, string> = {
+        booking: 'booking',
+        'gift-cards': 'gift_cards',
+        wallet: 'wallet',
+        signup: 'signups',
+      }
+      const gatedFlag = flagGateMap[page]
+      if (gatedFlag && !(await isFeatureEnabled(gatedFlag))) {
+        return {
+          success: false,
+          paused: true,
+          message: 'That feature is currently paused and unavailable on the website right now.',
+        }
+      }
+
       const pageLinks: Record<string, { path: string; description: string }> = {
         home: { path: '/', description: 'Homepage' },
         services: { path: '/services', description: 'All our services' },
@@ -488,7 +481,7 @@ const tools = {
         membership: { path: '/membership', description: 'Membership options' },
         'gift-cards': { path: '/gift-cards', description: 'Gift cards' },
         dashboard: { path: '/dashboard', description: 'Your dashboard' },
-        wallet: { path: '/dashboard', description: 'Your wallet' },
+        wallet: { path: '/dashboard/wallet', description: 'Your wallet' },
         settings: { path: '/dashboard/settings', description: 'Account settings' },
         gallery: { path: '/gallery', description: 'Photo gallery' },
         consultation: { path: '/consultation', description: 'Free skin consultation' },
@@ -498,12 +491,105 @@ const tools = {
         survey: { path: '/survey', description: 'Customer survey' },
         signin: { path: '/signin', description: 'Sign in' },
         signup: { path: '/signup', description: 'Create an account' },
-        'forgot-password': { path: '/forgot-password', description: 'Reset your password' }
+        'forgot-password': { path: '/forgot-password', description: 'Reset your password' },
+        blog: { path: '/blog', description: 'Dermaspace Journal' },
+        locations: { path: '/locations', description: 'Locations & live map' },
+        privacy: { path: '/privacy', description: 'Privacy Policy' },
+        terms: { path: '/terms', description: 'Terms of Service' },
       }
       
       const { path, description } = pageLinks[page]
       return { success: true, path, description, navigate: true }
     }
+  }),
+
+  // Get canonical website info (founders, story, memberships, packages, policies, feature status)
+  getWebsiteInfo: tool({
+    description:
+      'Get canonical website facts about Dermaspace — founders & leadership (Itunuoluwa Umar-Lawal, Franca Ebuzome), story & stats, memberships, packages, policies, and live vs paused website feature status. Call this whenever the user asks who founded Dermaspace, who the CEO/COO is, company background, policies, or if a feature is paused/live.',
+    inputSchema: z.object({
+      topic: z
+        .enum(['all', 'founders', 'about', 'memberships', 'packages', 'policies', 'feature_status'])
+        .default('all')
+        .describe('Which section of canonical website info to fetch'),
+    }),
+    execute: async ({ topic }) => {
+      const liveStatus = await buildLiveWebsiteKnowledgePrompt().catch(() => '')
+      const base = {
+        success: true,
+        topic,
+        brandName: WEBSITE_FACTS.brandName,
+        legalName: WEBSITE_FACTS.legalName,
+        founded: WEBSITE_FACTS.founded,
+        stats: WEBSITE_FACTS.stats,
+      }
+      if (topic === 'founders') {
+        return { ...base, founders: WEBSITE_FACTS.founders, link: '/about' }
+      }
+      if (topic === 'about') {
+        return {
+          ...base,
+          mission: WEBSITE_FACTS.mission,
+          coreAreas: WEBSITE_FACTS.coreAreas,
+          values: WEBSITE_FACTS.values,
+          founders: WEBSITE_FACTS.founders,
+          link: '/about',
+        }
+      }
+      if (topic === 'memberships') {
+        return {
+          ...base,
+          memberships: MEMBERSHIP_PLANS.map((m) => ({
+            id: m.id,
+            name: m.name,
+            price: formatNgn(m.price),
+            validityMonths: m.validityMonths,
+            glowPoints: formatGlowPoints(m.glowPointsOnSignup),
+            siteWideOnly: m.siteWideOnly,
+            treatmentDiscountPct: m.treatmentDiscountPct,
+            waxingDiscountPct: m.waxingDiscountPct,
+          })),
+          link: '/membership',
+        }
+      }
+      if (topic === 'packages') {
+        return {
+          ...base,
+          packages: WEBSITE_FACTS.packages.map((p) => ({
+            ...p,
+            price: formatNgn(p.priceNaira),
+          })),
+          link: '/packages',
+        }
+      }
+      if (topic === 'policies') {
+        return { ...base, policies: WEBSITE_FACTS.policies }
+      }
+      if (topic === 'feature_status') {
+        return { ...base, liveStatus }
+      }
+      return {
+        ...base,
+        mission: WEBSITE_FACTS.mission,
+        founders: WEBSITE_FACTS.founders,
+        coreAreas: WEBSITE_FACTS.coreAreas,
+        packages: WEBSITE_FACTS.packages.map((p) => ({
+          ...p,
+          price: formatNgn(p.priceNaira),
+        })),
+        memberships: MEMBERSHIP_PLANS.map((m) => ({
+          id: m.id,
+          name: m.name,
+          price: formatNgn(m.price),
+          validityMonths: m.validityMonths,
+          glowPoints: formatGlowPoints(m.glowPointsOnSignup),
+          siteWideOnly: m.siteWideOnly,
+        })),
+        contact: WEBSITE_FACTS.contact,
+        policies: WEBSITE_FACTS.policies,
+        liveStatus,
+      }
+    },
   }),
 
   // Get consultation info
@@ -526,17 +612,26 @@ const tools = {
     }
   }),
 
-  // Gift card info
+  // Gift card info (feature-flag gated)
   getGiftCards: tool({
     description: 'Get information about gift cards. Use when user asks about gifts, gift cards, or gifting spa services.',
     inputSchema: z.object({}),
     execute: async () => {
+      if (!(await isFeatureEnabled('gift_cards'))) {
+        return {
+          success: false,
+          paused: true,
+          message: 'Gift cards are temporarily paused on the website right now. Call +234 906 183 6625 to arrange a gift in person.',
+        }
+      }
       return {
         success: true,
         message: 'Give the gift of relaxation! Dermaspace gift cards are perfect for any occasion.',
-        options: ['₦25,000', '₦50,000', '₦100,000', 'Custom Amount'],
-        validity: '12 months from purchase',
-        delivery: 'Digital delivery via email or physical card',
+        options: WEBSITE_FACTS.giftCards.amounts
+          .map((a) => `${formatNgn(a.amountNaira)} (${a.label})`)
+          .concat('Custom Amount'),
+        validity: WEBSITE_FACTS.giftCards.validity,
+        delivery: WEBSITE_FACTS.giftCards.deliveryMethods.join(' or '),
         giftCardLink: '/gift-cards'
       }
     }
@@ -953,49 +1048,16 @@ const tools = {
     },
   }),
 
-  // Search services by keyword
+  // Search services by keyword against the live merged catalog
   searchServices: tool({
     description:
-      'Search Dermaspace services by keyword (e.g. "anti aging", "hydrafacial", "manicure"). Use when the user asks about a specific treatment or isn\'t sure which category it falls in.',
+      'Search live Dermaspace services by keyword (e.g. "anti aging", "hydrafacial", "manicure", "laser", "peel"). Use when the user asks about a specific treatment or isn\'t sure which category it falls in.',
     inputSchema: z.object({
       query: z.string().min(1).describe('Keyword or phrase to search for'),
     }),
     execute: async ({ query }) => {
-      const q = query.toLowerCase()
-      const catalog: Array<{ name: string; price: string; category: string; link: string }> = [
-        { name: 'Signature Facial', price: '₦25,000', category: 'Facials', link: '/services/facial-treatments' },
-        { name: 'HydraFacial', price: '₦45,000', category: 'Facials', link: '/services/facial-treatments' },
-        { name: 'Anti-Aging Facial', price: '₦35,000', category: 'Facials', link: '/services/facial-treatments' },
-        { name: 'Acne Treatment Facial', price: '₦30,000', category: 'Facials', link: '/services/facial-treatments' },
-        { name: 'Brightening Facial', price: '₦32,000', category: 'Facials', link: '/services/facial-treatments' },
-        { name: 'Swedish Massage', price: '₦25,000 - ₦45,000', category: 'Body', link: '/services/body-treatments' },
-        { name: 'Deep Tissue Massage', price: '₦30,000 - ₦50,000', category: 'Body', link: '/services/body-treatments' },
-        { name: 'Hot Stone Massage', price: '₦35,000 - ₦55,000', category: 'Body', link: '/services/body-treatments' },
-        { name: 'Body Scrub', price: '₦28,000', category: 'Body', link: '/services/body-treatments' },
-        { name: 'Body Wrap', price: '₦32,000', category: 'Body', link: '/services/body-treatments' },
-        { name: 'Classic Manicure', price: '₦8,000', category: 'Nails', link: '/services/nail-care' },
-        { name: 'Gel Manicure', price: '₦12,000', category: 'Nails', link: '/services/nail-care' },
-        { name: 'Classic Pedicure', price: '₦10,000', category: 'Nails', link: '/services/nail-care' },
-        { name: 'Spa Pedicure', price: '₦15,000', category: 'Nails', link: '/services/nail-care' },
-        { name: 'Nail Art', price: 'From ₦3,000', category: 'Nails', link: '/services/nail-care' },
-        { name: 'Full Body Wax', price: '₦35,000 - ₦55,000', category: 'Waxing', link: '/services/waxing' },
-        { name: 'Bikini Waxing', price: '₦10,000 - ₦18,000', category: 'Waxing', link: '/services/waxing' },
-        { name: 'Legs Waxing', price: '₦12,000 - ₦20,000', category: 'Waxing', link: '/services/waxing' },
-        { name: 'Laser Hair Removal', price: 'From ₦25,000', category: 'Laser', link: '/laser-tech' },
-      ]
-      const matches = catalog.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.category.toLowerCase().includes(q) ||
-          q.includes(s.name.toLowerCase())
-      )
-      return {
-        success: true,
-        query,
-        matches: matches.slice(0, 6),
-        noResults: matches.length === 0,
-        servicesLink: '/services',
-      }
+      const catalog = await getMergedCatalog()
+      return searchMergedCatalogForAI(catalog, query)
     },
   }),
 
@@ -1102,6 +1164,13 @@ const tools = {
       amount: z.number().min(100).describe('Amount to fund in Naira (minimum 100)'),
     }),
     execute: async ({ amount }) => {
+      if (!(await isFeatureEnabled('wallet'))) {
+        return {
+          success: false,
+          paused: true,
+          message: 'Customer wallet features are currently paused on the website.',
+        }
+      }
       const cookieStore = await cookies()
       const sessionId = cookieStore.get('session_id')?.value
       if (!sessionId) {
@@ -1904,7 +1973,8 @@ INFO / READ TOOLS:
 - getNotifications — recent activity summary
 - getSupportTickets �� user's support tickets
 - checkLoginStatus — verify session
-- getServices / searchServices / getLocations / getPackages / getConsultation / getGiftCards — catalog info
+- getWebsiteInfo(topic?) — canonical website facts: founders (Itunuoluwa Umar-Lawal, Franca Ebuzome), story, stats, memberships, packages, policies, and live vs paused feature status
+- getServices / searchServices / getLocations / getPackages / getConsultation / getGiftCards — live catalog & site info
 - recommendByConcern(query) — SEMANTIC search across treatments + blog. Use when the user describes a concern/goal/vibe rather than a treatment name (e.g. "I want something for my dry skin", "any glow-up tip for a wedding?", "what helps with melasma?"). Returns scored matches with prices, durations, and direct links. Prefer over searchServices whenever the query reads like intent rather than keywords.
 - showLocationsMap — renders a LIVE interactive map inline (pulsing markers, turn-by-turn directions, "use my location"). Default pick whenever the intent is spatial/visual ("show me on a map", "how do I get there", "directions")
 - getCurrentDateTime — current date/time in Lagos (WAT)
@@ -1990,18 +2060,22 @@ SITEMAP (use navigateToPage or provide the path):
 - /laser-tech — Laser technology services
 - /booking — Book an appointment
 - /consultation — Request a free skin consultation
-- /packages — Spa packages (couples, bridal, etc.)
-- /membership — Platinum membership
+- /packages — Spa packages (Gold, Silver, Bronze Single & Couple Experiences)
+- /membership — Memberships (Silver, Gold, Platinum)
 - /gift-cards — Buy a gift card
+- /blog — Dermaspace Journal
+- /locations — Branch directory & live map
 - /gallery — Photo gallery
 - /contact — Contact form & locations
+- /privacy — Privacy Policy
+- /terms — Terms of Service
 - /signup — Create account
 - /signin — Sign in
 - /signin/2fa — Two-factor authentication step
 - /forgot-password — Start password reset (you can also trigger sendPasswordResetEmail directly)
 - /reset-password — Complete password reset with token from email
 - /verify-email — Verify email with token from email
-- /complete-profile �� Finish profile (username, etc.) after signup
+- /complete-profile — Finish profile (username, etc.) after signup
 - /accept-invite — Accept a staff invitation
 - /dashboard — User dashboard (wallet overview, bookings)
 - /dashboard/wallet — Full wallet page
@@ -2019,7 +2093,9 @@ ACCOUNT SECURITY FEATURES THE SITE SUPPORTS:
 
 RESPONSE GUIDELINES:
 - When the user asks about real data (balance, bookings, profile, transactions, tickets), CALL THE TOOL — never guess.
-- When the user asks about services or pricing, call getServices — do not invent prices.
+- When the user asks about founders, leadership, company history, policies, or whether a feature is live or paused, answer strictly from CANONICAL DERMASPACE WEBSITE KNOWLEDGE / CURRENT WEBSITE STATUS (or call getWebsiteInfo) — NEVER invent or guess founder names, prices, or policies.
+- If a feature is listed under PAUSED / UNAVAILABLE FEATURES in CURRENT WEBSITE STATUS (or a tool returns paused: true), tell the user honestly that the feature is temporarily paused on the website right now and offer an active alternative (such as calling +234 906 183 6625).
+- When the user asks about services or pricing, call getServices or searchServices — do not invent prices.
 - When the user forgets their password, ask for the email they signed up with, then call sendPasswordResetEmail.
 - When the user didn't receive their verification email, call resendVerificationEmail (if they are signed in) or direct them to /signup if not.
 - For booking, gather service, preferred location (Victoria Island or Ikoyi), date, and time, then call createBooking. Always confirm details before finalizing.
@@ -2028,10 +2104,11 @@ RESPONSE GUIDELINES:
 - Keep answers short and actionable. Offer one clear next step.
 
 DERMASPACE INFO:
-  - Victoria Island: 237B Muri Okunola Street | +234 906 183 6625
-  - Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate | +234 901 313 4945
+- Founders: Itunuoluwa Umar-Lawal (CEO) and Franca Ebuzome (Co-Founder & COO) — Dermaspace Esthetic and Wellness Centre Ltd, founded April 2019.
+- Victoria Island: 237B Muri Okunola Street | +234 906 183 6625
+- Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate | +234 901 313 4945
 - Hours: Sun & Mon 1PM-7PM, Tue-Thu 10AM-7PM, Fri-Sat 10AM-10PM (Ikoyi branch is closed Sun & Mon)
-- Email: hello@dermaspaceng.com
+- Email: info@dermaspaceng.com (support inbox: hello@dermaspaceng.com)
 
 EXEMPLARS (this is the calibre you're aiming for):
 
@@ -2258,8 +2335,11 @@ export async function POST(request: Request) {
         ? (aiPermissions as AiPermissions)
         : undefined
 
+    const liveWebsiteKnowledge = await buildLiveWebsiteKnowledgePrompt().catch(() => '')
+
     let enhancedPrompt =
       systemPrompt +
+      (liveWebsiteKnowledge ? `\n\n${liveWebsiteKnowledge}` : '') +
       buildUserContext(
         userInfo || {},
         Boolean(accountAccessConsent),
@@ -2552,12 +2632,16 @@ export async function POST(request: Request) {
 
     // Strip tool-routing instructions from the rescue system prompt —
     // we don't want the rescue model trying to call tools it doesn't
-    // have. Keep persona + brand context only.
-    const rescueSystem = enhancedPrompt
+    // have. Prepend canonical & live website knowledge first so even
+    // backup rescue replies always know exact founders, prices, and paused flags.
+    const personaAndContext = enhancedPrompt
       .split('\n')
       .filter((line) => !/^(\s*-?\s*)?(tool|call|use\s+\w+\()/i.test(line))
       .join('\n')
-      .slice(0, 4000)
+    const rescueSystem = (
+      (liveWebsiteKnowledge ? `${liveWebsiteKnowledge}\n\n` : '') +
+      personaAndContext
+    ).slice(0, 8000)
 
     const rescuePromise = lastUserMessage
       ? rescueChatReply({

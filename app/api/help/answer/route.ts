@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { generateText, type LanguageModel } from 'ai'
 import { getChatModelChain, pickFirstHealthyChatProvider } from '@/lib/ai-chain'
+import { buildLiveWebsiteKnowledgePrompt } from '@/lib/derma-live-context'
 
 export const maxDuration = 30
 
@@ -76,7 +77,9 @@ Linking — this is important. When the answer involves an action the user can t
 For example: "You can update it in [Settings](/dashboard/settings)." or "Top up from [your Wallet](/dashboard/wallet)." Link the natural words, not the raw path. Use 1-2 links where they genuinely help the user navigate — do not link every sentence.
 
 Rules:
-- Never make up prices, policies, or features. If you are unsure, say they can [contact support](/dashboard/support).
+- Rely ONLY on the canonical Dermaspace website facts and current website status appended below. Never guess or invent founder names, prices, policies, or features.
+- If a feature (such as booking, gift cards, wallet, vouchers, signups, or live chat) is listed under PAUSED / UNAVAILABLE FEATURES below, tell the user honestly that it is temporarily paused right now instead of sending them to use it.
+- If you are unsure, say they can [contact support](/dashboard/support).
 - Keep it concise and friendly. The only markdown allowed is the [label](/path) links described above and **bold** for emphasis. No headings, bullet lists, or other markdown.
 - Do not mention that you are an AI model or which provider you run on.`
 
@@ -101,14 +104,21 @@ export async function POST(req: Request) {
 
   try {
     const chain = getChatModelChain()
-    const { pick } = await pickFirstHealthyChatProvider(chain)
+    const [{ pick }, liveKnowledge] = await Promise.all([
+      pickFirstHealthyChatProvider(chain),
+      buildLiveWebsiteKnowledgePrompt().catch(() => ''),
+    ])
+
+    const groundedSystem = liveKnowledge
+      ? `${SYSTEM_PROMPT}\n\n${liveKnowledge}`
+      : SYSTEM_PROMPT
 
     const { text } = await generateText({
       model: pick.model as LanguageModel,
-      system: SYSTEM_PROMPT,
+      system: groundedSystem,
       messages: [{ role: 'user', content: question }],
       maxOutputTokens: 320,
-      temperature: 0.4,
+      temperature: 0.3,
     })
 
     const answer = (text || '').trim()

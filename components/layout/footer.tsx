@@ -44,6 +44,7 @@ export default function Footer() {
                   alt="Dermaspace"
                   width={140}
                   height={42}
+                  referrerPolicy="no-referrer"
                   className="h-10 w-auto brightness-0 invert"
                 />
               </Link>
@@ -54,8 +55,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Links Grid - Responsive */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 py-8 sm:py-10">
+        {/* Links Grid - 4 Columns on Desktop; on Mobile Contact sits below Support horizontally with no divider */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 py-8 sm:py-10">
           {/* Services */}
           <div>
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Services</h3>
@@ -149,9 +150,9 @@ export default function Footer() {
           </div>
 
           {/* Support */}
-          <div>
+          <div className="col-span-2 md:col-span-1 pt-2 md:pt-0">
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Support</h3>
-            <ul className="space-y-2">
+            <ul className="grid grid-cols-2 md:grid-cols-1 gap-x-6 gap-y-2">
               {/* "Book Appointment" disappears when the booking
                   flag is OFF — same kill-switch logic as the
                   /booking page itself. */}
@@ -179,32 +180,36 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact Info */}
-          <div>
-            <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Contact</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="tel:+2349061836625" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
-                  <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span>+234 906 183 6625</span>
-                </a>
-              </li>
-              <li>
-                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
-                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span className="break-all">info@dermaspaceng.com</span>
-                </a>
-              </li>
-              <li className="flex items-start gap-2 text-sm text-white/60">
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 mt-0.5" />
-                <span className="flex flex-col gap-0.5">
+          {/* Contact — 4th column on desktop (md+), full-width horizontal list with no divider on mobile */}
+          <div className="col-span-2 md:col-span-1 pt-2 md:pt-0">
+            <h3 className="text-sm font-semibold text-white mb-3 md:mb-4">Contact</h3>
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-[13px] text-white/75 md:flex-col md:items-start md:gap-3 md:text-sm md:text-white/60">
+              <a
+                href="tel:+2349061836625"
+                className="inline-flex items-center gap-1.5 md:gap-2 hover:text-white transition-colors whitespace-nowrap"
+              >
+                <Phone className="w-3.5 h-3.5 md:w-4 md:h-4 text-white/60 flex-shrink-0" />
+                <span>+234 906 183 6625</span>
+              </a>
+
+              <a
+                href="mailto:info@dermaspaceng.com"
+                className="inline-flex items-center gap-1.5 md:gap-2 hover:text-white transition-colors whitespace-nowrap"
+              >
+                <Mail className="w-3.5 h-3.5 md:w-4 md:h-4 text-white/60 flex-shrink-0" />
+                <span>info@dermaspaceng.com</span>
+              </a>
+
+              <div className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-white/75 md:flex-col md:items-start md:gap-0.5 md:text-white/60">
+                <span className="inline-flex items-center gap-1.5 md:gap-2 whitespace-nowrap">
+                  <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-white/60 flex-shrink-0" />
                   <span>Sun &amp; Mon: 1pm - 7pm</span>
-                  <span>Tue - Thu: 10am - 7pm</span>
-                  <span>Fri - Sat: 10am - 10pm</span>
-                  <span className="text-white/40">Ikoyi closed Sun &amp; Mon</span>
                 </span>
-              </li>
-            </ul>
+                <span className="whitespace-nowrap">Tue - Thu: 10am - 7pm</span>
+                <span className="whitespace-nowrap">Fri - Sat: 10am - 10pm</span>
+                <span className="text-white/50 text-xs whitespace-nowrap">Ikoyi closed Sun &amp; Mon</span>
+              </div>
+            </div>
           </div>
         </div>
 

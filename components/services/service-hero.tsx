@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Bath, Flower2, Gem, Scissors } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 
 interface ServiceHeroProps {
@@ -75,11 +75,25 @@ export function ServiceHero({ category, title, subtitle }: ServiceHeroProps) {
           )}
 
           {/* Category pill */}
-          <div className="mb-4 inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1.5">
-            <span className="text-[11px] font-medium uppercase tracking-widest text-white sm:text-xs">
-              {category}
-            </span>
-          </div>
+          {(() => {
+            const cat = category.trim().toLowerCase()
+            const CategoryIcon =
+              cat.includes('wellness') || cat.includes('body')
+                ? Bath
+                : cat.includes('beauty') || cat.includes('nail')
+                  ? Gem
+                  : cat.includes('hair removal') || cat.includes('wax')
+                    ? Scissors
+                    : Flower2
+            return (
+              <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1.5">
+                <CategoryIcon className="h-3.5 w-3.5 text-white" aria-hidden="true" />
+                <span className="text-[11px] font-medium uppercase tracking-widest text-white sm:text-xs">
+                  {category}
+                </span>
+              </div>
+            )
+          })()}
 
           {/* Title */}
           <h1 className="text-pretty text-3xl font-bold text-white sm:text-4xl md:text-5xl">
