@@ -1,112 +1,75 @@
 /**
- * Pure math & layout helpers for the 3D Christmas Hero Sanctuary.
- * Decoupled from WebGL / React so framing, parallax bounds, and
- * particle distributions can be unit-tested deterministically.
+ * Pure math & layout helpers for the clean flat Christmas Hero Sanctuary
+ * illustration and the animated Laser Tech pulse geometry.
+ * Decoupled from React/DOM so responsive framing, snowflake distributions,
+ * and pulse-ring phases are deterministic and unit-testable.
  */
 
-export interface Hero3DLayout {
-  fov: number
-  cameraPos: [number, number, number]
-  lookAt: [number, number, number]
-  stageOffset: [number, number, number]
-  stageScale: number
+export interface SanctuaryViewportLayout {
   isCompact: boolean
+  showFullSanctuary: boolean
+  flakeCount: number
+  archRightPercent: number
 }
 
-export interface SnowMoteSpec {
-  x: number
-  y: number
-  z: number
-  scale: number
-  speedY: number
-  swayAmp: number
-  swayFreq: number
-  phase: number
-  rotSpeed: number
+export interface FestiveSnowflakeSpec {
+  xPercent: number
+  topOffsetPercent: number
+  sizePx: number
+  durationSec: number
+  delaySec: number
+  driftPx: number
+  variant: 'crystal' | 'dot'
   tone: 'white' | 'lilac' | 'orchid'
 }
 
+export interface PulseRingSpec {
+  index: number
+  delaySec: number
+  durationSec: number
+  baseRadius: number
+}
+
 /**
- * Computes responsive camera & stage framing so the 3D sculpture
- * sits cleanly to the right of the headline column on desktop, and
- * scales gracefully behind the centered mobile composition on phones.
+ * Computes responsive sanctuary framing so the Christmas architectural
+ * tableau sits cleanly beside the left-aligned hero typography on tablet/desktop,
+ * and simplifies gracefully on narrow mobile viewports.
  */
-export function computeHero3DLayout(width: number, height: number): Hero3DLayout {
+export function computeSanctuaryViewport(
+  width: number,
+  height: number,
+): SanctuaryViewportLayout {
   const safeW = Math.max(width, 320)
   const safeH = Math.max(height, 360)
-  const aspect = safeW / safeH
 
-  // Mobile (< 768px): framed cleanly in upper-right dark zone above CTA & bottom nav bar
   if (safeW < 768) {
     return {
-      fov: 42,
-      cameraPos: [0, 0.15, 9.8],
-      lookAt: [0, -0.22, 0],
-      stageOffset: [1.15, 0.42, -0.5],
-      stageScale: 0.56,
       isCompact: true,
+      showFullSanctuary: false,
+      flakeCount: 8,
+      archRightPercent: 4,
     }
   }
 
-  // Tablet (768px–1023px): centerpiece occupies the right showcase half clear of left editorial copy
   if (safeW < 1024) {
     return {
-      fov: 39,
-      cameraPos: [0, 0.16, 8.4],
-      lookAt: [0, -0.2, 0],
-      stageOffset: [2.05, 0.2, 0],
-      stageScale: 0.72,
       isCompact: false,
+      showFullSanctuary: true,
+      flakeCount: 12,
+      archRightPercent: safeH > 500 ? 6 : 5,
     }
   }
 
-  // Laptop (1024px–1279px)
-  if (safeW < 1280) {
-    return {
-      fov: 38,
-      cameraPos: [0, 0.16, 7.9],
-      lookAt: [0, -0.2, 0],
-      stageOffset: [2.42, 0.2, 0],
-      stageScale: 0.82,
-      isCompact: false,
-    }
-  }
-
-  // Wide desktop (>= 1280px): balanced gallery framing beside the left-aligned headline column
-  const wideShift = aspect > 2.35 ? 3.05 : 2.75
   return {
-    fov: 38,
-    cameraPos: [0, 0.16, 7.5],
-    lookAt: [0, -0.2, 0],
-    stageOffset: [wideShift, 0.2, 0],
-    stageScale: 0.94,
     isCompact: false,
+    showFullSanctuary: true,
+    flakeCount: 16,
+    archRightPercent: 8,
   }
 }
 
 /**
- * Maps normalized pointer coordinates [-1, 1] into subtle, clamped
- * camera parallax offsets. Returns zero offsets when reduced motion
- * is requested.
- */
-export function computeParallaxTarget(
-  normX: number,
-  normY: number,
-  reducedMotion: boolean,
-): { offsetX: number; offsetY: number } {
-  if (reducedMotion) {
-    return { offsetX: 0, offsetY: 0 }
-  }
-  const clampedX = Math.max(-1, Math.min(1, Number.isFinite(normX) ? normX : 0))
-  const clampedY = Math.max(-1, Math.min(1, Number.isFinite(normY) ? normY : 0))
-  return {
-    offsetX: clampedX * 0.44,
-    offsetY: clampedY * 0.24,
-  }
-}
-
-/**
- * Deterministic LCG PRNG for reproducible particle layouts across runs.
+ * Deterministic LCG PRNG for reproducible snowflake positions without hydration drift.
  */
 function createRng(seed: number) {
   let state = (seed >>> 0) || 1
@@ -117,32 +80,62 @@ function createRng(seed: number) {
 }
 
 /**
- * Generates deterministic 3D snow-crystal & brand-lilac mote specs spanning
- * the hero stage cleanly above the bottom navigation bar.
+ * Generates deterministic geometric snowflakes biased toward the right-hand
+ * sanctuary showcase (52%–96% X) so left-aligned headline copy stays clean.
  */
-export function generateSnowMoteSpecs(count: number, seed = 20261225): SnowMoteSpec[] {
-  const safeCount = Math.max(0, Math.min(220, Math.floor(count)))
+export function generateFestiveSnowflakes(
+  count: number,
+  seed = 20261225,
+): FestiveSnowflakeSpec[] {
+  const safeCount = Math.max(0, Math.min(40, Math.floor(count)))
   const rand = createRng(seed)
-  const specs: SnowMoteSpec[] = []
+  const specs: FestiveSnowflakeSpec[] = []
 
   for (let i = 0; i < safeCount; i++) {
     const toneRoll = rand()
-    const tone: SnowMoteSpec['tone'] =
-      toneRoll < 0.45 ? 'white' : toneRoll < 0.8 ? 'lilac' : 'orchid'
+    const tone: FestiveSnowflakeSpec['tone'] =
+      toneRoll < 0.5 ? 'white' : toneRoll < 0.84 ? 'lilac' : 'orchid'
+
+    // Keep most flakes in the right showcase half; allow a sparse high-altitude few across the sky
+    const inRightShowcase = i % 4 !== 0
+    const xPercent = inRightShowcase
+      ? Number((52 + rand() * 44).toFixed(2))
+      : Number((12 + rand() * 38).toFixed(2))
 
     specs.push({
-      x: (rand() - 0.35) * 11.5,
-      y: rand() * 4.6 - 1.6,
-      z: (rand() - 0.5) * 5.2,
-      scale: 0.024 + rand() * 0.044,
-      speedY: 0.16 + rand() * 0.24,
-      swayAmp: 0.07 + rand() * 0.16,
-      swayFreq: 0.55 + rand() * 1.0,
-      phase: rand() * Math.PI * 2,
-      rotSpeed: (rand() - 0.5) * 1.35,
+      xPercent,
+      topOffsetPercent: Number((-8 - rand() * 10).toFixed(2)),
+      sizePx: i % 2 === 0 ? Math.round(10 + rand() * 6) : Math.round(4 + rand() * 3),
+      durationSec: Number((11 + rand() * 8).toFixed(2)),
+      delaySec: Number((rand() * 10).toFixed(2)),
+      driftPx: Number(((rand() - 0.5) * 32).toFixed(1)),
+      variant: i % 2 === 0 ? 'crystal' : 'dot',
       tone,
     })
   }
 
   return specs
+}
+
+/**
+ * Computes evenly staggered concentric pulse rings for the animated laser handpiece.
+ */
+export function computeLaserPulseRings(
+  count = 3,
+  durationSec = 3.0,
+): PulseRingSpec[] {
+  const safeCount = Math.max(1, Math.min(6, Math.floor(count)))
+  const safeDuration = Math.max(0.8, durationSec)
+  const rings: PulseRingSpec[] = []
+
+  for (let i = 0; i < safeCount; i++) {
+    rings.push({
+      index: i,
+      delaySec: Number(((i * safeDuration) / safeCount).toFixed(2)),
+      durationSec: safeDuration,
+      baseRadius: 18 + i * 8,
+    })
+  }
+
+  return rings
 }

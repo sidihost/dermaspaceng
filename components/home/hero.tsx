@@ -1,19 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Snowflake, Star } from 'lucide-react'
-
-const ChristmasHero3D = dynamic(
-  () => import('./christmas-hero-3d').then((m) => m.ChristmasHero3D),
-  {
-    ssr: false,
-    loading: () => <div className="w-full h-full bg-[#14041F]" aria-hidden="true" />,
-  },
-)
+import { ChristmasHeroIllustration } from './christmas-hero-illustration'
 
 // Toggle to false (or turn off Festive in Admin) to revert the hero back to the 3 standard slides.
 const CHRISTMAS_HERO_SLIDE_ENABLED = true
@@ -225,16 +217,16 @@ export default function Hero() {
       className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
     >
       {/* Background Slider */}
-      <div className="absolute inset-0 bg-[#14041F]">
+      <div className="absolute inset-0 bg-[#240933]">
         {slides.map((slide, index) => (
           <div
-            key={slide.image}
+            key={slide.eyebrow}
             className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
               index === safeSlideIndex ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
             }`}
           >
             {slide.festive ? (
-              <ChristmasHero3D active={index === safeSlideIndex} />
+              <ChristmasHeroIllustration active={index === safeSlideIndex} />
             ) : (
               <Image
                 src={slide.image}
@@ -255,7 +247,7 @@ export default function Hero() {
         {active.festive ? (
           <div
             aria-hidden="true"
-            className="absolute inset-0 pointer-events-none bg-[#14041F]/44 md:bg-transparent transition-opacity duration-700"
+            className="absolute inset-0 pointer-events-none bg-[#240933]/25 md:bg-transparent transition-opacity duration-700"
           />
         ) : (
           <div
@@ -363,32 +355,19 @@ export default function Hero() {
               >
                 {active.festive ? (
                   <>
-                    <span
-                      className="h-px bg-[#E9D5FF]/70"
-                      style={{
-                        animation: 'hero-char-in 520ms ease-out both',
-                        width: '28px',
-                      }}
-                    />
                     <Snowflake
                       aria-hidden="true"
                       className="w-3.5 h-3.5 text-[#E9D5FF] shrink-0"
-                      style={{ animation: 'hero-char-in 520ms ease-out 60ms both' }}
+                      style={{ animation: 'hero-char-in 520ms ease-out 40ms both' }}
                     />
                     <span
-                      className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
+                      className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.28em] text-[#F5ECF8]"
                       style={{
-                        animation: 'hero-char-in 520ms ease-out 120ms both',
+                        animation: 'hero-char-in 520ms ease-out 100ms both',
                       }}
                     >
                       {active.eyebrow}
                     </span>
-                    <span
-                      className="h-px bg-white/25 flex-1 max-w-[72px]"
-                      style={{
-                        animation: 'hero-char-in 520ms ease-out 220ms both',
-                      }}
-                    />
                   </>
                 ) : (
                   <>
@@ -449,24 +428,37 @@ export default function Hero() {
                       </span>
                     </span>
 
-                    {/* Ornate hand-drawn underline — drawn right after the title finishes */}
+                    {/* Clean highlight flourish — clip-path reveal on Christmas slide (zero dashes) */}
                     <svg
                       aria-hidden="true"
                       className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
                       viewBox="0 0 240 12"
                       preserveAspectRatio="none"
                     >
-                      <path
-                        d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
-                        fill="none"
-                        stroke={active.festive ? '#D8B4FE' : '#7B2D8E'}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeDasharray="240"
-                        style={{
-                          animation: `hero-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
-                        }}
-                      />
+                      {active.festive ? (
+                        <path
+                          d="M2 8 C 40 3, 95 10, 140 5 S 212 3, 238 7"
+                          fill="none"
+                          stroke="#D8B4FE"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          style={{
+                            animation: `hero-underline-reveal 750ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
+                          }}
+                        />
+                      ) : (
+                        <path
+                          d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
+                          fill="none"
+                          stroke="#7B2D8E"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeDasharray="240"
+                          style={{
+                            animation: `hero-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
+                          }}
+                        />
+                      )}
                     </svg>
                   </span>
                 </h1>

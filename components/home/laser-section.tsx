@@ -1,28 +1,36 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowRight, Check } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { useGeo } from '@/lib/geo-context'
+import {
+  LaserHairRemovalIllustration,
+  LaserMiniThumb,
+} from '@/components/laser/laser-illustrations'
 
-const laserTreatments = [
+const laserTreatments: Array<{
+  title: string
+  desc: string
+  thumbVariant: 'hair-removal' | 'rejuvenation' | 'carbon-peel'
+  price: number
+}> = [
   {
     title: 'Laser Hair Removal',
     desc: 'Six sessions, gone for good (mostly)',
-    image: '/images/laser-hair-removal-ng.jpg',
+    thumbVariant: 'hair-removal',
     price: 20000,
   },
   {
     title: 'Skin Rejuvenation',
     desc: 'Even tone, fewer marks, brighter overall',
-    image: '/images/laser-rejuvenation-ng.jpg',
+    thumbVariant: 'rejuvenation',
     price: 20000,
   },
   {
     title: 'Carbon Peel',
     desc: 'The one celebrities ask for — glass skin, fast',
-    image: '/images/carbon-peel-ng.jpg',
+    thumbVariant: 'carbon-peel',
     price: 30000,
   },
 ]
@@ -36,11 +44,11 @@ const benefits = [
 
 export default function LaserSection() {
   const { formatPrice } = useGeo()
-  
+
   return (
     <section className="py-12 md:py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4">
-        <SectionHeader 
+        <SectionHeader
           badge="Laser"
           title="Laser"
           highlight="technology"
@@ -49,20 +57,13 @@ export default function LaserSection() {
 
         {/* Main Content */}
         <div className="grid lg:grid-cols-2 gap-8 items-center">
-          {/* Left - Feature Image with Overlay */}
+          {/* Left - Animated Dermaspace Laser Illustration with Flat Info Card */}
           <div className="relative">
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
-              <Image
-                src="/images/laser-hero-ng.jpg"
-                alt="Laser Treatment at Dermaspace"
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 via-[#7B2D8E]/20 to-transparent" />
-              
-              {/* Floating Card */}
-              <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-4">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-[#7B2D8E]/15 bg-[#240933]">
+              <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
+
+              {/* Floating Card (flat solid fill, zero shadow, zero gradient) */}
+              <div className="absolute bottom-4 left-4 right-4 bg-white/95 rounded-xl p-4 border border-[#7B2D8E]/15">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                     <span className="text-white text-lg font-bold">{formatPrice(1).charAt(0)}</span>
@@ -92,17 +93,11 @@ export default function LaserSection() {
               <Link
                 key={treatment.title}
                 href="/laser-tech"
-                className="group flex items-center gap-4 bg-white rounded-xl p-4 border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all duration-300"
+                className="group flex items-center gap-4 bg-white rounded-xl p-4 border border-gray-100 hover:border-[#7B2D8E]/40 hover:bg-[#F5ECF8]/25 transition-colors duration-300"
               >
                 {/* Thumbnail */}
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                  <Image
-                    src={treatment.image}
-                    alt={treatment.title}
-                    fill
-                    sizes="80px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-[#7B2D8E]/15">
+                  <LaserMiniThumb variant={treatment.thumbVariant} />
                 </div>
 
                 {/* Content */}

@@ -1,67 +1,52 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  computeHero3DLayout,
-  computeParallaxTarget,
-  generateSnowMoteSpecs,
+  computeSanctuaryViewport,
+  generateFestiveSnowflakes,
+  computeLaserPulseRings,
 } from './christmas-hero-math'
 
-test('computeHero3DLayout keeps centerpiece framed above bottom nav across viewports', () => {
-  const viewports: Array<[number, number, boolean]> = [
-    [390, 480, true],
-    [768, 520, false],
-    [1024, 560, false],
-    [1440, 560, false],
-  ]
+test('computeSanctuaryViewport adapts cleanly across mobile, tablet, and desktop', () => {
+  const mobile = computeSanctuaryViewport(390, 480)
+  assert.equal(mobile.isCompact, true)
+  assert.equal(mobile.showFullSanctuary, false)
+  assert.ok(mobile.flakeCount > 0 && mobile.flakeCount <= 10)
 
-  for (const [w, h, expectedCompact] of viewports) {
-    const layout = computeHero3DLayout(w, h)
-    assert.equal(layout.isCompact, expectedCompact)
-    assert.ok(layout.fov >= 35 && layout.fov <= 45)
-    assert.ok(layout.stageScale > 0.5 && layout.stageScale <= 1.0)
-    assert.ok(layout.stageOffset[0] > 0, `expected right-shifted sculpture at ${w}x${h}`)
+  const tablet = computeSanctuaryViewport(768, 520)
+  assert.equal(tablet.isCompact, false)
+  assert.equal(tablet.showFullSanctuary, true)
 
-    // Verify top/bottom bounds of a ~2.7-unit tall sculpture stay clear of top edge and bottom nav
-    const halfVisibleH = layout.cameraPos[2] * Math.tan((layout.fov * Math.PI) / 360)
-    const minVisibleY = layout.lookAt[1] - halfVisibleH * 0.72 // bottom nav occupies lower ~14% of section
-    const maxVisibleY = layout.lookAt[1] + halfVisibleH * 0.96
-    const sculptureBottom = layout.stageOffset[1] - 1.3 * layout.stageScale
-    const sculptureTop = layout.stageOffset[1] + 1.35 * layout.stageScale
+  const desktop = computeSanctuaryViewport(1440, 560)
+  assert.equal(desktop.isCompact, false)
+  assert.equal(desktop.showFullSanctuary, true)
+  assert.ok(desktop.flakeCount >= tablet.flakeCount)
+  assert.ok(desktop.archRightPercent >= 6 && desktop.archRightPercent <= 10)
+})
 
-    assert.ok(
-      sculptureBottom > minVisibleY,
-      `sculpture bottom (${sculptureBottom.toFixed(2)}) clips below visible dark zone (${minVisibleY.toFixed(2)}) at ${w}x${h}`,
-    )
-    assert.ok(
-      sculptureTop < maxVisibleY,
-      `sculpture top (${sculptureTop.toFixed(2)}) clips above top edge (${maxVisibleY.toFixed(2)}) at ${w}x${h}`,
-    )
+test('generateFestiveSnowflakes is deterministic, bounded, and brand-toned', () => {
+  const first = generateFestiveSnowflakes(16)
+  const second = generateFestiveSnowflakes(16)
+  assert.equal(first.length, 16)
+  assert.deepEqual(first, second)
+
+  for (const flake of first) {
+    assert.ok(flake.xPercent >= 10 && flake.xPercent <= 96)
+    assert.ok(flake.sizePx >= 4 && flake.sizePx <= 16)
+    assert.ok(flake.durationSec >= 10)
+    assert.ok(['crystal', 'dot'].includes(flake.variant))
+    assert.ok(['white', 'lilac', 'orchid'].includes(flake.tone))
   }
 })
 
-test('computeParallaxTarget clamps inputs and respects reducedMotion', () => {
-  const zero = computeParallaxTarget(0.8, -0.5, true)
-  assert.deepEqual(zero, { offsetX: 0, offsetY: 0 })
-
-  const clamped = computeParallaxTarget(5, -5, false)
-  assert.ok(Math.abs(clamped.offsetX) <= 0.5)
-  assert.ok(Math.abs(clamped.offsetY) <= 0.3)
-  assert.ok(clamped.offsetX > 0 && clamped.offsetY < 0)
-
-  const nanSafe = computeParallaxTarget(Number.NaN, Number.POSITIVE_INFINITY, false)
-  assert.equal(nanSafe.offsetX, 0)
-  assert.ok(Number.isFinite(nanSafe.offsetY))
-})
-
-test('generateSnowMoteSpecs is deterministic and uses only brand festive tones', () => {
-  const a = generateSnowMoteSpecs(120)
-  const b = generateSnowMoteSpecs(120)
-  assert.equal(a.length, 120)
-  assert.deepEqual(a, b)
-
-  for (const mote of a) {
-    assert.ok(['white', 'lilac', 'orchid'].includes(mote.tone))
-    assert.ok(mote.scale > 0)
-    assert.ok(mote.speedY > 0)
+test('computeLaserPulseRings produces evenly staggered ring delays', () => {
+  const rings = computeLaserPulseRings(3, 3.0)
+  assert.equal(rings.length, 3)
+  assert.deepEqual(
+    rings.map((r) => r.delaySec),
+    [0, 1, 2],
+  )
+  for (const ring of rings) {
+    assert.equal(ring.durationSec, 3.0)
+    assert.ok(ring.baseRadius >= 18)
   }
 })

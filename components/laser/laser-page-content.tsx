@@ -28,7 +28,6 @@
  *   • Removes the decorative `CurvedDecoration` SVG layers entirely.
  */
 
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   Clock,
@@ -46,6 +45,10 @@ import PersonalizedHero from '@/components/services/personalized-hero'
 import RecommendedForYou from '@/components/services/recommended-for-you'
 import QuickRebook from '@/components/services/quick-rebook'
 import SkinCareTips from '@/components/services/skin-care-tips'
+import {
+  LaserHairRemovalIllustration,
+  CarbonPeelIllustration,
+} from '@/components/laser/laser-illustrations'
 
 // ───────────────────────────────────────────────────────────────────
 // Data
@@ -352,62 +355,36 @@ export default function LaserPageContent() {
           />
           <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
             {/* Featured: Laser Hair Removal */}
-            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-2xl overflow-hidden group">
-              <Image
-                src="/images/laser-hair-removal-ng.jpg"
-                alt="Laser Hair Removal at Dermaspace"
-                fill
-                sizes="(max-width: 768px) 100vw, 66vw"
-                className="object-cover object-[center_22%] group-hover:scale-[1.03] transition-transform duration-700"
-              />
-              {/* Flat dark scrim — used to be a 3-stop linear-gradient
-                  (`bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25
-                  to-transparent`). Switched to a single semi-transparent
-                  fill so the page has zero gradients. The bottom band
-                  is a separate solid block, only behind the title, so
-                  the photo above stays clean. */}
-              <div className="absolute inset-0 bg-[#1F0828]/30" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
+            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-2xl overflow-hidden border border-[#7B2D8E]/20 bg-[#240933]">
+              <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
               <div className="absolute top-3 left-3">
-                <div className="inline-flex items-center gap-1 px-2 h-6 bg-white rounded-full">
+                <div className="inline-flex items-center gap-1 px-2.5 h-6 bg-white rounded-full">
                   <Crown className="w-3 h-3 text-[#7B2D8E]" />
                   <span className="text-[10px] font-bold text-[#7B2D8E] uppercase tracking-wider">
                     Most Popular
                   </span>
                 </div>
               </div>
-              <div className="absolute bottom-3 left-3 right-3">
+              <div className="absolute inset-x-0 bottom-0 bg-[#240933]/90 border-t border-[#7B2D8E]/30 px-3.5 py-3">
                 <h3 className="text-base md:text-xl font-bold text-white leading-tight text-balance">
                   Laser Hair Removal
                 </h3>
-                <p className="text-white/80 text-[11px] md:text-xs mt-0.5">
+                <p className="text-[#E9D5FF] text-[11px] md:text-xs mt-0.5">
                   Permanent reduction, safe on deeper tones
                 </p>
               </div>
             </div>
 
-            {/* Hollywood Peel — now fills the rest of the row alongside
-                the featured Laser Hair Removal card. (Was md:col-span-3
-                next to a Rejuvenation tile; bumped to md:col-span-2 so
-                the two remaining cards span the full 6-col desktop grid
-                with no gap, and to col-span-4 for full width on mobile.) */}
-            <div className="col-span-4 md:col-span-2 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden group">
-              <Image
-                src="/images/carbon-peel-ng.jpg"
-                alt="Hollywood Carbon Peel"
-                fill
-                sizes="(max-width: 768px) 100vw, 33vw"
-                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-[#1F0828]/30" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
-              <div className="absolute top-2 right-2">
-                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[9.5px] font-bold">
+            {/* Hollywood Peel */}
+            <div className="col-span-4 md:col-span-2 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden border border-[#7B2D8E]/20 bg-[#240933]">
+              <CarbonPeelIllustration className="absolute inset-0 w-full h-full" />
+              <div className="absolute top-3 right-3">
+                <span className="px-2.5 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[9.5px] font-bold tracking-wider uppercase">
                   NEW
                 </span>
               </div>
-              <div className="absolute bottom-3 left-3 right-3">
-                <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
+              <div className="absolute inset-x-0 bottom-0 bg-[#240933]/90 border-t border-[#7B2D8E]/30 px-3.5 py-3">
+                <span className="text-[9.5px] font-bold tracking-wider text-[#D8B4FE] uppercase">
                   Carbon Laser
                 </span>
                 <h4 className="text-sm md:text-base font-bold text-white leading-tight">

@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { ServiceHero } from '@/components/services/service-hero'
+import { LaserHairRemovalIllustration } from '@/components/laser/laser-illustrations'
 import {
   Clock,
   ArrowRight,
@@ -109,16 +109,8 @@ export default function LaserPackageDealsPage() {
       <section className="py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center rounded-2xl border border-gray-100 bg-gray-50 p-5 md:p-7">
-            <div className="lg:col-span-5 relative aspect-[4/3] rounded-xl overflow-hidden border border-gray-100">
-              <Image
-                src="/images/laser-hair-removal-ng.jpg"
-                alt="Bundled Laser Package Deals at Dermaspace Lagos"
-                fill
-                sizes="(max-width: 1024px) 100vw, 40vw"
-                referrerPolicy="no-referrer"
-                className="object-cover"
-                priority
-              />
+            <div className="lg:col-span-5 relative aspect-[4/3] rounded-xl overflow-hidden border border-[#7B2D8E]/15 bg-[#240933]">
+              <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
             </div>
 
             <div className="lg:col-span-7">
