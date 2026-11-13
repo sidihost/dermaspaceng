@@ -41,7 +41,7 @@ function CrystalGlyph({ size, color }: { size: number; color: string }) {
  * ChristmasHeroIllustration
  * -------------------------
  * Clean, flat architectural Dermaspace Christmas Sanctuary illustration.
- * Uses pure solid brand colors (#240933, #350F4A, #5A1D6A, #7B2D8E, #D8B4FE,
+ * Uses Dermaspace's exact site palette (#7B2D8E, #5A1D6A, #9B4DB0, #D8B4FE,
  * #E9D5FF, #F5ECF8, #FFFFFF), zero gradients, zero shadows, zero dashed lines,
  * and zero Sparkles/Zap icons.
  */
@@ -52,7 +52,7 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
     <div
       data-testid="christmas-hero-illustration"
       aria-hidden="true"
-      className="relative w-full h-full overflow-hidden bg-[#240933] select-none"
+      className="relative w-full h-full overflow-hidden bg-[#7B2D8E] select-none"
     >
       {/* Desktop & Tablet Right-Side Architectural Sanctuary Tableau */}
       <div className="hidden md:flex absolute inset-x-0 top-0 bottom-[74px] right-[6%] lg:right-[8%] xl:right-[9%] pt-4 pb-2 items-end justify-end pointer-events-none">
@@ -61,10 +61,11 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
           className="h-full max-h-[435px] w-auto block"
           fill="none"
         >
-          {/* Outer delicate sanctuary arch linework (keeps background one pure uniform purple) */}
+          {/* Outer delicate sanctuary arch linework (keeps background uniform site purple #7B2D8E) */}
           <path
             d="M44 450 V206 C44 96 122 24 210 24 C298 24 376 96 376 206 V450"
-            stroke="#7B2D8E"
+            stroke="#D8B4FE"
+            strokeOpacity="0.6"
             strokeWidth="1.5"
           />
 
@@ -72,38 +73,38 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
           <path
             d="M64 450 V210 C64 114 130 46 210 46 C290 46 356 114 356 210 V450"
             stroke="#5A1D6A"
-            strokeWidth="1.25"
+            strokeWidth="1.35"
           />
 
           {/* Calm minimalist crescent & star constellation inside upper arch */}
-          <circle cx="114" cy="128" r="3" fill="#D8B4FE" fillOpacity="0.65" />
-          <circle cx="308" cy="118" r="2.5" fill="#FFFFFF" fillOpacity="0.65" />
-          <circle cx="286" cy="166" r="2" fill="#E9D5FF" fillOpacity="0.55" />
+          <circle cx="114" cy="128" r="3" fill="#E9D5FF" fillOpacity="0.75" />
+          <circle cx="308" cy="118" r="2.5" fill="#FFFFFF" fillOpacity="0.8" />
+          <circle cx="286" cy="166" r="2" fill="#F5ECF8" fillOpacity="0.65" />
 
-          {/* Left Suspended Plum Bauble */}
+          {/* Left Suspended Deep Plum Bauble */}
           <g className={active ? 'christmas-sway-a' : undefined}>
-            <line x1="126" y1="68" x2="126" y2="162" stroke="#D8B4FE" strokeWidth="1.25" />
+            <line x1="126" y1="68" x2="126" y2="162" stroke="#E9D5FF" strokeWidth="1.25" />
             {/* Ribbon collar */}
             <rect x="119" y="160" width="14" height="7" rx="2.5" fill="#E9D5FF" />
             <path d="M126 160 C118 152, 110 156, 118 162 Z" fill="#D8B4FE" />
             <path d="M126 160 C134 152, 142 156, 134 162 Z" fill="#D8B4FE" />
             {/* Bauble sphere */}
-            <circle cx="126" cy="197" r="32" fill="#7B2D8E" stroke="#E9D5FF" strokeWidth="1.25" />
+            <circle cx="126" cy="197" r="32" fill="#5A1D6A" stroke="#E9D5FF" strokeWidth="1.3" />
             {/* Crisp snowflake line motif */}
             <g stroke="#F5ECF8" strokeWidth="1.5" strokeLinecap="round">
               <line x1="126" y1="181" x2="126" y2="213" />
               <line x1="112" y1="189" x2="140" y2="205" />
               <line x1="140" y1="189" x2="112" y2="205" />
-              <circle cx="126" cy="197" r="3.5" fill="#7B2D8E" stroke="#F5ECF8" strokeWidth="1.4" />
+              <circle cx="126" cy="197" r="3.5" fill="#5A1D6A" stroke="#F5ECF8" strokeWidth="1.4" />
             </g>
           </g>
 
           {/* Center High Luminous Pearl Bauble */}
           <g className={active ? 'christmas-sway-b' : undefined}>
-            <line x1="210" y1="24" x2="210" y2="108" stroke="#E9D5FF" strokeWidth="1.25" />
-            <rect x="202" y="106" width="16" height="8" rx="3" fill="#7B2D8E" />
-            <path d="M210 106 C201 97, 192 101, 201 108 Z" fill="#9B4DB0" />
-            <path d="M210 106 C219 97, 228 101, 219 108 Z" fill="#9B4DB0" />
+            <line x1="210" y1="24" x2="210" y2="108" stroke="#F5ECF8" strokeWidth="1.25" />
+            <rect x="202" y="106" width="16" height="8" rx="3" fill="#5A1D6A" />
+            <path d="M210 106 C201 97, 192 101, 201 108 Z" fill="#D8B4FE" />
+            <path d="M210 106 C219 97, 228 101, 219 108 Z" fill="#D8B4FE" />
             <circle cx="210" cy="152" r="40" fill="#F5ECF8" />
             <circle cx="210" cy="152" r="32" stroke="#D8B4FE" strokeWidth="1.2" />
             {/* Minimalist 4-petal botanical orchid mark */}
@@ -128,40 +129,40 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
 
           {/* Right Finial Drop Ornament */}
           <g className={active ? 'christmas-sway-a' : undefined} style={{ animationDelay: '0.8s' }}>
-            <line x1="294" y1="68" x2="294" y2="148" stroke="#D8B4FE" strokeWidth="1.25" />
+            <line x1="294" y1="68" x2="294" y2="148" stroke="#E9D5FF" strokeWidth="1.25" />
             <rect x="288" y="146" width="12" height="6" rx="2" fill="#FFFFFF" />
             <path
               d="M294 152 C314 166, 318 192, 294 218 C270 192, 274 166, 294 152 Z"
               fill="#5A1D6A"
-              stroke="#D8B4FE"
-              strokeWidth="1.25"
+              stroke="#E9D5FF"
+              strokeWidth="1.3"
             />
-            <path d="M279 182 H309" stroke="#E9D5FF" strokeWidth="1.4" />
+            <path d="M279 182 H309" stroke="#F5ECF8" strokeWidth="1.4" />
             <circle cx="294" cy="182" r="4" fill="#FFFFFF" />
           </g>
 
           {/* Winter Botanical Eucalyptus Sprigs behind plinth */}
           <g className={active ? 'christmas-botanical-breathe' : undefined}>
             {/* Left sprig */}
-            <path d="M106 382 Q122 330 146 286" stroke="#9B4DB0" strokeWidth="2" strokeLinecap="round" />
+            <path d="M106 382 Q122 330 146 286" stroke="#D8B4FE" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
             <ellipse cx="115" cy="346" rx="14" ry="7" transform="rotate(-38 115 346)" fill="#5A1D6A" />
-            <ellipse cx="132" cy="332" rx="13" ry="6.5" transform="rotate(24 132 332)" fill="#7B2D8E" />
-            <ellipse cx="122" cy="312" rx="12" ry="6" transform="rotate(-32 122 312)" fill="#9B4DB0" />
-            <ellipse cx="142" cy="298" rx="11" ry="5.5" transform="rotate(28 142 298)" fill="#D8B4FE" />
-            <circle cx="148" cy="282" r="4.5" fill="#F5ECF8" />
+            <ellipse cx="132" cy="332" rx="13" ry="6.5" transform="rotate(24 132 332)" fill="#9B4DB0" />
+            <ellipse cx="122" cy="312" rx="12" ry="6" transform="rotate(-32 122 312)" fill="#5A1D6A" />
+            <ellipse cx="142" cy="298" rx="11" ry="5.5" transform="rotate(28 142 298)" fill="#E9D5FF" />
+            <circle cx="148" cy="282" r="4.5" fill="#FFFFFF" />
 
             {/* Right sprig */}
-            <path d="M314 382 Q296 334 276 292" stroke="#9B4DB0" strokeWidth="2" strokeLinecap="round" />
+            <path d="M314 382 Q296 334 276 292" stroke="#D8B4FE" strokeOpacity="0.8" strokeWidth="2" strokeLinecap="round" />
             <ellipse cx="305" cy="346" rx="14" ry="7" transform="rotate(36 305 346)" fill="#5A1D6A" />
-            <ellipse cx="288" cy="334" rx="13" ry="6.5" transform="rotate(-24 288 334)" fill="#7B2D8E" />
-            <ellipse cx="296" cy="314" rx="12" ry="6" transform="rotate(30 296 314)" fill="#9B4DB0" />
-            <ellipse cx="279" cy="300" rx="10" ry="5" transform="rotate(-26 279 300)" fill="#D8B4FE" />
-            <circle cx="274" cy="288" r="4" fill="#F5ECF8" />
+            <ellipse cx="288" cy="334" rx="13" ry="6.5" transform="rotate(-24 288 334)" fill="#9B4DB0" />
+            <ellipse cx="296" cy="314" rx="12" ry="6" transform="rotate(30 296 314)" fill="#5A1D6A" />
+            <ellipse cx="279" cy="300" rx="10" ry="5" transform="rotate(-26 279 300)" fill="#E9D5FF" />
+            <circle cx="274" cy="288" r="4" fill="#FFFFFF" />
           </g>
 
           {/* Architectural Plinth Base (sits cleanly above bottom white bar) */}
           <rect x="72" y="382" width="276" height="44" rx="6" fill="#5A1D6A" />
-          <rect x="72" y="382" width="276" height="6" rx="3" fill="#7B2D8E" />
+          <rect x="72" y="382" width="276" height="6" rx="3" fill="#9B4DB0" />
 
           {/* Apothecary Dropper Serum Bottle (Left on Plinth) */}
           <g>
@@ -170,7 +171,7 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
             <line x1="129" y1="347" x2="147" y2="347" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" />
             <line x1="133" y1="354" x2="143" y2="354" stroke="#9B4DB0" strokeWidth="1.5" strokeLinecap="round" />
             {/* Collar & Pipette */}
-            <rect x="129" y="307" width="18" height="11" rx="3" fill="#7B2D8E" />
+            <rect x="129" y="307" width="18" height="11" rx="3" fill="#9B4DB0" />
             <rect x="133" y="294" width="10" height="14" rx="5" fill="#5A1D6A" />
           </g>
 
@@ -187,8 +188,8 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
             <rect x="167" y="334" width="89" height="12" fill="#7B2D8E" />
             <rect x="234" y="334" width="22" height="12" fill="#5A1D6A" />
             {/* Ribbon Bow */}
-            <path d="M214 290 C196 266, 178 278, 198 290 Z" fill="#7B2D8E" />
-            <path d="M214 290 C232 266, 250 278, 230 290 Z" fill="#9B4DB0" />
+            <path d="M214 290 C196 266, 178 278, 198 290 Z" fill="#5A1D6A" />
+            <path d="M214 290 C232 266, 250 278, 230 290 Z" fill="#D8B4FE" />
             <circle cx="214" cy="288" r="5.5" fill="#5A1D6A" />
           </g>
 
@@ -199,8 +200,8 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
               cx="288"
               cy="318"
               r="18"
-              fill="#D8B4FE"
-              fillOpacity="0.2"
+              fill="#FFFFFF"
+              fillOpacity="0.22"
               className={active ? 'christmas-flame-flicker' : undefined}
             />
             <rect x="269" y="336" width="38" height="46" rx="6" fill="#E9D5FF" />
@@ -227,40 +228,41 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
           {/* Sweeping sanctuary ceiling arch ribs */}
           <path
             d="M12 10 C54 4, 126 12, 184 54"
-            stroke="#7B2D8E"
+            stroke="#D8B4FE"
+            strokeOpacity="0.65"
             strokeWidth="1.4"
             strokeLinecap="round"
           />
           <path
             d="M36 22 C76 16, 134 24, 184 68"
             stroke="#5A1D6A"
-            strokeWidth="1.15"
+            strokeWidth="1.2"
             strokeLinecap="round"
           />
 
           {/* Subtle eucalyptus leaf accents along arch crown */}
           <ellipse cx="64" cy="14" rx="7" ry="3.2" transform="rotate(-14 64 14)" fill="#5A1D6A" />
-          <ellipse cx="78" cy="17" rx="6.5" ry="3" transform="rotate(18 78 17)" fill="#7B2D8E" />
-          <circle cx="90" cy="12" r="2.2" fill="#E9D5FF" fillOpacity="0.85" />
+          <ellipse cx="78" cy="17" rx="6.5" ry="3" transform="rotate(18 78 17)" fill="#9B4DB0" />
+          <circle cx="90" cy="12" r="2.2" fill="#F5ECF8" fillOpacity="0.9" />
 
           {/* Far-left Mini Crescent Crystal Drop (sits strictly above eyebrow) */}
           <g className={active ? 'christmas-sway-a' : undefined}>
-            <line x1="36" y1="8" x2="36" y2="30" stroke="#D8B4FE" strokeWidth="1.1" />
+            <line x1="36" y1="8" x2="36" y2="30" stroke="#E9D5FF" strokeWidth="1.1" />
             <path
               d="M36 30 L42 40 L36 52 L30 40 Z"
               fill="#5A1D6A"
               stroke="#E9D5FF"
-              strokeWidth="1.1"
+              strokeWidth="1.15"
             />
             <circle cx="36" cy="40" r="2" fill="#FFFFFF" />
           </g>
 
           {/* Luminous Pearl Orchid Bauble (clear right of eyebrow, above headline) */}
           <g className={active ? 'christmas-sway-b' : undefined}>
-            <line x1="112" y1="12" x2="112" y2="28" stroke="#E9D5FF" strokeWidth="1.15" />
-            <rect x="107" y="27" width="10" height="4.5" rx="1.8" fill="#7B2D8E" />
-            <path d="M112 27 C107 22, 102 25, 107 29 Z" fill="#9B4DB0" />
-            <path d="M112 27 C117 22, 122 25, 117 29 Z" fill="#9B4DB0" />
+            <line x1="112" y1="12" x2="112" y2="28" stroke="#F5ECF8" strokeWidth="1.15" />
+            <rect x="107" y="27" width="10" height="4.5" rx="1.8" fill="#5A1D6A" />
+            <path d="M112 27 C107 22, 102 25, 107 29 Z" fill="#D8B4FE" />
+            <path d="M112 27 C117 22, 122 25, 117 29 Z" fill="#D8B4FE" />
             <circle cx="112" cy="50" r="19" fill="#F5ECF8" />
             <circle cx="112" cy="50" r="15" stroke="#D8B4FE" strokeWidth="1" />
             <path d="M112 40 C114.5 45, 114.5 47.5, 112 50 C109.5 47.5, 109.5 45, 112 40 Z" fill="#7B2D8E" />
@@ -270,22 +272,22 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
             <circle cx="112" cy="50" r="2" fill="#F5ECF8" />
           </g>
 
-          {/* Suspended Plum Snowflake Bauble (far top-right) */}
+          {/* Suspended Deep Plum Snowflake Bauble (far top-right) */}
           <g className={active ? 'christmas-sway-a' : undefined} style={{ animationDelay: '0.6s' }}>
-            <line x1="160" y1="30" x2="160" y2="46" stroke="#D8B4FE" strokeWidth="1.1" />
+            <line x1="160" y1="30" x2="160" y2="46" stroke="#E9D5FF" strokeWidth="1.1" />
             <rect x="155.5" y="45" width="9" height="4" rx="1.6" fill="#E9D5FF" />
-            <circle cx="160" cy="65" r="16" fill="#7B2D8E" stroke="#E9D5FF" strokeWidth="1.15" />
+            <circle cx="160" cy="65" r="16" fill="#5A1D6A" stroke="#E9D5FF" strokeWidth="1.2" />
             <g stroke="#F5ECF8" strokeWidth="1.15" strokeLinecap="round">
               <line x1="160" y1="56" x2="160" y2="74" />
               <line x1="152.2" y1="60.5" x2="167.8" y2="69.5" />
               <line x1="167.8" y1="60.5" x2="152.2" y2="69.5" />
-              <circle cx="160" cy="65" r="1.8" fill="#7B2D8E" stroke="#F5ECF8" strokeWidth="1" />
+              <circle cx="160" cy="65" r="1.8" fill="#5A1D6A" stroke="#F5ECF8" strokeWidth="1" />
             </g>
           </g>
 
           {/* Delicate Constellation Dots */}
-          <circle cx="76" cy="40" r="1.8" fill="#D8B4FE" fillOpacity="0.65" />
-          <circle cx="142" cy="24" r="2" fill="#FFFFFF" fillOpacity="0.7" />
+          <circle cx="76" cy="40" r="1.8" fill="#E9D5FF" fillOpacity="0.75" />
+          <circle cx="142" cy="24" r="2" fill="#FFFFFF" fillOpacity="0.8" />
         </svg>
 
         {/* Lower-right Self-Contained Sanctuary Dome & Winter Gift Plinth (clear beside stacked CTAs) */}
@@ -297,43 +299,44 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
           {/* Complete miniature sanctuary dome halo behind plinth */}
           <path
             d="M18 96 A70 70 0 0 1 158 96"
-            stroke="#7B2D8E"
+            stroke="#D8B4FE"
+            strokeOpacity="0.6"
             strokeWidth="1.35"
           />
           <path
             d="M28 96 A60 60 0 0 1 148 96"
             stroke="#5A1D6A"
-            strokeWidth="1.1"
+            strokeWidth="1.2"
           />
 
           {/* Subtle star dots inside dome */}
-          <circle cx="48" cy="44" r="1.8" fill="#D8B4FE" fillOpacity="0.7" />
-          <circle cx="132" cy="38" r="2" fill="#FFFFFF" fillOpacity="0.65" />
+          <circle cx="48" cy="44" r="1.8" fill="#E9D5FF" fillOpacity="0.8" />
+          <circle cx="132" cy="38" r="2" fill="#FFFFFF" fillOpacity="0.75" />
 
           {/* Botanical Eucalyptus Sprigs */}
           <g className={active ? 'christmas-botanical-breathe' : undefined}>
-            <path d="M26 96 Q36 68 50 46" stroke="#9B4DB0" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M26 96 Q36 68 50 46" stroke="#D8B4FE" strokeOpacity="0.8" strokeWidth="1.5" strokeLinecap="round" />
             <ellipse cx="31" cy="76" rx="8" ry="4" transform="rotate(-38 31 76)" fill="#5A1D6A" />
-            <ellipse cx="42" cy="68" rx="7.5" ry="3.8" transform="rotate(24 42 68)" fill="#7B2D8E" />
-            <ellipse cx="38" cy="57" rx="6.5" ry="3.2" transform="rotate(-30 38 57)" fill="#9B4DB0" />
-            <circle cx="51" cy="43" r="2.8" fill="#F5ECF8" />
+            <ellipse cx="42" cy="68" rx="7.5" ry="3.8" transform="rotate(24 42 68)" fill="#9B4DB0" />
+            <ellipse cx="38" cy="57" rx="6.5" ry="3.2" transform="rotate(-30 38 57)" fill="#E9D5FF" />
+            <circle cx="51" cy="43" r="2.8" fill="#FFFFFF" />
 
-            <path d="M150 96 Q140 70 128 50" stroke="#9B4DB0" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M150 96 Q140 70 128 50" stroke="#D8B4FE" strokeOpacity="0.8" strokeWidth="1.5" strokeLinecap="round" />
             <ellipse cx="145" cy="77" rx="8" ry="4" transform="rotate(36 145 77)" fill="#5A1D6A" />
-            <ellipse cx="135" cy="69" rx="7" ry="3.6" transform="rotate(-24 135 69)" fill="#7B2D8E" />
-            <circle cx="127" cy="47" r="2.6" fill="#F5ECF8" />
+            <ellipse cx="135" cy="69" rx="7" ry="3.6" transform="rotate(-24 135 69)" fill="#9B4DB0" />
+            <circle cx="127" cy="47" r="2.6" fill="#FFFFFF" />
           </g>
 
           {/* Architectural Plinth Base */}
           <rect x="12" y="96" width="152" height="19" rx="4.5" fill="#5A1D6A" />
-          <rect x="12" y="96" width="152" height="3.5" rx="1.8" fill="#7B2D8E" />
+          <rect x="12" y="96" width="152" height="3.5" rx="1.8" fill="#9B4DB0" />
 
           {/* Mini Apothecary Serum Bottle */}
           <g>
             <rect x="26" y="62" width="24" height="34" rx="5.5" fill="#F5ECF8" />
             <rect x="29.5" y="71.5" width="17" height="14.5" rx="2" fill="#FFFFFF" stroke="#D8B4FE" strokeWidth="0.9" />
             <line x1="33.5" y1="78.5" x2="42.5" y2="78.5" stroke="#7B2D8E" strokeWidth="1.4" strokeLinecap="round" />
-            <rect x="33.5" y="56" width="9" height="6" rx="2" fill="#7B2D8E" />
+            <rect x="33.5" y="56" width="9" height="6" rx="2" fill="#9B4DB0" />
             <rect x="35.5" y="48.5" width="5" height="8" rx="2.5" fill="#5A1D6A" />
           </g>
 
@@ -346,8 +349,8 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
             <rect x="78" y="40.5" width="9.5" height="55.5" fill="#7B2D8E" />
             <rect x="54" y="69" width="55" height="7.5" fill="#7B2D8E" />
             <rect x="95" y="69" width="14" height="7.5" fill="#5A1D6A" />
-            <path d="M83 40.5 C71.5 25.5, 61.5 33, 73 40.5 Z" fill="#7B2D8E" />
-            <path d="M83 40.5 C94.5 25.5, 104.5 33, 93 40.5 Z" fill="#9B4DB0" />
+            <path d="M83 40.5 C71.5 25.5, 61.5 33, 73 40.5 Z" fill="#5A1D6A" />
+            <path d="M83 40.5 C94.5 25.5, 104.5 33, 93 40.5 Z" fill="#D8B4FE" />
             <circle cx="83" cy="39.5" r="3.5" fill="#5A1D6A" />
           </g>
 
@@ -357,7 +360,7 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
               cx="132"
               cy="56"
               r="11"
-              fill="#D8B4FE"
+              fill="#FFFFFF"
               fillOpacity="0.22"
               className={active ? 'christmas-flame-flicker' : undefined}
             />

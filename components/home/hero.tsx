@@ -217,7 +217,7 @@ export default function Hero() {
       className="relative h-[500px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
     >
       {/* Background Slider */}
-      <div className="absolute inset-0 bg-[#240933]">
+      <div className="absolute inset-0 bg-[#7B2D8E]">
         {slides.map((slide, index) => (
           <div
             key={slide.eyebrow}
@@ -413,7 +413,7 @@ export default function Hero() {
                       />
                       <span
                         className={`${
-                          active.festive ? 'text-[#D8B4FE]' : 'text-[#7B2D8E]'
+                          active.festive ? 'text-[#E9D5FF]' : 'text-[#7B2D8E]'
                         } inline-block`}
                         style={{
                           animation: `hero-char-in 500ms ease-out ${underlineDelay}ms both`,
@@ -434,7 +434,7 @@ export default function Hero() {
                         <path
                           d="M2 8 C 40 3, 95 10, 140 5 S 212 3, 238 7"
                           fill="none"
-                          stroke="#D8B4FE"
+                          stroke="#E9D5FF"
                           strokeWidth="2"
                           strokeLinecap="round"
                           style={{
