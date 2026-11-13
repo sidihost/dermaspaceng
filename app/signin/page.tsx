@@ -8,10 +8,12 @@ import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 import PageLoader from '@/components/shared/page-loader'
 import Header from '@/components/layout/header'
+import { XAuthButton } from '@/components/auth/x-auth-button'
 
 function SignInForm() {
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const redirectTo =
+    searchParams.get('redirect') || searchParams.get('next') || '/dashboard'
   const captchaRef = useRef<HCaptchaRef>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -326,17 +328,9 @@ function SignInForm() {
             Sign in with Google
           </a>
 
-          {/* Sign in with X — kicks off PKCE flow handled by
-              /api/auth/x → /api/auth/x/callback. */}
-          <a
-            href="/api/auth/x"
-            className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
-          >
-            <svg className="w-5 h-5 text-gray-900" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
-            </svg>
-            Sign in with X
-          </a>
+          {/* Sign in with X — opens X OAuth 2.0 PKCE popup handled by
+              /api/auth/x → /api/auth/x/callback → /api/auth/x/handoff. */}
+          <XAuthButton mode="signin" redirectTo={redirectTo} onError={setError} />
 
           {/* Sign in with Microsoft — uses the standard OAuth 2.0 /
               OIDC flow against login.microsoftonline.com. Supports both

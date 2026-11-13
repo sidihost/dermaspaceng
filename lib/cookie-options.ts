@@ -43,73 +43,79 @@
 
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
 
-/**
- * Returns TRUE everywhere except local development.
- *
- * - `next dev` on localhost: NODE_ENV === 'development' → false
- *   (browsers would silently drop a Secure cookie sent over
- *   http://localhost, so we can't enforce it here without
- *   breaking sign-in for engineers working locally).
- * - Vercel preview / production: NODE_ENV === 'production' → true.
- * - Test runners: NODE_ENV === 'test' → true (defensive: we'd
- *   rather a unit test break loudly than ship a non-Secure cookie
- *   because someone forgot to mock an env var).
- */
-function isSecureContext(): boolean {
+export interface CookieRequestHint {
+  headers?: { get(name: string): string | null }
+  nextUrl?: { protocol?: string; hostname?: string }
+}
+
+function isLocalHttpRequest(request?: CookieRequestHint): boolean {
+  if (!request) return false
+  const forwardedProto = request.headers?.get('x-forwarded-proto')
+  if (forwardedProto === 'https') return false
+  const host =
+    request.headers?.get('x-forwarded-host') ||
+    request.headers?.get('host') ||
+    request.nextUrl?.hostname ||
+    ''
+  return host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.startsWith('0.0.0.0')
+}
+
+function isSecureContext(request?: CookieRequestHint): boolean {
+  if (request) {
+    if (request.headers?.get('x-forwarded-proto') === 'https') return true
+    if (request.nextUrl?.protocol === 'https:') return true
+    if (isLocalHttpRequest(request)) {
+      return process.env.NODE_ENV !== 'development'
+    }
+  }
+  const configuredOrigin = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || ''
+  if (configuredOrigin.startsWith('https://')) {
+    return true
+  }
   return process.env.NODE_ENV !== 'development'
+}
+
+function isCrossOriginIframeContext(request?: CookieRequestHint): boolean {
+  if (isLocalHttpRequest(request)) return false
+  return Boolean(process.env.APP_URL?.startsWith('https://')) && isSecureContext(request)
 }
 
 /**
  * Options for cookies that hold authentication state or other
- * server-only secrets. Sets HttpOnly + Secure + SameSite=Lax +
- * path=/ as non-negotiable defaults. Callers supply `maxAge` or
- * `expires` to control lifetime.
- *
- * The returned object is shaped to satisfy both `cookies().set(...)`
- * in route handlers AND `response.cookies.set(...)` in middleware /
- * NextResponse code — the two APIs share the same option type under
- * the hood.
+ * server-only secrets. Sets HttpOnly + Secure + SameSite=Lax (or
+ * SameSite=None in cross-origin HTTPS iframe preview contexts like
+ * AI Studio) + path=/ as defaults.
  */
 export function getAuthCookieOptions(
   overrides: Partial<Omit<ResponseCookie, 'name' | 'value'>> = {},
+  request?: CookieRequestHint,
 ): Omit<ResponseCookie, 'name' | 'value'> {
-  // Spread overrides FIRST so the security defaults below win on any
-  // conflict. A caller can adjust maxAge / expires / sameSite, but
-  // can never accidentally (or deliberately) drop HttpOnly or
-  // Secure. If a future need genuinely requires `httpOnly: false`,
-  // the caller must reach for `getClientReadableCookieOptions`
-  // instead — the explicit choice of helper is the audit signal.
+  const secure = isSecureContext(request)
+  const defaultSameSite = isCrossOriginIframeContext(request) ? 'none' : 'lax'
   return {
-    sameSite: 'lax',
+    sameSite: defaultSameSite,
     path: '/',
     ...overrides,
     httpOnly: true,
-    secure: isSecureContext(),
+    secure,
   }
 }
 
 /**
  * Options for cookies whose VALUE the client legitimately needs to
- * read from JavaScript (e.g. geo hints surfaced in the UI). Keeps
- * the Secure + SameSite + path defaults but allows JS access.
- *
- * Even when readable from JS, these cookies still only travel over
- * HTTPS in any deployed environment, so a network observer can't
- * see them and the browser refuses to attach them to insecure
- * requests.
+ * read from JavaScript (e.g. geo hints surfaced in the UI).
  */
 export function getClientReadableCookieOptions(
   overrides: Partial<Omit<ResponseCookie, 'name' | 'value'>> = {},
+  request?: CookieRequestHint,
 ): Omit<ResponseCookie, 'name' | 'value'> {
-  // Same pattern as getAuthCookieOptions: spread overrides first
-  // so Secure can never be silently dropped. HttpOnly is allowed
-  // to be `false` here because — by definition — these cookies are
-  // meant to be readable from JavaScript.
+  const secure = isSecureContext(request)
+  const defaultSameSite = isCrossOriginIframeContext(request) ? 'none' : 'lax'
   return {
     httpOnly: false,
-    sameSite: 'lax',
+    sameSite: defaultSameSite,
     path: '/',
     ...overrides,
-    secure: isSecureContext(),
+    secure,
   }
 }

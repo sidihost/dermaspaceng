@@ -32,7 +32,14 @@ import { Redis } from "@upstash/redis"
 
 let _client: Redis | null = null
 
-const inMemoryStore = new Map<string, { value: unknown; expiresAt: number }>()
+const globalForRedis = globalThis as unknown as {
+  __dsInMemoryStore?: Map<string, { value: unknown; expiresAt: number }>
+}
+
+const inMemoryStore = (globalForRedis.__dsInMemoryStore ??= new Map<
+  string,
+  { value: unknown; expiresAt: number }
+>())
 
 const mockRedis = {
   get: async <T>(key: string): Promise<T | null> => {

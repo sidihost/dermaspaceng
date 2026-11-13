@@ -220,37 +220,24 @@ const nextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
-          // X-Frame-Options + CSP frame-ancestors: prevents another
-          // site from embedding Dermaspace in an <iframe> and
-          // tricking a signed-in user into clicking through a
-          // transparent overlay (classic clickjacking). `DENY` is
-          // safe — we never iframe our own pages on third parties.
-          { key: 'X-Frame-Options', value: 'DENY' },
-          {
-            // CSP scoped to frame-ancestors only. We deliberately do
-            // NOT ship a full default-src CSP yet because Next 16 +
-            // inline runtime + Vercel's preview banners would
-            // require nonce wiring across every Server Component,
-            // and a misconfigured CSP that blocks our own scripts is
-            // far more painful than the marginal XSS coverage gain.
-            // frame-ancestors closes the clickjacking hole with zero
-            // breakage risk. We can layer the full CSP later behind
-            // a feature flag.
-            key: 'Content-Security-Policy',
-            value: "frame-ancestors 'none'",
-          },
+          ...(process.env.APP_URL
+            ? []
+            : [
+                { key: 'X-Frame-Options', value: 'DENY' },
+                {
+                  key: 'Content-Security-Policy',
+                  value: "frame-ancestors 'none'",
+                },
+              ]),
           // X-XSS-Protection is deprecated in modern browsers (and
           // actively dangerous on old IE), but legacy WAFs / scanners
           // still flag its absence. Setting it to `0` explicitly
           // disables the broken filter while satisfying the scanner.
           { key: 'X-XSS-Protection', value: '0' },
-          // Cross-origin isolation defaults. `same-origin` for the
-          // opener policy means a popup opened from our site (e.g.
-          // OAuth) can't reach back into the parent window's JS
-          // context. `same-origin` for resource policy stops other
-          // origins from embedding our JSON / API responses as a
-          // resource.
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          // `same-origin-allow-popups` preserves `window.opener` for
+          // OAuth popups (such as X OAuth 2.0) while still isolating
+          // other cross-origin navigations.
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           {
             key: 'Cross-Origin-Resource-Policy',
             value: 'same-site',
