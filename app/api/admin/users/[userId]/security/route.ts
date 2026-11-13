@@ -112,7 +112,7 @@ export async function POST(
         )
       `
     } catch (err) {
-      console.warn('[v0] activity_log insert skipped:', err)
+      console.warn('activity_log insert skipped:', err)
     }
 
     return NextResponse.json({ ok: true, action })
@@ -120,7 +120,7 @@ export async function POST(
     if (error instanceof Error && /unauthorized|forbidden/i.test(error.message)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    console.error('[v0] admin reset 2FA error:', error)
+    console.error('admin reset 2FA error:', error)
     return NextResponse.json(
       { error: 'Failed to reset 2FA' },
       { status: 500 },

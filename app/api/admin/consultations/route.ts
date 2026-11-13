@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest) {
             })
           }
         } catch (err) {
-          console.error('[v0] consultation status notifyUser failed', err)
+          console.error('consultation status notifyUser failed', err)
         }
         break
 

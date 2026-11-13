@@ -286,7 +286,7 @@ export async function semanticSearch(opts: QueryOptions): Promise<VectorSearchHi
       filter,
     })
   } catch (err) {
-    // Common causes (logged so we can see them in the v0 console):
+    // Common causes (logged so we can see them in the server console):
     //   * Index has no embedding model configured — `data:` requires
     //     a model on the index (e.g. BAAI/bge-m3). The error message
     //     from Upstash will say "no embedding model".

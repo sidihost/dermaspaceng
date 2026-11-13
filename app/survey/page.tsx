@@ -312,7 +312,7 @@ export default function SurveyPage() {
       }
       setIsSubmitted(true)
     } catch (err) {
-      console.error('[v0] Survey submission failed:', err)
+      console.error('Survey submission failed:', err)
       alert(
         err instanceof Error
           ? err.message

@@ -128,13 +128,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.error('[v0] AI improve failed across all providers:', errors.join(' | '))
+    console.error('AI improve failed across all providers:', errors.join(' | '))
     return NextResponse.json(
       { error: 'AI is busy right now. Please try again in a few seconds.' },
       { status: 503 },
     )
   } catch (error) {
-    console.error('[v0] AI improve error:', error)
+    console.error('AI improve error:', error)
     return NextResponse.json(
       { error: 'Failed to improve text' },
       { status: 500 },

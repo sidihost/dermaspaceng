@@ -257,7 +257,7 @@ export default function PublicProfilePage() {
         }
         if (!res.ok) {
           console.error(
-            `[v0] /api/user/profile/${username} returned ${res.status}`,
+            `/api/user/profile/${username} returned ${res.status}`,
           )
           setServerError(true)
           return

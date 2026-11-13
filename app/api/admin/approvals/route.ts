@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       offset,
     })
   } catch (error) {
-    console.error('[v0] GET /api/admin/approvals failed:', error)
+    console.error('GET /api/admin/approvals failed:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch approvals'
     return NextResponse.json({ error: message }, { status: 500 })
   }

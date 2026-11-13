@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       concerns: Array.isArray(concerns) ? concerns : [],
       notes,
     }).catch((err) => {
-      console.error('[v0] consultation analysis threw unexpectedly', err)
+      console.error('consultation analysis threw unexpectedly', err)
       return null
     })
 
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
           priority: 'normal',
         })
       } catch (err) {
-        console.error('[v0] consultation notifyUser failed', err)
+        console.error('consultation notifyUser failed', err)
       }
     }
 

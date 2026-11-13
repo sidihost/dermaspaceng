@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('[v0] derma intent store failed:', error)
+    console.error('derma intent store failed:', error)
     return NextResponse.json({ error: 'Could not store intent' }, { status: 500 })
   }
 }

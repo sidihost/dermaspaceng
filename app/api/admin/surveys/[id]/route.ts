@@ -30,7 +30,7 @@ export async function GET(
     }
     return NextResponse.json({ survey: rows[0] })
   } catch (error) {
-    console.error('[v0] Get survey detail error:', error)
+    console.error('Get survey detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch survey'
     return NextResponse.json({ error: message }, { status: 500 })
   }

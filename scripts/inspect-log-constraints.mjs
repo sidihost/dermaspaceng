@@ -8,7 +8,7 @@ const cols = await sql`
   WHERE table_schema='public' AND table_name='newsletter_campaign_logs'
   ORDER BY ordinal_position
 `
-console.log('[v0] newsletter_campaign_logs columns:')
+console.log('newsletter_campaign_logs columns:')
 for (const c of cols) console.log('  -', c.column_name, c.data_type, c.is_nullable)
 
 const cons = await sql`
@@ -16,5 +16,5 @@ const cons = await sql`
   FROM pg_constraint
   WHERE conrelid = 'newsletter_campaign_logs'::regclass
 `
-console.log('[v0] constraints:')
+console.log('constraints:')
 for (const c of cons) console.log('  -', c.conname, '=>', c.def)

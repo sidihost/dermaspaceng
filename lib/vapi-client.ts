@@ -55,7 +55,7 @@ export async function getVapi(): Promise<{
         // Package not installed, offline, or SDK init failure. We
         // intentionally keep this quiet and let callers degrade to
         // the legacy voice path.
-        console.warn('[v0] Vapi SDK unavailable:', err)
+        console.warn('Vapi SDK unavailable:', err)
         singleton = null
         loaderPromise = null
         return null

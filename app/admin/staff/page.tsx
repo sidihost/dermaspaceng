@@ -198,7 +198,7 @@ export default function StaffPage() {
         // staff to [] so the empty-state renders, but we ALSO log
         // the actual error.
         const text = await res.text().catch(() => '')
-        console.error('[v0] /api/admin/staff failed', res.status, text)
+        console.error('/api/admin/staff failed', res.status, text)
         setStaff([])
         setInvitations([])
         return
@@ -305,7 +305,7 @@ export default function StaffPage() {
             : `${member.first_name} ${member.last_name} has been reinstated and can sign back in.`,
       })
     } catch (error) {
-      console.error('[v0] Suspend/reinstate failed:', error)
+      console.error('Suspend/reinstate failed:', error)
       setStaff(prev)
       setMemberFeedback({
         kind: 'error',
@@ -350,7 +350,7 @@ export default function StaffPage() {
         message: `${fullName} has been removed from the team and is now a regular client.`,
       })
     } catch (error) {
-      console.error('[v0] Remove staff failed:', error)
+      console.error('Remove staff failed:', error)
       setStaff(prev)
       setMemberFeedback({
         kind: 'error',
@@ -394,7 +394,7 @@ export default function StaffPage() {
           `Verification code sent to ${member.email ?? fullName}.`,
       })
     } catch (error) {
-      console.error('[v0] Resend verification error:', error)
+      console.error('Resend verification error:', error)
       setMemberFeedback({
         kind: 'error',
         message: 'Network error. Please try again in a moment.',
@@ -430,7 +430,7 @@ export default function StaffPage() {
       })
       fetchStaff()
     } catch (error) {
-      console.error('[v0] Resend invitation error:', error)
+      console.error('Resend invitation error:', error)
       setInviteFeedback({
         kind: 'error',
         message: 'Network error. Please try again in a moment.',
@@ -472,7 +472,7 @@ export default function StaffPage() {
         })
       }
     } catch (error) {
-      console.error('[v0] Delete invitation error:', error)
+      console.error('Delete invitation error:', error)
       setInviteFeedback({
         kind: 'error',
         message: 'Network error. Please try again in a moment.',

@@ -145,13 +145,13 @@ export async function POST(request: NextRequest) {
       description: `${plan.name} membership signup reward (wallet)`,
       reference,
     }).catch((err) => {
-      console.error('[v0] awardGlowPoints (wallet) failed', { reference, err })
+      console.error('awardGlowPoints (wallet) failed', { reference, err })
     })
 
     // Bust the Redis /auth/me cache so the dashboard sees the new
     // membership + new Glow Points balance on the next page load.
     await invalidateUserMe(String(userIdNum)).catch((err) => {
-      console.error('[v0] invalidateUserMe after wallet membership pay failed', err)
+      console.error('invalidateUserMe after wallet membership pay failed', err)
     })
 
     // STAGE 5 - invoice. Single line item — Glow Points aren&apos;t
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         reference,
         invoiceNumber: invoice?.invoice_number || null,
       }).catch((err) => {
-        console.error('[v0] sendMembershipConfirmation (wallet) failed', err)
+        console.error('sendMembershipConfirmation (wallet) failed', err)
       })
     }
 
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
       receiptUrl: `/membership/receipt/${reference}`,
     })
   } catch (error) {
-    console.error('[v0] membership pay-with-wallet error', error)
+    console.error('membership pay-with-wallet error', error)
     return NextResponse.json(
       { error: 'Failed to complete wallet payment' },
       { status: 500 },

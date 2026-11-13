@@ -29,9 +29,6 @@ const nextConfig = {
       // photography / gallery / service artwork is stored.
       { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
       { protocol: 'https', hostname: 'public.blob.vercel-storage.com' },
-      { protocol: 'https', hostname: 'blob.v0.dev' },
-      // Legacy hero / OG assets that still point at the v0 preview host.
-      { protocol: 'https', hostname: 'v0.dev' },
       { protocol: 'https', hostname: 'hebbkx1anhila5yf.public.blob.vercel-storage.com' },
       // Maps / profile avatars we proxy occasionally.
       { protocol: 'https', hostname: 'api.mapbox.com' },

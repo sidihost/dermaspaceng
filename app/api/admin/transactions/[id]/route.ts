@@ -58,7 +58,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[v0] Get transaction detail error:', error)
+    console.error('Get transaction detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch transaction'
     return NextResponse.json({ error: message }, { status: 500 })
   }

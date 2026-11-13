@@ -66,7 +66,7 @@ export async function GET() {
           upcoming: Number(r[0]?.upcoming ?? 0),
         }
       } catch (err) {
-        console.warn("[v0] /api/user/stats totals failed:", err)
+        console.warn("/api/user/stats totals failed:", err)
       }
 
       // Per-month breakdown for the bar chart. We bucket by the
@@ -123,7 +123,7 @@ export async function GET() {
           }
         })
       } catch (err) {
-        console.warn("[v0] /api/user/stats trend failed:", err)
+        console.warn("/api/user/stats trend failed:", err)
       }
 
       // Loyalty points — separate query because the table is
@@ -159,7 +159,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("[v0] /api/user/stats failed:", error)
+    console.error("/api/user/stats failed:", error)
     return NextResponse.json(
       { error: "Failed to fetch stats" },
       { status: 500 },

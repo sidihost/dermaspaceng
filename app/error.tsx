@@ -81,10 +81,8 @@ export default function RouteError({
   }, [reset])
 
   useEffect(() => {
-    // Surface the error in the server logs so we can see it in our log
-    // pipeline. The `[v0]` tag matches the rest of the codebase's
-    // debug-log convention.
-    console.error("[v0] Route error boundary caught:", error)
+    // Surface the error in the server logs so we can see it in our log pipeline.
+    console.error("Route error boundary caught:", error)
     // Forward to /api/client-errors so the failure shows up in Vercel
     // deployment logs (filter: "[CLIENT-ERROR]"). Reuses the transport
     // installed by the inline reporter in `app/layout.tsx`'s <head>.

@@ -1,16 +1,19 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import Image from 'next/image'
-import dynamic from 'next/dynamic'
 import useSWR from 'swr'
 import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Snowflake, Star } from 'lucide-react'
 
-const ChristmasHero3D = dynamic(() => import('./christmas-hero-3d'), {
-  ssr: false,
-  loading: () => <div className="w-full h-full bg-[#240933]" />,
-})
+const ChristmasHero3D = dynamic(
+  () => import('./christmas-hero-3d').then((m) => m.ChristmasHero3D),
+  {
+    ssr: false,
+    loading: () => <div className="w-full h-full bg-[#14041F]" aria-hidden="true" />,
+  },
+)
 
 // Toggle to false (or turn off Festive in Admin) to revert the hero back to the 3 standard slides.
 const CHRISTMAS_HERO_SLIDE_ENABLED = true
@@ -219,14 +222,10 @@ export default function Hero() {
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className={`relative ${
-        active.festive
-          ? 'min-h-[640px] md:min-h-[550px] md:h-auto lg:h-[560px]'
-          : 'h-[480px] sm:h-[520px] lg:h-[560px]'
-      } bg-white overflow-hidden`}
+      className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
     >
       {/* Background Slider */}
-      <div className={`absolute inset-0 ${active.festive ? 'bg-[#240933]' : ''}`}>
+      <div className="absolute inset-0 bg-[#14041F]">
         {slides.map((slide, index) => (
           <div
             key={slide.image}
@@ -252,114 +251,54 @@ export default function Hero() {
           </div>
         ))}
 
-        {/* Overlays: Zero gradients, scrims, or shadows on the 3D festive slide */}
-        {active.festive ? null : (
-          <>
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 transition-opacity duration-700"
-              style={{ background: 'rgba(42, 12, 58, 0.35)' }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(100deg, rgba(42,12,58,0.65) 0%, rgba(42,12,58,0.32) 45%, rgba(42,12,58,0.05) 100%)',
-              }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-0 top-0 h-28 sm:h-32"
-              style={{
-                background:
-                  'linear-gradient(180deg, rgba(42,12,58,0.48) 0%, rgba(42,12,58,0) 100%)',
-              }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(42,12,58,0.38) 100%)',
-              }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  'radial-gradient(60% 90% at 22% 60%, rgba(123,45,142,0.30) 0%, transparent 60%)',
-              }}
-            />
-          </>
+        {/* Clean solid contrast veil (zero CSS gradients, zero CSS shadows) */}
+        {active.festive ? (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none bg-[#14041F]/44 md:bg-transparent transition-opacity duration-700"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none bg-[#240933]/48 transition-opacity duration-700"
+          />
         )}
       </div>
 
-      {/* --- Signature spa ambient layers (standard photo slides only; 3D slide renders 3D snow/motifs directly) --- */}
+      {/* --- Standard slide ambient petals (solid SVG fills, zero shadows/gradients) --- */}
       {!active.festive && (
-        <>
-          {/* Rising steam wisps (right side) */}
-          <div
-            aria-hidden="true"
-            className="absolute bottom-0 right-0 w-1/2 h-full pointer-events-none overflow-hidden"
-          >
-            {[
-              { left: '18%', delay: '0s', dur: '9s', size: 180, opacity: 0.09 },
-              { left: '42%', delay: '2.2s', dur: '11s', size: 220, opacity: 0.08 },
-              { left: '68%', delay: '4.6s', dur: '10s', size: 160, opacity: 0.07 },
-              { left: '85%', delay: '6.8s', dur: '12s', size: 200, opacity: 0.06 },
-            ].map((s, i) => (
-              <span
-                key={i}
-                className="absolute bottom-[-40px] rounded-full blur-2xl"
-                style={{
-                  left: s.left,
-                  width: s.size,
-                  height: s.size,
-                  background: `radial-gradient(circle, rgba(255,255,255,${s.opacity + 0.1}) 0%, rgba(255,255,255,${s.opacity}) 40%, transparent 70%)`,
-                  animation: `hero-steam ${s.dur} ease-out ${s.delay} infinite`,
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Drifting petals */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none overflow-hidden"
-          >
-            {[
-              { top: '-6%',  left: '12%', delay: '0s',    dur: '16s', size: 11 },
-              { top: '-8%',  left: '28%', delay: '3.5s',  dur: '20s', size: 9  },
-              { top: '-10%', left: '46%', delay: '1.2s', dur: '22s', size: 12 },
-              { top: '-6%',  left: '62%', delay: '7s',    dur: '18s', size: 9  },
-              { top: '-10%', left: '78%', delay: '4.2s', dur: '24s', size: 10 },
-              { top: '-8%',  left: '90%', delay: '10s',   dur: '19s', size: 11 },
-            ].map((p, i) => (
-              <span
-                key={i}
-                className="absolute block"
-                style={{
-                  top: p.top,
-                  left: p.left,
-                  width: p.size,
-                  height: p.size * 1.4,
-                  animation: `hero-petal ${p.dur} linear ${p.delay} infinite`,
-                  filter:
-                    'drop-shadow(0 0 5px rgba(255,255,255,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
-                }}
-              >
-                <svg viewBox="0 0 10 14" className="w-full h-full">
-                  <path
-                    d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
-                    fill="rgba(123, 45, 142, 0.78)"
-                  />
-                </svg>
-              </span>
-            ))}
-          </div>
-        </>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+        >
+          {[
+            { top: '-6%',  left: '12%', delay: '0s',    dur: '16s', size: 11 },
+            { top: '-8%',  left: '28%', delay: '3.5s',  dur: '20s', size: 9  },
+            { top: '-10%', left: '46%', delay: '1.2s', dur: '22s', size: 12 },
+            { top: '-6%',  left: '62%', delay: '7s',    dur: '18s', size: 9  },
+            { top: '-10%', left: '78%', delay: '4.2s', dur: '24s', size: 10 },
+            { top: '-8%',  left: '90%', delay: '10s',   dur: '19s', size: 11 },
+          ].map((p, i) => (
+            <span
+              key={i}
+              className="hero-ambient absolute block"
+              style={{
+                top: p.top,
+                left: p.left,
+                width: p.size,
+                height: p.size * 1.4,
+                animation: `hero-petal ${p.dur} linear ${p.delay} infinite`,
+              }}
+            >
+              <svg viewBox="0 0 10 14" className="w-full h-full">
+                <path
+                  d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
+                  fill="rgba(216, 180, 254, 0.55)"
+                />
+              </svg>
+            </span>
+          ))}
+        </div>
       )}
 
       {/* Left edge vertical wordmark (desktop only) */}
@@ -413,21 +352,28 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className={`relative z-10 ${active.festive ? 'min-h-[640px] md:min-h-[550px] lg:min-h-0 lg:h-full' : 'h-full'} flex flex-col`}>
-        <div className={`flex-1 flex ${active.festive ? 'items-start md:items-center' : 'items-center'}`}>
-          <div className={`w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${active.festive ? 'py-6 md:py-7 lg:py-8 lg:pl-12 xl:pl-8' : 'py-5 sm:py-8'}`}>
-            <div className={active.festive ? 'max-w-xl md:max-w-[410px] lg:max-w-[515px] xl:max-w-[625px]' : 'max-w-2xl'}>
-              {/* Eyebrow — clean snowflake emblem without dash lines on the festive slide */}
+      <div className="relative z-10 h-full flex flex-col">
+        <div className="flex-1 flex items-center">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
+            <div className="max-w-2xl">
+              {/* Eyebrow */}
               <div
                 key={`eyebrow-${safeSlideIndex}`}
                 className="relative mb-3 sm:mb-4 flex items-center gap-2.5 sm:gap-3"
               >
                 {active.festive ? (
                   <>
+                    <span
+                      className="h-px bg-[#E9D5FF]/70"
+                      style={{
+                        animation: 'hero-char-in 520ms ease-out both',
+                        width: '28px',
+                      }}
+                    />
                     <Snowflake
                       aria-hidden="true"
-                      className="w-3.5 h-3.5 text-[#D8B4FE] shrink-0"
-                      style={{ animation: 'hero-char-in 520ms ease-out both' }}
+                      className="w-3.5 h-3.5 text-[#E9D5FF] shrink-0"
+                      style={{ animation: 'hero-char-in 520ms ease-out 60ms both' }}
                     />
                     <span
                       className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
@@ -437,6 +383,12 @@ export default function Hero() {
                     >
                       {active.eyebrow}
                     </span>
+                    <span
+                      className="h-px bg-white/25 flex-1 max-w-[72px]"
+                      style={{
+                        animation: 'hero-char-in 520ms ease-out 220ms both',
+                      }}
+                    />
                   </>
                 ) : (
                   <>
@@ -451,7 +403,6 @@ export default function Hero() {
                       className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
                       style={{
                         animation: 'hero-char-in 520ms ease-out 120ms both',
-                        textShadow: '0 1px 10px rgba(0,0,0,0.6)',
                       }}
                     >
                       {active.eyebrow}
@@ -471,27 +422,14 @@ export default function Hero() {
                 key={`title-${safeSlideIndex}`}
                 className="relative mb-3 sm:mb-4"
               >
-                <h1
-                  className={
-                    active.festive
-                      ? 'font-sans text-[1.95rem] sm:text-4xl md:text-[2.35rem] lg:text-[3rem] xl:text-[3.5rem] font-semibold text-white leading-[1.08] tracking-tight text-balance'
-                      : 'font-sans text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.08] tracking-tight text-balance'
-                  }
-                >
+                <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.08] tracking-tight text-balance">
                   <AnimatedText
                     text={active.title}
                     baseDelay={0}
                     step={titleStepMs}
                   />
                   <br />
-                  <span
-                    className="relative inline-block pb-3 sm:pb-4"
-                    style={
-                      active.festive
-                        ? undefined
-                        : { textShadow: '0 2px 20px rgba(0,0,0,0.35)' }
-                    }
-                  >
+                  <span className="relative inline-block pb-3 sm:pb-4">
                     <span className="font-serif italic font-normal text-white">
                       <AnimatedText
                         text={active.highlight}
@@ -501,7 +439,7 @@ export default function Hero() {
                       />
                       <span
                         className={`${
-                          active.festive ? 'text-[#9B4DB0]' : 'text-[#7B2D8E]'
+                          active.festive ? 'text-[#D8B4FE]' : 'text-[#7B2D8E]'
                         } inline-block`}
                         style={{
                           animation: `hero-char-in 500ms ease-out ${underlineDelay}ms both`,
@@ -511,45 +449,25 @@ export default function Hero() {
                       </span>
                     </span>
 
-                    {/* Ornate hand-drawn underline — solid brand orchid path without strokeDasharray on festive slide */}
-                    {active.festive ? (
-                      <svg
-                        aria-hidden="true"
-                        className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
-                        viewBox="0 0 240 12"
-                        preserveAspectRatio="none"
+                    {/* Ornate hand-drawn underline — drawn right after the title finishes */}
+                    <svg
+                      aria-hidden="true"
+                      className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
+                      viewBox="0 0 240 12"
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
+                        fill="none"
+                        stroke={active.festive ? '#D8B4FE' : '#7B2D8E'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeDasharray="240"
                         style={{
-                          animation: `hero-char-in 700ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
+                          animation: `hero-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
                         }}
-                      >
-                        <path
-                          d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
-                          fill="none"
-                          stroke="#9B4DB0"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        aria-hidden="true"
-                        className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
-                        viewBox="0 0 240 12"
-                        preserveAspectRatio="none"
-                      >
-                        <path
-                          d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
-                          fill="none"
-                          stroke="#7B2D8E"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeDasharray="240"
-                          style={{
-                            animation: `hero-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
-                          }}
-                        />
-                      </svg>
-                    )}
+                      />
+                    </svg>
                   </span>
                 </h1>
               </div>
@@ -579,19 +497,8 @@ export default function Hero() {
               >
                 <button
                   onClick={scrollToBooking}
-                  className={
-                    active.festive
-                      ? 'group relative overflow-hidden inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-[#F5ECF8] text-[#7B2D8E] text-sm font-semibold rounded-full transition-colors duration-300'
-                      : 'group relative overflow-hidden inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-sm hover:shadow-md'
-                  }
+                  className="group relative inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-[#F5ECF8] text-[#7B2D8E] text-sm font-semibold rounded-full transition-colors duration-300"
                 >
-                  {/* Diagonal shine that sweeps across the button on hover (disabled on festive slide: zero gradients) */}
-                  {!active.festive && (
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute top-0 -left-3/4 h-full w-1/2 -skew-x-12 bg-gradient-to-r from-transparent via-[#7B2D8E]/15 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-[260%]"
-                    />
-                  )}
                   <span className="relative">Book Appointment</span>
                   <span className="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#7B2D8E] text-white transition-transform duration-300 group-hover:translate-x-0.5">
                     <ArrowRight className="w-4 h-4" />
@@ -608,11 +515,7 @@ export default function Hero() {
               {/* Trust Indicators - Hidden on mobile */}
               <div
                 key={`trust-${safeSlideIndex}`}
-                className={
-                  active.festive
-                    ? 'hidden sm:flex flex-wrap items-center gap-x-4 xl:gap-x-6 gap-y-2'
-                    : 'hidden sm:flex flex-wrap items-center gap-x-6 gap-y-2'
-                }
+                className="hidden sm:flex flex-wrap items-center gap-x-6 gap-y-2"
                 style={{
                   animation: `hero-char-in 700ms ease-out ${underlineDelay + 400}ms both`,
                 }}
@@ -658,14 +561,7 @@ export default function Hero() {
                   </span>
                 </div>
 
-                <span
-                  aria-hidden="true"
-                  className={
-                    active.festive
-                      ? 'w-1 h-1 rounded-full bg-white/40'
-                      : 'h-4 w-px bg-white/25'
-                  }
-                />
+                <span aria-hidden="true" className="h-4 w-px bg-white/25" />
 
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-0.5">
@@ -681,14 +577,7 @@ export default function Hero() {
                   </span>
                 </div>
 
-                <span
-                  aria-hidden="true"
-                  className={
-                    active.festive
-                      ? 'w-1 h-1 rounded-full bg-white/40'
-                      : 'h-4 w-px bg-white/25'
-                  }
-                />
+                <span aria-hidden="true" className="h-4 w-px bg-white/25" />
 
                 <div className="flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-white/80" />
@@ -697,11 +586,6 @@ export default function Hero() {
                   </span>
                 </div>
               </div>
-
-              {/* Dedicated mobile showcase space below text & CTAs for the 3D sanctuary */}
-              {active.festive && (
-                <div className="h-[235px] md:hidden" aria-hidden="true" />
-              )}
             </div>
           </div>
         </div>

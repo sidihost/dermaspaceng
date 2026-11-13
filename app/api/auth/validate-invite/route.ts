@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[v0] Validate invite error:", error)
+    console.error("Validate invite error:", error)
     return NextResponse.json({ valid: false, error: "Failed to validate invitation" })
   }
 }

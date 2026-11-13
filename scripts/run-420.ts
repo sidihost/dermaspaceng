@@ -37,13 +37,13 @@ const statements = [
 
 async function main() {
   for (const stmt of statements) {
-    console.log('[v0] Running:', stmt.slice(0, 120).replace(/\s+/g, ' '), '...')
+    console.log('Running:', stmt.slice(0, 120).replace(/\s+/g, ' '), '...')
     await sql.query(stmt)
   }
-  console.log('[v0] Migration 420 complete.')
+  console.log('Migration 420 complete.')
 }
 
 main().catch((err) => {
-  console.error('[v0] Migration failed:', err)
+  console.error('Migration failed:', err)
   process.exit(1)
 })

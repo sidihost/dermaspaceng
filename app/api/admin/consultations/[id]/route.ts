@@ -55,7 +55,7 @@ export async function GET(
     }
     return NextResponse.json({ consultation: rows[0] })
   } catch (error) {
-    console.error('[v0] Get consultation detail error:', error)
+    console.error('Get consultation detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch consultation'
     return NextResponse.json({ error: message }, { status: 500 })
   }
@@ -107,7 +107,7 @@ export async function DELETE(
     }
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('[v0] Delete consultation error:', error)
+    console.error('Delete consultation error:', error)
     const message = error instanceof Error ? error.message : 'Failed to delete'
     return NextResponse.json({ error: message }, { status: 500 })
   }

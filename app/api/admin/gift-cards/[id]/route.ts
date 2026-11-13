@@ -32,7 +32,7 @@ export async function GET(
     }
     return NextResponse.json({ request: rows[0] })
   } catch (error) {
-    console.error('[v0] Get gift-card detail error:', error)
+    console.error('Get gift-card detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch gift card'
     return NextResponse.json({ error: message }, { status: 500 })
   }

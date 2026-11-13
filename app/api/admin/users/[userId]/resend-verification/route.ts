@@ -74,7 +74,7 @@ export async function POST(
         },
       })
     } catch (sendErr) {
-      console.error('[v0] Admin resend verification email failed:', sendErr)
+      console.error('Admin resend verification email failed:', sendErr)
       return NextResponse.json(
         { error: 'We could not send the verification email right now. Please try again.' },
         { status: 500 },
@@ -86,7 +86,7 @@ export async function POST(
       message: `Verification link sent to ${user.email}`,
     })
   } catch (error) {
-    console.error('[v0] Admin resend verification error:', error)
+    console.error('Admin resend verification error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
       { error: `Failed to resend verification: ${message}` },

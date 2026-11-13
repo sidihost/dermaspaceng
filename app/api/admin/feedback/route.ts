@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[v0] Admin feedback GET failed:', error)
+    console.error('Admin feedback GET failed:', error)
     if (error instanceof Error && error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: error.message }, { status: 403 })
     }
@@ -159,7 +159,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, ...updated[0] })
   } catch (error) {
-    console.error('[v0] Admin feedback PUT failed:', error)
+    console.error('Admin feedback PUT failed:', error)
     if (error instanceof Error && error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: error.message }, { status: 403 })
     }

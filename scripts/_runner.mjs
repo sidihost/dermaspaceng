@@ -29,7 +29,7 @@
 //
 // One-time bootstrap responsibility for *this* deploy
 //   ── If 213-per-event-reminders.sql has NOT been applied to prod
-//      yet, run it manually via the v0 SQL panel BEFORE merging.
+//      yet, run it manually via the SQL panel BEFORE merging.
 //      Otherwise the bootstrap step here will mark it as applied
 //      without running it, and the per-event reminder code paths
 //      will silently no-op (they're fail-soft, so nothing breaks

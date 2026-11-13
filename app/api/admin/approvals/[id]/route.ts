@@ -120,7 +120,7 @@ export async function POST(
         reviewNote: body.note,
       })
     } catch (mailErr) {
-      console.error('[v0] approval decision email failed:', mailErr)
+      console.error('approval decision email failed:', mailErr)
     }
 
     return NextResponse.json({
@@ -129,7 +129,7 @@ export async function POST(
       message: `Request ${body.decision}. Notification sent to requester.`,
     })
   } catch (error) {
-    console.error('[v0] POST /api/admin/approvals/[id] failed:', error)
+    console.error('POST /api/admin/approvals/[id] failed:', error)
     const message = error instanceof Error ? error.message : 'Server error'
     return NextResponse.json({ error: message }, { status: 500 })
   }

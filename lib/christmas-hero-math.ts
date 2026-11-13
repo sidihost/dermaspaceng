@@ -36,26 +36,26 @@ export function computeHero3DLayout(width: number, height: number): Hero3DLayout
   const safeH = Math.max(height, 360)
   const aspect = safeW / safeH
 
-  // Mobile (< 768px): dedicated lower showcase well below the stacked headline & CTA buttons
+  // Mobile (< 768px): framed cleanly in upper-right dark zone above CTA & bottom nav bar
   if (safeW < 768) {
     return {
       fov: 42,
-      cameraPos: [0, 1.55, 11.4],
-      lookAt: [0, 1.45, 0],
-      stageOffset: [0, -1.48, 0],
-      stageScale: 0.61,
+      cameraPos: [0, 0.15, 9.8],
+      lookAt: [0, -0.22, 0],
+      stageOffset: [1.15, 0.42, -0.5],
+      stageScale: 0.56,
       isCompact: true,
     }
   }
 
-  // Tablet (768px–1023px): centerpiece occupies the right half clear of the left text column
+  // Tablet (768px–1023px): centerpiece occupies the right showcase half clear of left editorial copy
   if (safeW < 1024) {
     return {
       fov: 39,
-      cameraPos: [0, 1.48, 9.2],
-      lookAt: [0.3, 0.95, 0],
-      stageOffset: [2.58, 0.0, 0],
-      stageScale: 0.68,
+      cameraPos: [0, 0.16, 8.4],
+      lookAt: [0, -0.2, 0],
+      stageOffset: [2.05, 0.2, 0],
+      stageScale: 0.72,
       isCompact: false,
     }
   }
@@ -64,22 +64,22 @@ export function computeHero3DLayout(width: number, height: number): Hero3DLayout
   if (safeW < 1280) {
     return {
       fov: 38,
-      cameraPos: [0, 1.44, 8.2],
-      lookAt: [0.45, 0.92, 0],
-      stageOffset: [2.75, 0.0, 0],
-      stageScale: 0.78,
+      cameraPos: [0, 0.16, 7.9],
+      lookAt: [0, -0.2, 0],
+      stageOffset: [2.42, 0.2, 0],
+      stageScale: 0.82,
       isCompact: false,
     }
   }
 
-  // Wide desktop (>= 1280px): generous separation between editorial copy and 3D sculpture
-  const wideShift = aspect > 2.3 ? 2.95 : 2.7
+  // Wide desktop (>= 1280px): balanced gallery framing beside the left-aligned headline column
+  const wideShift = aspect > 2.35 ? 3.05 : 2.75
   return {
     fov: 38,
-    cameraPos: [0, 1.42, 7.6],
-    lookAt: [0.45, 0.9, 0],
-    stageOffset: [wideShift, 0.02, 0],
-    stageScale: 0.9,
+    cameraPos: [0, 0.16, 7.5],
+    lookAt: [0, -0.2, 0],
+    stageOffset: [wideShift, 0.2, 0],
+    stageScale: 0.94,
     isCompact: false,
   }
 }
@@ -100,8 +100,8 @@ export function computeParallaxTarget(
   const clampedX = Math.max(-1, Math.min(1, Number.isFinite(normX) ? normX : 0))
   const clampedY = Math.max(-1, Math.min(1, Number.isFinite(normY) ? normY : 0))
   return {
-    offsetX: clampedX * 0.42,
-    offsetY: clampedY * 0.22,
+    offsetX: clampedX * 0.44,
+    offsetY: clampedY * 0.24,
   }
 }
 
@@ -117,10 +117,11 @@ function createRng(seed: number) {
 }
 
 /**
- * Generates deterministic 3D snow-crystal & brand-lilac mote specs.
+ * Generates deterministic 3D snow-crystal & brand-lilac mote specs spanning
+ * the hero stage cleanly above the bottom navigation bar.
  */
 export function generateSnowMoteSpecs(count: number, seed = 20261225): SnowMoteSpec[] {
-  const safeCount = Math.max(0, Math.min(200, Math.floor(count)))
+  const safeCount = Math.max(0, Math.min(220, Math.floor(count)))
   const rand = createRng(seed)
   const specs: SnowMoteSpec[] = []
 
@@ -130,15 +131,15 @@ export function generateSnowMoteSpecs(count: number, seed = 20261225): SnowMoteS
       toneRoll < 0.45 ? 'white' : toneRoll < 0.8 ? 'lilac' : 'orchid'
 
     specs.push({
-      x: (rand() - 0.35) * 11,
-      y: rand() * 5.2 - 0.6,
-      z: (rand() - 0.5) * 5.5,
-      scale: 0.028 + rand() * 0.048,
-      speedY: 0.18 + rand() * 0.28,
-      swayAmp: 0.08 + rand() * 0.18,
-      swayFreq: 0.6 + rand() * 1.1,
+      x: (rand() - 0.35) * 11.5,
+      y: rand() * 4.6 - 1.6,
+      z: (rand() - 0.5) * 5.2,
+      scale: 0.024 + rand() * 0.044,
+      speedY: 0.16 + rand() * 0.24,
+      swayAmp: 0.07 + rand() * 0.16,
+      swayFreq: 0.55 + rand() * 1.0,
       phase: rand() * Math.PI * 2,
-      rotSpeed: (rand() - 0.5) * 1.4,
+      rotSpeed: (rand() - 0.5) * 1.35,
       tone,
     })
   }

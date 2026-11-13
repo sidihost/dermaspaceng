@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     // callback — either way, refuse to activate the membership and
     // flag for manual review.
     if (Math.abs(amountPaid - plan.price) > 1) {
-      console.error('[v0] membership verify amount mismatch', {
+      console.error('membership verify amount mismatch', {
         reference,
         amountPaid,
         planPrice: plan.price,
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
         data.reference,
       )
       if (!creditResult.success || !creditResult.transaction) {
-        console.error('[v0] credit wallet failed for membership', { reference })
+        console.error('credit wallet failed for membership', { reference })
         return NextResponse.redirect(
           `${appUrl}/membership?error=wallet_credit_failed`,
         )
@@ -172,7 +172,7 @@ export async function GET(request: NextRequest) {
       // Points award failure is non-fatal — log it but don&apos;t block
       // the membership activation. The admin can re-run the award
       // manually if needed.
-      console.error('[v0] awardGlowPoints failed for membership', {
+      console.error('awardGlowPoints failed for membership', {
         reference,
         err,
       })
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
     // Bust the Redis cache so the dashboard sees the new membership
     // on the very next page load instead of 60s later.
     await invalidateUserMe(String(transaction.user_id)).catch((err) => {
-      console.error('[v0] invalidateUserMe after membership verify failed', err)
+      console.error('invalidateUserMe after membership verify failed', err)
     })
 
     // STAGE 7 - invoice + email. We keep the invoice items shape
@@ -278,7 +278,7 @@ export async function GET(request: NextRequest) {
       }).catch((err) => {
         // Email failure is non-blocking — the customer already has
         // their membership and the receipt. Log so we notice.
-        console.error('[v0] sendMembershipConfirmation failed', err)
+        console.error('sendMembershipConfirmation failed', err)
       })
     }
 
@@ -287,7 +287,7 @@ export async function GET(request: NextRequest) {
     // refreshes are idempotent.
     return NextResponse.redirect(`${appUrl}/membership/receipt/${reference}`)
   } catch (error) {
-    console.error('[v0] membership verify error', error)
+    console.error('membership verify error', error)
     return NextResponse.redirect(`${appUrl}/membership?error=verification_error`)
   }
 }

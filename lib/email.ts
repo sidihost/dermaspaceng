@@ -29,7 +29,7 @@ const BRAND_COLOR = '#7B2D8E'
 //
 // We INTENTIONALLY do NOT fall back to `NEXT_PUBLIC_APP_URL` here.
 // That variable is whatever the current deployment is running on —
-// on preview deployments it's the preview/v0 hostname, on local dev
+// on preview deployments it's the preview hostname, on local dev
 // it's `http://localhost:3000`. Both leaked into outgoing emails and
 // broke the header logo + footer link (the logo image 404s outside
 // the dev machine; the preview hostnames eventually rotate away).

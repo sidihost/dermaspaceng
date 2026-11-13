@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       message: "You're on the waitlist. We'll email you when online booking goes live.",
     })
   } catch (error) {
-    console.error('[v0] booking-waitlist POST error:', error)
+    console.error('booking-waitlist POST error:', error)
     return NextResponse.json(
       { success: false, error: 'Could not join the waitlist. Please try again.' },
       { status: 500 }

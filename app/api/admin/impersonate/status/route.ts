@@ -64,7 +64,7 @@ export async function GET() {
       },
     })
   } catch (err) {
-    console.error('[v0] Impersonation status error:', err)
+    console.error('Impersonation status error:', err)
     return NextResponse.json({ impersonating: false })
   }
 }

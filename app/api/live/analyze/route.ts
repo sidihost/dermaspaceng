@@ -64,11 +64,11 @@ export async function POST(req: Request) {
       // down) we return an empty observation rather than a 500 so
       // the client-side poll loop doesn't log a noisy error on every
       // tick. The UI keeps showing the previous caption.
-      console.warn('[v0] Live analyze: no provider could serve:', err)
+      console.warn('Live analyze: no provider could serve:', err)
       return NextResponse.json({ observation: '', provider: null }, { status: 200 })
     }
   } catch (err) {
-    console.error('[v0] Live analyze fatal:', err)
+    console.error('Live analyze fatal:', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Analyze failed' },
       { status: 500 },

@@ -108,7 +108,7 @@ const tools = {
           walletLink: '/dashboard/wallet',
         }
       } catch (error) {
-        console.error('[v0] getWalletBalance error:', error)
+        console.error('getWalletBalance error:', error)
         return { success: false, message: 'Could not fetch your wallet balance right now.' }
       }
     },
@@ -169,7 +169,7 @@ const tools = {
           }))
         }
       } catch (error) {
-        console.error('[v0] getBookings error:', error)
+        console.error('getBookings error:', error)
         return { success: true, bookings: [], message: 'No upcoming appointments found.' }
       }
     }
@@ -228,7 +228,7 @@ const tools = {
           })),
         }
       } catch (error) {
-        console.error('[v0] getTransactionHistory error:', error)
+        console.error('getTransactionHistory error:', error)
         return { success: false, message: 'Could not fetch transactions right now.' }
       }
     },
@@ -714,7 +714,7 @@ const tools = {
           resetLink: '/forgot-password'
         }
       } catch (error) {
-        console.error('[v0] sendPasswordResetEmail error:', error)
+        console.error('sendPasswordResetEmail error:', error)
         return { success: false, message: 'Could not send password reset email. Please try /forgot-password directly.' }
       }
     }
@@ -767,7 +767,7 @@ const tools = {
             : 'Could not send verification email at the moment. Please try again.'
         }
       } catch (error) {
-        console.error('[v0] resendVerificationEmail error:', error)
+        console.error('resendVerificationEmail error:', error)
         return { success: false, message: 'Could not resend verification email.' }
       }
     }
@@ -838,7 +838,7 @@ const tools = {
           })),
         }
       } catch (error) {
-        console.error('[v0] getNotifications error:', error)
+        console.error('getNotifications error:', error)
         return { success: false, message: 'Could not fetch notifications.' }
       }
     }
@@ -890,7 +890,7 @@ const tools = {
           message: `${clean} added to the booking waitlist. You'll be emailed the moment online booking launches.`,
         }
       } catch (error) {
-        console.error('[v0] joinBookingWaitlist error:', error)
+        console.error('joinBookingWaitlist error:', error)
         return {
           success: false,
           message: "Couldn't join the waitlist right now. Please try /booking and use the form.",
@@ -954,7 +954,7 @@ const tools = {
           consultationLink: '/consultation',
         }
       } catch (error) {
-        console.error('[v0] bookConsultation error:', error)
+        console.error('bookConsultation error:', error)
         return {
           success: false,
           message: "Couldn't save that consultation. Please try /consultation directly.",
@@ -1039,7 +1039,7 @@ const tools = {
           ticketLink: `/dashboard/support/${ticketId}`,
         }
       } catch (error) {
-        console.error('[v0] createSupportTicket error:', error)
+        console.error('createSupportTicket error:', error)
         return {
           success: false,
           message: "Couldn't create the ticket. Please try /dashboard/support.",
@@ -1142,7 +1142,7 @@ const tools = {
           noResults: false,
         }
       } catch (err) {
-        console.error('[v0] recommendByConcern failed:', err)
+        console.error('recommendByConcern failed:', err)
         return {
           success: false,
           query,
@@ -1213,7 +1213,7 @@ const tools = {
           message: `Opening Paystack to fund ₦${amount.toLocaleString()} for ${user.first_name}. The payment is secure and will reflect instantly.`,
         }
       } catch (error) {
-        console.error('[v0] fundWallet error:', error)
+        console.error('fundWallet error:', error)
         return {
           success: false,
           message: 'Could not start wallet funding. Please try /dashboard/wallet directly.',
@@ -1290,7 +1290,7 @@ const tools = {
           link: '/dashboard',
         }
       } catch (error) {
-        console.error('[v0] cancelBooking error:', error)
+        console.error('cancelBooking error:', error)
         return { success: false, message: 'Could not cancel the booking. Please try /dashboard.' }
       }
     },
@@ -1416,7 +1416,7 @@ const tools = {
           link: '/dashboard',
         }
       } catch (error) {
-        console.error('[v0] rescheduleBooking error:', error)
+        console.error('rescheduleBooking error:', error)
         return { success: false, message: 'Could not reschedule the booking. Please try /dashboard.' }
       }
     },
@@ -1471,7 +1471,7 @@ const tools = {
           link: '/dashboard/settings',
         }
       } catch (error) {
-        console.error('[v0] updateProfile error:', error)
+        console.error('updateProfile error:', error)
         return { success: false, message: 'Could not update your profile right now.' }
       }
     },
@@ -1545,7 +1545,7 @@ const tools = {
           link: '/dashboard/settings',
         }
       } catch (error) {
-        console.error('[v0] updatePreferences error:', error)
+        console.error('updatePreferences error:', error)
         return { success: false, message: 'Could not update preferences right now.' }
       }
     },
@@ -1676,7 +1676,7 @@ const tools = {
           link: '/dashboard/support',
         }
       } catch (error) {
-        console.error('[v0] requestCallback error:', error)
+        console.error('requestCallback error:', error)
         return { success: false, message: 'Could not schedule a callback. Please call +234 906 183 6625.' }
       }
     },
@@ -1735,7 +1735,7 @@ const tools = {
           supportLink: '/dashboard/support',
         }
       } catch (error) {
-        console.error('[v0] getSupportTickets error:', error)
+        console.error('getSupportTickets error:', error)
         return { success: true, tickets: [], supportLink: '/dashboard/support' }
       }
     }
@@ -1805,7 +1805,7 @@ const tools = {
 
         if (!res.ok) {
           const errText = await res.text().catch(() => '')
-          console.error('[v0] Tavily error:', res.status, errText)
+          console.error('Tavily error:', res.status, errText)
           return { success: false, message: 'Could not complete web search right now.' }
         }
 
@@ -1852,7 +1852,7 @@ const tools = {
           products,
         }
       } catch (err) {
-        console.error('[v0] Tavily fetch failed:', err)
+        console.error('Tavily fetch failed:', err)
         return { success: false, message: 'Web search failed.' }
       }
     },
@@ -2521,7 +2521,7 @@ export async function POST(request: Request) {
       return { role: 'user' as const, content: parts }
     })
 
-    console.log('[v0] Chat API called with', modelMessages.length, 'messages')
+    console.log('Chat API called with', modelMessages.length, 'messages')
 
     // Fire-and-forget usage log so the admin dashboard can show how
     // many AI chats a customer has used. We pull the user id from the
@@ -2552,7 +2552,7 @@ export async function POST(request: Request) {
         `
       } catch (err) {
         // Migration not yet applied or DB transient — log only.
-        console.warn('[v0] ai_chat_logs insert skipped:', err)
+        console.warn('ai_chat_logs insert skipped:', err)
       }
     })()
 
@@ -2587,7 +2587,7 @@ export async function POST(request: Request) {
       // revoked, or every upstream is down at once). Tell the user
       // honestly instead of starting a streamText that will silently
       // produce an empty reply.
-      console.error('[v0] All chat providers failed pre-flight ping')
+      console.error('All chat providers failed pre-flight ping')
       return NextResponse.json(
         {
           message:
@@ -2678,7 +2678,7 @@ export async function POST(request: Request) {
       stopWhen: stepCountIs(12),
       onError: ({ error }) => {
         console.error(
-          '[v0] streamText onError (provider=' + selected.name + '):',
+          'streamText onError (provider=' + selected.name + '):',
           error,
         )
       },
@@ -2696,21 +2696,21 @@ export async function POST(request: Request) {
         const toolCount = (toolCalls || []).length
         if (textLen === 0 && toolCount === 0) {
           console.warn(
-            `[v0] streamText finished EMPTY (provider=${selected.name}, finishReason=${finishReason}). ` +
+            `streamText finished EMPTY (provider=${selected.name}, finishReason=${finishReason}). ` +
               'Consider demoting this provider in getChatModelChain().',
           )
         } else {
           console.log(
-            `[v0] streamText finished ok (provider=${selected.name}, textLen=${textLen}, toolCalls=${toolCount}, finishReason=${finishReason})`,
+            `streamText finished ok (provider=${selected.name}, textLen=${textLen}, toolCalls=${toolCount}, finishReason=${finishReason})`,
           )
         }
       },
     })
 
-    console.log('[v0] Returning stream response')
+    console.log('Returning stream response')
     return result.toUIMessageStreamResponse({
       onError: (error) => {
-        console.error('[v0] toUIMessageStreamResponse onError:', error)
+        console.error('toUIMessageStreamResponse onError:', error)
 
         // Rescue path: if the parallel `rescueChatReply` resolved
         // before streamText errored, surface its real answer
@@ -2720,7 +2720,7 @@ export async function POST(request: Request) {
         // primary model fell over.
         if (rescueResult && rescueResult.text) {
           console.log(
-            `[v0] Surfacing rescue reply (provider=${rescueResult.provider}, len=${rescueResult.text.length})`,
+            `Surfacing rescue reply (provider=${rescueResult.provider}, len=${rescueResult.text.length})`,
           )
           return rescueResult.text
         }
@@ -2748,7 +2748,7 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
-    console.error('[v0] Chat error:', error)
+    console.error('Chat error:', error)
     return NextResponse.json(
       { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 906 183 6625." },
       { status: 500 }

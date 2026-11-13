@@ -159,7 +159,7 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
         await audio.play()
       } catch (err) {
         if ((err as { name?: string })?.name !== 'AbortError') {
-          console.error('[v0] Derma Live preview failed:', err)
+          console.error('Derma Live preview failed:', err)
         }
         setLoadingPreview((cur) => (cur === voice.id ? null : cur))
         setPreviewing((cur) => (cur === voice.id ? null : cur))

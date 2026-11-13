@@ -73,7 +73,7 @@ export async function GET() {
         const rows = (await q) as Array<{ count?: string | number }>
         return Number(rows?.[0]?.count ?? 0) || 0
       } catch (err) {
-        console.warn("[v0] Staff dashboard counter query failed:", err)
+        console.warn("Staff dashboard counter query failed:", err)
         return 0
       }
     }
@@ -126,7 +126,7 @@ export async function GET() {
       `) as RecentItem[]
       collected.push(...rows)
     } catch (err) {
-      console.warn("[v0] Staff dashboard gift card feed failed:", err)
+      console.warn("Staff dashboard gift card feed failed:", err)
     }
 
     try {
@@ -143,7 +143,7 @@ export async function GET() {
       `) as RecentItem[]
       collected.push(...rows)
     } catch (err) {
-      console.warn("[v0] Staff dashboard complaints feed failed:", err)
+      console.warn("Staff dashboard complaints feed failed:", err)
     }
 
     try {
@@ -160,7 +160,7 @@ export async function GET() {
       `) as RecentItem[]
       collected.push(...rows)
     } catch (err) {
-      console.warn("[v0] Staff dashboard consultations feed failed:", err)
+      console.warn("Staff dashboard consultations feed failed:", err)
     }
 
     const recentItems = collected
@@ -217,7 +217,7 @@ export async function GET() {
         createdAt: r.created_at,
       }))
     } catch (err) {
-      console.warn("[v0] Staff dashboard recent payments query failed:", err)
+      console.warn("Staff dashboard recent payments query failed:", err)
     }
 
     // Recent complaints — last 5 with customer context so the front
@@ -261,7 +261,7 @@ export async function GET() {
         createdAt: r.created_at,
       }))
     } catch (err) {
-      console.warn("[v0] Staff dashboard recent complaints query failed:", err)
+      console.warn("Staff dashboard recent complaints query failed:", err)
     }
 
     // Today's revenue — small headline number for the welcome hero.

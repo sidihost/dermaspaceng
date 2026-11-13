@@ -53,7 +53,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[v0] consultation track lookup error:', error)
+    console.error('consultation track lookup error:', error)
     return NextResponse.json(
       { error: 'Failed to load consultation' },
       { status: 500 },

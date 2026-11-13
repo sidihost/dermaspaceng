@@ -116,7 +116,7 @@ export async function GET() {
       })
     }
   } catch (err) {
-    console.warn('[v0] recommendations: page_views aggregation skipped:', err)
+    console.warn('recommendations: page_views aggregation skipped:', err)
   }
 
   // -----------------------------------------------------------------
@@ -177,7 +177,7 @@ export async function GET() {
       }
     }
   } catch (err) {
-    console.warn('[v0] recommendations: bookings aggregation skipped:', err)
+    console.warn('recommendations: bookings aggregation skipped:', err)
   }
 
   return NextResponse.json(

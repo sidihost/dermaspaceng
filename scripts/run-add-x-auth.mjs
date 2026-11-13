@@ -11,7 +11,7 @@ const statements = src
   .filter((s) => s && !/^(--|\/\*)/.test(s))
 
 for (const stmt of statements) {
-  console.log('[v0] executing:', stmt.slice(0, 80).replace(/\s+/g, ' '), '...')
+  console.log('executing:', stmt.slice(0, 80).replace(/\s+/g, ' '), '...')
   await sql.query(stmt)
 }
-console.log('[v0] x auth migration complete')
+console.log('x auth migration complete')

@@ -122,7 +122,7 @@ export async function GET() {
       // Table missing — script 600 hasn't been applied yet. Return an
       // explicit hint so the admin UI can render a "migration needed"
       // state instead of looking broken.
-      console.warn('[v0] /api/admin/rooms: treatment_rooms missing', err)
+      console.warn('/api/admin/rooms: treatment_rooms missing', err)
       return NextResponse.json({
         rooms: [],
         migrationRequired: true,
@@ -131,7 +131,7 @@ export async function GET() {
 
     return NextResponse.json({ rooms, migrationRequired: false })
   } catch (err) {
-    console.error('[v0] /api/admin/rooms GET error', err)
+    console.error('/api/admin/rooms GET error', err)
     return NextResponse.json({ error: 'Failed to load rooms' }, { status: 500 })
   }
 }
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
     `
     return NextResponse.json({ id: String(rows[0].id) })
   } catch (err) {
-    console.error('[v0] /api/admin/rooms POST error', err)
+    console.error('/api/admin/rooms POST error', err)
     const msg = err instanceof Error ? err.message : 'Failed to create room'
     return NextResponse.json({ error: msg }, { status: 500 })
   }

@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       (audio as unknown as { audioData?: string }).audioData ??
       (audio as unknown as { audio?: string }).audio
     if (!audioData || typeof audioData !== 'string') {
-      console.error('[v0] Mistral TTS: empty/unknown response shape')
+      console.error('Mistral TTS: empty/unknown response shape')
       return NextResponse.json({ error: 'Voice generation failed' }, { status: 502 })
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[v0] Voice API error:', error)
+    console.error('Voice API error:', error)
     return NextResponse.json({ error: 'Voice generation failed' }, { status: 500 })
   }
 }

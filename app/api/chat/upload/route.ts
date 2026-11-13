@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       size: file.size,
     })
   } catch (err) {
-    console.error('[v0] Chat upload error:', err)
+    console.error('Chat upload error:', err)
     return NextResponse.json({ error: 'Upload failed.' }, { status: 500 })
   }
 }

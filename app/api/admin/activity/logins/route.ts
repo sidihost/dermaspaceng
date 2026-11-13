@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('[v0] Get login activity error:', error)
+    console.error('Get login activity error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch login activity'
     return NextResponse.json({ error: message }, { status: 500 })
   }

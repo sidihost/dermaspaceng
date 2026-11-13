@@ -76,7 +76,7 @@ export async function GET() {
           }
         })
       } catch (err) {
-        console.warn("[v0] /api/staff/stats/trend query failed:", err)
+        console.warn("/api/staff/stats/trend query failed:", err)
       }
 
       // Lifetime totals for the staff hero tiles.
@@ -114,7 +114,7 @@ export async function GET() {
       headers: { "Cache-Control": "private, no-store" },
     })
   } catch (error) {
-    console.error("[v0] /api/staff/stats/trend failed:", error)
+    console.error("/api/staff/stats/trend failed:", error)
     return NextResponse.json(
       { error: "Failed to fetch trend" },
       { status: 500 },

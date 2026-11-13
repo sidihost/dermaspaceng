@@ -238,7 +238,7 @@ export async function GET(
       tickets: recentTickets,
     })
   } catch (error) {
-    console.error('[v0] Get staff profile error:', error)
+    console.error('Get staff profile error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch staff profile'
     return NextResponse.json({ error: message }, { status: 500 })
   }
@@ -341,7 +341,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, action })
   } catch (error) {
-    console.error('[v0] PATCH /api/admin/staff/[userId] failed', error)
+    console.error('PATCH /api/admin/staff/[userId] failed', error)
     const message = error instanceof Error ? error.message : 'Server error'
     const status = /unauthor/i.test(message) ? 401 : 500
     return NextResponse.json({ error: message }, { status })
@@ -433,7 +433,7 @@ export async function DELETE(
       message: 'Staff member removed. They are now a regular client.',
     })
   } catch (error) {
-    console.error('[v0] DELETE /api/admin/staff/[userId] failed', error)
+    console.error('DELETE /api/admin/staff/[userId] failed', error)
     const message = error instanceof Error ? error.message : 'Server error'
     const status = /unauthor/i.test(message) ? 401 : 500
     return NextResponse.json({ error: message }, { status })

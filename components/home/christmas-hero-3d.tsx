@@ -3,23 +3,26 @@
 /**
  * ChristmasHero3D
  * ---------------------------------------------------------------
- * Real-time interactive 3D Christmas Spa Sanctuary built with Three.js
- * for the Dermaspace Hero Slider.
+ * Real-time interactive 3D Christmas Sanctuary built with Three.js
+ * for the Dermaspace Hero Slider: "The Celestial Orchid Astrolabe".
  *
- * Design rules strictly honored:
- *   - Brand palette: Deep Plum (#240933, #5A1D6A), Signature Purple (#7B2D8E),
- *     Orchid (#9B4DB0, #D8B4FE, #E9D5FF), Pearl Silver (#F5ECF8), Pure White
- *     (#FFFFFF), and Botanical Eucalyptus (#26543C). Zero gold/yellow.
- *   - ZERO CSS shadows, ZERO CSS gradients, ZERO Sparkles/Zap icons,
- *     ZERO dashed lines or borders.
+ * Design & engineering commitments:
+ *   - Brand palette: Midnight Plum (#14041F, #240933, #5A1D6A), Signature Purple
+ *     (#7B2D8E), Orchid (#9B4DB0, #C084FC, #D8B4FE, #E9D5FF), Frost Pearl
+ *     (#F5ECF8, #FFFFFF), and Botanical Eucalyptus (#26543C).
+ *   - Studio PBR lighting via RoomEnvironment PMREM + custom GLSL silk-aurora
+ *     cyclorama backdrop + composite multi-part Lathe/Extrude/Tube sculptures.
  *   - Software-WebGL safe (`isSoftwareGl` detection + `afterDraw` pacing +
- *     graceful fallback image on context loss).
+ *     transmission fallback + fallback image on WebGL context loss).
+ *   - Zero THREE.Clock deprecation warnings, zero render-loop allocations,
+ *     complete GPU resource disposal on unmount.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
 import {
   computeHero3DLayout,
   computeParallaxTarget,
@@ -39,14 +42,11 @@ interface AnimatedBauble {
 interface AnimatedCrystal {
   group: THREE.Group
   baseY: number
-  baseX: number
   bobAmp: number
   phase: number
   spinY: number
   spinZ: number
 }
-
-const _dummy = new THREE.Object3D()
 
 function detectSoftwareWebGL(): boolean {
   try {
@@ -65,7 +65,7 @@ function detectSoftwareWebGL(): boolean {
 
 /**
  * Generates a subtle veined deep-plum marble texture procedurally
- * using an HTML5 2D canvas (zero external asset requests).
+ * using an HTML5 2D canvas (zero external requests).
  */
 function createPlumMarbleTexture(maxAnisotropy: number): THREE.CanvasTexture {
   const size = 256
@@ -74,22 +74,22 @@ function createPlumMarbleTexture(maxAnisotropy: number): THREE.CanvasTexture {
   canvas.height = size
   const ctx = canvas.getContext('2d')!
 
-  ctx.fillStyle = '#310E44'
+  ctx.fillStyle = '#2A0B3D'
   ctx.fillRect(0, 0, size, size)
 
-  // Subtle organic mineral veins in soft lilac & orchid
   ctx.lineCap = 'round'
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 18; i++) {
     ctx.beginPath()
-    let x = (i * 37) % size
+    let x = (i * 41) % size
     let y = 0
     ctx.moveTo(x, y)
     for (let step = 0; step <= 8; step++) {
       y = (step / 8) * size
-      x += Math.sin(step * 1.1 + i * 0.9) * 18
+      x += Math.sin(step * 1.15 + i * 0.85) * 20
       ctx.lineTo(x, y)
     }
-    ctx.strokeStyle = i % 5 === 0 ? 'rgba(233, 213, 255, 0.22)' : 'rgba(155, 77, 176, 0.2)'
+    ctx.strokeStyle =
+      i % 4 === 0 ? 'rgba(233, 213, 255, 0.24)' : 'rgba(155, 77, 176, 0.22)'
     ctx.lineWidth = i % 3 === 0 ? 1.8 : 0.9
     ctx.stroke()
   }
@@ -103,7 +103,7 @@ function createPlumMarbleTexture(maxAnisotropy: number): THREE.CanvasTexture {
 }
 
 /**
- * Generates a subtle woven satin bump texture for the gift box & ribbon.
+ * Generates a tileable fine satin micro-weave bump texture.
  */
 function createSatinMicroTexture(): THREE.CanvasTexture {
   const size = 64
@@ -113,38 +113,52 @@ function createSatinMicroTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext('2d')!
   ctx.fillStyle = '#808080'
   ctx.fillRect(0, 0, size, size)
-  ctx.fillStyle = '#929292'
+  ctx.fillStyle = '#969696'
   for (let y = 0; y < size; y += 2) {
     ctx.fillRect(0, y, size, 1)
   }
   const tex = new THREE.CanvasTexture(canvas)
   tex.wrapS = THREE.RepeatWrapping
   tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(6, 6)
+  tex.repeat.set(8, 8)
   return tex
 }
 
-function roundedRectShape(w: number, h: number, r: number): THREE.Shape {
-  const s = new THREE.Shape()
-  const hw = w / 2
-  const hh = h / 2
-  s.moveTo(-hw + r, -hh)
-  s.lineTo(hw - r, -hh)
-  s.quadraticCurveTo(hw, -hh, hw, -hh + r)
-  s.lineTo(hw, hh - r)
-  s.quadraticCurveTo(hw, hh, hw - r, hh)
-  s.lineTo(-hw + r, hh)
-  s.quadraticCurveTo(-hw, hh, -hw, hh - r)
-  s.lineTo(-hw, -hh + r)
-  s.quadraticCurveTo(-hw, -hh, -hw + r, -hh)
-  return s
+/**
+ * Generates a subtle matte dark-plum grounded contact shadow disc beneath the plinth.
+ */
+function createContactShadowTexture(): THREE.CanvasTexture {
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')!
+  const grad = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2,
+  )
+  grad.addColorStop(0, 'rgba(8, 2, 14, 0.72)')
+  grad.addColorStop(0.55, 'rgba(12, 3, 20, 0.36)')
+  grad.addColorStop(1, 'rgba(20, 4, 31, 0)')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, size, size)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
 }
 
+/**
+ * Builds a beveled 6-point crystalline star-snowflake ExtrudeGeometry.
+ */
 function buildCrystalSnowflakeGeometry(radius: number, depth: number): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape()
   const arms = 6
   const outer = radius
-  const inner = radius * 0.24
+  const inner = radius * 0.22
   const mid = radius * 0.56
   const notch = radius * 0.14
 
@@ -153,22 +167,22 @@ function buildCrystalSnowflakeGeometry(radius: number, depth: number): THREE.Ext
     const aNext = ((i + 1) / arms) * Math.PI * 2
     const aMid = (a0 + aNext) / 2
 
-    const p0x = Math.cos(a0 - 0.1) * inner
-    const p0y = Math.sin(a0 - 0.1) * inner
+    const p0x = Math.cos(a0 - 0.09) * inner
+    const p0y = Math.sin(a0 - 0.09) * inner
     const tipX = Math.cos(a0) * outer
     const tipY = Math.sin(a0) * outer
-    const p1x = Math.cos(a0 + 0.1) * inner
-    const p1y = Math.sin(a0 + 0.1) * inner
+    const p1x = Math.cos(a0 + 0.09) * inner
+    const p1y = Math.sin(a0 + 0.09) * inner
     const notchX = Math.cos(aMid) * (inner * 0.85)
     const notchY = Math.sin(aMid) * (inner * 0.85)
-    const branchLx = Math.cos(a0 - 0.24) * mid
-    const branchLy = Math.sin(a0 - 0.24) * mid
-    const branchRx = Math.cos(a0 + 0.24) * mid
-    const branchRy = Math.sin(a0 + 0.24) * mid
-    const waistLx = Math.cos(a0 - 0.08) * (mid - notch)
-    const waistLy = Math.sin(a0 - 0.08) * (mid - notch)
-    const waistRx = Math.cos(a0 + 0.08) * (mid - notch)
-    const waistRy = Math.sin(a0 + 0.08) * (mid - notch)
+    const branchLx = Math.cos(a0 - 0.25) * mid
+    const branchLy = Math.sin(a0 - 0.25) * mid
+    const branchRx = Math.cos(a0 + 0.25) * mid
+    const branchRy = Math.sin(a0 + 0.25) * mid
+    const waistLx = Math.cos(a0 - 0.07) * (mid - notch)
+    const waistLy = Math.sin(a0 - 0.07) * (mid - notch)
+    const waistRx = Math.cos(a0 + 0.07) * (mid - notch)
+    const waistRy = Math.sin(a0 + 0.07) * (mid - notch)
 
     if (i === 0) shape.moveTo(p0x, p0y)
     else shape.lineTo(p0x, p0y)
@@ -186,10 +200,71 @@ function buildCrystalSnowflakeGeometry(radius: number, depth: number): THREE.Ext
     depth,
     bevelEnabled: true,
     bevelThickness: depth * 0.45,
-    bevelSize: radius * 0.035,
+    bevelSize: radius * 0.032,
     bevelSegments: 2,
   })
   geom.center()
+  return geom
+}
+
+/**
+ * Builds an elegant 6-petal sculptural crystal orchid star bloom.
+ */
+function buildOrchidStarGeometry(radius: number, depth: number): THREE.ExtrudeGeometry {
+  const shape = new THREE.Shape()
+  const petals = 6
+  for (let i = 0; i < petals; i++) {
+    const a0 = (i / petals) * Math.PI * 2
+    const aMid = ((i + 0.5) / petals) * Math.PI * 2
+    const a1 = ((i + 1) / petals) * Math.PI * 2
+
+    const rInner = radius * 0.28
+    const rTip = radius
+
+    const sx = Math.cos(a0) * rInner
+    const sy = Math.sin(a0) * rInner
+    const cx1 = Math.cos(a0 + 0.14) * (radius * 0.68)
+    const cy1 = Math.sin(a0 + 0.14) * (radius * 0.68)
+    const tx = Math.cos(aMid) * rTip
+    const ty = Math.sin(aMid) * rTip
+    const cx2 = Math.cos(a1 - 0.14) * (radius * 0.68)
+    const cy2 = Math.sin(a1 - 0.14) * (radius * 0.68)
+    const ex = Math.cos(a1) * rInner
+    const ey = Math.sin(a1) * rInner
+
+    if (i === 0) shape.moveTo(sx, sy)
+    shape.quadraticCurveTo(cx1, cy1, tx, ty)
+    shape.quadraticCurveTo(cx2, cy2, ex, ey)
+  }
+  shape.closePath()
+
+  const geom = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: true,
+    bevelThickness: depth * 0.55,
+    bevelSize: radius * 0.045,
+    bevelSegments: 3,
+  })
+  geom.center()
+  return geom
+}
+
+/**
+ * Builds a single curved botanical eucalyptus leaf ExtrudeGeometry.
+ */
+function buildBotanicalLeafGeometry(length: number, width: number): THREE.ExtrudeGeometry {
+  const shape = new THREE.Shape()
+  shape.moveTo(0, 0)
+  shape.quadraticCurveTo(width, length * 0.42, 0, length)
+  shape.quadraticCurveTo(-width, length * 0.42, 0, 0)
+
+  const geom = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.012,
+    bevelEnabled: true,
+    bevelThickness: 0.006,
+    bevelSize: 0.006,
+    bevelSegments: 2,
+  })
   return geom
 }
 
@@ -240,7 +315,7 @@ export function ChristmasHero3D({
 
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.15
+    renderer.toneMappingExposure = 0.88
     renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2))
     renderer.setSize(initialW, initialH, false)
     renderer.shadowMap.enabled = false
@@ -249,14 +324,30 @@ export function ChristmasHero3D({
     domEl.style.width = '100%'
     domEl.style.height = '100%'
     domEl.style.display = 'block'
-    container.innerHTML = ''
     container.appendChild(domEl)
 
-    // Scene & atmospheric sanctuary backdrop
-    const scene = new THREE.Scene()
-    scene.background = new THREE.Color('#240933')
-    scene.fog = new THREE.FogExp2('#240933', 0.042)
+    const geometries: THREE.BufferGeometry[] = []
+    const materials: THREE.Material[] = []
+    const textures: THREE.Texture[] = []
+    const trackGeo = <T extends THREE.BufferGeometry>(g: T): T => {
+      geometries.push(g)
+      return g
+    }
+    const trackMat = <T extends THREE.Material>(m: T): T => {
+      materials.push(m)
+      return m
+    }
+    const trackTex = <T extends THREE.Texture>(t: T): T => {
+      textures.push(t)
+      return t
+    }
 
+    // Scene & Fog
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color('#14041F')
+    scene.fog = new THREE.FogExp2('#14041F', 0.036)
+
+    // Studio Environment Reflections (required for authentic platinum & crystal highlights)
     const pmremGenerator = new THREE.PMREMGenerator(renderer)
     const roomEnv = new RoomEnvironment()
     const envTarget = pmremGenerator.fromScene(roomEnv, 0.04)
@@ -264,769 +355,835 @@ export function ChristmasHero3D({
     roomEnv.dispose()
     pmremGenerator.dispose()
 
+    const maxAniso = renderer.capabilities.getMaxAnisotropy()
+    const marbleTex = trackTex(createPlumMarbleTexture(maxAniso))
+    const satinBumpTex = trackTex(createSatinMicroTexture())
+    const contactShadowTex = trackTex(createContactShadowTexture())
+
+    // Camera
     let currentLayout: Hero3DLayout = computeHero3DLayout(initialW, initialH)
     const camera = new THREE.PerspectiveCamera(
       currentLayout.fov,
       initialW / initialH,
       0.1,
-      50,
+      60,
     )
     camera.position.set(...currentLayout.cameraPos)
     camera.lookAt(...currentLayout.lookAt)
 
-    // Studio 3-point lighting rig (no shadows, pure brand white & orchid)
-    const hemiLight = new THREE.HemisphereLight('#E9D5FF', '#1A0626', 0.9)
+    // Lighting Rig — Calm, Low-Key Editorial Studio Lighting (zero harsh glare)
+    const hemiLight = new THREE.HemisphereLight('#C084FC', '#14041F', 0.58)
     scene.add(hemiLight)
 
-    const keyLight = new THREE.DirectionalLight('#FFFFFF', 2.2)
-    keyLight.position.set(4.5, 6.5, 5.5)
+    const keyLight = new THREE.DirectionalLight('#F3EAF8', 1.35)
+    keyLight.position.set(5.5, 6.2, 6.0)
     scene.add(keyLight)
 
-    const rimLight = new THREE.DirectionalLight('#B96CD0', 1.75)
-    rimLight.position.set(-5.0, 4.0, -4.5)
+    const rimLight = new THREE.DirectionalLight('#9B4DB0', 0.75)
+    rimLight.position.set(-5.8, 3.8, -4.5)
     scene.add(rimLight)
 
-    const candleWarmLight = new THREE.PointLight('#F3E8FF', 2.2, 7.5, 1.8)
-    candleWarmLight.position.set(0, 1.4, 0.5)
+    const accentFillLight = new THREE.DirectionalLight('#B784DB', 0.42)
+    accentFillLight.position.set(1.5, -2.5, 5.2)
+    scene.add(accentFillLight)
 
-    // Track disposable resources
-    const geometries: THREE.BufferGeometry[] = []
-    const materials: THREE.Material[] = []
-    const textures: THREE.Texture[] = []
-    const trackG = <T extends THREE.BufferGeometry>(g: T): T => {
-      geometries.push(g)
-      return g
-    }
-    const trackM = <T extends THREE.Material>(m: T): T => {
-      materials.push(m)
-      return m
-    }
-    const trackT = <T extends THREE.Texture>(t: T): T => {
-      textures.push(t)
-      return t
+    if (!isSoftwareGl) {
+      RectAreaLightUniformsLib.init()
+      const softboxRight = new THREE.RectAreaLight('#E9D5FF', 1.05, 3.2, 5.0)
+      softboxRight.position.set(5.6, 1.8, 3.2)
+      softboxRight.lookAt(currentLayout.stageOffset[0], 0.2, 0)
+      scene.add(softboxRight)
     }
 
-    const marbleTex = trackT(createPlumMarbleTexture(renderer.capabilities.getMaxAnisotropy()))
-    const satinBump = trackT(createSatinMicroTexture())
+    // =========================================================================
+    // 1. CURVED SILK & FROSTED AURORA CYCLORAMA BACKDROP (World-Space GLSL)
+    // =========================================================================
+    const cycloramaGeom = trackGeo(
+      new THREE.CylinderGeometry(16, 16, 14, 64, 16, true, Math.PI * 0.58, Math.PI * 0.84),
+    )
+    const cycloramaMat = trackMat(
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          uTime: { value: 0 },
+          uPulse: { value: 0 },
+          uPointer: { value: new THREE.Vector2(0, 0) },
+          uFocusX: { value: currentLayout.stageOffset[0] * 1.45 },
+        },
+        vertexShader: /* glsl */ `
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          varying vec2 vUv;
+          varying vec3 vWorldPos;
+          uniform float uTime;
+          uniform float uPulse;
+          uniform vec2 uPointer;
+          uniform float uFocusX;
 
-    // Shared calibrated PBR material palette (100% Dermaspace white, pearl-silver & purple)
-    const matPlumMarble = trackM(
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        map: marbleTex,
-        roughness: 0.24,
-        metalness: 0.08,
-      }),
-    )
-    const matSilverPearl = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#F4ECF8',
-        metalness: 0.82,
-        roughness: 0.16,
-        clearcoat: 0.65,
-      }),
-    )
-    const matOrchidAccent = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#9B4DB0',
-        metalness: 0.68,
-        roughness: 0.18,
-        clearcoat: 0.85,
-      }),
-    )
-    const matSatinWhiteRibbon = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#F8F2FC',
-        metalness: 0.12,
-        roughness: 0.26,
-        sheen: 0.95,
-        sheenColor: new THREE.Color('#FFFFFF'),
-        bumpMap: satinBump,
-        bumpScale: 0.008,
-      }),
-    )
-    const matPlumBox = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#5A1D6A',
-        roughness: 0.52,
-        metalness: 0.08,
-        sheen: 0.8,
-        sheenRoughness: 0.4,
-        sheenColor: new THREE.Color('#A855C7'),
-        bumpMap: satinBump,
-        bumpScale: 0.012,
-      }),
-    )
-    const matPlumLid = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#7B2D8E',
-        roughness: 0.44,
-        metalness: 0.1,
-        sheen: 0.9,
-        sheenRoughness: 0.35,
-        sheenColor: new THREE.Color('#D8B4FE'),
-        bumpMap: satinBump,
-        bumpScale: 0.01,
-      }),
-    )
-    const matFrostedGlass = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#F5ECF8',
-        roughness: 0.24,
-        metalness: 0.05,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.12,
-        transparent: true,
-        opacity: 0.78,
-      }),
-    )
-    const matWax = trackM(
-      new THREE.MeshStandardMaterial({
-        color: '#FFFFFF',
-        roughness: 0.58,
-        metalness: 0.0,
-        emissive: new THREE.Color('#7B2D8E'),
-        emissiveIntensity: 0.14,
-      }),
-    )
-    const matFlame = trackM(
-      new THREE.MeshBasicMaterial({
-        color: '#FFFFFF',
-      }),
-    )
-    const matFlutedBaublePlum = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#8D35A3',
-        metalness: 0.55,
-        roughness: 0.18,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.08,
-      }),
-    )
-    const matFlutedBaublePearl = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#F4EAF8',
-        metalness: 0.35,
-        roughness: 0.2,
-        clearcoat: 0.95,
-      }),
-    )
-    const matCrystal = trackM(
-      new THREE.MeshPhysicalMaterial({
-        color: '#FBF7FF',
-        metalness: 0.18,
-        roughness: 0.12,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.06,
-      }),
-    )
-    const matEucalyptus = trackM(
-      new THREE.MeshStandardMaterial({
-        color: '#2B5B43',
-        roughness: 0.58,
-        metalness: 0.04,
-      }),
-    )
-    const matPine = trackM(
-      new THREE.MeshStandardMaterial({
-        color: '#1F4231',
-        roughness: 0.68,
-        metalness: 0.02,
-      }),
-    )
+          void main() {
+            // Deep velvet plum cyclorama — subtle satin drapery folds, zero bright halo or bloom
+            vec3 midnightPlum = vec3(0.068, 0.014, 0.106); // #11041B
+            vec3 deepPlum     = vec3(0.125, 0.028, 0.188); // #200730
+            vec3 plumSatin    = vec3(0.220, 0.055, 0.310); // #380E4F
 
-    // Root stage group positioned responsively
+            float t = uTime * 0.22;
+            float wx = vWorldPos.x + uPointer.x * 0.35;
+            float wy = vWorldPos.y + uPointer.y * 0.25;
+
+            // Gentle matte-satin drapery folds in world space
+            float foldA = sin(wx * 1.15 + wy * 0.25 - t * 1.15) * 0.5 + 0.5;
+            float foldB = sin(wx * 1.95 - wy * 0.42 + t * 0.8) * 0.5 + 0.5;
+            float silk = pow(foldA * 0.62 + foldB * 0.38, 2.0);
+
+            float rightZone = smoothstep(-0.6, 3.6, wx);
+            vec2 focusDelta = vec2((wx - uFocusX) / 4.8, (wy - 0.1) / 3.2);
+            float gentleDepth = exp(-dot(focusDelta, focusDelta) * 0.65);
+
+            vec3 col = mix(midnightPlum, deepPlum, rightZone * 0.48 + gentleDepth * 0.32);
+            col = mix(col, plumSatin, rightZone * (silk * 0.32 + gentleDepth * 0.20 + uPulse * 0.08));
+
+            // Gentle top & bottom studio vignette
+            float edgeFade = smoothstep(-5.2, -1.8, wy) * smoothstep(5.8, 2.2, wy);
+            col = mix(midnightPlum, col, edgeFade);
+
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `,
+      }),
+    )
+    const cycloramaMesh = new THREE.Mesh(cycloramaGeom, cycloramaMat)
+    cycloramaMesh.position.set(0, 0.2, 4.5)
+    scene.add(cycloramaMesh)
+
+    // =========================================================================
+    // 2. HERO SCULPTURE STAGE ("The Celestial Orchid Astrolabe")
+    // =========================================================================
     const stageGroup = new THREE.Group()
     stageGroup.position.set(...currentLayout.stageOffset)
     stageGroup.scale.setScalar(currentLayout.stageScale)
     scene.add(stageGroup)
-    stageGroup.add(candleWarmLight)
 
-    // ------------------------------------------------------------------
-    // 1. Multi-tier Spa Pedestal + Architectural Pearl-Silver Halo Arch
-    // ------------------------------------------------------------------
-    const pedestalGroup = new THREE.Group()
-    const pedestalProfile = [
-      new THREE.Vector2(0, -0.35),
-      new THREE.Vector2(1.85, -0.35),
-      new THREE.Vector2(1.85, -0.14),
-      new THREE.Vector2(1.75, -0.06),
-      new THREE.Vector2(1.75, 0.0),
-      new THREE.Vector2(0, 0.0),
-    ]
-    const pedestalMesh = new THREE.Mesh(
-      trackG(new THREE.LatheGeometry(pedestalProfile, 48)),
-      matPlumMarble,
-    )
-    pedestalGroup.add(pedestalMesh)
-
-    // Brushed pearl-silver collar & top bezel ring on pedestal
-    const pedestalTopInlay = new THREE.Mesh(
-      trackG(new THREE.CylinderGeometry(1.66, 1.66, 0.012, 48)),
-      trackM(
-        new THREE.MeshPhysicalMaterial({
-          color: '#3A1152',
-          roughness: 0.14,
-          metalness: 0.18,
-          clearcoat: 0.85,
-          clearcoatRoughness: 0.12,
-        }),
-      ),
-    )
-    pedestalTopInlay.position.y = 0.002
-    pedestalGroup.add(pedestalTopInlay)
-
-    const pedestalRim = new THREE.Mesh(
-      trackG(new THREE.TorusGeometry(1.74, 0.026, 14, 72)),
-      matSilverPearl,
-    )
-    pedestalRim.rotation.x = Math.PI / 2
-    pedestalRim.position.y = 0.008
-    pedestalGroup.add(pedestalRim)
-
-    const lowerRim = new THREE.Mesh(
-      trackG(new THREE.TorusGeometry(1.84, 0.018, 12, 72)),
-      matOrchidAccent,
-    )
-    lowerRim.rotation.x = Math.PI / 2
-    lowerRim.position.y = -0.14
-    pedestalGroup.add(lowerRim)
-
-    // Grand Architectural Pearl-Silver Halo Arch behind centerpiece
-    const outerArch = new THREE.Mesh(
-      trackG(new THREE.TorusGeometry(2.05, 0.042, 18, 96, Math.PI * 1.38)),
-      matSilverPearl,
-    )
-    outerArch.position.set(0, 1.32, -0.55)
-    outerArch.rotation.z = -Math.PI * 0.19
-    pedestalGroup.add(outerArch)
-
-    // Inner kinetic celestial orchid ring + orbiting pearls
-    const kineticRingGroup = new THREE.Group()
-    kineticRingGroup.position.set(0, 1.32, -0.32)
-    const innerRing = new THREE.Mesh(
-      trackG(new THREE.TorusGeometry(1.62, 0.016, 12, 84)),
-      matOrchidAccent,
-    )
-    kineticRingGroup.add(innerRing)
-
-    const pearlGeom = trackG(new THREE.SphereGeometry(0.055, 16, 16))
-    for (let i = 0; i < 6; i++) {
-      const angle = (i / 6) * Math.PI * 2
-      const pearl = new THREE.Mesh(pearlGeom, i % 2 === 0 ? matOrchidAccent : matFlutedBaublePearl)
-      pearl.position.set(Math.cos(angle) * 1.62, Math.sin(angle) * 1.62, 0)
-      kineticRingGroup.add(pearl)
-    }
-    pedestalGroup.add(kineticRingGroup)
-    stageGroup.add(pedestalGroup)
-
-    // ------------------------------------------------------------------
-    // 2. Signature Dermaspace 3D Gift Box with Multi-Loop Satin Bow
-    // ------------------------------------------------------------------
-    const giftGroup = new THREE.Group()
-    giftGroup.position.set(-0.08, 0.015, 0.05)
-    giftGroup.rotation.y = -0.34
-
-    // Box body (beveled extruded rounded square)
-    const boxBodyShape = roundedRectShape(1.16, 1.16, 0.07)
-    const boxBodyGeom = trackG(
-      new THREE.ExtrudeGeometry(boxBodyShape, {
-        depth: 0.82,
-        bevelEnabled: true,
-        bevelThickness: 0.03,
-        bevelSize: 0.03,
-        bevelSegments: 3,
+    // Shared Studio PBR Materials (calm satin/metallic finishes, zero bright bloom)
+    const brushedPlatinumMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#DDD0E8',
+        metalness: 0.9,
+        roughness: 0.2,
+        anisotropy: 0.75,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.18,
+        envMapIntensity: 0.95,
       }),
     )
-    boxBodyGeom.rotateX(-Math.PI / 2)
-    const boxBody = new THREE.Mesh(boxBodyGeom, matPlumBox)
-    boxBody.position.y = 0.03
-    giftGroup.add(boxBody)
 
-    // Overhanging beveled lid
-    const lidShape = roundedRectShape(1.24, 1.24, 0.075)
-    const lidGeom = trackG(
-      new THREE.ExtrudeGeometry(lidShape, {
-        depth: 0.18,
-        bevelEnabled: true,
-        bevelThickness: 0.025,
-        bevelSize: 0.025,
-        bevelSegments: 3,
+    const anodizedOrchidMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#7B2D8E',
+        metalness: 0.84,
+        roughness: 0.26,
+        anisotropy: 0.7,
+        clearcoat: 0.4,
+        envMapIntensity: 0.95,
       }),
     )
-    lidGeom.rotateX(-Math.PI / 2)
-    const lidMesh = new THREE.Mesh(lidGeom, matPlumLid)
-    lidMesh.position.y = 0.84
-    giftGroup.add(lidMesh)
 
-    // Cross-wrapped satin white ribbon bands
-    const ribbonX = new THREE.Mesh(
-      trackG(new THREE.BoxGeometry(1.31, 0.96, 0.17)),
-      matSatinWhiteRibbon,
+    const mirrorFrostMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#E5DAEE',
+        metalness: 0.92,
+        roughness: 0.14,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.12,
+        envMapIntensity: 1.08,
+      }),
     )
-    ribbonX.position.y = 0.54
-    giftGroup.add(ribbonX)
 
-    const ribbonZ = new THREE.Mesh(
-      trackG(new THREE.BoxGeometry(0.17, 0.96, 1.31)),
-      matSatinWhiteRibbon,
+    const plumMarbleMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#EAE0F2',
+        map: marbleTex,
+        metalness: 0.08,
+        roughness: 0.32,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.22,
+        envMapIntensity: 0.82,
+      }),
     )
-    ribbonZ.position.y = 0.54
-    giftGroup.add(ribbonZ)
 
-    const ribbonTopCap = new THREE.Mesh(
-      trackG(new THREE.BoxGeometry(1.3, 0.03, 0.19)),
-      matSatinWhiteRibbon,
+    const velvetRibbonMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#6A217C',
+        roughness: 0.62,
+        metalness: 0.06,
+        sheen: 0.85,
+        sheenRoughness: 0.38,
+        sheenColor: new THREE.Color('#D8B4FE'),
+        bumpMap: satinBumpTex,
+        bumpScale: 0.008,
+        emissive: '#1D0628',
+        emissiveIntensity: 0.04,
+      }),
     )
-    ribbonTopCap.position.y = 1.045
-    giftGroup.add(ribbonTopCap)
 
-    // Sculpted 4-loop Satin Bow + Center Knot + Flowing Ribbon Tails
-    const bowGroup = new THREE.Group()
-    bowGroup.position.set(0, 1.06, 0)
-
-    const loopGeom = trackG(new THREE.TorusGeometry(0.22, 0.068, 16, 36))
-    const loopAngles = [0.42, Math.PI - 0.42, Math.PI + 0.42, -0.42]
-    loopAngles.forEach((ang, idx) => {
-      const loop = new THREE.Mesh(loopGeom, matSatinWhiteRibbon)
-      loop.rotation.y = ang
-      loop.rotation.x = Math.PI / 2 - 0.34
-      loop.scale.set(1.18, 0.72, 0.55)
-      loop.position.set(Math.cos(ang) * 0.16, 0.12 + (idx % 2) * 0.02, -Math.sin(ang) * 0.16)
-      bowGroup.add(loop)
-    })
-
-    const knot = new THREE.Mesh(
-      trackG(new THREE.SphereGeometry(0.095, 20, 16)),
-      matSatinWhiteRibbon,
+    const pearlRibbonMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#E2D6EC',
+        metalness: 0.78,
+        roughness: 0.22,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.16,
+        bumpMap: satinBumpTex,
+        bumpScale: 0.005,
+        envMapIntensity: 0.98,
+      }),
     )
-    knot.scale.set(1.15, 0.85, 1.15)
-    knot.position.y = 0.1
-    bowGroup.add(knot)
 
-    // Two curved cascading ribbon tails
-    const tailCurveA = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(0.04, 0.08, 0.06),
-      new THREE.Vector3(0.24, 0.06, 0.36),
-      new THREE.Vector3(0.46, -0.04, 0.58),
-    ])
-    const tailCurveB = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(-0.04, 0.08, 0.06),
-      new THREE.Vector3(-0.22, 0.05, 0.38),
-      new THREE.Vector3(-0.38, -0.06, 0.61),
-    ])
-    const tailA = new THREE.Mesh(
-      trackG(new THREE.TubeGeometry(tailCurveA, 20, 0.036, 8, false)),
-      matSatinWhiteRibbon,
+    const amethystLacquerMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#3A0D52',
+        metalness: 0.32,
+        roughness: 0.16,
+        clearcoat: 0.85,
+        clearcoatRoughness: 0.1,
+        iridescence: 0.45,
+        envMapIntensity: 1.05,
+      }),
     )
-    tailA.scale.set(1, 0.45, 1)
-    const tailB = new THREE.Mesh(
-      trackG(new THREE.TubeGeometry(tailCurveB, 20, 0.036, 8, false)),
-      matSatinWhiteRibbon,
-    )
-    tailB.scale.set(1, 0.45, 1)
-    bowGroup.add(tailA, tailB)
 
-    giftGroup.add(bowGroup)
-    stageGroup.add(giftGroup)
-
-    // ------------------------------------------------------------------
-    // 3. 3D Frosted Spa Elixir & Botanical Serum Vessels (front right)
-    // ------------------------------------------------------------------
-    const createSerumBottle = (scale: number, x: number, z: number) => {
-      const bottle = new THREE.Group()
-      bottle.position.set(x, 0.015, z)
-
-      const glassPoints = [
-        new THREE.Vector2(0, 0),
-        new THREE.Vector2(0.19 * scale, 0),
-        new THREE.Vector2(0.21 * scale, 0.04 * scale),
-        new THREE.Vector2(0.21 * scale, 0.46 * scale),
-        new THREE.Vector2(0.12 * scale, 0.57 * scale),
-        new THREE.Vector2(0.09 * scale, 0.64 * scale),
-        new THREE.Vector2(0, 0.64 * scale),
-      ]
-      const glassBody = new THREE.Mesh(
-        trackG(new THREE.LatheGeometry(glassPoints, 8)), // Octagonal faceted glass
-        matFrostedGlass,
-      )
-      bottle.add(glassBody)
-
-      // Orchid botanical serum core inside frosted bottle
-      const innerElixir = new THREE.Mesh(
-        trackG(new THREE.CylinderGeometry(0.13 * scale, 0.13 * scale, 0.36 * scale, 16)),
-        matOrchidAccent,
-      )
-      innerElixir.position.y = 0.24 * scale
-      bottle.add(innerElixir)
-
-      // Brushed silver-pearl collar + dark plum pipette dropper bulb
-      const collar = new THREE.Mesh(
-        trackG(new THREE.CylinderGeometry(0.105 * scale, 0.105 * scale, 0.1 * scale, 24)),
-        matSilverPearl,
-      )
-      collar.position.y = 0.67 * scale
-      bottle.add(collar)
-
-      const bulb = new THREE.Mesh(
-        trackG(new THREE.CapsuleGeometry(0.065 * scale, 0.11 * scale, 8, 16)),
-        matPlumBox,
-      )
-      bulb.position.y = 0.81 * scale
-      bottle.add(bulb)
-
-      return bottle
-    }
-
-    stageGroup.add(createSerumBottle(1.0, 0.82, 0.64))
-    stageGroup.add(createSerumBottle(0.84, 1.18, 0.42))
-
-    // ------------------------------------------------------------------
-    // 4. Three Staggered Lit Aromatherapy Pillar Candles
-    // ------------------------------------------------------------------
-    const flames: THREE.Mesh[] = []
-    const createCandle = (height: number, radius: number, x: number, z: number) => {
-      const candle = new THREE.Group()
-      candle.position.set(x, 0.015, z)
-
-      const waxPoints = [
-        new THREE.Vector2(0, 0),
-        new THREE.Vector2(radius, 0),
-        new THREE.Vector2(radius, height),
-        new THREE.Vector2(radius * 0.78, height - 0.03),
-        new THREE.Vector2(0, height - 0.03),
-      ]
-      const body = new THREE.Mesh(
-        trackG(new THREE.LatheGeometry(waxPoints, 28)),
-        matWax,
-      )
-      candle.add(body)
-
-      const wick = new THREE.Mesh(
-        trackG(new THREE.CylinderGeometry(0.008, 0.008, 0.04, 8)),
-        matPlumBox,
-      )
-      wick.position.y = height - 0.01
-      candle.add(wick)
-
-      const flameGeom = trackG(new THREE.ConeGeometry(0.038, 0.11, 12))
-      const flame = new THREE.Mesh(flameGeom, matFlame)
-      flame.position.y = height + 0.06
-      flames.push(flame)
-      candle.add(flame)
-
-      return candle
-    }
-
-    stageGroup.add(createCandle(0.76, 0.16, -1.04, 0.25))
-    stageGroup.add(createCandle(0.54, 0.14, -1.32, 0.56))
-    stageGroup.add(createCandle(0.86, 0.15, 1.12, -0.32))
-
-    // ------------------------------------------------------------------
-    // 5. Evergreen Eucalyptus & Pine Sprigs + Festive Berries
-    // ------------------------------------------------------------------
-    const botanicalGroup = new THREE.Group()
-    const leafGeom = trackG(new THREE.SphereGeometry(0.085, 12, 10))
-    const berryGeom = trackG(new THREE.SphereGeometry(0.038, 12, 12))
-    const sprigSpecs = [
-      { x: -0.95, y: 0.06, z: 0.72, ry: 0.6, count: 6 },
-      { x: 0.55, y: 0.06, z: 0.92, ry: -0.5, count: 6 },
-      { x: 0.92, y: 0.06, z: -0.58, ry: 2.1, count: 5 },
-      { x: -0.68, y: 0.06, z: -0.78, ry: 2.7, count: 5 },
-    ]
-    sprigSpecs.forEach((sp, sIdx) => {
-      const sprig = new THREE.Group()
-      sprig.position.set(sp.x, sp.y, sp.z)
-      sprig.rotation.y = sp.ry
-      for (let i = 0; i < sp.count; i++) {
-        const leaf = new THREE.Mesh(leafGeom, i % 2 === 0 ? matEucalyptus : matPine)
-        leaf.scale.set(1.2, 0.22, 0.78)
-        const angle = (i - sp.count / 2) * 0.34
-        leaf.position.set(Math.sin(angle) * 0.18, i * 0.025, i * 0.075)
-        leaf.rotation.set(-0.22, angle, (i % 2 === 0 ? 1 : -1) * 0.25)
-        sprig.add(leaf)
-      }
-      // Cluster of 3 orchid / plum berries
-      for (let b = 0; b < 3; b++) {
-        const berry = new THREE.Mesh(
-          berryGeom,
-          (sIdx + b) % 2 === 0 ? matFlutedBaublePearl : matFlutedBaublePlum,
-        )
-        berry.position.set((b - 1) * 0.055, 0.08 + (b % 2) * 0.03, 0.16 + b * 0.03)
-        sprig.add(berry)
-      }
-      botanicalGroup.add(sprig)
-    })
-    stageGroup.add(botanicalGroup)
-
-    // ------------------------------------------------------------------
-    // 5b. Sculpted Luxury Botanical Christmas Tree with Pearl Collars & Orchid Beads
-    // ------------------------------------------------------------------
-    const treeGroup = new THREE.Group()
-    treeGroup.position.set(-0.92, 0.015, -0.44)
-
-    const treeBase = new THREE.Mesh(
-      trackG(new THREE.CylinderGeometry(0.16, 0.2, 0.18, 24)),
-      matSilverPearl,
-    )
-    treeBase.position.y = 0.09
-    treeGroup.add(treeBase)
-
-    const treeTiers = [
-      { y: 0.22, h: 0.56, rBottom: 0.62, rTop: 0.14 },
-      { y: 0.58, h: 0.52, rBottom: 0.5, rTop: 0.11 },
-      { y: 0.92, h: 0.46, rBottom: 0.39, rTop: 0.08 },
-      { y: 1.24, h: 0.4, rBottom: 0.28, rTop: 0.05 },
-      { y: 1.52, h: 0.34, rBottom: 0.18, rTop: 0.015 },
-    ]
-    const ornamentBeadGeom = trackG(new THREE.SphereGeometry(0.032, 12, 12))
-
-    treeTiers.forEach((tier, tIdx) => {
-      const cone = new THREE.Mesh(
-        trackG(new THREE.CylinderGeometry(tier.rTop, tier.rBottom, tier.h, 24)),
-        tIdx % 2 === 0 ? matEucalyptus : matPine,
-      )
-      cone.position.y = tier.y + tier.h / 2
-      treeGroup.add(cone)
-
-      const pearlTrim = new THREE.Mesh(
-        trackG(new THREE.TorusGeometry(tier.rBottom * 0.99, 0.013, 10, 48)),
-        matSilverPearl,
-      )
-      pearlTrim.rotation.x = Math.PI / 2
-      pearlTrim.position.y = tier.y + 0.015
-      treeGroup.add(pearlTrim)
-
-      const beadCount = Math.max(4, 8 - tIdx)
-      for (let b = 0; b < beadCount; b++) {
-        const ang = (b / beadCount) * Math.PI * 2 + tIdx * 0.45
-        const bead = new THREE.Mesh(
-          ornamentBeadGeom,
-          b % 2 === 0 ? matOrchidAccent : matFlutedBaublePearl,
-        )
-        const rad = tier.rBottom * 0.88
-        bead.position.set(
-          Math.cos(ang) * rad,
-          tier.y + 0.08,
-          Math.sin(ang) * rad,
-        )
-        treeGroup.add(bead)
-      }
-    })
-
-    // Crown star crystal atop the tree
-    const treeStarGeom = trackG(buildCrystalSnowflakeGeometry(0.16, 0.022))
-    const treeStar = new THREE.Mesh(treeStarGeom, matSilverPearl)
-    treeStar.position.y = 1.98
-    treeGroup.add(treeStar)
-
-    stageGroup.add(treeGroup)
-
-    // ------------------------------------------------------------------
-    // 6. Floating 3D Fluted Christmas Baubles & Beveled Crystal Snowflakes
-    // ------------------------------------------------------------------
-    const baubles: AnimatedBauble[] = []
-    const baubleSphereGeom = trackG(new THREE.SphereGeometry(0.24, 28, 22))
-    const baubleRibGeom = trackG(new THREE.TorusGeometry(0.238, 0.014, 10, 32))
-    const crownGeom = trackG(new THREE.CylinderGeometry(0.052, 0.062, 0.07, 16))
-    const bailGeom = trackG(new THREE.TorusGeometry(0.038, 0.008, 8, 20))
-
-    const baubleConfigs = [
-      { x: -1.18, y: 1.85, z: 0.36, scale: 0.92, plum: true, phase: 0.2 },
-      { x: 1.24, y: 1.72, z: 0.48, scale: 1.04, plum: false, phase: 1.7 },
-      { x: 0.85, y: 2.52, z: -0.22, scale: 0.82, plum: true, phase: 3.1 },
-      { x: -0.78, y: 2.38, z: -0.35, scale: 0.78, plum: false, phase: 4.4 },
-      { x: 0.42, y: 0.26, z: 1.12, scale: 0.82, plum: true, phase: 2.5 },
-    ]
-
-    baubleConfigs.forEach((cfg, idx) => {
-      const g = new THREE.Group()
-      g.position.set(cfg.x, cfg.y, cfg.z)
-      g.scale.setScalar(cfg.scale)
-
-      const sphere = new THREE.Mesh(
-        baubleSphereGeom,
-        cfg.plum ? matFlutedBaublePlum : matFlutedBaublePearl,
-      )
-      g.add(sphere)
-
-      // 3 crisp meridian pearl-silver ribs for jewel-like fluted read
-      for (let r = 0; r < 3; r++) {
-        const rib = new THREE.Mesh(baubleRibGeom, matSilverPearl)
-        rib.rotation.y = (r / 3) * Math.PI
-        g.add(rib)
-      }
-
-      const crown = new THREE.Mesh(crownGeom, matSilverPearl)
-      crown.position.y = 0.25
-      g.add(crown)
-
-      const bail = new THREE.Mesh(bailGeom, matSilverPearl)
-      bail.position.y = 0.31
-      g.add(bail)
-
-      stageGroup.add(g)
-      baubles.push({
-        group: g,
-        baseY: cfg.y,
-        bobAmp: 0.07 + (idx % 2) * 0.03,
-        bobFreq: 1.1 + idx * 0.16,
-        phase: cfg.phase,
-        spinSpeed: (idx % 2 === 0 ? 1 : -1) * 0.35,
-      })
-    })
-
-    // 3D Beveled Crystal Snowflakes (Crystal White & Signature Orchid)
-    const crystals: AnimatedCrystal[] = []
-    const snowflakeGeom = trackG(buildCrystalSnowflakeGeometry(0.28, 0.032))
-    const gemGeom = trackG(new THREE.OctahedronGeometry(0.065, 0))
-
-    const crystalConfigs = [
-      { x: -0.62, y: 1.56, z: 0.65, scale: 1.05, orchid: false, phase: 0.5 },
-      { x: 1.48, y: 1.18, z: -0.1, scale: 0.9, orchid: true, phase: 1.9 },
-      { x: 0.16, y: 2.48, z: 0.12, scale: 1.15, orchid: false, phase: 2.9 },
-      { x: -1.42, y: 1.16, z: -0.15, scale: 0.85, orchid: true, phase: 4.1 },
-      { x: 0.68, y: 1.96, z: 0.72, scale: 0.72, orchid: false, phase: 5.2 },
-    ]
-
-    crystalConfigs.forEach((cfg, idx) => {
-      const g = new THREE.Group()
-      g.position.set(cfg.x, cfg.y, cfg.z)
-      g.scale.setScalar(cfg.scale)
-
-      const starMesh = new THREE.Mesh(snowflakeGeom, cfg.orchid ? matOrchidAccent : matCrystal)
-      const centerGem = new THREE.Mesh(gemGeom, cfg.orchid ? matCrystal : matOrchidAccent)
-      centerGem.position.z = 0.02
-      g.add(starMesh, centerGem)
-
-      stageGroup.add(g)
-      crystals.push({
-        group: g,
-        baseY: cfg.y,
-        baseX: cfg.x,
-        bobAmp: 0.06 + (idx % 2) * 0.025,
-        phase: cfg.phase,
-        spinY: (idx % 2 === 0 ? 1 : -1) * 0.45,
-        spinZ: 0.18,
-      })
-    })
-
-    // ------------------------------------------------------------------
-    // 7. Instanced 3D Snow Crystals & Lilac Dust Motes
-    // ------------------------------------------------------------------
-    const moteCount = isSoftwareGl ? 44 : 64
-    const moteSpecs = generateSnowMoteSpecs(moteCount)
-    const moteGeom = trackG(new THREE.OctahedronGeometry(1, 0))
-    const moteMat = trackM(
-      new THREE.MeshBasicMaterial({
-        color: '#FFFFFF',
+    const opticalCrystalMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#7B2D8E',
+        emissive: '#14041F',
+        emissiveIntensity: 0.04,
+        metalness: 0.06,
+        roughness: 0.1,
+        transmission: isSoftwareGl ? 0 : 0.82,
         transparent: true,
-        opacity: 0.85,
+        opacity: isSoftwareGl ? 0.66 : 1,
+        ior: 1.85,
+        thickness: 0.95,
+        attenuationColor: new THREE.Color('#9B4DB0'),
+        attenuationDistance: 1.2,
+        iridescence: 0.55,
+        iridescenceIOR: 1.35,
+        clearcoat: 0.75,
+        clearcoatRoughness: 0.08,
+        envMapIntensity: 1.08,
       }),
     )
-    const moteInstanced = new THREE.InstancedMesh(moteGeom, moteMat, moteCount)
-    moteInstanced.frustumCulled = false
 
-    const colorWhite = new THREE.Color('#FFFFFF')
-    const colorLilac = new THREE.Color('#E9D5FF')
-    const colorOrchid = new THREE.Color('#9B4DB0')
-    moteSpecs.forEach((spec, idx) => {
-      moteInstanced.setColorAt(
-        idx,
-        spec.tone === 'lilac' ? colorLilac : spec.tone === 'orchid' ? colorOrchid : colorWhite,
+    const amethystJewelMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#9B4DB0',
+        emissive: '#240933',
+        emissiveIntensity: 0.08,
+        metalness: 0.18,
+        roughness: 0.16,
+        clearcoat: 0.8,
+        iridescence: 0.5,
+        envMapIntensity: 1.05,
+      }),
+    )
+
+    const eucalyptusMat = trackMat(
+      new THREE.MeshStandardMaterial({
+        color: '#26543C',
+        roughness: 0.56,
+        metalness: 0.06,
+        emissive: '#0B1D13',
+        emissiveIntensity: 0.03,
+      }),
+    )
+
+    const eucalyptusFrostMat = trackMat(
+      new THREE.MeshStandardMaterial({
+        color: '#3E6F56',
+        roughness: 0.46,
+        metalness: 0.1,
+      }),
+    )
+
+    // -------------------------------------------------------------------------
+    // 2A. Fluted Architectural Marble & Platinum Plinth (y: -1.24 to -0.82)
+    // -------------------------------------------------------------------------
+    const plinthGroup = new THREE.Group()
+    plinthGroup.position.set(0, -1.16, 0)
+    stageGroup.add(plinthGroup)
+
+    // Subtle matte contact shadow beneath the marble plinth (zero neon floor glow)
+    const floorHaloGeom = trackGeo(new THREE.CircleGeometry(1.36, 48))
+    floorHaloGeom.rotateX(-Math.PI / 2)
+    const floorHaloMat = trackMat(
+      new THREE.MeshBasicMaterial({
+        map: contactShadowTex,
+        transparent: true,
+        opacity: 0.75,
+        depthWrite: false,
+      }),
+    )
+    const floorHaloMesh = new THREE.Mesh(floorHaloGeom, floorHaloMat)
+    floorHaloMesh.position.y = -0.02
+    plinthGroup.add(floorHaloMesh)
+
+    // Lathe architectural stepped pedestal profile
+    const plinthProfile = [
+      new THREE.Vector2(0.0, 0.0),
+      new THREE.Vector2(0.92, 0.0),
+      new THREE.Vector2(0.92, 0.06),
+      new THREE.Vector2(0.84, 0.11),
+      new THREE.Vector2(0.76, 0.14),
+      new THREE.Vector2(0.72, 0.22),
+      new THREE.Vector2(0.79, 0.27),
+      new THREE.Vector2(0.76, 0.31),
+      new THREE.Vector2(0.0, 0.31),
+    ]
+    const plinthGeom = trackGeo(new THREE.LatheGeometry(plinthProfile, 64))
+    plinthGeom.computeTangents()
+    const plinthMesh = new THREE.Mesh(plinthGeom, plumMarbleMat)
+    plinthGroup.add(plinthMesh)
+
+    // Two brushed-platinum inlay trim collars on plinth
+    const baseCollarGeom = trackGeo(new THREE.TorusGeometry(0.88, 0.022, 16, 72))
+    baseCollarGeom.rotateX(Math.PI / 2)
+    const baseCollar = new THREE.Mesh(baseCollarGeom, brushedPlatinumMat)
+    baseCollar.position.y = 0.085
+    plinthGroup.add(baseCollar)
+
+    const upperCollarGeom = trackGeo(new THREE.TorusGeometry(0.77, 0.02, 16, 72))
+    upperCollarGeom.rotateX(Math.PI / 2)
+    const upperCollar = new THREE.Mesh(upperCollarGeom, mirrorFrostMat)
+    upperCollar.position.y = 0.295
+    plinthGroup.add(upperCollar)
+
+    // Plinth cradle prong base supporting the floating astrolabe visually
+    const cradleDishGeom = trackGeo(new THREE.TorusGeometry(0.46, 0.016, 14, 64))
+    cradleDishGeom.rotateX(Math.PI / 2)
+    const cradleDish = new THREE.Mesh(cradleDishGeom, anodizedOrchidMat)
+    cradleDish.position.y = 0.34
+    plinthGroup.add(cradleDish)
+
+    // Frosted botanical eucalyptus spray tucked gracefully along the plinth rim
+    const leafGeom = trackGeo(buildBotanicalLeafGeometry(0.28, 0.085))
+    const leafCount = 10
+    for (let i = 0; i < leafCount; i++) {
+      const angle = (i / leafCount) * Math.PI * 2 + 0.2
+      const leaf = new THREE.Mesh(
+        leafGeom,
+        i % 2 === 0 ? eucalyptusMat : eucalyptusFrostMat,
       )
-    })
-    if (moteInstanced.instanceColor) {
-      moteInstanced.instanceColor.needsUpdate = true
+      leaf.position.set(
+        Math.cos(angle) * 0.72,
+        0.27 + (i % 2) * 0.02,
+        Math.sin(angle) * 0.72,
+      )
+      leaf.rotation.order = 'YXZ'
+      leaf.rotation.y = -angle + Math.PI / 2
+      leaf.rotation.x = 1.08 + (i % 3) * 0.1
+      leaf.rotation.z = (i % 2 === 0 ? 1 : -1) * 0.18
+      plinthGroup.add(leaf)
     }
-    scene.add(moteInstanced)
 
-    // ------------------------------------------------------------------
-    // Interaction (Parallax & Festive Swirl Impulse) + Software-WebGL Loop
-    // ------------------------------------------------------------------
+    // -------------------------------------------------------------------------
+    // 2B. Counter-Rotating Celestial Astrolabe Rings (centered at y = 0.16)
+    // -------------------------------------------------------------------------
+    const astrolabeCenterY = 0.16
+    const astrolabeGroup = new THREE.Group()
+    astrolabeGroup.position.set(0, astrolabeCenterY, 0)
+    stageGroup.add(astrolabeGroup)
+
+    // Outer Meridian Ring (r = 1.04) — Glossy Dark Amethyst Lacquer flanked by twin Platinum Rails
+    const outerRingGroup = new THREE.Group()
+    outerRingGroup.rotation.set(0.32, -0.25, 0.18)
+    astrolabeGroup.add(outerRingGroup)
+
+    const outerTorusGeom = trackGeo(new THREE.TorusGeometry(1.04, 0.032, 20, 96))
+    const outerTorus = new THREE.Mesh(outerTorusGeom, amethystLacquerMat)
+    outerRingGroup.add(outerTorus)
+
+    const outerRailGeom = trackGeo(new THREE.TorusGeometry(1.076, 0.008, 12, 96))
+    const outerRail = new THREE.Mesh(outerRailGeom, mirrorFrostMat)
+    outerRingGroup.add(outerRail)
+
+    const outerInnerRailGeom = trackGeo(new THREE.TorusGeometry(1.004, 0.008, 12, 96))
+    const outerInnerRail = new THREE.Mesh(outerInnerRailGeom, brushedPlatinumMat)
+    outerRingGroup.add(outerInnerRail)
+
+    const lugGeom = trackGeo(new THREE.CylinderGeometry(0.013, 0.013, 0.088, 12))
+    const jewelGeom = trackGeo(new THREE.OctahedronGeometry(0.05, 0))
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2
+      const r = 1.04
+      if (i % 3 === 0) {
+        const gem = new THREE.Mesh(jewelGeom, amethystJewelMat)
+        gem.position.set(Math.cos(a) * r, Math.sin(a) * r, 0)
+        gem.rotation.z = a + Math.PI / 4
+        outerRingGroup.add(gem)
+      } else {
+        const lug = new THREE.Mesh(lugGeom, mirrorFrostMat)
+        lug.position.set(Math.cos(a) * r, Math.sin(a) * r, 0)
+        lug.rotation.z = a + Math.PI / 2
+        outerRingGroup.add(lug)
+      }
+    }
+
+    // Middle Equatorial Ring (r = 0.82) — brushed anodized orchid with inner rim collar
+    const midRingGroup = new THREE.Group()
+    midRingGroup.rotation.set(-0.55, 0.42, 0.25)
+    astrolabeGroup.add(midRingGroup)
+
+    const midTorusGeom = trackGeo(new THREE.TorusGeometry(0.82, 0.024, 18, 88))
+    const midTorus = new THREE.Mesh(midTorusGeom, anodizedOrchidMat)
+    midRingGroup.add(midTorus)
+
+    const midInnerRimGeom = trackGeo(new THREE.TorusGeometry(0.77, 0.008, 12, 84))
+    const midInnerRim = new THREE.Mesh(midInnerRimGeom, mirrorFrostMat)
+    midRingGroup.add(midInnerRim)
+
+    // Inner Solstice Ring (r = 0.62) — mirror platinum + 6 frost pearls
+    const innerRingGroup = new THREE.Group()
+    innerRingGroup.rotation.set(0.68, 0.35, -0.45)
+    astrolabeGroup.add(innerRingGroup)
+
+    const innerTorusGeom = trackGeo(new THREE.TorusGeometry(0.62, 0.018, 18, 80))
+    const innerTorus = new THREE.Mesh(innerTorusGeom, mirrorFrostMat)
+    innerRingGroup.add(innerTorus)
+
+    const pearlBeadGeom = trackGeo(new THREE.OctahedronGeometry(0.028, 1))
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2
+      const bead = new THREE.Mesh(pearlBeadGeom, brushedPlatinumMat)
+      bead.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0)
+      innerRingGroup.add(bead)
+    }
+
+    // Floating Crown Halo unifying the upper spire
+    const crownRingGeom = trackGeo(new THREE.TorusGeometry(0.34, 0.012, 14, 64))
+    crownRingGeom.rotateX(Math.PI / 2)
+    const crownHaloMesh = new THREE.Mesh(crownRingGeom, mirrorFrostMat)
+    crownHaloMesh.position.set(0, 1.12, 0)
+    astrolabeGroup.add(crownHaloMesh)
+
+    // -------------------------------------------------------------------------
+    // 2C. Sweeping Double-Helix Velvet & Pearl Ribbons
+    // -------------------------------------------------------------------------
+    const ribbonGroup = new THREE.Group()
+    astrolabeGroup.add(ribbonGroup)
+
+    const buildHelixPoints = (phaseOffset: number, radiusBase: number) => {
+      const pts: THREE.Vector3[] = []
+      const count = 48
+      for (let i = 0; i <= count; i++) {
+        const u = i / count
+        const theta = u * Math.PI * 2.55 + phaseOffset
+        const env = Math.sin(u * Math.PI)
+        const r = radiusBase * (0.44 + 0.6 * env)
+        const y = -0.92 + u * 2.02
+        pts.push(new THREE.Vector3(Math.cos(theta) * r, y, Math.sin(theta) * r))
+      }
+      return pts
+    }
+
+    const velvetPts = buildHelixPoints(0, 1.16)
+    const velvetCurve = new THREE.CatmullRomCurve3(velvetPts)
+    const velvetRibbonGeom = trackGeo(new THREE.TubeGeometry(velvetCurve, 84, 0.028, 12, false))
+    const velvetRibbon = new THREE.Mesh(velvetRibbonGeom, velvetRibbonMat)
+    ribbonGroup.add(velvetRibbon)
+
+    const pearlPts = buildHelixPoints(Math.PI, 1.12)
+    const pearlCurve = new THREE.CatmullRomCurve3(pearlPts)
+    const pearlRibbonGeom = trackGeo(new THREE.TubeGeometry(pearlCurve, 84, 0.017, 12, false))
+    const pearlRibbon = new THREE.Mesh(pearlRibbonGeom, pearlRibbonMat)
+    ribbonGroup.add(pearlRibbon)
+
+    // Sculpted finial caps on the top & bottom of both ribbons
+    const finialProfile = [
+      new THREE.Vector2(0, 0),
+      new THREE.Vector2(0.038, 0.025),
+      new THREE.Vector2(0.022, 0.06),
+      new THREE.Vector2(0, 0.105),
+    ]
+    const finialGeom = trackGeo(new THREE.LatheGeometry(finialProfile, 16))
+    ;[velvetPts[0], velvetPts[velvetPts.length - 1], pearlPts[0], pearlPts[pearlPts.length - 1]].forEach(
+      (pt, idx) => {
+        const finial = new THREE.Mesh(finialGeom, mirrorFrostMat)
+        finial.position.copy(pt)
+        if (idx % 2 === 0) finial.rotation.x = Math.PI
+        ribbonGroup.add(finial)
+      },
+    )
+
+    // -------------------------------------------------------------------------
+    // 2D. Suspended Optical Crystal Star-Orchid Core + Inner Luminous Heart
+    // -------------------------------------------------------------------------
+    const coreGroup = new THREE.Group()
+    astrolabeGroup.add(coreGroup)
+
+    const orchidStarGeom = trackGeo(buildOrchidStarGeometry(0.43, 0.06))
+    const orchidStarA = new THREE.Mesh(orchidStarGeom, opticalCrystalMat)
+    coreGroup.add(orchidStarA)
+
+    const orchidStarB = new THREE.Mesh(orchidStarGeom, opticalCrystalMat)
+    orchidStarB.rotation.y = Math.PI / 2
+    coreGroup.add(orchidStarB)
+
+    // Delicate platinum filigree halo framing the crystal star core
+    const starFiligreeGeom = trackGeo(new THREE.TorusGeometry(0.32, 0.008, 12, 64))
+    const starFiligree = new THREE.Mesh(starFiligreeGeom, mirrorFrostMat)
+    starFiligree.rotation.x = Math.PI / 3
+    coreGroup.add(starFiligree)
+
+    const innerGemGeom = trackGeo(new THREE.OctahedronGeometry(0.16, 0))
+    const innerGemMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#9B4DB0',
+        emissive: '#240933',
+        emissiveIntensity: 0.12,
+        metalness: 0.16,
+        roughness: 0.12,
+        clearcoat: 0.85,
+        iridescence: 0.55,
+        envMapIntensity: 1.05,
+      }),
+    )
+    const innerGem = new THREE.Mesh(innerGemGeom, innerGemMat)
+    coreGroup.add(innerGem)
+
+    // Subtle sculptural fill light (no bright bulb glare)
+    const coreLight = new THREE.PointLight('#C084FC', 0.45, 5.0, 1.8)
+    coreLight.position.set(0, astrolabeCenterY, 0.25)
+    stageGroup.add(coreLight)
+
+    const plinthUpLight = new THREE.PointLight('#7B2D8E', 0.28, 4.0, 1.8)
+    plinthUpLight.position.set(0, -0.78, 0.35)
+    stageGroup.add(plinthUpLight)
+
+    // -------------------------------------------------------------------------
+    // 2E. Orbiting Fluted Glass Jewel Baubles (Lathe silhouettes) & Snowflakes
+    // -------------------------------------------------------------------------
+    const flutedProfile = [
+      new THREE.Vector2(0.0, -0.14),
+      new THREE.Vector2(0.045, -0.1),
+      new THREE.Vector2(0.115, -0.02),
+      new THREE.Vector2(0.105, 0.06),
+      new THREE.Vector2(0.052, 0.12),
+      new THREE.Vector2(0.026, 0.145),
+      new THREE.Vector2(0.0, 0.145),
+    ]
+    const flutedOrnamentGeom = trackGeo(new THREE.LatheGeometry(flutedProfile, 28))
+    flutedOrnamentGeom.computeTangents()
+    const crownCapGeom = trackGeo(new THREE.CylinderGeometry(0.032, 0.038, 0.036, 16))
+    const crownLoopGeom = trackGeo(new THREE.TorusGeometry(0.02, 0.004, 10, 20))
+
+    const baublePlumMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#6E2485',
+        metalness: 0.22,
+        roughness: 0.12,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.08,
+        iridescence: 0.65,
+        envMapIntensity: 1.7,
+      }),
+    )
+
+    const baublePearlMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#F5ECF8',
+        metalness: 0.88,
+        roughness: 0.14,
+        clearcoat: 0.9,
+        envMapIntensity: 1.65,
+      }),
+    )
+
+    const baubleEmeraldMat = trackMat(
+      new THREE.MeshPhysicalMaterial({
+        color: '#2D6649',
+        metalness: 0.28,
+        roughness: 0.14,
+        clearcoat: 1.0,
+        envMapIntensity: 1.5,
+      }),
+    )
+
+    const baubleConfigs: Array<{
+      pos: [number, number, number]
+      scale: number
+      mat: THREE.Material
+      bobAmp: number
+      bobFreq: number
+      phase: number
+      spinSpeed: number
+    }> = [
+      { pos: [-1.18, 0.68, 0.35], scale: 0.85, mat: baublePlumMat, bobAmp: 0.06, bobFreq: 1.1, phase: 0.4, spinSpeed: 0.32 },
+      { pos: [1.18, 0.56, -0.25], scale: 0.9, mat: baublePearlMat, bobAmp: 0.07, bobFreq: 0.95, phase: 1.9, spinSpeed: -0.28 },
+      { pos: [-1.06, -0.45, 0.48], scale: 0.72, mat: baubleEmeraldMat, bobAmp: 0.05, bobFreq: 1.25, phase: 3.1, spinSpeed: 0.36 },
+      { pos: [1.1, -0.52, 0.42], scale: 0.78, mat: baublePlumMat, bobAmp: 0.055, bobFreq: 1.05, phase: 4.5, spinSpeed: -0.34 },
+      { pos: [0.06, 1.26, -0.2], scale: 0.68, mat: baublePearlMat, bobAmp: 0.045, bobFreq: 1.18, phase: 5.4, spinSpeed: 0.26 },
+    ]
+
+    const baubles: AnimatedBauble[] = baubleConfigs.map((cfg) => {
+      const g = new THREE.Group()
+      g.position.set(...cfg.pos)
+      g.scale.setScalar(cfg.scale)
+
+      const body = new THREE.Mesh(flutedOrnamentGeom, cfg.mat)
+      const cap = new THREE.Mesh(crownCapGeom, brushedPlatinumMat)
+      cap.position.y = 0.156
+      const loop = new THREE.Mesh(crownLoopGeom, mirrorFrostMat)
+      loop.position.y = 0.184
+      g.add(body, cap, loop)
+      stageGroup.add(g)
+
+      return {
+        group: g,
+        baseY: cfg.pos[1],
+        bobAmp: cfg.bobAmp,
+        bobFreq: cfg.bobFreq,
+        phase: cfg.phase,
+        spinSpeed: cfg.spinSpeed,
+      }
+    })
+
+    // Multi-part beveled 3D crystal snowflakes orbiting cleanly
+    const flakeLargeGeom = trackGeo(buildCrystalSnowflakeGeometry(0.18, 0.02))
+    const flakeSmallGeom = trackGeo(buildCrystalSnowflakeGeometry(0.12, 0.016))
+    const crystalPlacements: Array<{
+      pos: [number, number, number]
+      large: boolean
+      phase: number
+      spinY: number
+      spinZ: number
+    }> = [
+      { pos: [-1.42, 0.95, -0.45], large: true, phase: 0.2, spinY: 0.42, spinZ: 0.15 },
+      { pos: [1.38, 1.02, 0.18], large: false, phase: 1.4, spinY: -0.48, spinZ: -0.18 },
+      { pos: [-1.45, -0.05, -0.3], large: false, phase: 2.7, spinY: 0.36, spinZ: 0.2 },
+      { pos: [1.46, 0.05, -0.42], large: true, phase: 3.9, spinY: -0.38, spinZ: -0.14 },
+      { pos: [0.68, 1.32, 0.32], large: false, phase: 4.8, spinY: 0.52, spinZ: 0.22 },
+      { pos: [-0.66, 1.24, 0.28], large: false, phase: 5.7, spinY: -0.44, spinZ: 0.16 },
+    ]
+
+    const crystals: AnimatedCrystal[] = crystalPlacements.map((cfg) => {
+      const g = new THREE.Group()
+      g.position.set(...cfg.pos)
+      const mesh = new THREE.Mesh(
+        cfg.large ? flakeLargeGeom : flakeSmallGeom,
+        opticalCrystalMat,
+      )
+      g.add(mesh)
+      stageGroup.add(g)
+
+      return {
+        group: g,
+        baseY: cfg.pos[1],
+        bobAmp: 0.055,
+        phase: cfg.phase,
+        spinY: cfg.spinY,
+        spinZ: cfg.spinZ,
+      }
+    })
+
+    // =========================================================================
+    // 3. SUBTLE MATTE-FROST SNOWFLAKES (Crisp Normal-Blended Points, Zero Glow)
+    // =========================================================================
+    const moteSpecs = generateSnowMoteSpecs(100)
+    const moteCount = moteSpecs.length
+    const motePos = new Float32Array(moteCount * 3)
+    const moteCol = new Float32Array(moteCount * 3)
+    const moteSeed = new Float32Array(moteCount * 4) // size, speedY, swayAmp, phase
+
+    const colorWhite = new THREE.Color('#E9D5FF')
+    const colorLilac = new THREE.Color('#D8B4FE')
+    const colorOrchid = new THREE.Color('#9B4DB0')
+
+    for (let i = 0; i < moteCount; i++) {
+      const spec = moteSpecs[i]
+      // Bias gentle snowfall toward the sanctuary showcase while keeping left copy crisp
+      motePos[i * 3] = spec.x + 1.4
+      motePos[i * 3 + 1] = spec.y
+      motePos[i * 3 + 2] = spec.z
+      const c =
+        spec.tone === 'white'
+          ? colorWhite
+          : spec.tone === 'lilac'
+            ? colorLilac
+            : colorOrchid
+      moteCol[i * 3] = c.r
+      moteCol[i * 3 + 1] = c.g
+      moteCol[i * 3 + 2] = c.b
+      moteSeed[i * 4] = 8.0 + spec.scale * 190.0
+      moteSeed[i * 4 + 1] = spec.speedY
+      moteSeed[i * 4 + 2] = spec.swayAmp
+      moteSeed[i * 4 + 3] = spec.phase
+    }
+
+    const moteGeom = trackGeo(new THREE.BufferGeometry())
+    moteGeom.setAttribute('position', new THREE.BufferAttribute(motePos, 3))
+    moteGeom.setAttribute('color', new THREE.BufferAttribute(moteCol, 3))
+    moteGeom.setAttribute('aSeed', new THREE.BufferAttribute(moteSeed, 4))
+
+    const moteMat = trackMat(
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.NormalBlending,
+        uniforms: {
+          uTime: { value: 0 },
+          uPulse: { value: 0 },
+          uPixelRatio: { value: isSoftwareGl ? 1.0 : Math.min(window.devicePixelRatio || 1, 2) },
+          uPointScale: { value: currentLayout.isCompact ? 0.52 : 0.85 },
+        },
+        vertexShader: /* glsl */ `
+          attribute vec3 color;
+          attribute vec4 aSeed;
+          uniform float uTime;
+          uniform float uPulse;
+          uniform float uPixelRatio;
+          uniform float uPointScale;
+          varying vec3 vColor;
+          varying float vAlpha;
+
+          void main() {
+            vColor = color;
+            float baseSize = aSeed.x;
+            float speedY   = aSeed.y;
+            float swayAmp  = aSeed.z;
+            float phase    = aSeed.w;
+
+            vec3 p = position;
+            p.y = mod(p.y - uTime * speedY + 4.8, 4.8) - 1.7;
+            p.x += sin(uTime * 0.75 + phase) * swayAmp * 1.4;
+
+            // Keep particles subtle across the canvas and minimal over left copy
+            float leftDim = mix(0.12, 0.42, smoothstep(-1.2, 1.8, p.x));
+            float shimmer = 0.78 + 0.22 * sin(uTime * 1.6 + phase * 2.0);
+            vAlpha = leftDim * shimmer * (1.0 + uPulse * 0.15);
+
+            vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+            gl_PointSize = baseSize * uPixelRatio * uPointScale * (4.2 / max(1.0, -mvPosition.z));
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          varying vec3 vColor;
+          varying float vAlpha;
+
+          void main() {
+            vec2 c = gl_PointCoord - vec2(0.5);
+            float d = length(c);
+            if (d > 0.5) discard;
+            float flake = smoothstep(0.5, 0.18, d);
+            gl_FragColor = vec4(vColor, flake * vAlpha);
+          }
+        `,
+      }),
+    )
+
+    const motePoints = new THREE.Points(moteGeom, moteMat)
+    motePoints.frustumCulled = false
+    scene.add(motePoints)
+
+    if (!isSoftwareGl) {
+      renderer.compile(scene, camera)
+    }
+
+    // =========================================================================
+    // 4. INTERACTION, RESIZE & ANIMATION LOOP (performance.now, afterDraw)
+    // =========================================================================
     let pointerNormX = 0
     let pointerNormY = 0
-    let swirlImpulse = 0
-    let swirlAngle = 0
     let camOffsetX = 0
     let camOffsetY = 0
-    let disposed = false
-    let frameId = 0
+    let swirlImpulse = 0
+    let swirlAngle = 0
 
     const handlePointerMove = (e: PointerEvent) => {
-      const rect = container.getBoundingClientRect()
-      if (!rect.width || !rect.height) return
-      pointerNormX = ((e.clientX - rect.left) / rect.width) * 2 - 1
-      pointerNormY = -(((e.clientY - rect.top) / rect.height) * 2 - 1)
+      const w = window.innerWidth || 1
+      const h = window.innerHeight || 1
+      pointerNormX = (e.clientX / w) * 2 - 1
+      pointerNormY = -((e.clientY / h) * 2 - 1)
     }
 
-    const handlePointerDown = (e: Event) => {
-      const target = e.target as HTMLElement | null
-      if (target?.closest('a, button')) return
-      if (!reducedMotion) {
-        swirlImpulse = 1.0
-      }
+    const handlePointerDown = () => {
+      swirlImpulse = 1.0
       onInteractRef.current?.()
     }
 
-    const parentHost = container.closest('section') ?? container.parentElement ?? window
     window.addEventListener('pointermove', handlePointerMove, { passive: true })
+    const parentHost = container.parentElement || container
     parentHost.addEventListener('pointerdown', handlePointerDown as EventListener, {
       passive: true,
     })
 
-    const handleResize = () => {
-      if (!mountRef.current || disposed) return
-      const w = mountRef.current.clientWidth || window.innerWidth
-      const h = mountRef.current.clientHeight || 560
-      currentLayout = computeHero3DLayout(w, h)
-      camera.fov = currentLayout.fov
-      camera.aspect = w / Math.max(h, 1)
-      camera.updateProjectionMatrix()
-      stageGroup.position.set(...currentLayout.stageOffset)
-      stageGroup.scale.setScalar(currentLayout.stageScale)
-      renderer.setSize(w, h, false)
-    }
-
-    const resizeObserver = new ResizeObserver(handleResize)
-    resizeObserver.observe(container)
-
-    const onContextLost = (e: Event) => {
-      e.preventDefault()
+    const onContextLost = (ev: Event) => {
+      ev.preventDefault()
       setFallbackMode(true)
     }
     domEl.addEventListener('webglcontextlost', onContextLost)
 
-    const clock = new THREE.Clock()
+    const applyResize = () => {
+      if (!container) return
+      const w = Math.max(container.clientWidth, 1)
+      const h = Math.max(container.clientHeight, 1)
+      currentLayout = computeHero3DLayout(w, h)
+      camera.fov = currentLayout.fov
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
+      stageGroup.position.set(...currentLayout.stageOffset)
+      stageGroup.scale.setScalar(currentLayout.stageScale)
+      cycloramaMat.uniforms.uFocusX.value =
+        currentLayout.stageOffset[0] * (currentLayout.isCompact ? 1.25 : 1.45)
+      moteMat.uniforms.uPointScale.value = currentLayout.isCompact ? 0.52 : 0.88
+      renderer.setSize(w, h, false)
+      if (activeRef.current) {
+        renderer.render(scene, camera)
+      }
+    }
+
+    const resizeObserver = new ResizeObserver(applyResize)
+    resizeObserver.observe(container)
+
+    let disposed = false
+    let frameId = 0
+    let lastNow = performance.now()
+    let elapsed = 0
+    let firstFrameDrawn = false
 
     function afterDraw(cb: () => void) {
       const gl = renderer.getContext() as WebGL2RenderingContext
-      const sync = gl.fenceSync ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null
+      const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0)
       gl.flush()
-      if (!sync) {
-        frameId = window.setTimeout(cb, 80)
-        return
-      }
       const poll = () => {
         if (disposed) {
-          gl.deleteSync(sync)
+          if (sync) gl.deleteSync(sync)
           return
         }
-        const state = gl.getSyncParameter(sync, gl.SYNC_STATUS)
+        const state = sync && gl.getSyncParameter(sync, gl.SYNC_STATUS)
         if (state === gl.UNSIGNALED) {
           frameId = window.setTimeout(poll, 5)
         } else {
-          gl.deleteSync(sync)
+          if (sync) gl.deleteSync(sync)
           frameId = window.setTimeout(cb, 80)
         }
       }
       frameId = window.setTimeout(poll, 5)
     }
 
-    let firstFrameDrawn = false
-
     const tick = () => {
       if (disposed) return
+
+      const now = performance.now()
+      const delta = Math.min((now - lastNow) / 1000, 0.08)
+      lastNow = now
 
       // Pause GPU work when another slide is active or tab is hidden
       if (!activeRef.current || document.hidden) {
@@ -1038,8 +1195,7 @@ export function ChristmasHero3D({
         return
       }
 
-      const delta = Math.min(clock.getDelta(), 0.08)
-      const elapsed = clock.elapsedTime
+      elapsed += delta
 
       // Smooth pointer parallax damping
       const targetParallax = computeParallaxTarget(pointerNormX, pointerNormY, reducedMotion)
@@ -1052,71 +1208,66 @@ export function ChristmasHero3D({
         currentLayout.cameraPos[2],
       )
       camera.lookAt(
-        currentLayout.lookAt[0] + camOffsetX * 0.25,
-        currentLayout.lookAt[1] + camOffsetY * 0.2,
+        currentLayout.lookAt[0] + camOffsetX * 0.22,
+        currentLayout.lookAt[1] + camOffsetY * 0.18,
         currentLayout.lookAt[2],
       )
 
-      // Decay festive swirl impulse
+      // Decay interactive shimmer impulse
       swirlImpulse = THREE.MathUtils.damp(swirlImpulse, 0, 2.2, delta)
-      const motionMult = reducedMotion ? 0 : 1 + swirlImpulse * 3.0
-      swirlAngle += delta * 0.22 * motionMult
+      const motionMult = reducedMotion ? 0 : 1 + swirlImpulse * 2.8
+      swirlAngle += delta * 0.26 * motionMult
 
-      // Animate kinetic halo ring & crown star
+      // Update GLSL silk aurora backdrop
+      cycloramaMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed
+      cycloramaMat.uniforms.uPulse.value = swirlImpulse
+      cycloramaMat.uniforms.uPointer.value.set(camOffsetX, camOffsetY)
+
+      // Animate counter-rotating astrolabe rings, double-helix ribbons & crystal core
       if (!reducedMotion) {
-        kineticRingGroup.rotation.z = swirlAngle
-        kineticRingGroup.rotation.x = Math.sin(elapsed * 0.55) * 0.16
-        kineticRingGroup.rotation.y = Math.cos(elapsed * 0.42) * 0.18
-        treeStar.rotation.y = elapsed * 0.65 + swirlImpulse * 2.5
+        outerRingGroup.rotation.y = -0.25 + swirlAngle * 0.72
+        outerRingGroup.rotation.x = 0.32 + Math.sin(elapsed * 0.45) * 0.12
+
+        midRingGroup.rotation.y = 0.42 - swirlAngle * 1.05
+        midRingGroup.rotation.z = 0.25 + Math.cos(elapsed * 0.52) * 0.14
+
+        innerRingGroup.rotation.x = 0.68 + swirlAngle * 1.35
+        innerRingGroup.rotation.y = 0.35 + Math.sin(elapsed * 0.6) * 0.18
+
+        ribbonGroup.rotation.y = swirlAngle * 0.55
+
+        coreGroup.rotation.y = elapsed * 0.55 + swirlImpulse * 2.2
+        coreGroup.rotation.z = Math.sin(elapsed * 0.7) * 0.14
+        coreGroup.position.y = Math.sin(elapsed * 1.15) * 0.045
+
+        innerGem.rotation.y = -elapsed * 1.1
+        innerGemMat.emissiveIntensity = 0.12 + swirlImpulse * 0.08
+        coreLight.intensity = 0.45 + swirlImpulse * 0.15
       }
 
-      // Animate candle flames & warm point light
-      if (!reducedMotion) {
-        candleWarmLight.intensity = 2.35 + Math.sin(elapsed * 7.2) * 0.18
-        flames.forEach((flame, idx) => {
-          const flicker = 1 + Math.sin(elapsed * 8.5 + idx * 2.1) * 0.08
-          flame.scale.set(1, flicker, 1)
-        })
-      }
-
-      // Animate floating baubles
-      baubles.forEach((b) => {
+      // Animate fluted ornaments
+      for (let i = 0; i < baubles.length; i++) {
+        const b = baubles[i]
         if (!reducedMotion) {
           b.group.position.y =
             b.baseY + Math.sin(elapsed * b.bobFreq + b.phase) * b.bobAmp
           b.group.rotation.y += delta * b.spinSpeed * motionMult
         }
-      })
+      }
 
       // Animate beveled crystal snowflakes
-      crystals.forEach((c) => {
+      for (let i = 0; i < crystals.length; i++) {
+        const c = crystals[i]
         if (!reducedMotion) {
           c.group.position.y = c.baseY + Math.cos(elapsed * 0.9 + c.phase) * c.bobAmp
           c.group.rotation.y += delta * c.spinY * motionMult
           c.group.rotation.z += delta * c.spinZ * motionMult
         }
-      })
-
-      // Animate 3D snow crystals & lilac dust motes
-      for (let i = 0; i < moteSpecs.length; i++) {
-        const m = moteSpecs[i]
-        const fallY = reducedMotion
-          ? m.y
-          : ((m.y - elapsed * m.speedY + 5.6) % 5.6) - 0.8
-        const swayX = reducedMotion
-          ? m.x
-          : m.x + Math.sin(elapsed * m.swayFreq + m.phase) * m.swayAmp
-        _dummy.position.set(swayX, fallY, m.z)
-        _dummy.rotation.set(
-          elapsed * m.rotSpeed * 0.5,
-          elapsed * m.rotSpeed,
-          m.phase,
-        )
-        _dummy.scale.setScalar(m.scale)
-        _dummy.updateMatrix()
-        moteInstanced.setMatrixAt(i, _dummy.matrix)
       }
-      moteInstanced.instanceMatrix.needsUpdate = true
+
+      // Animate soft glowing frost-bokeh particles in GPU shader
+      moteMat.uniforms.uTime.value = reducedMotion ? 0 : elapsed
+      moteMat.uniforms.uPulse.value = swirlImpulse
 
       renderer.render(scene, camera)
 
@@ -1148,18 +1299,22 @@ export function ChristmasHero3D({
       textures.forEach((t) => t.dispose())
       envTarget.dispose()
       renderer.dispose()
+      if (domEl.parentNode === container) {
+        container.removeChild(domEl)
+      }
     }
   }, [])
 
   if (fallbackMode) {
     return (
-      <div className="relative w-full h-full bg-[#240933]">
+      <div className="relative w-full h-full bg-[#14041F]">
         <Image
           src="/images/hero-christmas-luxury-3d.jpg"
           alt="Christmas at Dermaspace"
           fill
           sizes="100vw"
-          className="object-cover object-[78%_54%] md:object-[center_54%]"
+          referrerPolicy="no-referrer"
+          className="object-cover object-[76%_50%] md:object-[center_48%]"
           priority
         />
       </div>
@@ -1168,8 +1323,9 @@ export function ChristmasHero3D({
 
   return (
     <div
-      className="relative w-full h-full bg-[#240933] select-none"
+      className="relative w-full h-full bg-[#14041F] select-none"
       data-ready={isReady ? 'true' : 'false'}
+      data-testid="christmas-hero-3d"
     >
       <div ref={mountRef} className="w-full h-full" />
     </div>

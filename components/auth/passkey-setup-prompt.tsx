@@ -20,7 +20,7 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
     setError('')
 
     try {
-      console.log('[v0] Starting passkey registration...')
+      console.log('Starting passkey registration...')
       
       // Get registration options from server
       const optionsRes = await fetch('/api/auth/passkey/register/options', {
@@ -29,16 +29,16 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
 
       if (!optionsRes.ok) {
         const errorData = await optionsRes.json().catch(() => ({}))
-        console.error('[v0] Failed to get options:', errorData)
+        console.error('Failed to get options:', errorData)
         throw new Error(errorData.error || 'Failed to get registration options')
       }
 
       const options = await optionsRes.json()
-      console.log('[v0] Got registration options:', options.rp)
+      console.log('Got registration options:', options.rp)
 
       // Start WebAuthn registration
       const credential = await startRegistration({ optionsJSON: options })
-      console.log('[v0] WebAuthn registration completed, verifying...')
+      console.log('WebAuthn registration completed, verifying...')
 
       // Verify with server
       const verifyRes = await fetch('/api/auth/passkey/register/verify', {
@@ -51,7 +51,7 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
       })
 
       const verifyData = await verifyRes.json()
-      // Removed `console.log('[v0] Verify response:', ..., verifyData)`:
+      // Removed `console.log('Verify response:', ..., verifyData)`:
       // `verifyData` echoes server fields that can include the user's
       // ID / email / credential metadata. Even though
       // compiler.removeConsole strips it in prod, leaving it in the
@@ -68,7 +68,7 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
         onComplete()
       }, 2000)
     } catch (err) {
-      console.error('[v0] Passkey setup error:', err)
+      console.error('Passkey setup error:', err)
       setStep('error')
       
       // Handle WebAuthn-specific errors

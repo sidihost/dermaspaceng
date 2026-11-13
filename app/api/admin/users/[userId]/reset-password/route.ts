@@ -84,7 +84,7 @@ export async function POST(
           WHERE id = ${userId}
         `
       } catch (err) {
-        console.error('[v0] reset-password: cannot persist token', err)
+        console.error('reset-password: cannot persist token', err)
         return NextResponse.json(
           {
             error:
@@ -109,7 +109,7 @@ export async function POST(
         // disclaimer which is just as accurate when an admin sends it.
         await sendPasswordResetEmail(target.email, target.first_name, token)
       } catch (err) {
-        console.error('[v0] reset-password: email send failed', err)
+        console.error('reset-password: email send failed', err)
         // Fall through — the token is still valid. Admin can copy
         // the link from the response below.
       }
@@ -197,7 +197,7 @@ export async function POST(
     if (err instanceof Error && /unauthorized|forbidden/i.test(err.message)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    console.error('[v0] admin reset-password error:', err)
+    console.error('admin reset-password error:', err)
     return NextResponse.json(
       { error: 'Failed to reset password' },
       { status: 500 },

@@ -510,7 +510,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[v0] Get user detail error:', error)
+    console.error('Get user detail error:', error)
     // Surface the real message so we can see why the query failed in
     // the network panel instead of a generic "Failed to fetch user".
     const message = error instanceof Error ? error.message : 'Failed to fetch user'

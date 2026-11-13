@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
             ORDER BY cm.created_at DESC
           `
         } catch (err) {
-          console.error('[v0] Failed to load contact_messages:', err)
+          console.error('Failed to load contact_messages:', err)
           return [] as Record<string, unknown>[]
         }
       })(),
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
             ORDER BY st.created_at DESC
           `
         } catch (err) {
-          console.error('[v0] Failed to load support_tickets:', err)
+          console.error('Failed to load support_tickets:', err)
           return [] as Record<string, unknown>[]
         }
       })(),
@@ -366,7 +366,7 @@ export async function PUT(request: NextRequest) {
                 }),
               )
               .catch((err) =>
-                console.error('[v0] sendTicketResolvedReview failed:', err),
+                console.error('sendTicketResolvedReview failed:', err),
               )
           }
         } else {
@@ -393,7 +393,7 @@ export async function PUT(request: NextRequest) {
             VALUES (${user.id}, ${`${target}_status_changed`}, ${target}, ${targetId.toString()}, ${`Status changed to ${value}`})
           `
         } catch (err) {
-          console.error('[v0] Activity log insert failed:', err)
+          console.error('Activity log insert failed:', err)
         }
         break
       }

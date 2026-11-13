@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         await storeOtp(normalizedEmail, otp)
         await sendSignupOtpEmail(normalizedEmail, user.first_name, otp)
       } catch (sendErr) {
-        console.error('[v0] resend OTP send failed:', sendErr)
+        console.error('resend OTP send failed:', sendErr)
         return NextResponse.json(
           { error: 'We could not send the code right now. Please try again.' },
           { status: 500 },

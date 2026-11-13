@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   try {
     inbound = await req.formData()
   } catch (err) {
-    console.warn('[v0] Voice transcribe: bad form data', err)
+    console.warn('Voice transcribe: bad form data', err)
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const detail = await res.text().catch(() => '')
-      console.warn('[v0] Voice transcribe: Mistral error', res.status, detail.slice(0, 240))
+      console.warn('Voice transcribe: Mistral error', res.status, detail.slice(0, 240))
       return NextResponse.json(
         { error: 'Transcription failed. Try again.' },
         { status: 502 },
@@ -87,7 +87,7 @@ export async function POST(req: Request) {
     const text = (data.text ?? '').trim()
     return NextResponse.json({ text })
   } catch (err) {
-    console.error('[v0] Voice transcribe fatal:', err)
+    console.error('Voice transcribe fatal:', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Transcription failed' },
       { status: 500 },

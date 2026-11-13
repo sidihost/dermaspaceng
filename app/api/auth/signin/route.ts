@@ -84,7 +84,7 @@ const body = await request.json()
           eventData: { identifier: String(identifier).slice(0, 254) },
         })
       } catch (auditErr) {
-        console.error('[v0] signin_failed audit append failed:', auditErr)
+        console.error('signin_failed audit append failed:', auditErr)
       }
       return NextResponse.json(
         { error: error || 'Invalid credentials' },
@@ -165,7 +165,7 @@ const body = await request.json()
         eventData: { method: 'password', newDevice: isNewDevice },
       })
     } catch (auditErr) {
-      console.error('[v0] signin audit append failed:', auditErr)
+      console.error('signin audit append failed:', auditErr)
     }
 
     return NextResponse.json({

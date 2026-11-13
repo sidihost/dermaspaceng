@@ -57,7 +57,7 @@ export async function GET(
 
     return NextResponse.json({ feedback: rows[0] })
   } catch (error) {
-    console.error('[v0] Admin feedback detail GET failed:', error)
+    console.error('Admin feedback detail GET failed:', error)
     if (error instanceof Error && error.message.startsWith('Unauthorized')) {
       return NextResponse.json({ error: error.message }, { status: 403 })
     }

@@ -93,7 +93,7 @@ export async function GET() {
     } catch (activityErr) {
       // Don't block the list render. Log it so we can fix the join
       // later, but the team list still appears with zero activity.
-      console.warn('[v0] Staff activity counts failed (optional join):', activityErr)
+      console.warn('Staff activity counts failed (optional join):', activityErr)
       activityById = new Map()
     }
 
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
         token,
       })
     } catch (emailErr) {
-      console.error('[v0] Staff invitation email send failed:', emailErr)
+      console.error('Staff invitation email send failed:', emailErr)
     }
 
     return NextResponse.json({
@@ -249,7 +249,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Log the full error so we can tell a DB issue from an auth issue from
     // the client-side "failed to send invitation" banner.
-    console.error('[v0] Create invitation error:', error)
+    console.error('Create invitation error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
       { error: `Failed to create invitation: ${message}` },

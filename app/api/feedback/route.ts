@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       createdAt: inserted[0]?.created_at,
     })
   } catch (error) {
-    console.error('[v0] Feedback POST failed:', error)
+    console.error('Feedback POST failed:', error)
     return NextResponse.json({ error: 'Could not save feedback' }, { status: 500 })
   }
 }
@@ -156,7 +156,7 @@ export async function GET() {
       })),
     })
   } catch (error) {
-    console.error('[v0] Feedback GET failed:', error)
+    console.error('Feedback GET failed:', error)
     return NextResponse.json({ error: 'Failed to load history' }, { status: 500 })
   }
 }

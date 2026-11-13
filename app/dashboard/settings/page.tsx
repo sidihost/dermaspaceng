@@ -969,7 +969,7 @@ function SettingsPageContent() {
     setPasskeyMessage(null)
 
     try {
-      console.log('[v0] Starting passkey setup from settings...')
+      console.log('Starting passkey setup from settings...')
       
       const optionsRes = await fetch('/api/auth/passkey/register/options', { method: 'POST' })
       if (!optionsRes.ok) {
@@ -978,10 +978,10 @@ function SettingsPageContent() {
       }
 
       const options = await optionsRes.json()
-      console.log('[v0] Got options, starting WebAuthn...')
+      console.log('Got options, starting WebAuthn...')
       
       const credential = await startRegistration({ optionsJSON: options })
-      console.log('[v0] WebAuthn completed, verifying...')
+      console.log('WebAuthn completed, verifying...')
 
       const verifyRes = await fetch('/api/auth/passkey/register/verify', {
         method: 'POST',
@@ -1005,7 +1005,7 @@ function SettingsPageContent() {
       setShowAddPasskey(false)
       setNewPasskeyName('')
     } catch (err) {
-      console.error('[v0] Passkey error:', err)
+      console.error('Passkey error:', err)
       let errorMessage = 'Failed to add passkey'
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
@@ -1050,18 +1050,18 @@ function SettingsPageContent() {
     setTwoFAMessage(null)
 
     try {
-      console.log('[v0] handleSetup2FA: Starting 2FA setup')
+      console.log('handleSetup2FA: Starting 2FA setup')
       const res = await fetch('/api/auth/2fa/setup', { method: 'POST' })
-      console.log('[v0] handleSetup2FA: Response status', res.status)
+      console.log('handleSetup2FA: Response status', res.status)
       
       if (!res.ok) {
         const errorText = await res.text()
-        console.log('[v0] handleSetup2FA: Error response', errorText)
+        console.log('handleSetup2FA: Error response', errorText)
         throw new Error('Failed to setup 2FA')
       }
 
       const data = await res.json()
-      console.log('[v0] handleSetup2FA: Response data', {
+      console.log('handleSetup2FA: Response data', {
         hasQrCodeUrl: !!data.qrCodeUrl,
         qrCodeUrlLength: data.qrCodeUrl?.length,
         hasSecret: !!data.secret,
@@ -1072,7 +1072,7 @@ function SettingsPageContent() {
       setTotpSecret(data.secret)
       setShowSetup2FA(true)
     } catch (error) {
-      console.log('[v0] handleSetup2FA: Error', error)
+      console.log('handleSetup2FA: Error', error)
       setTwoFAMessage({ type: 'error', text: 'Failed to setup 2FA' })
     } finally {
       setTwoFALoading(false)

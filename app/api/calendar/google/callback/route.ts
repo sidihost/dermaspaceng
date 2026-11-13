@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
     })
     return back('google_calendar=connected')
   } catch (err: any) {
-    console.log('[v0] google calendar callback error:', err?.message ?? err)
+    console.log('google calendar callback error:', err?.message ?? err)
     return back(
       `google_calendar=error&reason=${encodeURIComponent(String(err?.message ?? err).slice(0, 120))}`,
     )

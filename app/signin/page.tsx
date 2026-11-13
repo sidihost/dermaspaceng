@@ -192,13 +192,13 @@ function SignInForm() {
       const options = await optionsRes.json()
       const { challengeId, ...authOptions } = options
       
-      console.log('[v0] Passkey auth - rpID from server:', authOptions.rpId)
-      console.log('[v0] Passkey auth - current origin:', window.location.origin)
-      console.log('[v0] Passkey auth - challengeId:', challengeId)
+      console.log('Passkey auth - rpID from server:', authOptions.rpId)
+      console.log('Passkey auth - current origin:', window.location.origin)
+      console.log('Passkey auth - challengeId:', challengeId)
       
       const credential = await startAuthentication({ optionsJSON: authOptions })
       
-      console.log('[v0] Passkey auth - credential.id:', credential.id?.substring(0, 30) + '...')
+      console.log('Passkey auth - credential.id:', credential.id?.substring(0, 30) + '...')
 
       // Verify authentication
       const verifyRes = await fetch('/api/auth/passkey/authenticate/verify', {
@@ -228,7 +228,7 @@ function SignInForm() {
     } catch (err) {
       // Convert technical WebAuthn errors to user-friendly messages
       const errorMessage = err instanceof Error ? err.message : 'Passkey authentication failed'
-      console.log('[v0] Passkey auth error:', errorMessage)
+      console.log('Passkey auth error:', errorMessage)
       
       if (errorMessage.includes('timed out') || errorMessage.includes('not allowed')) {
         setError('Passkey authentication was cancelled or timed out. Please try again.')

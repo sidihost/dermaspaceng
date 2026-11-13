@@ -77,13 +77,13 @@ export function ServiceWorkerRegister() {
       // re-trigger this handler and recovery can proceed normally.
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
         console.warn(
-          '[v0] Skipping stale-bundle recovery because the device is offline:',
+          'Skipping stale-bundle recovery because the device is offline:',
           reason,
         )
         return
       }
       sessionStorage.setItem(RECOVERY_FLAG, '1')
-      console.warn('[v0] Detected stale chunk reference, recovering:', reason)
+      console.warn('Detected stale chunk reference, recovering:', reason)
       try {
         if ('serviceWorker' in navigator) {
           const regs = await navigator.serviceWorker.getRegistrations()
@@ -94,7 +94,7 @@ export function ServiceWorkerRegister() {
           await Promise.all(names.map((n) => caches.delete(n)))
         }
       } catch (err) {
-        console.error('[v0] Cache wipe failed:', err)
+        console.error('Cache wipe failed:', err)
       }
       window.location.reload()
     }

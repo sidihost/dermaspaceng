@@ -40,10 +40,9 @@ export class RootErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: { componentStack?: string }) {
-    // `[v0]` prefix so the log is easy to grep for in production
-    // when we're triaging runtime errors.
+    // Log runtime errors for triage.
     console.error(
-      `[v0] RootErrorBoundary (${this.props.label ?? 'root'}) caught error:`,
+      `RootErrorBoundary (${this.props.label ?? 'root'}) caught error:`,
       error,
       info?.componentStack,
     )

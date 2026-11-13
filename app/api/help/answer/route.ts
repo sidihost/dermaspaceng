@@ -134,7 +134,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ answer, sources, showMap, provider: pick.name })
   } catch (error) {
-    console.error('[v0] help/answer error:', error)
+    console.error('help/answer error:', error)
     return NextResponse.json(
       {
         answer:

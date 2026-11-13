@@ -201,7 +201,7 @@ export async function POST(request: Request) {
         ON CONFLICT (user_id, version) DO NOTHING
       `
     } catch (legalAuditErr) {
-      console.error('[v0] legal acceptance audit failed:', legalAuditErr)
+      console.error('legal acceptance audit failed:', legalAuditErr)
     }
 
     // ── Email verification via OTP ─────────────────────────────────
@@ -216,7 +216,7 @@ export async function POST(request: Request) {
       await storeOtp(email, otp)
       await sendSignupOtpEmail(email, firstName, otp)
     } catch (otpErr) {
-      console.error('[v0] signup OTP send failed:', otpErr)
+      console.error('signup OTP send failed:', otpErr)
     }
 
     // ── Audit ledger: append the signup event ──────────────────────
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
       // Auditing must never block a successful signup; we log and
       // move on. The chain remains valid because we simply skip
       // appending — we don't write a half-formed row.
-      console.error('[v0] signup audit append failed:', auditErr)
+      console.error('signup audit append failed:', auditErr)
     }
 
     return NextResponse.json({

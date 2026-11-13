@@ -61,12 +61,12 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       // Migration not applied yet — swallow so the user's page nav
       // never fails because of telemetry.
-      console.warn('[v0] page_views insert skipped:', err)
+      console.warn('page_views insert skipped:', err)
     }
 
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('[v0] pageview track error:', error)
+    console.error('pageview track error:', error)
     return NextResponse.json({ ok: true })
   }
 }

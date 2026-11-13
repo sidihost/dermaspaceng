@@ -96,7 +96,7 @@ export async function POST(
         token: newToken,
       })
     } catch (emailErr) {
-      console.error('[v0] Resend invite email failed:', emailErr)
+      console.error('Resend invite email failed:', emailErr)
     }
 
     return NextResponse.json({
@@ -108,7 +108,7 @@ export async function POST(
         : `Link refreshed for ${invite.email}, but the email failed to send.`,
     })
   } catch (error) {
-    console.error('[v0] Resend invitation error:', error)
+    console.error('Resend invitation error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
       { error: `Failed to resend invitation: ${message}` },

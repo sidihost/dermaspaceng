@@ -90,7 +90,7 @@ export async function appendAuditEvent(
       hash: result[0].this_hash as string,
     }
   } catch (error) {
-    console.error('[v0] auth-audit append failed:', error)
+    console.error('auth-audit append failed:', error)
     return null
   }
 }

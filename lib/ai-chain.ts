@@ -252,7 +252,7 @@ export async function pingChatProvider(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.warn(
-      `[v0] Chat provider ${pick.name} ping failed:`,
+      `Chat provider ${pick.name} ping failed:`,
       msg.slice(0, 200),
     )
     return false
@@ -275,13 +275,13 @@ export async function pickFirstHealthyChatProvider(
   for (const pick of chain) {
     const ok = await pingChatProvider(pick, timeoutMs)
     if (ok) {
-      console.log(`[v0] Chat provider healthy: ${pick.name}`)
+      console.log(`Chat provider healthy: ${pick.name}`)
       return { pick, healthy: true }
     }
   }
   // Nothing answered — return the last entry so the caller can still
   // try it (and surface its real error) rather than crash.
-  console.error('[v0] Every chat provider failed ping')
+  console.error('Every chat provider failed ping')
   return { pick: chain[chain.length - 1], healthy: false }
 }
 
@@ -341,14 +341,14 @@ export async function rescueChatReply(opts: {
       const clean = (text || '').trim()
       if (clean) {
         console.log(
-          `[v0] rescueChatReply succeeded (provider=${pick.name}, len=${clean.length})`,
+          `rescueChatReply succeeded (provider=${pick.name}, len=${clean.length})`,
         )
         return { text: clean, provider: pick.name }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.warn(
-        `[v0] rescueChatReply ${pick.name} failed:`,
+        `rescueChatReply ${pick.name} failed:`,
         msg.slice(0, 160),
       )
     }
@@ -416,7 +416,7 @@ export async function analyzeVisionFrame(opts: {
       const msg = err instanceof Error ? err.message : String(err)
       // Log enough detail to debug misconfig, but don't throw — we
       // want to give the next provider a chance.
-      console.warn('[v0] Vision provider', pick.name, 'failed:', msg.slice(0, 240))
+      console.warn('Vision provider', pick.name, 'failed:', msg.slice(0, 240))
       errors.push(`${pick.name}: ${msg.slice(0, 120)}`)
     }
   }

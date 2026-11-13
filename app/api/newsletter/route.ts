@@ -40,10 +40,10 @@ export async function POST(request: Request) {
     if (trap) return trap
 
     const { email } = parsed.data
-    console.log('[v0] Newsletter subscription request for:', email)
+    console.log('Newsletter subscription request for:', email)
 
     if (!email || typeof email !== 'string' || !email.includes('@') || email.length > 254) {
-      console.log('[v0] Invalid email provided')
+      console.log('Invalid email provided')
       return NextResponse.json(
         { error: 'Valid email is required' },
         { status: 400 }
@@ -65,15 +65,15 @@ export async function POST(request: Request) {
     
     // Add to subscribers list with UUID
     const id = uuidv4()
-    console.log('[v0] Adding new subscriber with id:', id)
+    console.log('Adding new subscriber with id:', id)
     await sql`
       INSERT INTO newsletter_subscribers (id, email) VALUES (${id}, ${email.toLowerCase()})
     `
-    console.log('[v0] Subscriber added successfully')
+    console.log('Subscriber added successfully')
     
     // Send welcome email
     const emailSent = await sendNewsletterWelcome(email)
-    console.log('[v0] Welcome email sent:', emailSent)
+    console.log('Welcome email sent:', emailSent)
     
     if (!emailSent) {
       console.error('Newsletter welcome email failed to send')
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     })
     
   } catch (error) {
-    console.error('[v0] Newsletter subscription error:', error)
+    console.error('Newsletter subscription error:', error)
     return NextResponse.json(
       { error: 'Failed to subscribe', details: String(error) },
       { status: 500 }

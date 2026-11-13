@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
           firstName: googleUser.given_name || googleUser.name || 'there',
         })
       } catch (welcomeErr) {
-        console.error('[v0] welcome email (google signup) failed:', welcomeErr)
+        console.error('welcome email (google signup) failed:', welcomeErr)
       }
     }
     

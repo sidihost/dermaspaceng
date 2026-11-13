@@ -85,7 +85,7 @@ export async function POST(
         adminLinkId: ticket.id,
       })
     } catch (alertErr) {
-      console.error('[v0] Customer reply alert send failed:', alertErr)
+      console.error('Customer reply alert send failed:', alertErr)
     }
 
     // In-app bell fan-out — keep operators in the loop even when the
@@ -106,7 +106,7 @@ export async function POST(
         priority: 'high',
       })
     } catch (notifyErr) {
-      console.error('[v0] Customer reply notifyAdmins failed:', notifyErr)
+      console.error('Customer reply notifyAdmins failed:', notifyErr)
     }
 
     return NextResponse.json({

@@ -95,7 +95,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('[v0] /api/admin/rooms/[id] PATCH error', err)
+    console.error('/api/admin/rooms/[id] PATCH error', err)
     return NextResponse.json({ error: 'Failed to update room' }, { status: 500 })
   }
 }
@@ -127,7 +127,7 @@ export async function DELETE(
     await sql`UPDATE treatment_rooms SET is_active = FALSE, updated_at = NOW() WHERE id = ${id}`
     return NextResponse.json({ ok: true })
   } catch (err) {
-    console.error('[v0] /api/admin/rooms/[id] DELETE error', err)
+    console.error('/api/admin/rooms/[id] DELETE error', err)
     return NextResponse.json({ error: 'Failed to delete room' }, { status: 500 })
   }
 }

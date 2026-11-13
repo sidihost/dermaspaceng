@@ -141,7 +141,7 @@ export async function POST(
         )
       `
     } catch (logErr) {
-      console.error('[v0] Impersonation audit log insert failed:', logErr)
+      console.error('Impersonation audit log insert failed:', logErr)
     }
 
     // Swap the cookie. We deliberately reuse the same name + flags as
@@ -165,7 +165,7 @@ export async function POST(
       },
     })
   } catch (error) {
-    console.error('[v0] Impersonate error:', error)
+    console.error('Impersonate error:', error)
     const message =
       error instanceof Error ? error.message : 'Failed to start impersonation'
     return NextResponse.json({ error: message }, { status: 500 })

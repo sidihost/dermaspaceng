@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
   // ---- Token gate -------------------------------------------------------
   const expected = process.env.INBOUND_EMAIL_TOKEN
   if (!expected) {
-    console.error('[v0] INBOUND_EMAIL_TOKEN not configured — refusing inbound')
+    console.error('INBOUND_EMAIL_TOKEN not configured — refusing inbound')
     return NextResponse.json(
       { error: 'Inbound webhook not configured' },
       { status: 503 },
@@ -250,14 +250,14 @@ export async function POST(request: NextRequest) {
 
   const parsed = parseInboundPayload(payload)
   if (!parsed) {
-    console.error('[v0] inbound: failed to parse payload')
+    console.error('inbound: failed to parse payload')
     // Still return 200 so Zepto doesn't retry a fundamentally
     // malformed payload forever — we just log and move on.
     return NextResponse.json({ ok: true, ignored: 'unparseable' })
   }
 
   console.log(
-    `[v0] inbound email from ${parsed.fromEmail} subject="${parsed.subject}" id=${parsed.messageId ?? 'none'}`,
+    `inbound email from ${parsed.fromEmail} subject="${parsed.subject}" id=${parsed.messageId ?? 'none'}`,
   )
 
   // ---- Dedup on Message-ID ---------------------------------------------
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `
       if (Array.isArray(existing) && existing.length > 0) {
-        console.log('[v0] inbound: duplicate message_id, skipping')
+        console.log('inbound: duplicate message_id, skipping')
         return NextResponse.json({
           ok: true,
           deduped: true,
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
         })
       }
     } catch (err) {
-      console.error('[v0] inbound: dedup lookup failed:', err)
+      console.error('inbound: dedup lookup failed:', err)
     }
   }
 
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
             adminLinkId: ticket.id,
           })
         } catch (err) {
-          console.error('[v0] inbound: admin reply alert failed:', err)
+          console.error('inbound: admin reply alert failed:', err)
         }
 
         return NextResponse.json({
@@ -362,7 +362,7 @@ export async function POST(request: NextRequest) {
         })
       }
     } catch (err) {
-      console.error('[v0] inbound: existing-ticket lookup failed:', err)
+      console.error('inbound: existing-ticket lookup failed:', err)
       // Fall through and create a new ticket so we never lose the message.
     }
   }
@@ -380,7 +380,7 @@ export async function POST(request: NextRequest) {
     `) as Array<{ id: string }>
     if (matchedUsers.length > 0) userId = matchedUsers[0].id
   } catch (err) {
-    console.error('[v0] inbound: user lookup failed:', err)
+    console.error('inbound: user lookup failed:', err)
   }
 
   // Subject -> category heuristic. We default to "general" but pick a
@@ -419,7 +419,7 @@ export async function POST(request: NextRequest) {
       ON CONFLICT (external_message_id) DO NOTHING
     `
   } catch (err) {
-    console.error('[v0] inbound: ticket insert failed:', err)
+    console.error('inbound: ticket insert failed:', err)
     return NextResponse.json(
       { error: 'Failed to create ticket' },
       { status: 500 },
@@ -437,7 +437,7 @@ export async function POST(request: NextRequest) {
       category,
     })
   } catch (err) {
-    console.error('[v0] inbound: customer confirmation failed:', err)
+    console.error('inbound: customer confirmation failed:', err)
   }
 
   // Ping the admin inbox so staff see the ticket the moment it lands.
@@ -452,7 +452,7 @@ export async function POST(request: NextRequest) {
       details: `From inbound email • Ticket ${ticketId}\nSubject: ${cleanedSubject}\n\n${messageBody.slice(0, 1500)}${messageBody.length > 1500 ? '…' : ''}`,
     })
   } catch (err) {
-    console.error('[v0] inbound: admin notification failed:', err)
+    console.error('inbound: admin notification failed:', err)
   }
 
   return NextResponse.json({

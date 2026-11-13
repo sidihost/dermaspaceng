@@ -22,11 +22,11 @@ export async function POST(request: Request) {
     if (result.success) {
       return NextResponse.json({ success: true, message: 'Passkey registered successfully' })
     } else {
-      console.error('[v0] Passkey verification failed:', result.error)
+      console.error('Passkey verification failed:', result.error)
       return NextResponse.json({ error: result.error || 'Verification failed' }, { status: 400 })
     }
   } catch (error) {
-    console.error('[v0] Error verifying registration:', error)
+    console.error('Error verifying registration:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to verify registration'
     return NextResponse.json({ error: errorMessage }, { status: 500 })
   }

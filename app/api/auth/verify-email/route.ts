@@ -97,7 +97,7 @@ export async function POST(request: Request) {
           firstName: user.first_name,
         })
       } catch (welcomeErr) {
-        console.error('[v0] welcome email failed:', welcomeErr)
+        console.error('welcome email failed:', welcomeErr)
       }
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
         eventData: { method: 'email_otp_signup', newDevice: true },
       })
     } catch (auditErr) {
-      console.error('[v0] verify-email audit append failed:', auditErr)
+      console.error('verify-email audit append failed:', auditErr)
     }
 
     return NextResponse.json({

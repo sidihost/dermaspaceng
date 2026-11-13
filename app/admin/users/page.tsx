@@ -132,7 +132,7 @@ export default function UsersPage() {
         message: body?.message || `Verification code sent to ${user.email}.`,
       })
     } catch (error) {
-      console.error('[v0] Resend verification failed:', error)
+      console.error('Resend verification failed:', error)
       setResendFeedback({
         kind: 'error',
         message: 'Network error. Please try again in a moment.',

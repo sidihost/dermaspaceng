@@ -146,7 +146,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[v0] Get login event detail error:', error)
+    console.error('Get login event detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch event'
     return NextResponse.json({ error: message }, { status: 500 })
   }

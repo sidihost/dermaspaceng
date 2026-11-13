@@ -86,7 +86,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error('[v0] Get complaint detail error:', error)
+    console.error('Get complaint detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch'
     return NextResponse.json({ error: message }, { status: 500 })
   }
@@ -168,7 +168,7 @@ export async function DELETE(
     }
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('[v0] Delete complaint error:', error)
+    console.error('Delete complaint error:', error)
     const message = error instanceof Error ? error.message : 'Failed to delete'
     return NextResponse.json({ error: message }, { status: 500 })
   }

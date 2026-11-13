@@ -210,7 +210,7 @@ export async function GET(request: NextRequest) {
           firstName: firstName || msUser.displayName || 'there',
         })
       } catch (welcomeErr) {
-        console.error('[v0] welcome email (microsoft signup) failed:', welcomeErr)
+        console.error('welcome email (microsoft signup) failed:', welcomeErr)
       }
     }
 

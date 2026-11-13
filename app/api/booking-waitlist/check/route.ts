@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ subscribed: rows.length > 0 })
   } catch (error) {
-    console.error('[v0] booking-waitlist check error:', error)
+    console.error('booking-waitlist check error:', error)
     return NextResponse.json({ subscribed: false })
   }
 }

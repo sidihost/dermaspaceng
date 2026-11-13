@@ -171,7 +171,7 @@ export function SignInModal({
       // cache and re-run whatever action prompted the modal.
       onSuccess()
     } catch (err) {
-      console.error('[v0] signin modal submit failed:', err)
+      console.error('signin modal submit failed:', err)
       setError('Network error. Please try again.')
     } finally {
       setSubmitting(false)

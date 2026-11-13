@@ -79,7 +79,7 @@ export async function POST(_request: NextRequest) {
         WHERE session_id = ${session.id} AND ended_at IS NULL
       `
     } catch (auditErr) {
-      console.error('[v0] Failed to close impersonation audit row:', auditErr)
+      console.error('Failed to close impersonation audit row:', auditErr)
     }
 
     // Delete the throwaway impersonation session so it can't be
@@ -87,7 +87,7 @@ export async function POST(_request: NextRequest) {
     try {
       await sql`DELETE FROM sessions WHERE id = ${session.id}`
     } catch (delErr) {
-      console.error('[v0] Failed to delete impersonation session:', delErr)
+      console.error('Failed to delete impersonation session:', delErr)
     }
 
     if (!adminSession) {
@@ -117,7 +117,7 @@ export async function POST(_request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[v0] Stop impersonate error:', error)
+    console.error('Stop impersonate error:', error)
     const message =
       error instanceof Error ? error.message : 'Failed to stop impersonation'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -100,7 +100,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error("[v0] /api/home/stats failed:", error)
+    console.error("/api/home/stats failed:", error)
     // Hard fail-safe — return brand defaults so the home page never
     // breaks because of a stats endpoint.
     return NextResponse.json(

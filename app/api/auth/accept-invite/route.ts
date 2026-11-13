@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         VALUES (${userId}, 'create', 'user', ${userId}, 'Staff account created via invitation')
       `
     } catch (logError) {
-      console.warn("[v0] activity_log insert failed (non-fatal):", logError)
+      console.warn("activity_log insert failed (non-fatal):", logError)
     }
 
     return NextResponse.json({
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       role: invitation.role,
     })
   } catch (error) {
-    console.error("[v0] Accept invite error:", error)
+    console.error("Accept invite error:", error)
     const message = error instanceof Error ? error.message : "Unknown error"
     return NextResponse.json(
       { success: false, error: `Failed to accept invitation: ${message}` },

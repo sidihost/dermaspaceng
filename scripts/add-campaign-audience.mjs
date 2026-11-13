@@ -17,7 +17,7 @@ const cols = await sql`
   WHERE table_schema='public' AND table_name='newsletter_campaigns'
     AND column_name='audience'
 `
-console.log('[v0] audience column:', cols)
+console.log('audience column:', cols)
 
 // Quick sanity counts for each audience so we can confirm the
 // recipient queries return sensible numbers.
@@ -31,4 +31,4 @@ const [{ count: custCount }] = await sql`
     AND COALESCE(is_active, true) = true
     AND deleted_at IS NULL
 `
-console.log('[v0] active subscribers:', subCount, '| active customers:', custCount)
+console.log('active subscribers:', subCount, '| active customers:', custCount)

@@ -66,7 +66,7 @@ export async function GET() {
     } catch (err) {
       // A missing or schema-drifted user_notifications table is not
       // fatal — we swallow it so the list still renders.
-      console.error('[v0] unread-ticket-reply count lookup failed:', err)
+      console.error('unread-ticket-reply count lookup failed:', err)
     }
 
     const enriched = tickets.map((t) => ({
@@ -133,7 +133,7 @@ export async function POST(request: Request) {
         category
       })
     } catch (emailError) {
-      console.error('[v0] Ticket email error:', emailError)
+      console.error('Ticket email error:', emailError)
     }
 
     return NextResponse.json({ 

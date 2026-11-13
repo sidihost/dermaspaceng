@@ -306,7 +306,7 @@ export async function PATCH(
           locationName: booking.location_name || '',
         })
       } catch (err) {
-        console.error('[v0] sendBookingCompletedEmail failed', err)
+        console.error('sendBookingCompletedEmail failed', err)
       }
     }
   } else if (body.action === 'set_notes') {

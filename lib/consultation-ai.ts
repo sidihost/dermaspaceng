@@ -144,13 +144,13 @@ Produce a structured preliminary skin analysis tailored to the above.`
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.warn(
-        `[v0] consultation analysis ${pick.name} failed:`,
+        `consultation analysis ${pick.name} failed:`,
         msg.slice(0, 200),
       )
       errors.push(`${pick.name}: ${msg.slice(0, 120)}`)
     }
   }
 
-  console.error('[v0] All providers failed for consultation analysis:', errors.join(' | '))
+  console.error('All providers failed for consultation analysis:', errors.join(' | '))
   return buildFallback(concerns)
 }

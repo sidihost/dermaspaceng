@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       reference: paymentResponse.data.reference,
     })
   } catch (error) {
-    console.error('[v0] membership subscribe error', error)
+    console.error('membership subscribe error', error)
     return NextResponse.json(
       { error: 'Failed to start membership checkout' },
       { status: 500 },

@@ -137,7 +137,7 @@ export default function CheckoutClient({
       // which lands them on /membership/receipt/<ref>.
       window.location.href = data.authorization_url
     } catch (err) {
-      console.error('[v0] membership subscribe error', err)
+      console.error('membership subscribe error', err)
       setError('Something went wrong. Please try again in a moment.')
       setIsLoading(false)
     }

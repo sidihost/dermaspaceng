@@ -115,10 +115,10 @@ export async function POST(request: Request) {
       })
       
       if (!emailSent) {
-        console.error('[v0] Email failed to send - check ZEPTO_MAIL_PASSWORD environment variable')
+        console.error('Email failed to send - check ZEPTO_MAIL_PASSWORD environment variable')
       }
     } catch (emailError) {
-      console.error('[v0] Email error:', emailError)
+      console.error('Email error:', emailError)
     }
 
     return NextResponse.json({ success: true, emailSent })
