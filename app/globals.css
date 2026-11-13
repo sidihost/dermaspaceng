@@ -1406,7 +1406,7 @@ input[type='search']::-ms-reveal {
   }
 }
 
-/* ── Clean Christmas Hero Sanctuary & Animated Laser Tech Illustrations ──
+/* ── Clean Christmas Hero Sanctuary Animations ──
    Pure transform/opacity/clip-path animations (zero gradients, zero shadows). */
 @keyframes hero-underline-reveal {
   0% {
@@ -1456,35 +1456,6 @@ input[type='search']::-ms-reveal {
   }
 }
 
-@keyframes laser-glide {
-  0%, 100% { transform: translate3d(-14px, 0, 0); }
-  50%      { transform: translate3d(14px, -3px, 0); }
-}
-
-@keyframes laser-pulse-ring {
-  0% {
-    transform: scale(0.55);
-    opacity: 0.75;
-  }
-  75% {
-    transform: scale(1.55);
-    opacity: 0.12;
-  }
-  100% {
-    transform: scale(1.7);
-    opacity: 0;
-  }
-}
-
-@keyframes laser-beam-sweep {
-  0%, 100% { opacity: 0.24; }
-  50%      { opacity: 0.48; }
-}
-
-@keyframes laser-orb-float {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50%      { transform: translate3d(0, -6px, 0); }
-}
 
 .christmas-sway-a {
   transform-box: fill-box;
@@ -1514,36 +1485,12 @@ input[type='search']::-ms-reveal {
   animation: christmas-flake-fall var(--flake-dur, 14s) linear var(--flake-delay, 0s) infinite;
 }
 
-.laser-glide {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: laser-glide 5.2s ease-in-out infinite;
-}
-
-.laser-pulse-ring {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: laser-pulse-ring var(--pulse-dur, 3s) cubic-bezier(0.2, 0.7, 0.3, 1) var(--pulse-delay, 0s) infinite;
-}
-
-.laser-beam-sweep {
-  animation: laser-beam-sweep 2.6s ease-in-out infinite;
-}
-
-.laser-orb-float {
-  animation: laser-orb-float 4.2s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .christmas-sway-a,
   .christmas-sway-b,
   .christmas-botanical-breathe,
   .christmas-flame-flicker,
-  .christmas-flake-fall,
-  .laser-glide,
-  .laser-pulse-ring,
-  .laser-beam-sweep,
-  .laser-orb-float {
+  .christmas-flake-fall {
     animation: none !important;
   }
 }

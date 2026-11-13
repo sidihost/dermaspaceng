@@ -24,9 +24,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import {
-  ArrowLeft,
   Heart,
   Flower2,
   Sunrise,
@@ -34,6 +32,7 @@ import {
   Moon,
   Droplet,
 } from 'lucide-react'
+import { ServiceBackBar } from './service-back-bar'
 
 interface User {
   firstName: string
@@ -114,120 +113,76 @@ export default function SubserviceHero({
     (lowerTitle.includes('facial') || lowerTitle.includes('body'))
 
   return (
-    <section className="relative bg-[#7B2D8E] overflow-hidden pt-7 pb-10 md:pt-10 md:pb-14">
-      {/* Decoration layers. All pure white-with-opacity so we never
-          drift into "light purple" territory.
-            1. A narrow radial highlight at the top centre — adds depth
-               under the back/category bar without changing colour.
-            2. Two large outline rings tucked into opposite corners
-               that hint at the rounded "card" feel of a native
-               app screen. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(50% 40% at 50% -10%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 65%)',
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full border border-white/10"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-28 -left-24 w-64 h-64 rounded-full border border-white/10"
-      />
+    <>
+      <ServiceBackBar title={title} />
+      <section className="relative bg-[#7B2D8E] overflow-hidden py-11 md:py-16">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full border border-white/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-28 -left-24 w-64 h-64 rounded-full border border-white/10"
+        />
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4">
-        {/* Top action bar.
-            Solid white pills for *both* the back link and the
-            category chip. White-on-purple is the cleanest possible
-            statement of the brand — no faded tints, no greys, just
-            the two brand colours doing their jobs. The pills share
-            the same height (h-9) so the row reads as a native app
-            navigation bar. */}
-        <div className="flex items-center justify-between mb-7">
-          <Link
-            href="/services"
-            aria-label="Back to services"
-            className="inline-flex items-center gap-1.5 h-9 pl-2 pr-3.5 rounded-full bg-white text-[#7B2D8E] text-[12.5px] font-semibold shadow-sm hover:bg-white/95 active:scale-[0.97] transition-all group"
-          >
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E]/10">
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-            </span>
-            Back
-          </Link>
-
-          {!isLoading && user && isFavoriteCategory ? (
-            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white text-[#7B2D8E] text-[10px] font-bold tracking-[0.16em] uppercase shadow-sm">
-              <Heart className="w-3 h-3 fill-[#7B2D8E] text-[#7B2D8E]" aria-hidden="true" />
-              Your Favorite
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white text-[#7B2D8E] text-[10px] font-bold tracking-[0.16em] uppercase shadow-sm">
-              <Flower2 className="w-3 h-3" aria-hidden="true" />
-              {category}
-            </span>
-          )}
-        </div>
-
-        {/* Centred title block. */}
-        <div className="text-center">
-          {/* Hero title — bumped up two steps over the previous
-              version. The earlier `text-2xl md:text-4xl` looked
-              decent on desktop but felt under-weighted on mobile
-              given how much purple real estate it sits on. We pull
-              the leading in tight so a two-word title (e.g. "Nail
-              Care") sits on a single visual line. */}
-          <h1 className="text-[28px] md:text-5xl font-bold text-white leading-[1.1] tracking-tight text-balance">
-            {title}
-          </h1>
-
-          {/* Single hairline rule — replaces the previous "dot · line
-              · dot · line · dot" accent. One thin centred line on
-              white-at-low-opacity is calmer, more editorial, and
-              stops competing with the headline. */}
-          <span
-            aria-hidden="true"
-            className="block mx-auto mt-4 mb-4 h-px w-12 bg-white/45"
-          />
-
-          <p className="text-[14px] md:text-[16px] text-white/90 max-w-md mx-auto leading-relaxed text-pretty">
-            {description}
-          </p>
-
-          {/* Personalisation chips. Solid white with purple text +
-              glyph — same chip language as the top bar so the whole
-              hero reads as one consistent system. Hidden for guests
-              so the layout stays compact. */}
-          {!isLoading && user && (() => {
-            const { label: greetingLabel, Icon: GreetingIcon } = getTimeGreeting()
-            return (
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white text-[#7B2D8E] text-[12px] shadow-sm">
-                  <GreetingIcon aria-hidden className="w-3.5 h-3.5" />
-                  <span>
-                    {greetingLabel},{' '}
-                    <span className="font-semibold">{user.firstName}</span>
-                  </span>
+        <div className="relative z-10 max-w-4xl mx-auto px-4">
+          {/* Centred title block. */}
+          <div className="text-center">
+            <div className="mb-4 flex justify-center">
+              {!isLoading && user && isFavoriteCategory ? (
+                <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-white text-[#7B2D8E] text-[10px] font-bold tracking-[0.16em] uppercase">
+                  <Heart className="w-3 h-3 fill-[#7B2D8E] text-[#7B2D8E]" aria-hidden="true" />
+                  Your Favorite
                 </span>
-                {showSkinType && (
-                  <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white text-[#7B2D8E] text-[12px] shadow-sm">
-                    <Droplet aria-hidden className="w-3.5 h-3.5" />
+              ) : (
+                <span className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-white text-[#7B2D8E] text-[10px] font-bold tracking-[0.16em] uppercase">
+                  <Flower2 className="w-3 h-3" aria-hidden="true" />
+                  {category}
+                </span>
+              )}
+            </div>
+
+            <h1 className="text-[28px] md:text-5xl font-bold text-white leading-[1.1] tracking-tight text-balance">
+              {title}
+            </h1>
+
+            <span
+              aria-hidden="true"
+              className="block mx-auto mt-4 mb-4 h-px w-12 bg-white/45"
+            />
+
+            <p className="text-[14px] md:text-[16px] text-white/90 max-w-md mx-auto leading-relaxed text-pretty">
+              {description}
+            </p>
+
+            {!isLoading && user && (() => {
+              const { label: greetingLabel, Icon: GreetingIcon } = getTimeGreeting()
+              return (
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white text-[#7B2D8E] text-[12px]">
+                    <GreetingIcon aria-hidden className="w-3.5 h-3.5" />
                     <span>
-                      Skin type{' '}
-                      <span className="font-semibold">
-                        {preferences?.skinType}
-                      </span>
+                      {greetingLabel},{' '}
+                      <span className="font-semibold">{user.firstName}</span>
                     </span>
                   </span>
-                )}
-              </div>
-            )
-          })()}
+                  {showSkinType && (
+                    <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white text-[#7B2D8E] text-[12px]">
+                      <Droplet aria-hidden className="w-3.5 h-3.5" />
+                      <span>
+                        Skin type{' '}
+                        <span className="font-semibold">
+                          {preferences?.skinType}
+                        </span>
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )
+            })()}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   )
 }

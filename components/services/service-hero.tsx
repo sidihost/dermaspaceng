@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
-import { ArrowLeft, Bath, Flower2, Gem, Scissors, Shield } from 'lucide-react'
+import { Bath, Flower2, Gem, Scissors, Shield } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
+import { ServiceBackBar } from './service-back-bar'
 
 interface ServiceHeroProps {
   /** Small uppercase category label shown in the pill, e.g. "Wellness". */
@@ -15,19 +15,13 @@ interface ServiceHeroProps {
 
 /**
  * Shared hero for the static sub-service pages (Body Treatments, Facial
- * Treatments, Nail Care, Waxing).
+ * Treatments, Nail Care, Waxing, Laser Hair Removal, Laser Package Deals).
  *
- * Why this exists:
- *  - The old per-page hero placed the "Back to Services" link and the
- *    category pill as two `inline-flex` siblings inside a `text-center`
- *    block. Both are inline-level, so on narrow screens they flowed onto
- *    the SAME line and collided (visible on mobile). Here each row is a
- *    proper block, so they always stack cleanly.
- *  - It adds light personalization for signed-in members: a time-of-day
- *    greeting eyebrow and a subtitle tailored to their skin profile,
- *    without changing anything for guests / SEO crawlers.
- *
- * Strictly brand purple (#7B2D8E) + white. No gradients, no shadows.
+ * Places the "Back to Services" navigation in a dedicated, grid-aligned
+ * breadcrumb utility strip directly above the hero so it aligns with the
+ * page container (`max-w-6xl`) and keeps the `#7B2D8E` hero surface pure,
+ * single-tone, and centered. Strictly flat brand colors — zero gradients,
+ * zero shadows.
  */
 export function ServiceHero({ category, title, subtitle }: ServiceHeroProps) {
   const { isLoggedIn, user, preferences } = useUserPersonalization()
@@ -47,79 +41,64 @@ export function ServiceHero({ category, title, subtitle }: ServiceHeroProps) {
     return subtitle
   })()
 
+  const cat = category.trim().toLowerCase()
+  const CategoryIcon =
+    cat.includes('laser')
+      ? Shield
+      : cat.includes('wellness') || cat.includes('body')
+        ? Bath
+        : cat.includes('beauty') || cat.includes('nail')
+          ? Gem
+          : cat.includes('hair removal') || cat.includes('wax')
+            ? Scissors
+            : Flower2
+
   return (
-    <section className="relative overflow-hidden bg-[#7B2D8E] py-12 sm:py-16 md:py-20">
-      {/* Decorative circles (purely visual) */}
-      <div className="pointer-events-none absolute top-0 right-0 h-48 w-48 -translate-y-1/2 translate-x-1/2 rounded-full bg-white/5 sm:h-64 sm:w-64" aria-hidden />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-36 w-36 translate-y-1/2 -translate-x-1/2 rounded-full bg-white/5 sm:h-48 sm:w-48" aria-hidden />
+    <>
+      <ServiceBackBar title={title} />
 
-      <div className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6">
-        {/* Back link — its own row so it never collides with the pill */}
-        <div className="mb-6 sm:mb-8">
-          <Link
-            href="/services"
-            className="group inline-flex items-center gap-2 text-sm text-white/90 transition-colors hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            Back to Services
-          </Link>
-        </div>
+      {/* Pure Single-Tone Brand Purple Hero */}
+      <section className="relative overflow-hidden bg-[#7B2D8E] py-11 sm:py-14 md:py-16">
+        {/* Crisp hairline decorative rings (zero fill tint so purple stays uniform) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full border border-white/10"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-20 -left-20 h-52 w-52 rounded-full border border-white/10"
+        />
 
-        {/* Centered headline block */}
-        <div className="text-center">
+        <div className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 text-center">
           {/* Personalized greeting eyebrow (members only) */}
           {isLoggedIn && user && (
-            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-white/70">
+            <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-white/75">
               {greeting}, {user.firstName}
             </p>
           )}
 
-          {/* Category pill */}
-          {(() => {
-            const cat = category.trim().toLowerCase()
-            const CategoryIcon =
-              cat.includes('laser')
-                ? Shield
-                : cat.includes('wellness') || cat.includes('body')
-                  ? Bath
-                  : cat.includes('beauty') || cat.includes('nail')
-                    ? Gem
-                    : cat.includes('hair removal') || cat.includes('wax')
-                      ? Scissors
-                      : Flower2
-            return (
-              <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1.5">
-                <CategoryIcon className="h-3.5 w-3.5 text-white" aria-hidden="true" />
-                <span className="text-[11px] font-medium uppercase tracking-widest text-white sm:text-xs">
-                  {category}
-                </span>
-              </div>
-            )
-          })()}
+          {/* Crisp solid white category pill */}
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-[#7B2D8E]">
+            <CategoryIcon className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.16em]">
+              {category}
+            </span>
+          </div>
 
           {/* Title */}
           <h1 className="text-pretty text-3xl font-bold text-white sm:text-4xl md:text-5xl">
             {title}
           </h1>
 
-          {/* Curved underline */}
-          <svg className="mx-auto my-4" width="120" height="8" viewBox="0 0 120 8" fill="none" aria-hidden>
-            <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5" />
-          </svg>
+          {/* Clean centered hairline accent */}
+          <div aria-hidden="true" className="mx-auto my-4 h-px w-14 bg-white/40" />
 
           {/* Subtitle (personalized for members with a skin profile) */}
-          <p className="mx-auto max-w-md text-pretty text-sm text-white/80 sm:text-base">
+          <p className="mx-auto max-w-md text-pretty text-sm text-white/85 sm:text-base leading-relaxed">
             {personalizedSubtitle}
           </p>
-
-          {/* Decorative divider */}
-          <div className="mt-6 flex items-center justify-center gap-2" aria-hidden>
-            <div className="h-0.5 w-8 bg-white/30" />
-            <div className="h-2 w-2 rounded-full bg-white/50" />
-            <div className="h-0.5 w-8 bg-white/30" />
-          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   )
 }

@@ -214,7 +214,7 @@ export default function Hero() {
     <section
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
+      className="relative h-[500px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
     >
       {/* Background Slider */}
       <div className="absolute inset-0 bg-[#240933]">
@@ -243,13 +243,8 @@ export default function Hero() {
           </div>
         ))}
 
-        {/* Clean solid contrast veil (zero CSS gradients, zero CSS shadows) */}
-        {active.festive ? (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none bg-[#240933]/25 md:bg-transparent transition-opacity duration-700"
-          />
-        ) : (
+        {/* Clean solid contrast veil on photographic slides only (zero CSS gradients, zero CSS shadows) */}
+        {!active.festive && (
           <div
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none bg-[#240933]/48 transition-opacity duration-700"

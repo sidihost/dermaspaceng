@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react'
 import { computeLaserPulseRings } from '@/lib/christmas-hero-math'
 
 interface IllustrationProps {
@@ -8,10 +7,10 @@ interface IllustrationProps {
 /**
  * LaserHairRemovalIllustration
  * ----------------------------
- * Clean, flat animated Dermaspace illustration for Laser Hair Removal.
- * Replaces awkward clinical stock photos with a sleek Sapphire Diode
- * handpiece gliding over smooth plum-silk contours and cooling pulse rings.
- * Zero gradients, zero shadows, zero Sparkles/Zap icons.
+ * Clean, flat static Dermaspace illustration for Laser Hair Removal.
+ * Depicts a sleek Sapphire Diode handpiece poised over smooth plum-silk
+ * contours and concentric cooling rings.
+ * Zero animations, zero gradients, zero shadows, zero Sparkles/Zap icons.
  */
 export function LaserHairRemovalIllustration({ className = '' }: IllustrationProps) {
   const pulseRings = computeLaserPulseRings(3, 3.0)
@@ -36,8 +35,8 @@ export function LaserHairRemovalIllustration({ className = '' }: IllustrationPro
         <circle cx="460" cy="128" r="134" fill="#3B1154" />
         <circle cx="460" cy="128" r="98" stroke="#7B2D8E" strokeWidth="1.5" strokeOpacity="0.7" />
 
-        {/* Left-Side Botanical Orchid & Silk Motif (below top-left pill, above bottom title bar) */}
-        <g className="laser-orb-float" style={{ animationDelay: '0.3s' }}>
+        {/* Left-Side Botanical Orchid & Silk Motif */}
+        <g>
           <circle cx="136" cy="176" r="48" fill="#2F0C44" stroke="#5A1D6A" strokeWidth="1.2" />
           <path d="M136 140 C148 158, 148 172, 136 180 C124 172, 124 158, 136 140 Z" fill="#7B2D8E" />
           <path d="M136 212 C148 194, 148 180, 136 172 C124 180, 124 194, 136 212 Z" fill="#5A1D6A" />
@@ -47,7 +46,7 @@ export function LaserHairRemovalIllustration({ className = '' }: IllustrationPro
         </g>
 
         {/* Subtle Botanical Eucalyptus Sprig (Top-Right Framing) */}
-        <g className="laser-orb-float" style={{ animationDelay: '0.8s' }}>
+        <g>
           <path d="M558 186 Q574 128 594 82" stroke="#9B4DB0" strokeWidth="2" strokeLinecap="round" />
           <ellipse cx="570" cy="148" rx="16" ry="7.5" transform="rotate(-35 570 148)" fill="#5A1D6A" />
           <ellipse cx="586" cy="128" rx="15" ry="7" transform="rotate(28 586 128)" fill="#7B2D8E" />
@@ -55,7 +54,7 @@ export function LaserHairRemovalIllustration({ className = '' }: IllustrationPro
           <circle cx="594" cy="82" r="5" fill="#E9D5FF" />
         </g>
 
-        {/* Smooth Layered Silk Skin Contour Waves (Sweeping across full width, elevated above bottom cards) */}
+        {/* Smooth Layered Silk Skin Contour Waves */}
         <path
           d="M0 258 C160 228, 340 198, 640 232 V400 H0 Z"
           fill="#4A1766"
@@ -71,35 +70,27 @@ export function LaserHairRemovalIllustration({ className = '' }: IllustrationPro
           strokeLinecap="round"
         />
 
-        {/* Expanding Concentric Cooling Pulse Rings at Elevated Contact Focal Point */}
-        {pulseRings.map((ring) => {
-          const style = {
-            '--pulse-dur': `${ring.durationSec}s`,
-            '--pulse-delay': `${ring.delaySec}s`,
-          } as CSSProperties
-          return (
-            <circle
-              key={ring.index}
-              cx="452"
-              cy="208"
-              r={ring.baseRadius}
-              stroke={ring.index === 0 ? '#FFFFFF' : '#D8B4FE'}
-              strokeWidth="1.75"
-              className="laser-pulse-ring"
-              style={style}
-            />
-          )
-        })}
+        {/* Crisp Static Concentric Cooling Rings at Contact Focal Point */}
+        {pulseRings.map((ring) => (
+          <circle
+            key={ring.index}
+            cx="452"
+            cy="208"
+            r={ring.baseRadius}
+            stroke={ring.index === 0 ? '#FFFFFF' : '#D8B4FE'}
+            strokeOpacity={Number((0.75 - ring.index * 0.22).toFixed(2))}
+            strokeWidth="1.5"
+          />
+        ))}
         <circle cx="452" cy="208" r="5.5" fill="#FFFFFF" />
 
-        {/* Sleek Gliding Sapphire Diode Handpiece */}
-        <g className="laser-glide">
-          {/* Calm precision light cone */}
+        {/* Sleek Static Sapphire Diode Handpiece */}
+        <g>
+          {/* Precision light cone */}
           <path
             d="M440 142 L464 142 L478 206 L426 206 Z"
             fill="#E9D5FF"
-            fillOpacity="0.32"
-            className="laser-beam-sweep"
+            fillOpacity="0.28"
           />
 
           {/* Ergonomic Angled Applicator Head */}
@@ -117,24 +108,10 @@ export function LaserHairRemovalIllustration({ className = '' }: IllustrationPro
           </g>
         </g>
 
-        {/* Minimal Floating Cooling Dew Motes */}
-        <circle cx="288" cy="118" r="5" fill="#D8B4FE" className="laser-orb-float" />
-        <circle
-          cx="326"
-          cy="88"
-          r="3.5"
-          fill="#FFFFFF"
-          className="laser-orb-float"
-          style={{ animationDelay: '1.1s' }}
-        />
-        <circle
-          cx="526"
-          cy="176"
-          r="4"
-          fill="#E9D5FF"
-          className="laser-orb-float"
-          style={{ animationDelay: '1.7s' }}
-        />
+        {/* Static Cooling Dew Accents */}
+        <circle cx="288" cy="118" r="5" fill="#D8B4FE" />
+        <circle cx="326" cy="88" r="3.5" fill="#FFFFFF" />
+        <circle cx="526" cy="176" r="4" fill="#E9D5FF" />
       </svg>
     </div>
   )
@@ -143,7 +120,7 @@ export function LaserHairRemovalIllustration({ className = '' }: IllustrationPro
 /**
  * CarbonPeelIllustration
  * ----------------------
- * Clean, flat animated Dermaspace visual for the Hollywood Carbon Peel.
+ * Clean, flat static Dermaspace visual for the Hollywood Carbon Peel.
  * Depicts the obsidian carbon veil swept cleanly by purple light ribbons
  * into luminous porcelain clarity.
  */
@@ -183,16 +160,16 @@ export function CarbonPeelIllustration({ className = '' }: IllustrationProps) {
           strokeLinecap="round"
         />
 
-        {/* Rhythmic Vertical Laser Sweep Ribbon */}
-        <g className="laser-glide">
-          <rect x="234" y="42" width="16" height="208" rx="8" fill="#7B2D8E" fillOpacity="0.45" className="laser-beam-sweep" />
+        {/* Crisp Static Vertical Laser Sweep Ribbon */}
+        <g>
+          <rect x="234" y="42" width="16" height="208" rx="8" fill="#7B2D8E" fillOpacity="0.45" />
           <line x1="242" y1="36" x2="242" y2="254" stroke="#FFFFFF" strokeWidth="1.8" strokeLinecap="round" />
           <circle cx="242" cy="146" r="10" fill="#FFFFFF" />
           <circle cx="242" cy="146" r="4.5" fill="#7B2D8E" />
         </g>
 
-        {/* Botanical Accent Leaf (Upper Left clear of NEW pill) */}
-        <g className="laser-orb-float">
+        {/* Botanical Accent Leaf */}
+        <g>
           <ellipse cx="96" cy="108" rx="18" ry="8" transform="rotate(-38 96 108)" fill="#5A1D6A" />
           <ellipse cx="118" cy="134" rx="14" ry="6.5" transform="rotate(-14 118 134)" fill="#7B2D8E" />
           <circle cx="144" cy="96" r="4" fill="#D8B4FE" />
@@ -207,7 +184,7 @@ export function CarbonPeelIllustration({ className = '' }: IllustrationProps) {
 /**
  * SkinRejuvenationIllustration
  * ----------------------------
- * Clean blooming botanical petal & tonal renewal geometry.
+ * Clean static blooming botanical petal & tonal renewal geometry.
  */
 export function SkinRejuvenationIllustration({ className = '' }: IllustrationProps) {
   return (
@@ -218,7 +195,7 @@ export function SkinRejuvenationIllustration({ className = '' }: IllustrationPro
       <svg viewBox="0 0 160 160" className="w-full h-full block" fill="none">
         <rect width="160" height="160" fill="#240933" />
         <circle cx="80" cy="80" r="54" fill="#3B1154" />
-        <circle cx="80" cy="80" r="42" stroke="#9B4DB0" strokeWidth="1.5" className="laser-pulse-ring" />
+        <circle cx="80" cy="80" r="42" stroke="#9B4DB0" strokeWidth="1.5" />
         <path d="M80 34 C94 54, 94 72, 80 80 C66 72, 66 54, 80 34 Z" fill="#F5ECF8" />
         <path d="M80 126 C94 106, 94 88, 80 80 C66 88, 66 106, 80 126 Z" fill="#D8B4FE" />
         <path d="M34 80 C54 66, 72 66, 80 80 C72 94, 54 94, 34 80 Z" fill="#9B4DB0" />
@@ -233,7 +210,7 @@ export function SkinRejuvenationIllustration({ className = '' }: IllustrationPro
 /**
  * LaserMiniThumb
  * --------------
- * High-contrast 80×80 square thumbnail illustrations for the homepage Laser section.
+ * High-contrast 80×80 square static thumbnail illustrations for the homepage Laser section.
  */
 export function LaserMiniThumb({
   variant,
@@ -268,7 +245,7 @@ export function LaserMiniThumb({
         <circle cx="40" cy="40" r="26" fill="#3B1154" />
         <path d="M12 58 Q40 46 68 58 V80 H12 Z" fill="#5A1D6A" />
         <path d="M14 58 Q40 46 66 58" stroke="#E9D5FF" strokeWidth="1.8" strokeLinecap="round" />
-        <circle cx="40" cy="52" r="10" stroke="#D8B4FE" strokeWidth="1.4" className="laser-pulse-ring" />
+        <circle cx="40" cy="52" r="10" stroke="#D8B4FE" strokeWidth="1.4" />
         <g transform="translate(31, 16) rotate(-12 9 14)">
           <rect x="4" y="0" width="11" height="22" rx="5" fill="#FFFFFF" />
           <rect x="3" y="18" width="13" height="5" rx="2" fill="#7B2D8E" />

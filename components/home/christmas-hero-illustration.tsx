@@ -54,9 +54,6 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
       aria-hidden="true"
       className="relative w-full h-full overflow-hidden bg-[#240933] select-none"
     >
-      {/* Subtle flat architectural corner band on right half (desktop only) */}
-      <div className="hidden md:block absolute top-0 right-0 bottom-0 w-[44%] bg-[#2C0B3E]" />
-
       {/* Desktop & Tablet Right-Side Architectural Sanctuary Tableau */}
       <div className="hidden md:flex absolute inset-x-0 top-0 bottom-[74px] right-[6%] lg:right-[8%] xl:right-[9%] pt-4 pb-2 items-end justify-end pointer-events-none">
         <svg
@@ -64,10 +61,9 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
           className="h-full max-h-[435px] w-auto block"
           fill="none"
         >
-          {/* Outer solid sanctuary arch */}
+          {/* Outer delicate sanctuary arch linework (keeps background one pure uniform purple) */}
           <path
-            d="M44 450 V206 C44 96 122 24 210 24 C298 24 376 96 376 206 V450 Z"
-            fill="#350F4A"
+            d="M44 450 V206 C44 96 122 24 210 24 C298 24 376 96 376 206 V450"
             stroke="#7B2D8E"
             strokeWidth="1.5"
           />
@@ -220,18 +216,159 @@ export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllust
         </svg>
       </div>
 
-      {/* Mobile-Only Minimal Corner Ornament Accent (keeps copy 100% clear) */}
-      <div className="md:hidden absolute top-0 right-2 w-14 pointer-events-none">
-        <svg viewBox="0 0 64 88" className="w-full h-auto" fill="none">
+      {/* Mobile Architectural Sanctuary Showcase (Top-right arch garland + Lower-right self-contained dome plinth) */}
+      <div className="md:hidden absolute inset-0 bottom-[74px] pointer-events-none overflow-hidden">
+        {/* Top-right Winter Arch Garland & Suspended Ornaments (strictly clear of eyebrow & headline) */}
+        <svg
+          viewBox="0 0 190 90"
+          className="absolute top-0 right-2 w-[176px] h-auto block"
+          fill="none"
+        >
+          {/* Sweeping sanctuary ceiling arch ribs */}
+          <path
+            d="M12 10 C54 4, 126 12, 184 54"
+            stroke="#7B2D8E"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M36 22 C76 16, 134 24, 184 68"
+            stroke="#5A1D6A"
+            strokeWidth="1.15"
+            strokeLinecap="round"
+          />
+
+          {/* Subtle eucalyptus leaf accents along arch crown */}
+          <ellipse cx="64" cy="14" rx="7" ry="3.2" transform="rotate(-14 64 14)" fill="#5A1D6A" />
+          <ellipse cx="78" cy="17" rx="6.5" ry="3" transform="rotate(18 78 17)" fill="#7B2D8E" />
+          <circle cx="90" cy="12" r="2.2" fill="#E9D5FF" fillOpacity="0.85" />
+
+          {/* Far-left Mini Crescent Crystal Drop (sits strictly above eyebrow) */}
           <g className={active ? 'christmas-sway-a' : undefined}>
-            <line x1="34" y1="0" x2="34" y2="26" stroke="#D8B4FE" strokeWidth="1.2" />
-            <rect x="30" y="24" width="8" height="4" rx="1.5" fill="#E9D5FF" />
-            <circle cx="34" cy="45" r="16" fill="#7B2D8E" stroke="#E9D5FF" strokeWidth="1.2" />
-            <g stroke="#F5ECF8" strokeWidth="1.2" strokeLinecap="round">
-              <line x1="34" y1="36" x2="34" y2="54" />
-              <line x1="26" y1="40.5" x2="42" y2="49.5" />
-              <line x1="42" y1="40.5" x2="26" y2="49.5" />
+            <line x1="36" y1="8" x2="36" y2="30" stroke="#D8B4FE" strokeWidth="1.1" />
+            <path
+              d="M36 30 L42 40 L36 52 L30 40 Z"
+              fill="#5A1D6A"
+              stroke="#E9D5FF"
+              strokeWidth="1.1"
+            />
+            <circle cx="36" cy="40" r="2" fill="#FFFFFF" />
+          </g>
+
+          {/* Luminous Pearl Orchid Bauble (clear right of eyebrow, above headline) */}
+          <g className={active ? 'christmas-sway-b' : undefined}>
+            <line x1="112" y1="12" x2="112" y2="28" stroke="#E9D5FF" strokeWidth="1.15" />
+            <rect x="107" y="27" width="10" height="4.5" rx="1.8" fill="#7B2D8E" />
+            <path d="M112 27 C107 22, 102 25, 107 29 Z" fill="#9B4DB0" />
+            <path d="M112 27 C117 22, 122 25, 117 29 Z" fill="#9B4DB0" />
+            <circle cx="112" cy="50" r="19" fill="#F5ECF8" />
+            <circle cx="112" cy="50" r="15" stroke="#D8B4FE" strokeWidth="1" />
+            <path d="M112 40 C114.5 45, 114.5 47.5, 112 50 C109.5 47.5, 109.5 45, 112 40 Z" fill="#7B2D8E" />
+            <path d="M112 60 C114.5 55, 114.5 52.5, 112 50 C109.5 52.5, 109.5 55, 112 60 Z" fill="#7B2D8E" />
+            <path d="M102 50 C107 47.5, 109.5 47.5, 112 50 C109.5 52.5, 107 52.5, 102 50 Z" fill="#9B4DB0" />
+            <path d="M122 50 C117 47.5, 114.5 47.5, 112 50 C114.5 52.5, 117 52.5, 122 50 Z" fill="#9B4DB0" />
+            <circle cx="112" cy="50" r="2" fill="#F5ECF8" />
+          </g>
+
+          {/* Suspended Plum Snowflake Bauble (far top-right) */}
+          <g className={active ? 'christmas-sway-a' : undefined} style={{ animationDelay: '0.6s' }}>
+            <line x1="160" y1="30" x2="160" y2="46" stroke="#D8B4FE" strokeWidth="1.1" />
+            <rect x="155.5" y="45" width="9" height="4" rx="1.6" fill="#E9D5FF" />
+            <circle cx="160" cy="65" r="16" fill="#7B2D8E" stroke="#E9D5FF" strokeWidth="1.15" />
+            <g stroke="#F5ECF8" strokeWidth="1.15" strokeLinecap="round">
+              <line x1="160" y1="56" x2="160" y2="74" />
+              <line x1="152.2" y1="60.5" x2="167.8" y2="69.5" />
+              <line x1="167.8" y1="60.5" x2="152.2" y2="69.5" />
+              <circle cx="160" cy="65" r="1.8" fill="#7B2D8E" stroke="#F5ECF8" strokeWidth="1" />
             </g>
+          </g>
+
+          {/* Delicate Constellation Dots */}
+          <circle cx="76" cy="40" r="1.8" fill="#D8B4FE" fillOpacity="0.65" />
+          <circle cx="142" cy="24" r="2" fill="#FFFFFF" fillOpacity="0.7" />
+        </svg>
+
+        {/* Lower-right Self-Contained Sanctuary Dome & Winter Gift Plinth (clear beside stacked CTAs) */}
+        <svg
+          viewBox="0 0 176 118"
+          className="absolute bottom-1.5 right-2.5 w-[152px] h-auto block"
+          fill="none"
+        >
+          {/* Complete miniature sanctuary dome halo behind plinth */}
+          <path
+            d="M18 96 A70 70 0 0 1 158 96"
+            stroke="#7B2D8E"
+            strokeWidth="1.35"
+          />
+          <path
+            d="M28 96 A60 60 0 0 1 148 96"
+            stroke="#5A1D6A"
+            strokeWidth="1.1"
+          />
+
+          {/* Subtle star dots inside dome */}
+          <circle cx="48" cy="44" r="1.8" fill="#D8B4FE" fillOpacity="0.7" />
+          <circle cx="132" cy="38" r="2" fill="#FFFFFF" fillOpacity="0.65" />
+
+          {/* Botanical Eucalyptus Sprigs */}
+          <g className={active ? 'christmas-botanical-breathe' : undefined}>
+            <path d="M26 96 Q36 68 50 46" stroke="#9B4DB0" strokeWidth="1.5" strokeLinecap="round" />
+            <ellipse cx="31" cy="76" rx="8" ry="4" transform="rotate(-38 31 76)" fill="#5A1D6A" />
+            <ellipse cx="42" cy="68" rx="7.5" ry="3.8" transform="rotate(24 42 68)" fill="#7B2D8E" />
+            <ellipse cx="38" cy="57" rx="6.5" ry="3.2" transform="rotate(-30 38 57)" fill="#9B4DB0" />
+            <circle cx="51" cy="43" r="2.8" fill="#F5ECF8" />
+
+            <path d="M150 96 Q140 70 128 50" stroke="#9B4DB0" strokeWidth="1.5" strokeLinecap="round" />
+            <ellipse cx="145" cy="77" rx="8" ry="4" transform="rotate(36 145 77)" fill="#5A1D6A" />
+            <ellipse cx="135" cy="69" rx="7" ry="3.6" transform="rotate(-24 135 69)" fill="#7B2D8E" />
+            <circle cx="127" cy="47" r="2.6" fill="#F5ECF8" />
+          </g>
+
+          {/* Architectural Plinth Base */}
+          <rect x="12" y="96" width="152" height="19" rx="4.5" fill="#5A1D6A" />
+          <rect x="12" y="96" width="152" height="3.5" rx="1.8" fill="#7B2D8E" />
+
+          {/* Mini Apothecary Serum Bottle */}
+          <g>
+            <rect x="26" y="62" width="24" height="34" rx="5.5" fill="#F5ECF8" />
+            <rect x="29.5" y="71.5" width="17" height="14.5" rx="2" fill="#FFFFFF" stroke="#D8B4FE" strokeWidth="0.9" />
+            <line x1="33.5" y1="78.5" x2="42.5" y2="78.5" stroke="#7B2D8E" strokeWidth="1.4" strokeLinecap="round" />
+            <rect x="33.5" y="56" width="9" height="6" rx="2" fill="#7B2D8E" />
+            <rect x="35.5" y="48.5" width="5" height="8" rx="2.5" fill="#5A1D6A" />
+          </g>
+
+          {/* Signature Dermaspace Gift Box */}
+          <g>
+            <rect x="57" y="48" width="52" height="48" rx="3" fill="#FFFFFF" />
+            <rect x="95" y="48" width="14" height="48" rx="2" fill="#E9D5FF" />
+            <rect x="54" y="40.5" width="58" height="10" rx="3" fill="#F5ECF8" />
+            <rect x="95" y="40.5" width="17" height="10" rx="2" fill="#D8B4FE" />
+            <rect x="78" y="40.5" width="9.5" height="55.5" fill="#7B2D8E" />
+            <rect x="54" y="69" width="55" height="7.5" fill="#7B2D8E" />
+            <rect x="95" y="69" width="14" height="7.5" fill="#5A1D6A" />
+            <path d="M83 40.5 C71.5 25.5, 61.5 33, 73 40.5 Z" fill="#7B2D8E" />
+            <path d="M83 40.5 C94.5 25.5, 104.5 33, 93 40.5 Z" fill="#9B4DB0" />
+            <circle cx="83" cy="39.5" r="3.5" fill="#5A1D6A" />
+          </g>
+
+          {/* Serene Botanical Candle */}
+          <g>
+            <circle
+              cx="132"
+              cy="56"
+              r="11"
+              fill="#D8B4FE"
+              fillOpacity="0.22"
+              className={active ? 'christmas-flame-flicker' : undefined}
+            />
+            <rect x="119.5" y="67.5" width="25" height="28.5" rx="4" fill="#E9D5FF" />
+            <rect x="124" y="74" width="16" height="3" rx="1.5" fill="#7B2D8E" />
+            <line x1="132" y1="63.5" x2="132" y2="67.5" stroke="#5A1D6A" strokeWidth="1.4" />
+            <path
+              d="M132 49 C136 56, 136 62.5, 132 63.5 C128 62.5, 128 56, 132 49 Z"
+              fill="#FFFFFF"
+              className={active ? 'christmas-flame-flicker' : undefined}
+            />
           </g>
         </svg>
       </div>
