@@ -59,7 +59,7 @@ export default function LaserSection() {
         <div className="grid lg:grid-cols-2 gap-8 items-center">
           {/* Left - Static Dermaspace Laser Illustration with Flat Info Card */}
           <div className="relative">
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-[#7B2D8E]/15 bg-[#240933]">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-[#7B2D8E]/15 bg-[#7B2D8E]">
               <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
 
               {/* Floating Card (flat solid fill, zero shadow, zero gradient) */}

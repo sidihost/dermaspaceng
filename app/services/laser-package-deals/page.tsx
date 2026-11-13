@@ -109,7 +109,7 @@ export default function LaserPackageDealsPage() {
       <section className="py-12 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center rounded-2xl border border-gray-100 bg-gray-50 p-5 md:p-7">
-            <div className="lg:col-span-5 relative aspect-[4/3] rounded-xl overflow-hidden border border-[#7B2D8E]/15 bg-[#240933]">
+            <div className="lg:col-span-5 relative aspect-[4/3] rounded-xl overflow-hidden border border-[#7B2D8E]/15 bg-[#7B2D8E]">
               <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
             </div>
 

@@ -355,7 +355,7 @@ export default function LaserPageContent() {
           />
           <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
             {/* Featured: Laser Hair Removal */}
-            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-2xl overflow-hidden border border-[#7B2D8E]/20 bg-[#240933]">
+            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-2xl overflow-hidden border border-[#7B2D8E]/20 bg-[#7B2D8E]">
               <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
               <div className="absolute top-3 left-3">
                 <div className="inline-flex items-center gap-1 px-2.5 h-6 bg-white rounded-full">
@@ -365,7 +365,7 @@ export default function LaserPageContent() {
                   </span>
                 </div>
               </div>
-              <div className="absolute inset-x-0 bottom-0 bg-[#240933]/90 border-t border-[#7B2D8E]/30 px-3.5 py-3">
+              <div className="absolute inset-x-0 bottom-0 bg-[#5A1D6A]/95 border-t border-[#D8B4FE]/25 px-3.5 py-3">
                 <h3 className="text-base md:text-xl font-bold text-white leading-tight text-balance">
                   Laser Hair Removal
                 </h3>
@@ -376,14 +376,14 @@ export default function LaserPageContent() {
             </div>
 
             {/* Hollywood Peel */}
-            <div className="col-span-4 md:col-span-2 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden border border-[#7B2D8E]/20 bg-[#240933]">
+            <div className="col-span-4 md:col-span-2 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden border border-[#7B2D8E]/20 bg-[#7B2D8E]">
               <CarbonPeelIllustration className="absolute inset-0 w-full h-full" />
               <div className="absolute top-3 right-3">
                 <span className="px-2.5 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[9.5px] font-bold tracking-wider uppercase">
                   NEW
                 </span>
               </div>
-              <div className="absolute inset-x-0 bottom-0 bg-[#240933]/90 border-t border-[#7B2D8E]/30 px-3.5 py-3">
+              <div className="absolute inset-x-0 bottom-0 bg-[#5A1D6A]/95 border-t border-[#D8B4FE]/25 px-3.5 py-3">
                 <span className="text-[9.5px] font-bold tracking-wider text-[#D8B4FE] uppercase">
                   Carbon Laser
                 </span>
