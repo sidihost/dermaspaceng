@@ -19,7 +19,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { notifyUser } from '@/lib/notifications'
-import { sendBookingCompletedEmail } from '@/lib/email'
+import { sendBookingCompletedEmail, sendBookingCancellation } from '@/lib/email'
 
 interface AccessRow {
   is_admin: boolean
@@ -42,6 +42,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
            b.location_name                           AS location_name,
            b.status                                  AS status,
            b.payment_status                          AS payment_status,
+           b.payment_method                          AS payment_method,
            COALESCE(b.price_override_kobo, b.total_price_kobo)::bigint
                                                      AS total_price_kobo,
            b.notes                                   AS notes,
@@ -155,6 +156,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
     location_name: row.location_name,
     status: row.status,
     payment_status: row.payment_status,
+    payment_method: row.payment_method,
     total_price_kobo: Number(row.total_price_kobo),
     notes: row.notes,
     can_edit: access.can_edit,
@@ -287,6 +289,36 @@ export async function PATCH(
     // It doubles as a soft prompt to leave a review. Sending is
     // best-effort: a transient SMTP hiccup must not block the
     // status update itself.
+    if (next === 'cancelled' && booking.customer_email) {
+      try {
+        const longDate = booking.appointment_date
+          ? new Date(`${booking.appointment_date}T00:00:00Z`).toLocaleDateString('en-NG', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'UTC',
+            })
+          : ''
+        await sendBookingCancellation({
+          email: booking.customer_email,
+          customerName: booking.customer_name || 'there',
+          bookingReference: booking.booking_reference,
+          appointmentDate: longDate,
+          appointmentTime: String(booking.appointment_time || '').slice(0, 5),
+          locationName: booking.location_name || 'Dermaspace',
+          reason: reason || null,
+          refundKobo: booking.payment_status === 'refunded' ? booking.total_price_kobo : 0,
+          paymentMethod:
+            booking.payment_method === 'wallet' || booking.payment_method === 'paystack'
+              ? booking.payment_method
+              : null,
+        })
+      } catch (err) {
+        console.error('sendBookingCancellation failed', err)
+      }
+    }
+
     if (next === 'completed' && booking.customer_email) {
       try {
         const longDate = new Date(

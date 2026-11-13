@@ -21,13 +21,13 @@ import {
   ArrowLeft, Loader2, AlertCircle, CheckCircle, Clock, XCircle,
   AlertCircle as AlertIcon, Copy, Check, Mail, User as UserIcon,
   CreditCard, Calendar, Hash, RefreshCw, ArrowDownLeft, ArrowUpRight,
-  RotateCcw,
+  RotateCcw, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Transaction {
-  id: number
-  user_id: number
+  id: string | number
+  user_id: string | number
   type: 'credit' | 'debit' | 'refund'
   amount: number
   currency: string
@@ -37,11 +37,12 @@ interface Transaction {
   paystack_reference: string | null
   description: string | null
   error_message: string | null
+  metadata?: Record<string, unknown> | null
   created_at: string
   formattedAmount: string
   formattedDate: string
   invoice?: { invoice_number: string; status: string } | null
-  user: { id: number; name: string; email: string } | null
+  user: { id: string | number; name: string; email: string } | null
 }
 
 const statusStyles: Record<string, string> = {
@@ -163,7 +164,7 @@ export default function TransactionDetailPage() {
 
   if (error || !tx) {
     return (
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm py-12 px-6 text-center space-y-3 max-w-md mx-auto">
+      <div className="rounded-2xl border border-gray-100 bg-white py-12 px-6 text-center space-y-3 max-w-md mx-auto">
         <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto">
           <AlertCircle className="w-5 h-5 text-[#7B2D8E]" />
         </div>
@@ -183,6 +184,12 @@ export default function TransactionDetailPage() {
 
   const tMeta = typeMeta[tx.type] || typeMeta.credit
   const TypeIcon = tMeta.Icon
+  const bookingReference =
+    typeof tx.metadata?.booking_reference === 'string' && tx.metadata.booking_reference
+      ? tx.metadata.booking_reference
+      : typeof tx.metadata?.bookingReference === 'string' && tx.metadata.bookingReference
+        ? tx.metadata.bookingReference
+        : null
 
   return (
     <div className="space-y-4 max-w-3xl">
@@ -194,7 +201,7 @@ export default function TransactionDetailPage() {
       </Link>
 
       {/* Hero — amount + status, brand purple */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white p-6 sm:p-8 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white p-6 sm:p-8">
         <div
           aria-hidden="true"
           className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10"
@@ -258,8 +265,15 @@ export default function TransactionDetailPage() {
       )}
 
       {/* Detail grid */}
-      <div className="rounded-2xl border border-gray-100 bg-white shadow-sm divide-y divide-gray-100">
-        <DetailRow icon={Hash} label="Transaction ID" value={<span className="font-mono text-xs break-all">{tx.id}</span>} />
+      <div className="rounded-2xl border border-gray-100 bg-white divide-y divide-gray-100">
+        <CopyRow
+          icon={Hash}
+          label="Transaction ID"
+          value={String(tx.id)}
+          copied={copied === 'id'}
+          onCopy={() => copy(String(tx.id), 'id')}
+          mono
+        />
         <DetailRow icon={Calendar} label="Date" value={tx.formattedDate} />
         <DetailRow icon={CreditCard} label="Payment method" value={<span className="capitalize">{tx.payment_method.replace('_', ' ')}</span>} />
         <DetailRow
@@ -267,7 +281,7 @@ export default function TransactionDetailPage() {
           label="User"
           value={
             tx.user ? (
-              <Link href={`/admin/users`} className="text-[#7B2D8E] hover:underline">
+              <Link href={`/admin/users/${tx.user.id}`} className="text-[#7B2D8E] hover:underline font-medium">
                 {tx.user.name}
               </Link>
             ) : (
@@ -275,35 +289,61 @@ export default function TransactionDetailPage() {
             )
           }
         />
-        <DetailRow icon={Mail} label="Email" value={tx.user?.email || '—'} />
+        {tx.user?.email ? (
+          <CopyRow
+            icon={Mail}
+            label="Email"
+            value={tx.user.email}
+            copied={copied === 'email'}
+            onCopy={() => copy(tx.user!.email, 'email')}
+          />
+        ) : (
+          <DetailRow icon={Mail} label="Email" value="—" />
+        )}
         {tx.payment_reference && (
           <CopyRow
+            icon={Hash}
             label="Reference"
             value={tx.payment_reference}
             copied={copied === 'ref'}
             onCopy={() => copy(tx.payment_reference!, 'ref')}
+            mono
           />
         )}
         {tx.paystack_reference && (
           <CopyRow
+            icon={CreditCard}
             label="Paystack ref"
             value={tx.paystack_reference}
             copied={copied === 'pref'}
             onCopy={() => copy(tx.paystack_reference!, 'pref')}
+            mono
           />
         )}
         {tx.invoice?.invoice_number && (
           <CopyRow
+            icon={FileText}
             label="Invoice no."
             value={tx.invoice.invoice_number}
             copied={copied === 'inv'}
             onCopy={() => copy(tx.invoice!.invoice_number, 'inv')}
+            mono
+          />
+        )}
+        {bookingReference && (
+          <CopyRow
+            icon={Calendar}
+            label="Booking ref"
+            value={bookingReference}
+            copied={copied === 'bref'}
+            onCopy={() => copy(bookingReference, 'bref')}
+            mono
           />
         )}
       </div>
 
       {tx.description && (
-        <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-5">
+        <div className="rounded-2xl border border-gray-100 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">Description</p>
           <p className="text-sm text-gray-800 leading-relaxed">{tx.description}</p>
         </div>
@@ -329,43 +369,71 @@ function DetailRow({
   value: React.ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-      <span className="inline-flex items-center gap-2 text-sm text-gray-500 flex-shrink-0">
+    <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-3.5">
+      <span className="inline-flex items-center gap-2 text-sm text-gray-500 flex-shrink-0 pt-0.5">
         <Icon className="w-4 h-4 text-gray-400" />
         {label}
       </span>
-      <span className="text-sm text-gray-900 text-right min-w-0 truncate">{value}</span>
+      <span className="text-sm text-gray-900 text-right min-w-0 break-words">{value}</span>
     </div>
   )
 }
 
 function CopyRow({
+  icon: Icon,
   label,
   value,
   copied,
   onCopy,
+  mono = false,
 }: {
+  icon?: typeof Hash
   label: string
   value: string
   copied: boolean
   onCopy: () => void
+  mono?: boolean
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-      <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-      <button
-        type="button"
-        onClick={onCopy}
-        className="inline-flex items-center gap-2 min-w-0 text-sm text-gray-900 hover:text-[#7B2D8E] transition-colors group"
-        title="Copy to clipboard"
-      >
-        <span className="font-mono text-xs truncate">{value}</span>
-        {copied ? (
-          <Check className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-        ) : (
-          <Copy className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#7B2D8E] flex-shrink-0" />
-        )}
-      </button>
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 px-4 sm:px-5 py-3.5">
+      <span className="inline-flex items-center gap-2 text-sm text-gray-500 flex-shrink-0">
+        {Icon && <Icon className="w-4 h-4 text-gray-400" />}
+        {label}
+      </span>
+      <div className="flex items-center justify-between sm:justify-end gap-2.5 min-w-0">
+        <span
+          className={cn(
+            'text-gray-900 break-all sm:text-right min-w-0 select-all',
+            mono ? 'font-mono text-xs' : 'text-sm',
+          )}
+        >
+          {value}
+        </span>
+        <button
+          type="button"
+          onClick={onCopy}
+          aria-label={`Copy ${label}`}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors flex-shrink-0',
+            copied
+              ? 'border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-[#7B2D8E]'
+              : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]',
+          )}
+        >
+          {copied ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <span>Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
+

@@ -6,8 +6,8 @@ import {
 } from '@/lib/wallet'
 import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
-import { getUserById } from '@/lib/auth'
-import { sendPaymentFailedEmail } from '@/lib/wallet-emails'
+import { finalizeMembershipPaystackPayment } from '@/lib/membership-activation'
+import { finalizePendingTransactionFailureOrCancel } from '@/lib/transaction-failure-notice'
 import { confirmBookingPayment, markBookingPaymentFailed, getBookingByReference } from '@/lib/booking'
 import { notifyBookingPaymentFailed, notifyUser } from '@/lib/notifications'
 
@@ -119,10 +119,15 @@ async function handleChargeSuccess(data: {
         console.log('[paystack-webhook] gift card already processed', data.reference)
       }
     } else if (txType === 'membership_subscription') {
-      // Membership activation + Glow Points + Platinum wallet credit are
-      // handled atomically by /api/membership/verify. Do not flip status
-      // to completed here or the verify callback would skip activation.
-      console.log('[paystack-webhook] deferring membership activation to verify route:', data.reference)
+      const msResult = await finalizeMembershipPaystackPayment({
+        transaction,
+        paystackReference: data.reference,
+        amountPaid: amount,
+        customerEmail: data.customer?.email,
+      })
+      if (msResult.alreadyProcessed) {
+        console.log('[paystack-webhook] membership already processed', data.reference)
+      }
     } else {
       await updateTransactionStatus(transaction.id, 'completed')
     }
@@ -174,22 +179,15 @@ async function handleChargeFailed(data: {
       return
     }
     
-    await updateTransactionStatus(
-      transaction.id,
-      'failed',
-      data.gateway_response || 'Payment failed'
-    )
-    
-    // Send failure notification
-    const user = await getUserById(String(transaction.user_id))
-    if (user) {
-      await sendPaymentFailedEmail({
-        email: user.email,
-        firstName: user.first_name,
-        amount: transaction.amount,
-        reason: data.gateway_response || 'Payment could not be processed',
-        reference: data.reference,
-      })
+    const { transitioned } = await finalizePendingTransactionFailureOrCancel({
+      transaction,
+      nextStatus: 'failed',
+      reason: data.gateway_response || 'Payment failed',
+      customerEmail: data.customer?.email,
+    })
+
+    if (!transitioned) {
+      return
     }
 
     // In-app bell entry for the failed payment. Previously only an

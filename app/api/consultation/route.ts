@@ -10,6 +10,11 @@ import { scheduleConsultationReminder } from '@/lib/reminders'
 import { notifyUser } from '@/lib/notifications'
 import { getDeviceInfo } from '@/lib/device-info'
 import { generateConsultationAnalysis } from '@/lib/consultation-ai'
+import {
+  buildConsultationPersistencePlan,
+  buildConsultationEmailAction,
+} from '@/lib/consultation-mode'
+import { resolveEmailOrigin } from '@/lib/email-url'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -64,8 +69,13 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verify hCaptcha if enabled
-    if (process.env.HCAPTCHA_SECRET_KEY && captchaToken) {
+    // Resolve signed-in session first so registered customers aren't treated
+    // as anonymous visitors or forced through anonymous captcha checks.
+    const currentUser = await getCurrentUser().catch(() => null)
+    const userId = currentUser?.id ?? null
+
+    // Verify hCaptcha for anonymous submissions when configured
+    if (!currentUser && process.env.HCAPTCHA_SECRET_KEY && captchaToken) {
       const captchaValid = await verifyHCaptcha(captchaToken)
       if (!captchaValid) {
         return NextResponse.json(
@@ -75,31 +85,24 @@ export async function POST(request: Request) {
       }
     }
 
-    // Save consultation to database. If the caller is signed in we
-    // attach their user id so /dashboard/consultations and the
-    // notification helpers can find this row later. Anonymous
-    // submissions still work — `user_id` is nullable.
-    const currentUser = await getCurrentUser().catch(() => null)
-    const userId = currentUser?.id ?? null
-
     // Capture device / submission metadata so admins can tell whether a
     // request came from a signed-in customer or an anonymous visitor, and
     // from which browser / OS / device / location. Best-effort — never
     // blocks the submission.
     const device = await getDeviceInfo(request).catch(() => null)
-    const isAnonymous = !userId
-
     const id = uuidv4()
 
-    // Public, unguessable token so anonymous customers can revisit a
-    // private tracking page (/consultation/track/<token>) without an
-    // account. Two UUIDs concatenated → 64 hex chars of entropy.
-    const trackToken = (uuidv4() + uuidv4()).replace(/-/g, '')
+    // Signed-in users store consultations directly under their account
+    // (`is_anonymous = false`, `track_token = null`). Only anonymous
+    // visitors receive a private tracking token.
+    const { isAnonymous, trackToken } = buildConsultationPersistencePlan({
+      userId,
+      generateToken: () => (uuidv4() + uuidv4()).replace(/-/g, ''),
+    })
 
-    // Generate the AI skin analysis immediately so it's ready on the
-    // tracking page the moment the customer lands there. The helper
-    // never throws — it falls back to safe generic guidance if every
-    // AI provider is unavailable, so this can't break the booking.
+    // Generate the AI skin analysis immediately so it's ready right away
+    // (in the dashboard for registered users, or on the tracking page for
+    // anonymous visitors). Never throws — falls back safely if needed.
     const aiAnalysis = await generateConsultationAnalysis({
       firstName,
       concerns: Array.isArray(concerns) ? concerns : [],
@@ -128,7 +131,8 @@ export async function POST(request: Request) {
       )
     `
 
-    // Send confirmation email
+    // Send confirmation email with dashboard CTA for registered users or
+    // private tracking link for anonymous visitors.
     const formattedDate = new Date(`${appointmentDate}T00:00:00.000Z`).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -136,11 +140,12 @@ export async function POST(request: Request) {
       day: 'numeric'
     })
 
-    const appUrl = (
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      'https://www.dermaspaceng.com'
-    ).replace(/\/$/, '')
+    const emailAction = buildConsultationEmailAction({
+      isAnonymous,
+      appUrl: resolveEmailOrigin(),
+      consultationId: id,
+      trackToken,
+    })
 
     await sendConsultationConfirmation({
       email,
@@ -148,7 +153,8 @@ export async function POST(request: Request) {
       location: locationNames[location] || location,
       date: formattedDate,
       time,
-      trackUrl: `${appUrl}/consultation/track/${trackToken}`,
+      trackUrl: emailAction.trackUrl,
+      dashboardUrl: emailAction.dashboardUrl,
     })
 
     // Enqueue the 1-hour-before reminder. Fire-and-forget — a QStash
@@ -168,7 +174,7 @@ export async function POST(request: Request) {
           type: 'status_update',
           referenceType: 'consultation',
           referenceId: id,
-          actionUrl: '/dashboard/consultations',
+          actionUrl: `/dashboard/consultations/${id}`,
           priority: 'normal',
         })
       } catch (err) {
@@ -179,6 +185,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: 'Consultation request submitted successfully',
+      consultationId: id,
       trackToken,
       isAnonymous,
       analysis: aiAnalysis,

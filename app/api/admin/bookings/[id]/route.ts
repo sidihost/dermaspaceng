@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { notifyUser } from '@/lib/notifications'
+import {
+  sendBookingCancellation,
+  sendBookingCompletedEmail,
+  sendBookingReceipt,
+} from '@/lib/email'
 
 // ---------------------------------------------------------------------------
 // GET    /api/admin/bookings/[id]  → full booking detail (admin scope)
@@ -129,6 +134,12 @@ async function loadFullBooking(id: string) {
         : new Date(row.appointment_date).toISOString().slice(0, 10),
     appointment_time: row.appointment_time,
     total_duration: row.total_duration,
+    subtotal_kobo:
+      row.subtotal_kobo !== undefined && row.subtotal_kobo !== null
+        ? Number(row.subtotal_kobo)
+        : Number(row.total_price_kobo || 0),
+    discount_kobo: Number(row.discount_kobo || 0),
+    voucher_code: (row.voucher_code as string | null) ?? null,
     total_price_kobo: row.total_price_kobo,
     customer_name: row.customer_name,
     customer_email: row.customer_email,
@@ -142,11 +153,6 @@ async function loadFullBooking(id: string) {
     cancelled_at: row.cancelled_at,
     completed_at: row.completed_at,
     created_at: row.created_at,
-    // Single primary assignment + override price. The detail page
-    // surfaces both: assigning a staff member also auto-grants them
-    // access via the staff_booking_access shortcut table, and the
-    // price override (if set) takes precedence over the per-service
-    // sum when computing what the customer actually pays.
     assigned_staff_id: row.assigned_staff_id ?? null,
     assigned_staff: row.assigned_staff_id
       ? {
@@ -245,6 +251,37 @@ export async function PATCH(req: Request, { params }: Params) {
                updated_at = NOW()
          WHERE id = ${existing.id}
       `
+      const recipientEmail = existing.customer_email || existing.user.email
+      if (recipientEmail) {
+        try {
+          const longDate = existing.appointment_date
+            ? new Date(`${existing.appointment_date}T00:00:00Z`).toLocaleDateString('en-NG', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'UTC',
+              })
+            : ''
+          const effectiveTotal = existing.price_override_kobo ?? Number(existing.total_price_kobo || 0)
+          await sendBookingCancellation({
+            email: recipientEmail,
+            customerName: existing.customer_name || existing.user.first_name || 'there',
+            bookingReference: existing.booking_reference,
+            appointmentDate: longDate,
+            appointmentTime: String(existing.appointment_time || '').slice(0, 5),
+            locationName: existing.location_name || 'Dermaspace',
+            reason: body.reason ?? null,
+            refundKobo: existing.payment_status === 'refunded' ? effectiveTotal : 0,
+            paymentMethod:
+              existing.payment_method === 'wallet' || existing.payment_method === 'paystack'
+                ? existing.payment_method
+                : null,
+          })
+        } catch (mailErr) {
+          console.error('[admin.bookings.cancel] cancellation email failed', mailErr)
+        }
+      }
     } else if (next === 'completed') {
       await sql`
         UPDATE bookings
@@ -290,6 +327,30 @@ export async function PATCH(req: Request, { params }: Params) {
           /* notify best-effort */
         }
       }
+      const recipientEmail = existing.customer_email || existing.user.email
+      if (recipientEmail) {
+        try {
+          const longDate = existing.appointment_date
+            ? new Date(`${existing.appointment_date}T00:00:00Z`).toLocaleDateString('en-NG', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'UTC',
+              })
+            : ''
+          await sendBookingCompletedEmail({
+            email: recipientEmail,
+            customerName: existing.customer_name || existing.user.first_name || 'there',
+            bookingReference: existing.booking_reference,
+            appointmentDate: longDate,
+            appointmentTime: String(existing.appointment_time || '').slice(0, 5),
+            locationName: existing.location_name || '',
+          })
+        } catch (mailErr) {
+          console.error('[admin.bookings.completed] email failed', mailErr)
+        }
+      }
     } else {
       await sql`
         UPDATE bookings
@@ -319,6 +380,49 @@ export async function PATCH(req: Request, { params }: Params) {
              updated_at = NOW()
        WHERE id = ${existing.id}
     `
+    if (next === 'paid' && existing.payment_status !== 'paid') {
+      const recipientEmail = existing.customer_email || existing.user.email
+      if (recipientEmail) {
+        try {
+          const longDate = existing.appointment_date
+            ? new Date(`${existing.appointment_date}T00:00:00Z`).toLocaleDateString('en-NG', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: 'UTC',
+              })
+            : ''
+          const effectiveTotal = existing.price_override_kobo ?? Number(existing.total_price_kobo || 0)
+          await sendBookingReceipt({
+            email: recipientEmail,
+            customerName: existing.customer_name || existing.user.first_name || 'there',
+            bookingReference: existing.booking_reference,
+            appointmentDate: longDate,
+            appointmentTime: String(existing.appointment_time || '').slice(0, 5),
+            locationName: existing.location_name || 'Dermaspace',
+            totalDurationMinutes: Number(existing.total_duration || 0),
+            services: existing.services.map((s: any) => ({
+              treatmentName: s.treatmentName,
+              categoryName: s.categoryName,
+              duration: Number(s.duration || 0),
+              priceKobo: Number(s.priceKobo || 0),
+            })),
+            subtotalKobo: Number(existing.subtotal_kobo || effectiveTotal),
+            discountKobo: Number(existing.discount_kobo || 0),
+            voucherCode: existing.voucher_code,
+            totalKobo: effectiveTotal,
+            paymentMethod:
+              existing.payment_method === 'wallet' || existing.payment_method === 'paystack'
+                ? existing.payment_method
+                : null,
+            paymentReference: existing.payment_reference || null,
+          })
+        } catch (mailErr) {
+          console.error('[admin.bookings.paid] receipt email failed', mailErr)
+        }
+      }
+    }
   } else if (body.action === 'assign_staff') {
     // Assign (or unassign with null) a primary staff member to the
     // booking. Also mirrors the row into staff_booking_access so the

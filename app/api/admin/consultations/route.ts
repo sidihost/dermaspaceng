@@ -143,18 +143,26 @@ export async function PUT(request: NextRequest) {
           const target = (await sql`
             SELECT
               COALESCE(c.user_id, cu.id) AS notify_user_id,
+              c.email,
               c.first_name,
+              c.location,
               c.appointment_date,
-              c.appointment_time
+              c.appointment_time,
+              c.is_anonymous,
+              c.track_token
             FROM consultations c
             LEFT JOIN users cu ON LOWER(cu.email) = LOWER(c.email)
             WHERE c.id = ${consultationId}
             LIMIT 1
           `) as unknown as Array<{
             notify_user_id: string | null
+            email: string | null
             first_name: string | null
+            location: string | null
             appointment_date: string | null
             appointment_time: string | null
+            is_anonymous: boolean | null
+            track_token: string | null
           }>
           const recipient = target[0]
           if (recipient?.notify_user_id) {
@@ -178,12 +186,38 @@ export async function PUT(request: NextRequest) {
               type: 'status_update',
               referenceType: 'consultation',
               referenceId: consultationId,
-              actionUrl: '/dashboard/consultations',
+              actionUrl: `/dashboard/consultations/${consultationId}`,
               priority: value === 'confirmed' || value === 'cancelled' ? 'high' : 'normal',
             })
           }
+
+          if (recipient?.email && ['confirmed', 'completed', 'cancelled'].includes(value)) {
+            const [{ sendConsultationStatusEmail }, { buildConsultationEmailAction }, { resolveEmailOrigin }] =
+              await Promise.all([
+                import('@/lib/email'),
+                import('@/lib/consultation-mode'),
+                import('@/lib/email-url'),
+              ])
+            const emailAction = buildConsultationEmailAction({
+              isAnonymous: Boolean(recipient.is_anonymous && !recipient.notify_user_id),
+              appUrl: resolveEmailOrigin(),
+              consultationId,
+              trackToken: recipient.track_token,
+              status: value as 'confirmed' | 'completed' | 'cancelled',
+            })
+            await sendConsultationStatusEmail({
+              email: recipient.email,
+              firstName: recipient.first_name || 'there',
+              status: value as 'confirmed' | 'completed' | 'cancelled',
+              location: recipient.location,
+              date: recipient.appointment_date,
+              time: recipient.appointment_time,
+              ctaUrl: emailAction.ctaUrl,
+              ctaLabel: emailAction.ctaLabel,
+            })
+          }
         } catch (err) {
-          console.error('consultation status notifyUser failed', err)
+          console.error('consultation status notify/email failed', err)
         }
         break
 

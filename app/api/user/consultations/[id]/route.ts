@@ -48,6 +48,9 @@ export async function GET(
            concern_type,
            notes,
            status,
+           is_anonymous,
+           ai_analysis,
+           ai_generated_at,
            created_at,
            updated_at
       FROM consultations
@@ -62,6 +65,19 @@ export async function GET(
   }
 
   const r = rows[0]
+  let analysis = null
+  if (r.ai_analysis) {
+    if (typeof r.ai_analysis === 'string') {
+      try {
+        analysis = JSON.parse(r.ai_analysis)
+      } catch {
+        analysis = null
+      }
+    } else if (typeof r.ai_analysis === 'object') {
+      analysis = r.ai_analysis
+    }
+  }
+
   return NextResponse.json({
     consultation: {
       id: r.id,
@@ -76,6 +92,9 @@ export async function GET(
       concernType: r.concern_type ?? null,
       notes: r.notes,
       status: r.status,
+      isAnonymous: Boolean(r.is_anonymous),
+      analysis,
+      aiGeneratedAt: r.ai_generated_at ?? null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     },

@@ -446,7 +446,7 @@ export async function getPendingFundingTransactions(
       WHERE status = 'pending'
         AND payment_method IN ('paystack', 'bank_transfer')
         AND (
-          (type = 'credit' AND COALESCE(metadata->>'type', 'wallet_funding') = 'wallet_funding')
+          (type = 'credit' AND COALESCE(metadata->>'type', 'wallet_funding') IN ('wallet_funding', 'membership_subscription'))
           OR
           (type = 'debit' AND metadata->>'type' = 'gift_card')
         )
@@ -478,7 +478,7 @@ export async function expireStalePendingFundings(
         WHERE status = 'pending'
           AND payment_method IN ('paystack', 'bank_transfer')
           AND (
-            (type = 'credit' AND COALESCE(metadata->>'type', 'wallet_funding') = 'wallet_funding')
+            (type = 'credit' AND COALESCE(metadata->>'type', 'wallet_funding') IN ('wallet_funding', 'membership_subscription'))
             OR
             (type = 'debit' AND metadata->>'type' = 'gift_card')
           )

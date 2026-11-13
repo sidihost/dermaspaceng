@@ -34,12 +34,13 @@
 import {
   getPendingFundingTransactions,
   getTransactionByReference,
-  updateTransactionStatus,
   expireStalePendingFundings,
   type Transaction,
 } from './wallet'
 import { finalizeWalletFunding } from './wallet-funding'
 import { finalizeGiftCardPaystackPayment } from './gift-cards'
+import { finalizeMembershipPaystackPayment } from './membership-activation'
+import { finalizePendingTransactionFailureOrCancel } from './transaction-failure-notice'
 import { verifyPayment, fromKobo } from './paystack'
 
 export interface ReconcileResult {
@@ -67,11 +68,6 @@ export async function reconcileOnePending(
   tx: Transaction,
 ): Promise<'credited' | 'failed' | 'cancelled' | 'pending' | 'error'> {
   const txType = (tx.metadata as { type?: string } | null)?.type
-  // Membership subscriptions require tier + Glow Points activation via
-  // /api/membership/verify — never finalize them as plain wallet top-ups.
-  if (txType === 'membership_subscription') {
-    return 'pending'
-  }
 
   // Prefer Paystack's own reference when we have it, otherwise our
   // reference (Paystack accepts either on the verify endpoint when the
@@ -89,6 +85,16 @@ export async function reconcileOnePending(
 
     if (data.status === 'success') {
       const amount = fromKobo(data.amount)
+      if (txType === 'membership_subscription') {
+        const msResult = await finalizeMembershipPaystackPayment({
+          transaction: tx,
+          paystackReference: data.reference,
+          amountPaid: amount,
+          customerEmail: data.customer?.email,
+        })
+        return msResult.activated || msResult.alreadyProcessed ? 'credited' : 'error'
+      }
+
       if (txType === 'gift_card') {
         const gcResult = await finalizeGiftCardPaystackPayment({
           transaction: tx,
@@ -115,20 +121,22 @@ export async function reconcileOnePending(
     }
 
     if (data.status === 'failed') {
-      await updateTransactionStatus(
-        tx.id,
-        'failed',
-        data.gateway_response || 'Payment failed',
-      )
+      await finalizePendingTransactionFailureOrCancel({
+        transaction: tx,
+        nextStatus: 'failed',
+        reason: data.gateway_response || 'Payment failed',
+        customerEmail: data.customer?.email,
+      })
       return 'failed'
     }
 
     if (data.status === 'abandoned') {
-      await updateTransactionStatus(
-        tx.id,
-        'cancelled',
-        'Payment abandoned by user',
-      )
+      await finalizePendingTransactionFailureOrCancel({
+        transaction: tx,
+        nextStatus: 'cancelled',
+        reason: 'Payment abandoned by user',
+        customerEmail: data.customer?.email,
+      })
       return 'cancelled'
     }
 

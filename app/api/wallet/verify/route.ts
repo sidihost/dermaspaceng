@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
-import { 
-  getTransactionByReference, 
-  updateTransactionStatus,
-} from '@/lib/wallet'
+import { getTransactionByReference } from '@/lib/wallet'
 import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
+import { finalizePendingTransactionFailureOrCancel } from '@/lib/transaction-failure-notice'
 import { getBaseUrl } from '@/lib/app-url'
 
 // GET /api/wallet/verify - Verify payment and credit wallet (or finalize gift card)
@@ -96,11 +94,12 @@ export async function GET(request: NextRequest) {
 
       return outcomeRedirect(paymentReference, txType, 'success')
     } else if (data.status === 'failed') {
-      await updateTransactionStatus(
-        transaction.id,
-        'failed',
-        data.gateway_response || 'Payment failed'
-      )
+      await finalizePendingTransactionFailureOrCancel({
+        transaction,
+        nextStatus: 'failed',
+        reason: data.gateway_response || 'Payment failed',
+        customerEmail: data.customer?.email,
+      })
 
       return outcomeRedirect(paymentReference, txType, 'failed')
     } else if (
@@ -110,11 +109,12 @@ export async function GET(request: NextRequest) {
         (transaction.metadata as { channel?: string } | null)?.channel !==
           'bank_transfer')
     ) {
-      await updateTransactionStatus(
-        transaction.id,
-        'cancelled',
-        'Payment cancelled before completion'
-      )
+      await finalizePendingTransactionFailureOrCancel({
+        transaction,
+        nextStatus: 'cancelled',
+        reason: 'Payment cancelled before completion',
+        customerEmail: data.customer?.email,
+      })
 
       return outcomeRedirect(paymentReference, txType, 'cancelled')
     }

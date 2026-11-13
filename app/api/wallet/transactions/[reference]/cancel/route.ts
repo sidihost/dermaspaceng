@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import {
-  getTransactionByReference,
-  updateTransactionStatus,
-} from '@/lib/wallet'
+import { getTransactionByReference } from '@/lib/wallet'
 import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
+import { finalizeMembershipPaystackPayment } from '@/lib/membership-activation'
+import { finalizePendingTransactionFailureOrCancel } from '@/lib/transaction-failure-notice'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
 
 export const dynamic = 'force-dynamic'
@@ -58,7 +57,14 @@ export async function POST(
           ? 'Bank Transfer'
           : 'Paystack'
 
-      if (txType === 'gift_card') {
+      if (txType === 'membership_subscription') {
+        await finalizeMembershipPaystackPayment({
+          transaction: tx,
+          paystackReference: data.reference,
+          amountPaid: amount,
+          customerEmail: data.customer?.email || user.email,
+        })
+      } else if (txType === 'gift_card') {
         await finalizeGiftCardPaystackPayment({
           transaction: tx,
           paystackReference: data.reference,
@@ -88,11 +94,12 @@ export async function POST(
 
     // Not a success on Paystack's side (pending / ongoing / abandoned /
     // failed / unknown reference) — safe to honour the user's cancel.
-    await updateTransactionStatus(
-      tx.id,
-      'cancelled',
-      'Payment cancelled by customer before completion',
-    )
+    await finalizePendingTransactionFailureOrCancel({
+      transaction: tx,
+      nextStatus: 'cancelled',
+      reason: 'Payment cancelled by customer before completion',
+      customerEmail: user.email,
+    })
 
     return NextResponse.json({ success: true, status: 'cancelled' })
   } catch (error) {

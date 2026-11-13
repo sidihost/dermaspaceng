@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
 import { resolvePreferredLocationId } from '@/lib/location-pref'
+import { resolveSignedInConsultationIdentity } from '@/lib/consultation-mode'
 
 // ---------------------------------------------------------------------------
 // /consultation — book a free dermatology consultation.
@@ -176,7 +177,8 @@ export default function ConsultationPage() {
   const [submissionError, setSubmissionError] = useState('')
   const [isSubmitted, setIsSubmitted] = useState(false)
   // Set from the submit response so the confirmation screen can offer
-  // a private tracking link (anonymous) or the dashboard (signed-in).
+  // a private tracking link (anonymous) or the dashboard detail page (signed-in).
+  const [consultationId, setConsultationId] = useState<string | null>(null)
   const [trackToken, setTrackToken] = useState<string | null>(null)
   const [submittedAnonymous, setSubmittedAnonymous] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -220,7 +222,7 @@ export default function ConsultationPage() {
       }
 
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { cache: 'no-store' })
         if (!cancelled && res.ok) {
           const data = await res.json()
           if (data.user) setUser(data.user as AuthUser)
@@ -254,12 +256,16 @@ export default function ConsultationPage() {
             : mappedConcerns
 
           if (data.user && !cancelled) {
+            const identity = resolveSignedInConsultationIdentity({
+              user: data.user,
+              draft,
+            })
             setFormData((prev) => ({
               ...prev,
-              firstName: draft?.firstName || data.user.firstName || prev.firstName,
-              lastName: draft?.lastName || data.user.lastName || prev.lastName,
-              email: draft?.email || data.user.email || prev.email,
-              phone: draft?.phone || data.user.phone || prev.phone,
+              firstName: identity.firstName || prev.firstName,
+              lastName: identity.lastName || prev.lastName,
+              email: identity.email || prev.email,
+              phone: identity.phone || prev.phone,
               location: resolvedLocation || prev.location,
               date: draft?.date ?? prev.date,
               time: draft?.time ?? prev.time,
@@ -405,6 +411,7 @@ export default function ConsultationPage() {
         }
         try {
           const data = await res.json()
+          setConsultationId(data.consultationId ?? null)
           setTrackToken(data.trackToken ?? null)
           // Fall back to the client-side auth check if the API doesn't
           // report it, so signed-in users always see the dashboard CTA.
@@ -546,20 +553,30 @@ export default function ConsultationPage() {
                 )}
               </>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <Link
-                  href="/"
-                  className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
-                >
-                  Back to Home
-                </Link>
-                <Link
-                  href="/dashboard"
-                  className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
-                >
-                  Go to Dashboard
-                </Link>
-              </div>
+              <>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
+                  <Link
+                    href={
+                      consultationId
+                        ? `/dashboard/consultations/${consultationId}`
+                        : '/dashboard/consultations'
+                    }
+                    className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
+                  >
+                    View in Dashboard
+                  </Link>
+                  <Link
+                    href="/"
+                    className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
+                  >
+                    Back to Home
+                  </Link>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-4 text-pretty">
+                  Your consultation and personalised AI skin analysis are saved
+                  to your Dermaspace account.
+                </p>
+              </>
             )}
           </div>
         </div>
@@ -635,28 +652,37 @@ export default function ConsultationPage() {
       {/* Form — tight top padding so the first step sits right
           under the progress dots, no dead space between sections. */}
       <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
-        {/* Auth + draft hint chips — only on the first visible step */}
-        {(draftRestored || locationPrefilled || user) && step === 1 && (
+        {/* Persistent signed-in account indicator across all steps */}
+        {user && (
+          <div className="mb-4 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] px-4 py-3 flex items-start gap-3">
+            <span className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Heart className="w-4 h-4 fill-[#7B2D8E]" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-gray-900">
+                Booking as {user.firstName} {user.lastName} ({user.email})
+              </p>
+              <p className="text-[11px] text-gray-600 mt-0.5 text-pretty">
+                Your consultation and AI skin analysis will save directly to your dashboard — no tracking link needed.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Draft + preferred-clinic hint chips */}
+        {((draftRestored && step === 1) || (locationPrefilled && step === 2)) && (
           <div className="mb-4 flex flex-wrap gap-2">
-            {user && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/8 border border-[#7B2D8E]/15 rounded-full">
-                <Heart className="w-3 h-3 fill-[#7B2D8E]" aria-hidden="true" />
-                Personalised for {user.firstName}
-              </span>
-            )}
-            {draftRestored && (
+            {draftRestored && step === 1 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
                 Picked up where you left off
               </span>
             )}
-          </div>
-        )}
-        {locationPrefilled && step === 2 && (
-          <div className="mb-4">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
-              <MapPin className="w-3 h-3" aria-hidden="true" />
-              Using your preferred clinic
-            </span>
+            {locationPrefilled && step === 2 && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
+                <MapPin className="w-3 h-3" aria-hidden="true" />
+                Using your preferred clinic
+              </span>
+            )}
           </div>
         )}
 
@@ -1031,7 +1057,7 @@ export default function ConsultationPage() {
               )}
             </div>
 
-            <HCaptcha onVerify={setCaptchaToken} />
+            {authChecked && !user && <HCaptcha onVerify={setCaptchaToken} />}
 
             {submissionError && (
               <p

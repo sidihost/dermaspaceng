@@ -22,7 +22,9 @@ interface EmailOptions {
   html: string
 }
 
-const PUBLIC_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com').replace(/\/$/, '')
+import { resolveEmailOrigin } from './email-url'
+
+const PUBLIC_ORIGIN = resolveEmailOrigin()
 
 // Clean, full-width email template like Facebook
 function getEmailTemplate(content: string) {
@@ -155,7 +157,7 @@ export async function sendWalletFundingConfirmation(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             View Wallet
           </a>
         </td>
@@ -345,7 +347,7 @@ export async function sendPaymentFailedEmail(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             Try Again
           </a>
         </td>
@@ -470,7 +472,7 @@ export async function sendBudgetAlert(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/dashboard/settings" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             Manage Budget Settings
           </a>
         </td>
@@ -515,7 +517,7 @@ export async function sendLowBalanceAlert(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             Top Up Wallet
           </a>
         </td>
@@ -565,7 +567,7 @@ export async function sendWalletWelcomeEmail(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
+          <a href="${PUBLIC_ORIGIN}/dashboard/wallet" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
             Fund Your Wallet
           </a>
         </td>
@@ -723,7 +725,7 @@ export async function sendMembershipConfirmation(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: ${BRAND_COLOR}; border-radius: 999px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 12px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/dashboard" style="display: inline-block; padding: 12px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             Go to dashboard
           </a>
         </td>
@@ -732,7 +734,7 @@ export async function sendMembershipConfirmation(data: {
 
     <p style="margin: 0; font-size: 13px; color: #888; line-height: 1.6;">
       You can review your receipt anytime at
-      <a href="${process.env.NEXT_PUBLIC_APP_URL}/membership/receipt/${data.reference}" style="color: ${BRAND_COLOR}; font-weight: 600;">your membership receipt page</a>.
+      <a href="${PUBLIC_ORIGIN}/membership/receipt/${data.reference}" style="color: ${BRAND_COLOR}; font-weight: 600;">your membership receipt page</a>.
     </p>
   `
 

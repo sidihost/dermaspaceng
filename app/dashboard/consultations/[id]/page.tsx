@@ -26,7 +26,19 @@ import {
   Loader2,
   FileText,
   Tag,
+  ClipboardList,
+  Check,
+  Lightbulb,
 } from "lucide-react"
+
+interface ConsultationAnalysis {
+  summary: string
+  concerns: { title: string; insight: string }[]
+  recommendations: { title: string; reason: string }[]
+  routineTips: string[]
+  nextSteps: string
+  disclaimer: string
+}
 
 interface ConsultationDetail {
   id: string
@@ -41,8 +53,16 @@ interface ConsultationDetail {
   concernType: string | null
   notes: string | null
   status: string
+  isAnonymous?: boolean
+  analysis?: ConsultationAnalysis | null
+  aiGeneratedAt?: string | null
   createdAt: string
   updatedAt: string | null
+}
+
+const LOCATION_LABELS: Record<string, string> = {
+  vi: "Victoria Island",
+  ikoyi: "Ikoyi",
 }
 
 const fetcher = (u: string) =>
@@ -150,12 +170,11 @@ export default function ConsultationDetailPage() {
               soft radial wash so the card reads as elevated and clearly
               "ours" the moment it loads. */}
           <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white">
-            <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" aria-hidden="true" />
-            <div className="pointer-events-none absolute inset-x-0 top-1 h-28 bg-gradient-to-b from-[#7B2D8E]/[0.04] to-transparent" aria-hidden="true" />
+            <div className="h-1 bg-[#7B2D8E]" aria-hidden="true" />
             <div className="relative p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-sm font-bold text-white">
+                  <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-2xl bg-[#7B2D8E] text-sm font-bold text-white">
                     {(fullName(c) || "U").charAt(0).toUpperCase()}
                   </span>
                   <div className="min-w-0">
@@ -239,6 +258,99 @@ export default function ConsultationDetailPage() {
             </div>
           )}
 
+          {/* Personalised AI Skin Analysis */}
+          {c.analysis && (
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              <div className="border-b border-gray-100 bg-[#7B2D8E]/[0.04] px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-[#7B2D8E]" />
+                  <h2 className="text-sm font-semibold text-gray-900">
+                    Your personalised skin analysis
+                  </h2>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-gray-600 text-pretty">
+                  {c.analysis.summary}
+                </p>
+              </div>
+
+              <div className="space-y-6 p-5">
+                {c.analysis.concerns?.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      What we noticed
+                    </h3>
+                    <div className="space-y-3">
+                      {c.analysis.concerns.map((item, i) => (
+                        <div key={i} className="border-l-2 border-[#7B2D8E]/30 pl-3">
+                          <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                          <p className="text-sm leading-relaxed text-gray-600 text-pretty">
+                            {item.insight}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {c.analysis.recommendations?.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Recommended for you
+                    </h3>
+                    <div className="space-y-3">
+                      {c.analysis.recommendations.map((rec, i) => (
+                        <div key={i} className="flex items-start gap-3">
+                          <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                            <Check className="h-3.5 w-3.5" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900">{rec.title}</p>
+                            <p className="text-sm leading-relaxed text-gray-600 text-pretty">
+                              {rec.reason}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {c.analysis.routineTips?.length > 0 && (
+                  <div>
+                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      While you wait
+                    </h3>
+                    <ul className="space-y-2">
+                      {c.analysis.routineTips.map((tip, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-gray-700">
+                          <Lightbulb className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#7B2D8E]" />
+                          <span className="leading-relaxed text-pretty">{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {c.analysis.nextSteps && (
+                  <div>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      What happens next
+                    </h3>
+                    <p className="text-sm leading-relaxed text-gray-600 text-pretty">
+                      {c.analysis.nextSteps}
+                    </p>
+                  </div>
+                )}
+
+                {c.analysis.disclaimer && (
+                  <p className="border-t border-gray-100 pt-4 text-[11px] leading-relaxed text-gray-400 text-pretty">
+                    {c.analysis.disclaimer}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Contact */}
           <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-gray-900">
@@ -246,9 +358,9 @@ export default function ConsultationDetailPage() {
             </h2>
             <div className="mt-3 space-y-2.5 text-sm text-gray-700">
               {c.location && (
-                <p className="inline-flex items-center gap-2 capitalize">
+                <p className="inline-flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gray-400" />
-                  {c.location}
+                  {LOCATION_LABELS[c.location] ?? c.location}
                 </p>
               )}
               {c.email && (

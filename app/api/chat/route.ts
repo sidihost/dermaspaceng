@@ -4,8 +4,15 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
-import { sendPasswordResetEmail, sendSignupOtpEmail } from '@/lib/email'
+import { sendPasswordResetEmail, sendSignupOtpEmail, sendConsultationConfirmation } from '@/lib/email'
 import { generateOtp, storeOtp } from '@/lib/signup-otp'
+import { notifyUser } from '@/lib/notifications'
+import { generateConsultationAnalysis } from '@/lib/consultation-ai'
+import {
+  buildConsultationPersistencePlan,
+  buildConsultationEmailAction,
+} from '@/lib/consultation-mode'
+import { resolveEmailOrigin } from '@/lib/email-url'
 import {
   getChatModelChain,
   pickFirstHealthyChatProvider,
@@ -930,28 +937,90 @@ const tools = {
 
         const id = randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5')
         const concernsJson = JSON.stringify(concerns ?? [])
+        const { isAnonymous, trackToken } = buildConsultationPersistencePlan({
+          userId,
+          generateToken: () => randomBytes(32).toString('hex'),
+        })
+
+        const aiAnalysis = await generateConsultationAnalysis({
+          firstName,
+          concerns: Array.isArray(concerns) ? concerns : [],
+          notes: notes ?? undefined,
+        }).catch((err) => {
+          console.error('chat consultation analysis failed:', err)
+          return null
+        })
+
         await sql`
-      INSERT INTO consultations (
-        id, user_id, first_name, last_name, email, phone, location,
-        appointment_date, appointment_time, concerns, notes, status
-      ) VALUES (
-        ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
-        ${appointmentDate}, ${appointmentTime}, ${concernsJson}::jsonb, ${notes ?? null}, 'pending'
-      )
-      `
+          INSERT INTO consultations (
+            id, user_id, first_name, last_name, email, phone, location,
+            appointment_date, appointment_time, concerns, notes, status,
+            is_anonymous, track_token, ai_analysis, ai_generated_at
+          ) VALUES (
+            ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
+            ${appointmentDate}, ${appointmentTime}, ${concernsJson}::jsonb, ${notes ?? null}, 'pending',
+            ${isAnonymous}, ${trackToken}, ${aiAnalysis ? JSON.stringify(aiAnalysis) : null},
+            ${aiAnalysis ? new Date().toISOString() : null}
+          )
+        `
 
-      // Enqueue the 1-hour-before reminder. Fire-and-forget by design:
-      // a transient QStash failure must not break the chat flow.
-      void scheduleConsultationReminder(id, appointmentDate, appointmentTime)
+        const formattedDate = new Date(`${appointmentDate}T00:00:00.000Z`).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
 
-      return {
-        success: true,
-        consultationId: id,
-          message: `Your free consultation is booked at ${location} on ${appointmentDate} at ${appointmentTime}. We'll confirm by email at ${email}.`,
+        const emailAction = buildConsultationEmailAction({
+          isAnonymous,
+          appUrl: resolveEmailOrigin(),
+          consultationId: id,
+          trackToken,
+        })
+
+        await sendConsultationConfirmation({
+          email,
+          firstName,
+          location,
+          date: formattedDate,
+          time: appointmentTime,
+          trackUrl: emailAction.trackUrl,
+          dashboardUrl: emailAction.dashboardUrl,
+        }).catch((err) => console.error('chat sendConsultationConfirmation failed:', err))
+
+        if (userId) {
+          await notifyUser({
+            userId,
+            title: 'Consultation request received',
+            message: `Your consultation at ${location} on ${formattedDate} at ${appointmentTime} is pending. We'll confirm shortly.`,
+            type: 'status_update',
+            referenceType: 'consultation',
+            referenceId: id,
+            actionUrl: `/dashboard/consultations/${id}`,
+            priority: 'normal',
+          }).catch((err) => console.error('chat consultation notifyUser failed:', err))
+        }
+
+        // Enqueue the 1-hour-before reminder. Fire-and-forget by design:
+        // a transient QStash failure must not break the chat flow.
+        void scheduleConsultationReminder(id, appointmentDate, appointmentTime)
+
+        return {
+          success: true,
+          consultationId: id,
+          isAnonymous,
+          trackToken,
+          message: userId
+            ? `Your free consultation is booked at ${location} on ${appointmentDate} at ${appointmentTime}. We've saved it to your dashboard and sent a confirmation email to ${email}.`
+            : `Your free consultation is booked at ${location} on ${appointmentDate} at ${appointmentTime}. We've emailed your private tracking link and skin analysis to ${email}.`,
           location,
           date: appointmentDate,
           time: appointmentTime,
-          consultationLink: '/consultation',
+          consultationLink: userId
+            ? `/dashboard/consultations/${id}`
+            : trackToken
+              ? `/consultation/track/${trackToken}`
+              : '/consultation',
         }
       } catch (error) {
         console.error('bookConsultation error:', error)

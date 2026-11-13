@@ -39,9 +39,9 @@ const BRAND_COLOR = '#7B2D8E'
 // production origin. The optional `EMAIL_PUBLIC_URL` override stays
 // available for staging environments that genuinely want a different
 // origin, but the default is the live marketing domain.
-const PUBLIC_ORIGIN =
-  process.env.EMAIL_PUBLIC_URL?.replace(/\/$/, '') ||
-  'https://www.dermaspaceng.com'
+import { resolveEmailOrigin } from './email-url'
+
+const PUBLIC_ORIGIN = resolveEmailOrigin()
 
 /**
  * Resolve an avatar / portrait reference to an absolute URL suitable
@@ -469,7 +469,7 @@ async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> 
 
 // Email verification - Clean design like Facebook
 export async function sendVerificationEmail(email: string, firstName: string, token: string): Promise<boolean> {
-  const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`
+  const verifyUrl = `${PUBLIC_ORIGIN}/verify-email?token=${token}`
   
   const content = `
     <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">One more step to sign up</h1>
@@ -702,13 +702,25 @@ export async function sendConsultationConfirmation(data: {
   date: string
   time: string
   trackUrl?: string
+  dashboardUrl?: string
 }): Promise<boolean> {
-  const trackBlock = data.trackUrl
+  const ctaBlock = data.dashboardUrl
     ? `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="text-align: center;">
-          <a href="${data.trackUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 9999px;">Track your consultation</a>
+          <a href="${data.dashboardUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 10px;">View in Dashboard</a>
+          <p style="margin: 12px 0 0; font-size: 12px; color: #888;">Your consultation and personalised AI skin analysis are saved in your dashboard.</p>
+        </td>
+      </tr>
+    </table>
+    `
+    : data.trackUrl
+    ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="text-align: center;">
+          <a href="${data.trackUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 10px;">Track your consultation</a>
           <p style="margin: 12px 0 0; font-size: 12px; color: #888;">Your personalised AI skin analysis is ready on this private link.</p>
         </td>
       </tr>
@@ -722,7 +734,7 @@ export async function sendConsultationConfirmation(data: {
       Hi ${data.firstName},<br><br>
       Thank you for requesting a consultation with Dermaspace. Our team will review your request and confirm your appointment within 24 hours.
     </p>
-    ${trackBlock}
+    ${ctaBlock}
     
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; padding: 20px;">
       <tr>
@@ -755,6 +767,97 @@ export async function sendConsultationConfirmation(data: {
     to: data.email,
     subject: 'Consultation Request Received - Dermaspace',
     html: getEmailTemplate(content)
+  })
+}
+
+export async function sendConsultationStatusEmail(data: {
+  email: string
+  firstName: string
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  location?: string | null
+  date?: string | null
+  time?: string | null
+  ctaUrl?: string | null
+  ctaLabel?: string | null
+}): Promise<boolean> {
+  if (!data.email) return false
+
+  const headingMap: Record<string, string> = {
+    confirmed: 'Your consultation is confirmed',
+    completed: 'Thank you for your consultation',
+    cancelled: 'Your consultation was cancelled',
+    pending: 'Consultation status updated',
+  }
+  const subjectMap: Record<string, string> = {
+    confirmed: 'Consultation Confirmed - Dermaspace',
+    completed: 'Thank You for Visiting Dermaspace',
+    cancelled: 'Consultation Cancelled - Dermaspace',
+    pending: 'Consultation Update - Dermaspace',
+  }
+  const copyMap: Record<string, string> = {
+    confirmed:
+      'Great news — our team has confirmed your consultation slot. We look forward to welcoming you.',
+    completed:
+      'Your consultation is now marked completed. Thank you for trusting Dermaspace with your skin journey.',
+    cancelled:
+      'Your consultation has been cancelled. Whenever you are ready, you can book another slot in a couple of taps.',
+    pending: 'Your consultation request has been moved back to pending review.',
+  }
+  const badgeBg = data.status === 'cancelled' ? '#fee2e2' : '#f3e8f7'
+  const badgeColor = data.status === 'cancelled' ? '#991b1b' : '#7B2D8E'
+
+  const ctaHtml =
+    data.ctaUrl && data.ctaLabel
+      ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="text-align: center;">
+          <a href="${data.ctaUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 10px;">${escapeHtml(data.ctaLabel)}</a>
+        </td>
+      </tr>
+    </table>`
+      : ''
+
+  const detailsRows = [
+    data.location
+      ? `<tr><td style="padding: 6px 0; font-size: 14px; color: #666; width: 100px;">Location:</td><td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(data.location)}</td></tr>`
+      : '',
+    data.date
+      ? `<tr><td style="padding: 6px 0; font-size: 14px; color: #666;">Date:</td><td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(data.date)}</td></tr>`
+      : '',
+    data.time
+      ? `<tr><td style="padding: 6px 0; font-size: 14px; color: #666;">Time:</td><td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(data.time)}</td></tr>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('')
+
+  const content = `
+    <div style="margin: 0 0 14px;">
+      <span style="display: inline-block; padding: 4px 12px; border-radius: 999px; background-color: ${badgeBg}; color: ${badgeColor}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;">${escapeHtml(data.status)}</span>
+    </div>
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">${headingMap[data.status] || 'Consultation Update'}</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${escapeHtml(data.firstName || 'there')},<br><br>
+      ${copyMap[data.status] || 'Your consultation details have been updated.'}
+    </p>
+    ${
+      detailsRows
+        ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+            <tr><td style="padding: 18px 20px;"><table role="presentation" cellspacing="0" cellpadding="0">${detailsRows}</table></td></tr>
+          </table>`
+        : ''
+    }
+    ${ctaHtml}
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Need assistance? Reply to this email or call 09013134945 / 09061836625.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: subjectMap[data.status] || 'Consultation Update - Dermaspace',
+    html: getEmailTemplate(content),
   })
 }
 
@@ -817,8 +920,7 @@ export async function sendPasskeyAddedEmail(data: {
   passkeyName: string
   createdAt?: Date
 }): Promise<boolean> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com'
-  const securityUrl = `${appUrl}/dashboard/settings?section=security`
+  const securityUrl = `${PUBLIC_ORIGIN}/dashboard/settings?section=security`
   const when = (data.createdAt || new Date()).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -972,7 +1074,7 @@ export async function sendBookingPaymentFailedEmail(data: {
   const dateLabel = new Date(`${data.appointmentDate}T00:00:00.000Z`)
     .toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
   const content = `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background: linear-gradient(135deg, #7B2D8E 0%, #5A1D6A 100%); border-radius: 14px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #7B2D8E; border-radius: 14px;">
       <tr>
         <td style="padding: 28px 24px; text-align: center;">
           <div style="display:inline-block; width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.18); line-height:48px; text-align:center; margin-bottom:14px;">
@@ -1023,7 +1125,7 @@ export async function sendBookingPaymentFailedEmail(data: {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td align="center">
-          <a href="${data.recoveryUrl}" style="display:inline-block; padding: 14px 32px; background-color: #7B2D8E; color: #ffffff; text-decoration: none; border-radius: 999px; font-size: 15px; font-weight: 700; box-shadow: 0 6px 20px rgba(123,45,142,0.28);">Finish my booking \u2192</a>
+          <a href="${data.recoveryUrl}" style="display:inline-block; padding: 14px 32px; background-color: #7B2D8E; color: #ffffff; text-decoration: none; border-radius: 999px; font-size: 15px; font-weight: 700;">Finish my booking \u2192</a>
         </td>
       </tr>
     </table>
@@ -1060,7 +1162,7 @@ export async function sendBookingRebookReminderEmail(data: {
   const dateLabel = new Date(`${data.appointmentDate}T00:00:00.000Z`)
     .toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
   const content = `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background: linear-gradient(135deg, #7B2D8E 0%, #5A1D6A 100%); border-radius: 14px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #7B2D8E; border-radius: 14px;">
       <tr>
         <td style="padding: 28px 24px; text-align: center;">
           <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff;">Ready when you are</h2>
@@ -1088,7 +1190,7 @@ export async function sendBookingRebookReminderEmail(data: {
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td align="center">
-          <a href="${data.rebookUrl}" style="display:inline-block; padding: 14px 32px; background-color: #7B2D8E; color: #ffffff; text-decoration: none; border-radius: 999px; font-size: 15px; font-weight: 700; box-shadow: 0 6px 20px rgba(123,45,142,0.28);">Rebook now \u2192</a>
+          <a href="${data.rebookUrl}" style="display:inline-block; padding: 14px 32px; background-color: #7B2D8E; color: #ffffff; text-decoration: none; border-radius: 999px; font-size: 15px; font-weight: 700;">Rebook now \u2192</a>
         </td>
       </tr>
     </table>
@@ -1221,7 +1323,7 @@ export async function sendVoucherExpiryReminder(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 999px;">
-          <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dermaspaceng.com'}/booking" style="display: inline-block; padding: 12px 28px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px;">Book now</a>
+          <a href="${PUBLIC_ORIGIN}/booking" style="display: inline-block; padding: 12px 28px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px;">Book now</a>
         </td>
       </tr>
     </table>
@@ -1274,7 +1376,7 @@ export async function sendGiftCardRequestToAdmin(data: {
     <!-- Gift Card Visual Preview -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px;">
       <tr>
-        <td style="padding: 24px; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-radius: 16px; text-align: center;">
+        <td style="padding: 24px; background-color: #7B2D8E; border-radius: 16px; text-align: center;">
           <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
             <tr>
               <td style="padding: 12px 20px; background-color: rgba(255,255,255,0.95); border-radius: 20px;">
@@ -1428,7 +1530,7 @@ export async function sendGiftCardConfirmation(data: {
     <!-- Gift Card Visual Preview -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
-        <td style="padding: 20px; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-radius: 12px; text-align: center;">
+        <td style="padding: 20px; background-color: #7B2D8E; border-radius: 12px; text-align: center;">
           <p style="margin: 0 0 4px; color: rgba(255,255,255,0.8); font-size: 11px;">Gift Card for</p>
           <p style="margin: 0 0 12px; color: #ffffff; font-size: 16px; font-weight: 600;">${displayRecipientName}</p>
           <p style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">N${data.amount.toLocaleString()}</p>
@@ -1570,7 +1672,7 @@ export async function sendGiftCardPaymentReceipt(data: {
     <!-- Gift Card Visual Preview -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
-        <td style="padding: 20px; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-radius: 12px; text-align: center;">
+        <td style="padding: 20px; background-color: #7B2D8E; border-radius: 12px; text-align: center;">
           <p style="margin: 0 0 4px; color: rgba(255,255,255,0.8); font-size: 11px;">Gift Card for</p>
           <p style="margin: 0 0 12px; color: #ffffff; font-size: 16px; font-weight: 600;">${displayRecipientName}</p>
           <p style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">N${data.amount.toLocaleString()}</p>
@@ -1731,7 +1833,7 @@ export async function sendStaffInvitation(data: {
   role: 'staff' | 'admin'
   token: string
 }): Promise<boolean> {
-  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accept-invite?token=${data.token}`
+  const acceptUrl = `${PUBLIC_ORIGIN}/accept-invite?token=${data.token}`
   
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">You're Invited to Join Dermaspace</h2>
@@ -1938,7 +2040,7 @@ export async function sendReplyNotification(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}${
+          <a href="${PUBLIC_ORIGIN}${
             data.requestType === 'ticket' && data.ticketId
               ? `/dashboard/support/${data.ticketId}`
               : '/dashboard'
@@ -2020,7 +2122,7 @@ export async function sendCustomerReplyAlert(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/complaints/${data.adminLinkId}?source=ticket" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/admin/complaints/${data.adminLinkId}?source=ticket" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             Open ticket in admin
           </a>
         </td>
@@ -2097,7 +2199,7 @@ export async function sendStatusUpdateNotification(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/dashboard" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             View Details
           </a>
         </td>
@@ -2161,7 +2263,7 @@ export async function sendAdminNewRequestNotification(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/${data.requestType === 'gift_card' ? 'gift-cards' : data.requestType === 'complaint' ? 'complaints' : data.requestType + 's'}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${PUBLIC_ORIGIN}/admin/${data.requestType === 'gift_card' ? 'gift-cards' : data.requestType === 'complaint' ? 'complaints' : data.requestType + 's'}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             View in Admin Dashboard
           </a>
         </td>
@@ -2178,7 +2280,7 @@ export async function sendAdminNewRequestNotification(data: {
 
 // Password reset email
 export async function sendPasswordResetEmail(email: string, firstName: string, token: string): Promise<boolean> {
-  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`
+  const resetUrl = `${PUBLIC_ORIGIN}/reset-password?token=${token}`
   
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Reset Your Password</h2>
@@ -2218,10 +2320,9 @@ export async function sendSecurityReminderEmail(data: {
   hasPasskey: boolean
   has2FA: boolean
 }): Promise<boolean> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'
-  const passkeyUrl = `${appUrl}/dashboard/settings?section=security&action=passkey`
-  const twoFAUrl = `${appUrl}/dashboard/settings?section=security&action=2fa`
-  const settingsUrl = `${appUrl}/dashboard/settings?section=security`
+  const passkeyUrl = `${PUBLIC_ORIGIN}/dashboard/settings?section=security&action=passkey`
+  const twoFAUrl = `${PUBLIC_ORIGIN}/dashboard/settings?section=security&action=2fa`
+  const settingsUrl = `${PUBLIC_ORIGIN}/dashboard/settings?section=security`
   
   // Build tips based on what's missing
   const tips: string[] = []
@@ -2382,7 +2483,7 @@ export async function sendTicketConfirmation(data: {
   subject: string
   category: string
   }): Promise<boolean> {
-  const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'}/dashboard/support/${data.ticketId}`
+  const ticketUrl = `${PUBLIC_ORIGIN}/dashboard/support/${data.ticketId}`
   
   const content = `
   <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">We&apos;ve received your support request</h1>
@@ -2462,7 +2563,7 @@ export async function sendBirthdayEmail(data: {
   firstName: string
 }): Promise<boolean> {
   const name = data.firstName?.trim() || 'there'
-  const bookingUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'}/booking`
+  const bookingUrl = `${PUBLIC_ORIGIN}/booking`
 
   const content = `
     <!-- Hero celebratory banner — solid brand colour, no gradients per brand
@@ -2537,12 +2638,8 @@ export async function sendWelcomeEmail(data: {
   email: string
   firstName: string
 }): Promise<boolean> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    'https://www.dermaspaceng.com'
-  const bookingUrl = `${baseUrl}/booking`
-  const dashboardUrl = `${baseUrl}/dashboard`
+  const bookingUrl = `${PUBLIC_ORIGIN}/booking`
+  const dashboardUrl = `${PUBLIC_ORIGIN}/dashboard`
   const content = `
     <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">
       Welcome to Dermaspace, ${data.firstName}.
@@ -2748,11 +2845,7 @@ export async function sendTicketTranscript(data: {
     timestamp: string
   }>
 }): Promise<boolean> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    'https://www.dermaspaceng.com'
-  const ticketUrl = `${baseUrl}/dashboard/tickets/${encodeURIComponent(data.ticketId)}`
+  const ticketUrl = `${PUBLIC_ORIGIN}/dashboard/tickets/${encodeURIComponent(data.ticketId)}`
 
   const bubbles = data.messages
     .map((m) => {
@@ -3033,8 +3126,7 @@ export async function sendBookingReceipt(data: {
     month: 'short',
     year: 'numeric',
   })
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com'
-  const receiptUrl = `${appUrl}/booking/${encodeURIComponent(data.bookingReference)}`
+  const receiptUrl = `${PUBLIC_ORIGIN}/booking/${encodeURIComponent(data.bookingReference)}`
 
   const itemsHtml = data.services
     .map(
@@ -3259,8 +3351,7 @@ export async function sendBookingCancellation(data: {
   if (!data.email) return false
 
   const firstName = (data.customerName || '').split(' ')[0] || 'there'
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com'
-  const bookUrl = `${appUrl}/booking`
+  const bookUrl = `${PUBLIC_ORIGIN}/booking`
 
   const refundKobo = data.refundKobo ?? 0
   const refundHtml =

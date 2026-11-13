@@ -416,7 +416,7 @@ export default function AdminTransactionsPage() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+          className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5"
         >
           <div className="flex items-center justify-between mb-1">
             <div>
@@ -434,12 +434,6 @@ export default function AdminTransactionsPage() {
               className="h-[200px] w-full"
             >
               <AreaChart data={revenueTrend} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={PLUM} stopOpacity={0.28} />
-                    <stop offset="100%" stopColor={PLUM} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#F1F1F4" />
                 <XAxis
                   dataKey="label"
@@ -463,7 +457,8 @@ export default function AdminTransactionsPage() {
                   dataKey="revenue"
                   stroke={PLUM}
                   strokeWidth={2.5}
-                  fill="url(#revFill)"
+                  fill={PLUM}
+                  fillOpacity={0.12}
                   dot={{ r: 3, fill: PLUM, strokeWidth: 0 }}
                   activeDot={{ r: 5 }}
                 />
@@ -482,7 +477,7 @@ export default function AdminTransactionsPage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
-          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5"
+          className="bg-white rounded-2xl border border-gray-100 p-5"
         >
           <h2 className="text-sm font-semibold text-gray-900">Payment methods</h2>
           <p className="text-xs text-gray-500 mb-2">Across loaded transactions</p>
@@ -530,7 +525,7 @@ export default function AdminTransactionsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
           <div className="w-full sm:flex-1 sm:min-w-[220px]">
             <div className="relative">
@@ -596,7 +591,7 @@ export default function AdminTransactionsPage() {
       </div>
 
       {/* Transactions table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         {isLoading ? (
           <div className="p-12 text-center">
             <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -790,17 +785,18 @@ function KpiTile({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-sm"
+      className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 flex flex-col justify-between gap-2.5"
     >
-      <div className="flex items-center gap-3">
-        <div className={cn('flex h-11 w-11 items-center justify-center rounded-xl shrink-0', tint)}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs sm:text-sm text-gray-500 truncate">{label}</p>
-          <p className="text-lg sm:text-xl font-bold text-gray-900 truncate">{value}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs sm:text-sm font-medium text-gray-500 leading-snug">{label}</p>
+        <div className={cn('flex h-8 w-8 items-center justify-center rounded-lg shrink-0', tint)}>
+          <Icon className="h-4 w-4" />
         </div>
       </div>
+      <p className="text-base sm:text-xl font-bold text-gray-900 tabular-nums leading-tight break-words">
+        {value}
+      </p>
     </motion.div>
   )
 }
+
