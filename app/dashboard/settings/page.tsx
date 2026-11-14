@@ -19,12 +19,15 @@ import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useNotify } from '@/components/shared/notify'
 import PageLoader from '@/components/shared/page-loader'
+import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
 
 interface UserData {
   id: string
   firstName: string
   lastName: string
   email: string
+  xUsername?: string | null
+  emailIsPlaceholder?: boolean
   phone?: string
   avatarUrl?: string
   username?: string
@@ -1275,7 +1278,7 @@ function SettingsPageContent() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-base sm:text-lg font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
-                        <p className="text-xs sm:text-sm text-gray-500 truncate">{user?.email}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{formatAccountSubtitle(user)}</p>
                         {authProvider === 'google' && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-full mt-1">
                             <svg className="w-3 h-3" viewBox="0 0 24 24">
@@ -1446,11 +1449,21 @@ function SettingsPageContent() {
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Email Address</label>
                           <input
                             type="email"
-                            value={user?.email || ''}
+                            value={getVisibleEmail(user)}
+                            placeholder={user?.emailIsPlaceholder ? 'Add your email in profile setup' : ''}
                             disabled
                             className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
                           />
-                          <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+                          {user?.emailIsPlaceholder ? (
+                            <p className="text-xs text-[#7B2D8E] mt-1">
+                              <Link href="/complete-profile" className="font-medium hover:underline">
+                                Finish profile setup
+                              </Link>{' '}
+                              to add your email address
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+                          )}
                         </div>
                       </div>
 

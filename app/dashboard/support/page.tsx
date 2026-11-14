@@ -11,12 +11,16 @@ import {
   Check, AlertCircle, ChevronRight, Plus, Loader2,
   Tag, Calendar, Search
 } from 'lucide-react'
+import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
 
 interface UserData {
   id: string
   firstName: string
   lastName: string
   email: string
+  username?: string | null
+  xUsername?: string | null
+  emailIsPlaceholder?: boolean
   phone?: string
   avatarUrl?: string | null
 }
@@ -481,7 +485,9 @@ export default function SupportPage() {
                         {submitSuccess.ticketId}
                       </p>
                       <p className="text-sm text-gray-500 mb-4">
-                        We&apos;ve sent a confirmation to {user?.email}. Our team will respond within 24-48 hours.
+                        {getVisibleEmail(user)
+                          ? `We've sent a confirmation to ${getVisibleEmail(user)}. Our team will respond within 24-48 hours.`
+                          : 'Our team will respond to your ticket within 24-48 hours.'}
                       </p>
                       <div className="flex items-center justify-center gap-3">
                         <Link
@@ -530,7 +536,7 @@ export default function SupportPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
-                          <p className="text-xs text-gray-500">{user?.email}</p>
+                          <p className="text-xs text-gray-500">{formatAccountSubtitle(user)}</p>
                         </div>
                       </div>
 

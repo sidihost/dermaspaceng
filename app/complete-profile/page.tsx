@@ -40,7 +40,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronDown,
-  Hand,
+  LogOut,
 } from 'lucide-react'
 
 // Same brand wordmark used in the staff & admin consoles, so the
@@ -51,6 +51,9 @@ const DERMASPACE_LOGO =
 
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
+import { clearCachedUser } from '@/lib/auth-cache'
+import { logoutAndRedirect } from '@/lib/logout'
+import { getVisibleEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -75,9 +78,14 @@ interface MeUser {
   email?: string
   phone?: string | null
   username?: string | null
+  xUsername?: string | null
   avatarUrl?: string | null
   gender?: 'male' | 'female' | null
+  role?: string | null
   emailIsPlaceholder?: boolean
+  profileComplete?: boolean
+  hasSocialAuth?: boolean
+  needsProfileCompletion?: boolean
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -139,6 +147,19 @@ export default function CompleteProfilePage() {
         const data = await res.json()
         if (cancelled) return
         const u: MeUser = data.user ?? {}
+        const stillNeedsCompletion =
+          typeof u.needsProfileCompletion === 'boolean'
+            ? u.needsProfileCompletion
+            : shouldRequireProfileCompletion({
+                role: u.role,
+                profileComplete: u.profileComplete,
+                hasSocialAuth: u.hasSocialAuth,
+                email: u.email,
+              })
+        if (!stillNeedsCompletion) {
+          router.replace('/dashboard')
+          return
+        }
         setUser(u)
         setFirstName(u.firstName || '')
         setLastName(u.lastName || '')
@@ -291,8 +312,9 @@ export default function CompleteProfilePage() {
         }
         return
       }
+      clearCachedUser()
       window.dispatchEvent(new Event('user-updated'))
-      router.replace('/dashboard')
+      window.location.replace('/dashboard')
     } catch {
       setSubmitError('Network error. Please try again.')
     } finally {
@@ -304,10 +326,13 @@ export default function CompleteProfilePage() {
 
   const initials = `${(firstName[0] || user?.firstName?.[0] || '?').toUpperCase()}${(lastName[0] || user?.lastName?.[0] || '').toUpperCase()}`
 
+  const visibleEmail = getVisibleEmail(user)
+  const cleanXHandle = (user?.xUsername || '').trim().replace(/^@+/, '')
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#F7F4FA] via-gray-50 to-gray-50">
+    <main className="min-h-screen bg-gray-50">
       {/* Slim header — no full Header to keep onboarding focused */}
-      <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/85 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-gray-100 bg-white">
         <div className="mx-auto flex max-w-xl items-center justify-between px-5 py-3.5">
           <Link href="/" aria-label="Dermaspace home" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -317,10 +342,14 @@ export default function CompleteProfilePage() {
               className="h-7 w-auto"
             />
           </Link>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E]">
-            <Hand className="h-3 w-3" aria-hidden="true" />
-            Welcome
-          </span>
+          <button
+            type="button"
+            onClick={() => logoutAndRedirect('/')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            <LogOut className="h-3.5 w-3.5 text-[#7B2D8E]" aria-hidden="true" />
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -339,7 +368,7 @@ export default function CompleteProfilePage() {
 
         <ProgressBar steps={STEPS as unknown as { key: string; label: string }[]} current={stepIndex} />
 
-        <div className="mt-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:mt-5 sm:p-6">
+        <div className="mt-4 rounded-3xl border border-gray-100 bg-white p-5 sm:mt-5 sm:p-6">
           {step === 'photo' ? (
             <PhotoStep
               avatarUrl={avatarUrl}
@@ -356,7 +385,8 @@ export default function CompleteProfilePage() {
               phone={phone}
               country={country}
               showCountry={showCountry}
-              email={needsEmail ? '' : user?.email || ''}
+              email={needsEmail ? '' : visibleEmail}
+              xHandle={cleanXHandle}
               needsEmail={needsEmail}
               newEmail={newEmail}
               onNewEmail={setNewEmail}
@@ -411,7 +441,7 @@ export default function CompleteProfilePage() {
                 type="button"
                 onClick={goNext}
                 disabled={!canAdvance}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 Continue
                 <ArrowRight className="h-4 w-4" />
@@ -421,7 +451,7 @@ export default function CompleteProfilePage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={!canAdvance || submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -519,7 +549,7 @@ function PhotoStep({
       </p>
 
       <div className="relative mx-auto mt-4 h-20 w-20 sm:h-24 sm:w-24">
-        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-[0_6px_16px_-6px_rgba(123,45,142,0.35)]">
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white border border-gray-100">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -540,7 +570,7 @@ function PhotoStep({
           type="button"
           onClick={onOpenPicker}
           aria-label={avatarUrl ? 'Change photo' : 'Choose photo'}
-          className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#7B2D8E] text-white shadow-md ring-4 ring-white transition-colors hover:bg-[#5A1D6A]"
+          className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#7B2D8E] text-white ring-4 ring-white transition-colors hover:bg-[#5A1D6A]"
         >
           <Camera className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -550,7 +580,7 @@ function PhotoStep({
         <button
           type="button"
           onClick={onOpenPicker}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] sm:w-auto sm:min-w-[200px]"
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5A1D6A] sm:w-auto sm:min-w-[200px]"
         >
           <Camera className="h-4 w-4" />
           {avatarUrl ? 'Change photo' : 'Choose photo'}
@@ -577,6 +607,7 @@ function AboutStep({
   country,
   showCountry,
   email,
+  xHandle,
   needsEmail,
   newEmail,
   onNewEmail,
@@ -592,6 +623,7 @@ function AboutStep({
   country: (typeof COUNTRY_CODES)[number]
   showCountry: boolean
   email: string
+  xHandle: string
   needsEmail: boolean
   newEmail: string
   onNewEmail: (v: string) => void
@@ -670,7 +702,7 @@ function AboutStep({
             />
           </div>
           {showCountry ? (
-            <ul className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-100 bg-white text-sm shadow-sm">
+            <ul className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-200 bg-white text-sm">
               {COUNTRY_CODES.map((c) => (
                 <li key={c.code}>
                   <button
@@ -694,6 +726,10 @@ function AboutStep({
         {email ? (
           <p className="text-[11px] text-gray-500">
             Signed in as <span className="font-medium text-gray-700">{email}</span>
+          </p>
+        ) : xHandle ? (
+          <p className="text-[11px] text-gray-500">
+            Signed in with X <span className="font-medium text-gray-700">(@{xHandle})</span>
           </p>
         ) : null}
       </div>

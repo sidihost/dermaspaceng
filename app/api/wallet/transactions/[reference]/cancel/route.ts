@@ -5,6 +5,7 @@ import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { finalizeGiftCardPaystackPayment } from '@/lib/gift-cards'
 import { finalizeMembershipPaystackPayment } from '@/lib/membership-activation'
 import { finalizePendingTransactionFailureOrCancel } from '@/lib/transaction-failure-notice'
+import { notifyUser } from '@/lib/notifications'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
 
 export const dynamic = 'force-dynamic'
@@ -94,12 +95,33 @@ export async function POST(
 
     // Not a success on Paystack's side (pending / ongoing / abandoned /
     // failed / unknown reference) — safe to honour the user's cancel.
-    await finalizePendingTransactionFailureOrCancel({
+    const { transitioned } = await finalizePendingTransactionFailureOrCancel({
       transaction: tx,
       nextStatus: 'cancelled',
       reason: 'Payment cancelled by customer before completion',
       customerEmail: user.email,
     })
+
+    if (transitioned) {
+      try {
+        const displayRef =
+          tx.payment_reference ||
+          (tx as { reference?: string }).reference ||
+          ref
+        await notifyUser({
+          userId: String(user.id),
+          title: 'Payment cancelled',
+          message: `Your payment of \u20A6${Math.round(Number(tx.amount) || 0).toLocaleString('en-NG')} was cancelled before completion. No funds were charged.`,
+          type: 'status_update',
+          referenceType: 'transaction',
+          referenceId: displayRef,
+          actionUrl: `/dashboard/transactions/${displayRef}`,
+          priority: 'normal',
+        })
+      } catch (err) {
+        console.error('[wallet/transactions/cancel] notify failed:', err)
+      }
+    }
 
     return NextResponse.json({ success: true, status: 'cancelled' })
   } catch (error) {

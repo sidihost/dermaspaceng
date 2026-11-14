@@ -1,7 +1,11 @@
 import { query } from '@/lib/db'
 import { getUserById } from '@/lib/auth'
+import { getVisibleEmail, isPlaceholderEmail } from '@/lib/auth-onboarding'
 import { type Transaction } from '@/lib/wallet'
-import { sendGiftCardPaymentCancelled } from '@/lib/email'
+import {
+  sendGiftCardPaymentCancelled,
+  sendPaymentCancelledEmail,
+} from '@/lib/email'
 import { sendPaymentFailedEmail } from '@/lib/wallet-emails'
 
 /**
@@ -40,10 +44,20 @@ export async function finalizePendingTransactionFailureOrCancel(opts: {
     }
     const txType = meta?.type
     const user = await getUserById(String(transaction.user_id))
-    const recipientEmail = user?.email || customerEmail || ''
+    const realUserEmail = getVisibleEmail(user)
+    const fallbackEmail =
+      customerEmail && !isPlaceholderEmail(customerEmail)
+        ? customerEmail.trim()
+        : ''
+    const recipientEmail = realUserEmail || fallbackEmail
     if (!recipientEmail) return { transitioned: true }
 
     const firstName = user?.first_name || 'Valued Customer'
+    const ref =
+      transaction.payment_reference ||
+      transaction.paystack_reference ||
+      (transaction as { reference?: string }).reference ||
+      String(transaction.id)
 
     if (txType === 'gift_card') {
       const rawDetails = meta.itemDetails || {}
@@ -59,13 +73,16 @@ export async function finalizePendingTransactionFailureOrCancel(opts: {
         amount: Math.round(Number(transaction.amount) || 0),
         recipientName,
       })
+    } else if (nextStatus === 'cancelled') {
+      await sendPaymentCancelledEmail({
+        email: recipientEmail,
+        firstName,
+        amount: Math.round(Number(transaction.amount) || 0),
+        reason: reason || 'Payment cancelled before completion',
+        reference: ref,
+        paymentType: txType,
+      })
     } else if (nextStatus === 'failed') {
-      const ref =
-        transaction.payment_reference ||
-        transaction.paystack_reference ||
-        (transaction as { reference?: string }).reference ||
-        String(transaction.id)
-
       await sendPaymentFailedEmail({
         email: recipientEmail,
         firstName,

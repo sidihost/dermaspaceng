@@ -6,6 +6,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { delKey, getJson, invalidateUserMe, setJson } from '@/lib/redis'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 import { getAppOrigin, xPlaceholderEmail } from '@/lib/x-oauth'
+import { buildXCallbackHtml } from '@/lib/x-callback-html'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 /**
  * X (Twitter) OAuth 2.0 — step 2: exchange the authorization code,
@@ -35,145 +37,6 @@ interface StoredXOAuthState {
   redirectTo?: string
   pollToken?: string
   isPopup?: boolean
-}
-
-function buildCallbackHtml(payload: {
-  type: 'X_OAUTH_SUCCESS' | 'X_OAUTH_ERROR'
-  redirectTo: string
-  isPopup: boolean
-  handoff?: string
-  error?: string
-  reason?: string
-  detail?: string
-  title: string
-  subtitle: string
-}): string {
-  const safeJson = JSON.stringify(payload).replace(/</g, '\\u003c')
-  const safeRedirectHref = payload.redirectTo
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${payload.title} | Dermaspace</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: #faf7fc;
-        color: #111827;
-        padding: 24px;
-      }
-      .card {
-        max-width: 360px;
-        width: 100%;
-        background: #ffffff;
-        border: 1px solid rgba(123, 45, 142, 0.14);
-        border-radius: 16px;
-        padding: 24px;
-        text-align: center;
-      }
-      h1 {
-        font-size: 18px;
-        font-weight: 700;
-        margin: 0 0 8px;
-      }
-      p {
-        font-size: 14px;
-        color: #4b5563;
-        margin: 0 0 18px;
-        line-height: 1.5;
-      }
-      .actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        align-items: center;
-      }
-      button.primary,
-      a.primary {
-        display: inline-block;
-        width: 100%;
-        box-sizing: border-box;
-        padding: 10px 18px;
-        border: 0;
-        border-radius: 10px;
-        background: #7b2d8e;
-        color: #ffffff;
-        font-size: 14px;
-        font-weight: 600;
-        text-decoration: none;
-        cursor: pointer;
-      }
-      a.secondary {
-        font-size: 13px;
-        color: #7b2d8e;
-        text-decoration: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>${payload.title}</h1>
-      <p>${payload.subtitle}</p>
-      <div class="actions">
-        ${
-          payload.isPopup
-            ? `<button type="button" class="primary" onclick="window.close()">Close this window</button>
-               <a href="${safeRedirectHref}" class="secondary" id="continue-link">Or continue here</a>`
-            : `<a href="${safeRedirectHref}" class="primary" id="continue-link">Continue</a>`
-        }
-      </div>
-    </div>
-    <script>
-      (function () {
-        var payload = ${safeJson};
-        try {
-          if (typeof BroadcastChannel !== 'undefined') {
-            var ch = new BroadcastChannel('dermaspace_x_oauth');
-            ch.postMessage(payload);
-            ch.close();
-          }
-        } catch (e) {}
-
-        if (window.opener && !window.opener.closed) {
-          try {
-            window.opener.postMessage(payload, '*');
-          } catch (e) {}
-          try {
-            window.close();
-          } catch (e) {}
-          setTimeout(function () {
-            try { window.close(); } catch (e) {}
-          }, 150);
-          return;
-        }
-
-        if (payload.isPopup) {
-          // Even when cross-origin COOP severs window.opener, attempt to
-          // close the popup automatically; the opener also closes it via
-          // /api/auth/x/status polling.
-          try { window.close(); } catch (e) {}
-          setTimeout(function () {
-            try { window.close(); } catch (e) {}
-          }, 200);
-          return;
-        }
-
-        window.location.replace(payload.redirectTo);
-      })();
-    </script>
-  </body>
-</html>`
 }
 
 export async function GET(request: NextRequest) {
@@ -234,7 +97,7 @@ export async function GET(request: NextRequest) {
     if (extra?.reason) params.set('reason', extra.reason)
     if (extra?.detail) params.set('detail', extra.detail)
     const redirectTo = `${appUrl}/signin?${params.toString()}`
-    const html = buildCallbackHtml({
+    const html = buildXCallbackHtml({
       type: 'X_OAUTH_ERROR',
       redirectTo,
       isPopup,
@@ -360,17 +223,21 @@ export async function GET(request: NextRequest) {
     const lastName = rest.join(' ')
 
     const existing = await query(
-      `SELECT id, profile_complete, is_active, deleted_at FROM users WHERE x_id = $1 LIMIT 1`,
+      `SELECT id, profile_complete, role, email, is_active, deleted_at FROM users WHERE x_id = $1 LIMIT 1`,
       [xUser.id],
     )
 
     let userId: string
     let profileComplete = false
+    let userRole = 'user'
+    let userEmail = xPlaceholderEmail(xUser.id)
 
     if (existing.rows.length > 0) {
       const row = existing.rows[0] as {
         id: string
         profile_complete: boolean | null
+        role: string | null
+        email: string | null
         is_active: boolean | null
         deleted_at: string | null
       }
@@ -379,6 +246,8 @@ export async function GET(request: NextRequest) {
       }
       userId = row.id
       profileComplete = Boolean(row.profile_complete)
+      userRole = row.role || 'user'
+      userEmail = row.email || userEmail
 
       await query(
         `UPDATE users
@@ -388,7 +257,7 @@ export async function GET(request: NextRequest) {
          WHERE id = $3`,
         [avatar, xUser.username, userId],
       )
-      invalidateUserMe(userId).catch(() => {})
+      await invalidateUserMe(userId).catch(() => {})
     } else {
       userId = uuidv4()
       const inserted = await query(
@@ -401,7 +270,7 @@ export async function GET(request: NextRequest) {
          ON CONFLICT (x_id) DO UPDATE
            SET x_username = EXCLUDED.x_username,
                updated_at = NOW()
-         RETURNING id, profile_complete`,
+         RETURNING id, profile_complete, role, email`,
         [
           userId,
           xPlaceholderEmail(xUser.id),
@@ -415,9 +284,13 @@ export async function GET(request: NextRequest) {
       const row = inserted.rows[0] as {
         id: string
         profile_complete: boolean | null
+        role: string | null
+        email: string | null
       }
       userId = row.id
       profileComplete = Boolean(row.profile_complete)
+      userRole = row.role || 'user'
+      userEmail = row.email || userEmail
     }
 
     const sessionToken = await createSession(
@@ -426,9 +299,16 @@ export async function GET(request: NextRequest) {
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '',
     )
 
-    const targetPath = profileComplete
-      ? serverState?.redirectTo || '/dashboard'
-      : '/complete-profile'
+    const needsProfile = shouldRequireProfileCompletion({
+      role: userRole,
+      profileComplete,
+      hasSocialAuth: true,
+      email: userEmail,
+    })
+
+    const targetPath = needsProfile
+      ? '/complete-profile'
+      : serverState?.redirectTo || '/dashboard'
     const absoluteTarget = `${appUrl}${targetPath}`
 
     // Issue a short-lived, single-use handoff code so the iframe opener
@@ -447,15 +327,20 @@ export async function GET(request: NextRequest) {
       redirectTo: targetPath,
     })
 
-    const html = buildCallbackHtml({
+    const html = buildXCallbackHtml({
       type: 'X_OAUTH_SUCCESS',
       redirectTo: absoluteTarget,
       isPopup,
       handoff,
+      xUsername: xUser.username,
       title: 'Signed in with X',
       subtitle: isPopup
-        ? 'You are signed in. You can close this window to return to Dermaspace.'
-        : 'Completing sign-in and returning to Dermaspace…',
+        ? needsProfile
+          ? 'Taking you back to Dermaspace to finish setting up your profile.'
+          : 'You are signed in. Returning you to Dermaspace.'
+        : needsProfile
+          ? 'Taking you to finish setting up your profile…'
+          : 'Completing sign-in and returning to Dermaspace…',
     })
 
     const res = clearPkceCookies(

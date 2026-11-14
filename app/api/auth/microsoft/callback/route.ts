@@ -5,6 +5,7 @@ import { sendWelcomeEmail } from '@/lib/email'
 import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 interface MicrosoftTokenResponse {
   access_token: string
@@ -142,6 +143,8 @@ export async function GET(request: NextRequest) {
 
     let userId: string
     let profileComplete: boolean = false
+    let userRole: string = 'user'
+    let userEmail: string = email
 
     if (existingUserResult.rows.length > 0) {
       const existingUser = existingUserResult.rows[0] as {
@@ -161,6 +164,8 @@ export async function GET(request: NextRequest) {
 
       userId = existingUser.id
       profileComplete = Boolean(existingUser.profile_complete)
+      userRole = existingUser.role || 'user'
+      userEmail = existingUser.email || email
 
       // First time this account is signing in with Microsoft — link the
       // microsoft_id and refresh the avatar if we got one. Mirrors the
@@ -230,7 +235,14 @@ export async function GET(request: NextRequest) {
       path: '/',
     })
 
-    if (!profileComplete) {
+    const needsProfile = shouldRequireProfileCompletion({
+      role: userRole,
+      profileComplete,
+      hasSocialAuth: true,
+      email: userEmail,
+    })
+
+    if (needsProfile) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`)
     }
 

@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers'
 import { verifyPasskeyAuth } from '@/lib/passkey'
 import { sql } from '@/lib/db'
 import { createSession } from '@/lib/auth'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { sign } from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
@@ -104,13 +105,31 @@ export async function POST(request: Request) {
       path: '/'
     })
 
+    const onboardingRows = await sql`
+      SELECT
+        role,
+        COALESCE(profile_complete, FALSE) AS profile_complete,
+        (google_id IS NOT NULL OR microsoft_id IS NOT NULL OR x_id IS NOT NULL) AS has_social_auth
+      FROM users WHERE id = ${user.id} LIMIT 1
+    `
+    const ob = onboardingRows[0] as
+      | { role?: string | null; profile_complete?: boolean; has_social_auth?: boolean }
+      | undefined
+    const needsProfileCompletion = shouldRequireProfileCompletion({
+      role: ob?.role || 'user',
+      profileComplete: ob?.profile_complete === true,
+      hasSocialAuth: ob?.has_social_auth === true,
+      email: user.email,
+    })
+
     return NextResponse.json({ 
       success: true, 
       user: { 
         id: user.id, 
         email: user.email, 
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        needsProfileCompletion,
       }
     })
   } catch (error) {

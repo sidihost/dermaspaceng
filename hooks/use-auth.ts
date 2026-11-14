@@ -45,6 +45,10 @@ interface UserData {
   mustChangePassword?: boolean
   emailVerified?: boolean
   emailIsPlaceholder?: boolean
+  profileComplete?: boolean
+  xUsername?: string | null
+  hasSocialAuth?: boolean
+  needsProfileCompletion?: boolean
 }
 
 interface AuthState {

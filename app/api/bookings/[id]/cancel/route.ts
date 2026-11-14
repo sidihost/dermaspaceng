@@ -146,7 +146,9 @@ export async function POST(
     // response. Mirrors the booking-receipt email so the customer gets a
     // clear "cancelled" message plus refund details when applicable.
     try {
-      const recipient = booking.customer_email || user.email
+      const { getVisibleEmail } = await import('@/lib/auth-onboarding')
+      const recipient =
+        getVisibleEmail({ email: booking.customer_email }) || getVisibleEmail(user)
       if (recipient) {
         const dateLabelLong = booking.appointment_date
           ? new Date(`${booking.appointment_date}T00:00:00Z`).toLocaleDateString(

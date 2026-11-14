@@ -170,10 +170,9 @@ export async function POST(request: NextRequest) {
       values
     )
 
-    // Bust the Redis cache so /api/auth/me serves fresh data on the
-    // next render (avoids the avatar-still-not-set flash right after
-    // a successful complete-profile call).
-    invalidateUserMe(user.id).catch(() => {})
+    // Bust the Redis cache before returning so /api/auth/me serves fresh
+    // profileComplete=true data immediately when navigating to /dashboard.
+    await invalidateUserMe(user.id).catch(() => {})
 
     if (newRealEmail) {
       sendWelcomeEmail({

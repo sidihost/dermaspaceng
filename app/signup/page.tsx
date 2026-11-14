@@ -11,6 +11,8 @@ import PageLoader from '@/components/shared/page-loader'
 import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
 import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
+import { resolvePostAuthRedirect } from '@/lib/auth-onboarding'
+import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -100,9 +102,10 @@ function SignUpForm() {
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
+            const target = resolvePostAuthRedirect(redirectTo, data.user)
             setShowToast(true)
             setTimeout(() => {
-              router.replace(redirectTo)
+              router.replace(target)
             }, 600)
           } else {
             setIsCheckingAuth(false)

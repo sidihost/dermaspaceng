@@ -95,6 +95,7 @@ export function LegalAcceptanceGate() {
 
   if (isLoading) return null
   if (!user) return null
+  if (user.needsProfileCompletion) return null
   if (justAccepted) return null
   if (user.legalAcceptedVersion === CURRENT_LEGAL_VERSION) return null
 

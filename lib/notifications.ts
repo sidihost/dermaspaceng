@@ -215,18 +215,21 @@ export async function notifyBookingPaymentFailed(
     // Email — uses the same recovery URL so a customer who reads the
     // email on a different device still lands on the same resume page.
     try {
-      const { sendBookingPaymentFailedEmail } = await import('./email')
-      await sendBookingPaymentFailedEmail({
-        to: booking.customer_email,
-        customerName: booking.customer_name,
-        bookingReference: booking.booking_reference,
-        appointmentDate: booking.appointment_date,
-        appointmentTime: booking.appointment_time,
-        totalKobo: booking.total_price_kobo,
-        locationName: booking.location_name,
-        reason,
-        recoveryUrl,
-      })
+      const { isPlaceholderEmail } = await import('./auth-onboarding')
+      if (booking.customer_email && !isPlaceholderEmail(booking.customer_email)) {
+        const { sendBookingPaymentFailedEmail } = await import('./email')
+        await sendBookingPaymentFailedEmail({
+          to: booking.customer_email,
+          customerName: booking.customer_name,
+          bookingReference: booking.booking_reference,
+          appointmentDate: booking.appointment_date,
+          appointmentTime: booking.appointment_time,
+          totalKobo: booking.total_price_kobo,
+          locationName: booking.location_name,
+          reason,
+          recoveryUrl,
+        })
+      }
     } catch (err) {
       console.error('[notify] booking-failed email', err)
     }
@@ -263,16 +266,19 @@ export async function notifyBookingCancelledReminder(
       priority: 'normal',
     })
     try {
-      const { sendBookingRebookReminderEmail } = await import('./email')
-      await sendBookingRebookReminderEmail({
-        to: booking.customer_email,
-        customerName: booking.customer_name,
-        bookingReference: booking.booking_reference,
-        appointmentDate: booking.appointment_date,
-        locationName: booking.location_name,
-        message,
-        rebookUrl: url,
-      })
+      const { isPlaceholderEmail } = await import('./auth-onboarding')
+      if (booking.customer_email && !isPlaceholderEmail(booking.customer_email)) {
+        const { sendBookingRebookReminderEmail } = await import('./email')
+        await sendBookingRebookReminderEmail({
+          to: booking.customer_email,
+          customerName: booking.customer_name,
+          bookingReference: booking.booking_reference,
+          appointmentDate: booking.appointment_date,
+          locationName: booking.location_name,
+          message,
+          rebookUrl: url,
+        })
+      }
     } catch (err) {
       console.error('[notify] cancel-reminder email', err)
     }

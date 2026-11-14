@@ -24,6 +24,7 @@ import {
 import HCaptcha from '@/components/shared/hcaptcha'
 import { resolvePreferredLocationId } from '@/lib/location-pref'
 import { resolveSignedInConsultationIdentity } from '@/lib/consultation-mode'
+import { formatAccountSubtitle } from '@/lib/auth-onboarding'
 
 // ---------------------------------------------------------------------------
 // /consultation — book a free dermatology consultation.
@@ -660,7 +661,8 @@ export default function ConsultationPage() {
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-gray-900">
-                Booking as {user.firstName} {user.lastName} ({user.email})
+                Booking as {user.firstName} {user.lastName}
+                {formatAccountSubtitle(user) ? ` (${formatAccountSubtitle(user)})` : ''}
               </p>
               <p className="text-[11px] text-gray-600 mt-0.5 text-pretty">
                 Your consultation and AI skin analysis will save directly to your dashboard — no tracking link needed.

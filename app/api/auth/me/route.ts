@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { cached, KEYS } from '@/lib/redis'
+import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 /*
  * /api/auth/me — hydrates the signed-in user for the client.
@@ -87,6 +88,9 @@ interface CachedUserRow {
   // membership tier. Granted on signup + on future earn events.
   // Not money: never goes near the wallet flow.
   glow_points: string | number | null
+  profile_complete: boolean | null
+  x_username: string | null
+  has_social_auth: boolean | null
 }
 
 const NO_STORE = 'private, no-store, max-age=0'
@@ -95,14 +99,6 @@ function unauthenticated(error: string, status = 401) {
   return NextResponse.json(
     { error },
     { status, headers: { 'Cache-Control': NO_STORE } },
-  )
-}
-
-function isPlaceholderEmail(email: unknown): boolean {
-  if (typeof email !== 'string') return true
-  return (
-    (email.startsWith('pending+') && email.endsWith('@dermaspaceng.invalid')) ||
-    /^x_[^@]+@users\.dermaspaceng\.com$/i.test(email)
   )
 }
 
@@ -197,7 +193,10 @@ export async function GET() {
             -- Glow Points loyalty balance (script 620). Always
             -- present; defaults to 0 for non-member rows so the
             -- client can render the points pill without optional-chaining.
-            COALESCE(u.glow_points, 0)               AS glow_points
+            COALESCE(u.glow_points, 0)               AS glow_points,
+            COALESCE(u.profile_complete, FALSE)      AS profile_complete,
+            u.x_username,
+            (u.google_id IS NOT NULL OR u.microsoft_id IS NOT NULL OR u.x_id IS NOT NULL) AS has_social_auth
           FROM users u
           LEFT JOIN user_preferences p ON p.user_id = u.id
           WHERE u.id = ${userId}
@@ -319,6 +318,15 @@ export async function GET() {
         mustChangePassword: session.must_change_password === true,
         emailVerified: session.email_verified === true,
         emailIsPlaceholder: isPlaceholderEmail(session.email),
+        profileComplete: session.profile_complete === true,
+        xUsername: session.x_username ?? null,
+        hasSocialAuth: session.has_social_auth === true,
+        needsProfileCompletion: shouldRequireProfileCompletion({
+          role: session.role || 'user',
+          profileComplete: session.profile_complete === true,
+          hasSocialAuth: session.has_social_auth === true,
+          email: session.email,
+        }),
         // Membership block — flat shape that matches what the
         // dashboard membership card and the "Member" stat tile
         // expect. We always return an object (with `tier: null`

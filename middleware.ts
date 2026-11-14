@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { aliasFor } from '@/lib/reserved-usernames'
 import { inspectRequest } from '@/lib/firewall'
+import { isOnboardingGatedPath, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 // Supported countries with their currencies
 const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; name: string }> = {
@@ -100,6 +101,44 @@ async function getSessionRole(sessionId: string): Promise<string | null> {
   } catch (err) {
     console.warn('[middleware] role lookup failed:', err)
     return null
+  }
+}
+
+async function needsOnboardingCompletion(sessionId: string): Promise<boolean> {
+  if (!process.env.DATABASE_URL) return false
+  try {
+    const sql = neon(process.env.DATABASE_URL)
+    const rows = await sql`
+      SELECT
+        u.role,
+        u.email,
+        COALESCE(u.profile_complete, FALSE) AS profile_complete,
+        (u.google_id IS NOT NULL OR u.microsoft_id IS NOT NULL OR u.x_id IS NOT NULL) AS has_social_auth,
+        COALESCE(u.is_active, TRUE) AS is_active
+      FROM sessions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.id = ${sessionId} AND s.expires_at > NOW()
+      LIMIT 1
+    `
+    const row = rows[0] as
+      | {
+          role?: string | null
+          email?: string | null
+          profile_complete?: boolean | null
+          has_social_auth?: boolean | null
+          is_active?: boolean | null
+        }
+      | undefined
+    if (!row || row.is_active === false) return false
+    return shouldRequireProfileCompletion({
+      role: row.role,
+      profileComplete: row.profile_complete === true,
+      hasSocialAuth: row.has_social_auth === true,
+      email: row.email,
+    })
+  } catch (err) {
+    console.warn('[middleware] onboarding lookup failed:', err)
+    return false
   }
 }
 
@@ -235,6 +274,17 @@ export async function middleware(request: NextRequest) {
     const role = sessionId ? await getSessionRole(sessionId) : null
     if (role !== 'admin') {
       return NextResponse.redirect(new URL('/maintenance', request.url))
+    }
+  }
+
+  // Onboarding persistence gate — if an authenticated user started via a
+  // social provider (Google, Microsoft, or X) and moved away or closed the
+  // tab before submitting /complete-profile, keep routing them back to
+  // /complete-profile whenever they visit dashboard, auth, or booking routes.
+  if (isOnboardingGatedPath(pathname)) {
+    const sessionId = request.cookies.get('session_id')?.value
+    if (sessionId && (await needsOnboardingCompletion(sessionId))) {
+      return NextResponse.redirect(new URL('/complete-profile', request.url), 307)
     }
   }
 

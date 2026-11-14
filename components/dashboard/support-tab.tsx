@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { Send, Phone, Mail, MessageSquare, Check } from 'lucide-react'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
+import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
 
 // WhatsApp SVG Icon
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -18,6 +19,9 @@ interface User {
   firstName: string
   lastName: string
   email: string
+  username?: string | null
+  xUsername?: string | null
+  emailIsPlaceholder?: boolean
   phone?: string
 }
 
@@ -100,7 +104,8 @@ export default function SupportTab({ user }: SupportTabProps) {
           </div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Message Sent!</h3>
           <p className="text-sm text-gray-600 mb-6">
-            Thanks {user?.firstName}, we&apos;ll get back to you at {user?.email} within 24 hours.
+            Thanks {user?.firstName}, we&apos;ll get back to you
+            {getVisibleEmail(user) ? ` at ${getVisibleEmail(user)}` : ''} within 24 hours.
           </p>
           <button
             onClick={() => {
@@ -189,7 +194,7 @@ export default function SupportTab({ user }: SupportTabProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
-            <p className="text-xs text-gray-500">{user?.email}</p>
+            <p className="text-xs text-gray-500">{formatAccountSubtitle(user)}</p>
           </div>
         </div>
 

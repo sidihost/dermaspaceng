@@ -6,6 +6,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import { getVisibleEmail } from '@/lib/auth-onboarding'
 import {
   ArrowLeft,
   MessageSquare,
@@ -35,6 +36,7 @@ type AuthMe = {
     firstName?: string
     lastName?: string
     email?: string
+    emailIsPlaceholder?: boolean
   }
 }
 type FeedbackHistory = {
@@ -116,7 +118,7 @@ function FeedbackPageInner() {
   const isLoggedIn = Boolean(authMe?.user)
   const firstName = authMe?.user?.firstName?.trim() || ''
   const fullName = [authMe?.user?.firstName, authMe?.user?.lastName].filter(Boolean).join(' ').trim()
-  const accountEmail = authMe?.user?.email || ''
+  const accountEmail = getVisibleEmail(authMe?.user)
   const submissionCount = history?.authenticated ? history.total : 0
 
   // Pre-fill the optional name + email fields the moment we know who

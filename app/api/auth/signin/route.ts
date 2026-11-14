@@ -6,6 +6,7 @@ import { sql } from '@/lib/db'
 import { sign } from 'jsonwebtoken'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { rateLimit } from '@/lib/redis'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -168,13 +169,30 @@ const body = await request.json()
       console.error('signin audit append failed:', auditErr)
     }
 
+    const onboardingRows = await sql`
+      SELECT
+        COALESCE(profile_complete, FALSE) AS profile_complete,
+        (google_id IS NOT NULL OR microsoft_id IS NOT NULL OR x_id IS NOT NULL) AS has_social_auth
+      FROM users WHERE id = ${user.id} LIMIT 1
+    `
+    const ob = onboardingRows[0] as
+      | { profile_complete?: boolean; has_social_auth?: boolean }
+      | undefined
+    const needsProfileCompletion = shouldRequireProfileCompletion({
+      role: user.role,
+      profileComplete: ob?.profile_complete === true,
+      hasSocialAuth: ob?.has_social_auth === true,
+      email: user.email,
+    })
+
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        needsProfileCompletion,
       }
     })
 

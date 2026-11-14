@@ -5,6 +5,7 @@ import { verifyTOTPCode } from '@/lib/totp'
 import { verify, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken'
 import { createSession, checkNewDevice } from '@/lib/auth'
 import { sendNewDeviceAlert } from '@/lib/email'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -76,7 +77,10 @@ export async function POST(request: Request) {
 
     // Get user details
     const userResult = await sql`
-      SELECT id, email, first_name, last_name FROM users WHERE id = ${decoded.userId}
+      SELECT id, email, first_name, last_name, role,
+             COALESCE(profile_complete, FALSE) AS profile_complete,
+             (google_id IS NOT NULL OR microsoft_id IS NOT NULL OR x_id IS NOT NULL) AS has_social_auth
+      FROM users WHERE id = ${decoded.userId}
     `
 
     if (userResult.length === 0) {
@@ -127,13 +131,21 @@ export async function POST(request: Request) {
       path: '/'
     })
 
+    const needsProfileCompletion = shouldRequireProfileCompletion({
+      role: user.role || 'user',
+      profileComplete: user.profile_complete === true,
+      hasSocialAuth: user.has_social_auth === true,
+      email: user.email,
+    })
+
     return NextResponse.json({
       success: true,
       user: { 
         id: user.id, 
         email: user.email, 
         firstName: user.first_name,
-        lastName: user.last_name
+        lastName: user.last_name,
+        needsProfileCompletion,
       }
     })
   } catch (error) {

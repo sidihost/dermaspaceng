@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAndRedirect } from '@/lib/logout'
+import { formatAccountSubtitle } from '@/lib/auth-onboarding'
 import { NotificationBell } from '@/components/shared/notification-bell'
 import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
@@ -41,6 +42,10 @@ interface UserData {
   firstName: string
   lastName: string
   email: string
+  username?: string | null
+  xUsername?: string | null
+  emailIsPlaceholder?: boolean
+  needsProfileCompletion?: boolean
   avatarUrl?: string | null
   /** Admin / staff / user. Admins and staff get a branded default
    *  avatar (resolved by lib/admin-avatars) instead of the stock spa
@@ -494,27 +499,29 @@ export default function Header() {
                     {/* User Info */}
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                       <p className="text-sm font-semibold text-[#7B2D8E]">{user.firstName} {user.lastName}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      <p className="text-xs text-gray-500 truncate">{formatAccountSubtitle(user)}</p>
                     </div>
                     
                     {/* Menu Items */}
                     <div className="py-1">
                       <Link
-                        href="/dashboard"
+                        href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard'}
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <User className="w-4 h-4 text-[#7B2D8E]" />
-                        Dashboard
+                        {user.needsProfileCompletion ? 'Complete Profile' : 'Dashboard'}
                       </Link>
                       <Link
-                        href="/dashboard?tab=appointments"
+                        href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard?tab=appointments'}
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Clock className="w-4 h-4 text-[#7B2D8E]" />
                         My Bookings
                       </Link>
                       <Link
-                        href="/dashboard/notifications"
+                        href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard/notifications'}
                         onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
@@ -522,14 +529,16 @@ export default function Header() {
                         Notifications
                       </Link>
                       <Link
-                        href="/dashboard/wallet"
+                        href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard/wallet'}
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                         Wallet
                       </Link>
                       <Link
-                        href="/dashboard/settings"
+                        href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard/settings'}
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Settings className="w-4 h-4 text-[#7B2D8E]" />
@@ -841,21 +850,21 @@ export default function Header() {
                       {/* User Info */}
                       <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                         <p className="text-sm font-semibold text-[#7B2D8E]">{user.firstName} {user.lastName}</p>
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className="text-xs text-gray-500 truncate">{formatAccountSubtitle(user)}</p>
                       </div>
                       
                       {/* Menu Items */}
                       <div className="py-1">
                         <Link
-                          href="/dashboard"
+                          href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard'}
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <User className="w-4 h-4 text-[#7B2D8E]" />
-                          Dashboard
+                          {user.needsProfileCompletion ? 'Complete Profile' : 'Dashboard'}
                         </Link>
                         <Link
-                          href="/dashboard?tab=appointments"
+                          href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard?tab=appointments'}
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
@@ -863,7 +872,7 @@ export default function Header() {
                           My Bookings
                         </Link>
                         <Link
-                          href="/dashboard/notifications"
+                          href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard/notifications'}
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
@@ -871,7 +880,7 @@ export default function Header() {
                           Notifications
                         </Link>
                         <Link
-                          href="/dashboard/wallet"
+                          href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard/wallet'}
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
@@ -879,7 +888,7 @@ export default function Header() {
                           Wallet
                         </Link>
                         <Link
-                          href="/dashboard/settings"
+                          href={user.needsProfileCompletion ? '/complete-profile' : '/dashboard/settings'}
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >

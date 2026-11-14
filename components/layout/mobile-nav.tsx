@@ -36,6 +36,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useScrollLock } from '@/hooks/use-scroll-lock'
 import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 import { logoutAndRedirect } from '@/lib/logout'
+import { formatAccountSubtitle } from '@/lib/auth-onboarding'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
 // the desktop SemanticServiceSearch component uses — keeping them in
@@ -77,6 +78,10 @@ interface UserData {
   firstName: string
   lastName: string
   email: string
+  username?: string | null
+  xUsername?: string | null
+  emailIsPlaceholder?: boolean
+  needsProfileCompletion?: boolean
   avatarUrl?: string | null
 }
 
@@ -145,6 +150,10 @@ export default function MobileNav() {
         firstName: authUser.firstName,
         lastName: authUser.lastName,
         email: authUser.email,
+        username: authUser.username ?? null,
+        xUsername: authUser.xUsername ?? null,
+        emailIsPlaceholder: authUser.emailIsPlaceholder,
+        needsProfileCompletion: authUser.needsProfileCompletion,
         avatarUrl: authUser.avatarUrl ?? null,
       }
     : null
@@ -776,17 +785,33 @@ export default function MobileNav() {
                   <p className="text-sm font-semibold text-gray-900 truncate">
                     {user.firstName} {user.lastName}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  <p className="text-xs text-gray-500 truncate">{formatAccountSubtitle(user)}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-1">
                 {[
-                  { icon: User, label: 'Dashboard', href: '/dashboard' },
-                  { icon: Clock, label: 'My Bookings', href: '/dashboard?tab=appointments' },
-                  { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+                  {
+                    icon: User,
+                    label: user.needsProfileCompletion ? 'Complete Profile' : 'Dashboard',
+                    href: user.needsProfileCompletion ? '/complete-profile' : '/dashboard',
+                  },
+                  {
+                    icon: Clock,
+                    label: 'My Bookings',
+                    href: user.needsProfileCompletion ? '/complete-profile' : '/dashboard?tab=appointments',
+                  },
+                  {
+                    icon: Wallet,
+                    label: 'Wallet',
+                    href: user.needsProfileCompletion ? '/complete-profile' : '/dashboard/wallet',
+                  },
                   { icon: Lightbulb, label: 'Feature Requests', href: '/feature-requests' },
-                  { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
+                  {
+                    icon: Settings,
+                    label: 'Settings',
+                    href: user.needsProfileCompletion ? '/complete-profile' : '/dashboard/settings',
+                  },
                 ].map(({ icon: Icon, label, href }) => (
                   <Link
                     key={label}

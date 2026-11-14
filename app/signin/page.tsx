@@ -9,6 +9,7 @@ import { startAuthentication } from '@simplewebauthn/browser'
 import PageLoader from '@/components/shared/page-loader'
 import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
+import { resolvePostAuthRedirect } from '@/lib/auth-onboarding'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -20,6 +21,7 @@ function SignInForm() {
   const [captchaToken, setCaptchaToken] = useState('')
   const [error, setError] = useState('')
   const [showToast, setShowToast] = useState(false)
+  const [toastSubtitle, setToastSubtitle] = useState('Redirecting to dashboard...')
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [showNoPasskeyModal, setShowNoPasskeyModal] = useState(false)
@@ -75,9 +77,15 @@ function SignInForm() {
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
+            const target = resolvePostAuthRedirect(redirectTo, data.user)
+            setToastSubtitle(
+              target === '/complete-profile'
+                ? 'Redirecting to finish your profile...'
+                : 'Redirecting to dashboard...',
+            )
             setShowToast(true)
             setTimeout(() => {
-              window.location.replace(redirectTo)
+              window.location.replace(target)
             }, 600)
           } else {
             setIsCheckingAuth(false)
@@ -106,7 +114,7 @@ function SignInForm() {
             </div>
             <div>
               <p className="font-semibold text-gray-900">Already Signed In</p>
-              <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+              <p className="text-sm text-gray-500">{toastSubtitle}</p>
             </div>
           </div>
           <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
@@ -157,7 +165,7 @@ function SignInForm() {
       }
 
       // Use window.location for a full page navigation to ensure cookies are recognized
-      window.location.href = redirectTo
+      window.location.href = resolvePostAuthRedirect(redirectTo, data.user)
     } catch {
       setError('Something went wrong. Please try again.')
       // Reset captcha on error
@@ -226,7 +234,7 @@ function SignInForm() {
       }
 
       // Use window.location for a full page navigation to ensure cookies are recognized
-      window.location.href = redirectTo
+      window.location.href = resolvePostAuthRedirect(redirectTo, verifyData.user)
     } catch (err) {
       // Convert technical WebAuthn errors to user-friendly messages
       const errorMessage = err instanceof Error ? err.message : 'Passkey authentication failed'

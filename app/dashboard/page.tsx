@@ -23,6 +23,7 @@ import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
 import { logoutAndRedirect } from '@/lib/logout'
+import { formatAccountSubtitle, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -67,6 +68,12 @@ export default function DashboardPage() {
     firstName: string
     lastName: string
     email: string
+    username?: string | null
+    xUsername?: string | null
+    emailIsPlaceholder?: boolean
+    profileComplete?: boolean
+    hasSocialAuth?: boolean
+    needsProfileCompletion?: boolean
     avatarUrl?: string | null
     gender?: 'male' | 'female' | null
     /** Operator role — drives which avatar pool the picker shows
@@ -112,6 +119,13 @@ export default function DashboardPage() {
         const res = await fetch('/api/auth/me')
         if (res.ok) {
           const data = await res.json()
+          if (
+            data.user &&
+            (data.user.needsProfileCompletion || shouldRequireProfileCompletion(data.user))
+          ) {
+            router.replace('/complete-profile')
+            return
+          }
           setUser(data.user)
           
           // Check database for saved preferences
@@ -666,7 +680,7 @@ export default function DashboardPage() {
                     Welcome, {user?.firstName}!
                   </h1>
                   <p className="text-[11.5px] md:text-[13px] lg:text-sm text-gray-500 truncate lg:mt-1">
-                    {user?.email}
+                    {formatAccountSubtitle(user)}
                   </p>
                 </div>
               </div>

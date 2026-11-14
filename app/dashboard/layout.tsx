@@ -1,20 +1,31 @@
 import type { ReactNode } from 'react'
+import { redirect } from 'next/navigation'
+import { getCurrentUserCached } from '@/lib/auth'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 /**
  * Dashboard layout
  * ----------------
- * Intentionally a passthrough. The legal-acceptance gate, which used
- * to live here, now mounts globally inside `client-shell.tsx` so it
- * triggers immediately after sign-in regardless of where the user
- * lands first (a deep-linked treatment page, /booking, the home
- * page, etc.). Keeping it dashboard-scoped meant returning users
- * could skip the prompt entirely by never opening /dashboard.
+ * Enforces server-side profile completion for social-auth customers so even
+ * client-side Next.js `<Link href="/dashboard">` transitions redirect straight
+ * to `/complete-profile` before any dashboard UI mounts.
  *
- * We deliberately do NOT add chrome (header / footer / bottom nav)
- * here either — each dashboard page already mounts its own
- * surface-specific chrome and we don't want to duplicate or
- * re-order it.
+ * We deliberately do NOT add chrome (header / footer / bottom nav) here —
+ * each dashboard page already mounts its own surface-specific chrome.
  */
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const user = await getCurrentUserCached()
+  if (
+    user &&
+    shouldRequireProfileCompletion({
+      role: user.role,
+      profileComplete: user.profile_complete,
+      hasSocialAuth: user.has_social_auth,
+      email: user.email,
+    })
+  ) {
+    redirect('/complete-profile')
+  }
+
   return <>{children}</>
 }

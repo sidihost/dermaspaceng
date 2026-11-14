@@ -119,7 +119,7 @@ export const KEYS = {
   // for ALL of that user's logged-in sessions/devices in one
   // call. TTL is short (60s) so even a missed invalidation only
   // shows stale data for a minute.
-  userMe: "user:me", // <userId> → JSON
+  userMe: "user:me:v2", // <userId> → JSON
 
   // Rate limiting + abuse mitigation
   rateLimit: "rl", // <bucket>:<id> → integer count

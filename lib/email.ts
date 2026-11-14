@@ -1785,6 +1785,146 @@ export async function sendGiftCardPaymentCancelled(data: {
   })
 }
 
+export async function sendPaymentCancelledEmail(data: {
+  email: string
+  firstName: string
+  amount: number
+  reason: string
+  reference: string
+  paymentType?: string
+}): Promise<boolean> {
+  if (!data.email) return false
+
+  const firstName = (data.firstName || '').split(' ')[0] || 'there'
+  const isMembership = data.paymentType === 'membership_subscription'
+  const isWalletFunding =
+    !data.paymentType || data.paymentType === 'wallet_funding'
+
+  const typeLabel = isMembership
+    ? 'Membership Subscription'
+    : isWalletFunding
+      ? 'Wallet Funding'
+      : 'Payment'
+
+  const introLabel = isMembership
+    ? 'membership subscription payment'
+    : isWalletFunding
+      ? 'wallet funding payment'
+      : 'payment'
+
+  const formattedAmount = `\u20A6${Math.round(Number(data.amount) || 0).toLocaleString('en-NG')}`
+  const ctaHref = isMembership
+    ? `${PUBLIC_ORIGIN}/membership`
+    : `${PUBLIC_ORIGIN}/dashboard/wallet?fund=${Math.max(0, Math.round(Number(data.amount) || 0))}`
+  const ctaLabel = isMembership ? 'Try membership again' : 'Back to wallet'
+  const txUrl = `${PUBLIC_ORIGIN}/dashboard/transactions/${encodeURIComponent(data.reference)}`
+
+  const reasonHtml = data.reason
+    ? `
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+          <tr>
+            <td style="padding: 16px 20px;">
+              <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 1px;">Reason</p>
+              <p style="margin: 0; font-size: 14px; color: #4a4a4a; line-height: 1.6;">${escapeHtml(
+                data.reason,
+              )}</p>
+            </td>
+          </tr>
+        </table>`
+    : ''
+
+  const content = `
+    <!-- Status icon -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr>
+              <td align="center" valign="middle" width="52" height="52" style="width: 52px; height: 52px; border-radius: 50%; background-color: #fee2e2; border: 1px solid #fecaca; text-align: center; vertical-align: middle;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block; margin: 0 auto;">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="m15 9-6 6"></path>
+                  <path d="m9 9 6 6"></path>
+                </svg>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <h2 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.3px;">
+      Hi ${escapeHtml(firstName)}, your payment is cancelled.
+    </h2>
+    <p style="margin: 0 0 24px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      Your ${introLabel} of <strong>${escapeHtml(formattedAmount)}</strong> was cancelled before it completed. No charges were made to your account.
+    </p>
+
+    <!-- Reference / status -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="vertical-align: top;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">PAYMENT REFERENCE</div>
+          <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${BRAND_COLOR}; margin-top: 4px;">
+            ${escapeHtml(data.reference)}
+          </div>
+        </td>
+        <td style="vertical-align: top; text-align: right;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">STATUS</div>
+          <div style="display: inline-block; background-color: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-top: 4px;">Cancelled</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Payment details -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #faf6fc; border-radius: 12px; border: 1px solid #e8d8ee;">
+      <tr>
+        <td style="padding: 20px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 120px;">Type:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${escapeHtml(typeLabel)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Amount:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: ${BRAND_COLOR}; font-weight: 600;">${escapeHtml(formattedAmount)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Charge:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">None &mdash; no funds were taken</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${reasonHtml}
+
+    <!-- CTA -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 28px;">
+      <tr>
+        <td align="center">
+          <a href="${ctaHref}" style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 13px 28px; border-radius: 10px;">
+            ${ctaLabel}
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 12px; color: #787a82; line-height: 1.6; text-align: center;">
+      You can <a href="${txUrl}" style="color: ${BRAND_COLOR}; font-weight: 600;">view this transaction</a> anytime or reply to this email if you need help.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Payment cancelled \u00B7 ${data.reference} \u00B7 Dermaspace`,
+    html: getEmailTemplate(content, {
+      preheader: `Your ${introLabel} of ${formattedAmount} was cancelled before completion. No funds were charged.`,
+    }),
+  })
+}
+
 // Send newsletter welcome email
 export async function sendNewsletterWelcome(email: string): Promise<boolean> {
   const content = `

@@ -5,6 +5,7 @@ import { sendWelcomeEmail } from '@/lib/email'
 import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
+import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -78,6 +79,8 @@ export async function GET(request: NextRequest) {
     
     let userId: string
     let profileComplete: boolean = false
+    let userRole: string = 'user'
+    let userEmail: string = googleUser.email
     
     if (existingUserResult.rows.length > 0) {
       const existingUser = existingUserResult.rows[0]
@@ -88,7 +91,9 @@ export async function GET(request: NextRequest) {
       }
       
       userId = existingUser.id
-      profileComplete = existingUser.profile_complete || false
+      profileComplete = Boolean(existingUser.profile_complete)
+      userRole = existingUser.role || 'user'
+      userEmail = existingUser.email || googleUser.email
       
       // Update google_id if user signed up with email but now using Google
       if (!existingUser.google_id) {
@@ -145,7 +150,13 @@ export async function GET(request: NextRequest) {
     })
     
     // Redirect based on profile completion
-    if (!profileComplete) {
+    const needsProfile = shouldRequireProfileCompletion({
+      role: userRole,
+      profileComplete,
+      hasSocialAuth: true,
+      email: userEmail,
+    })
+    if (needsProfile) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`)
     }
     

@@ -1,3 +1,5 @@
+import { isPlaceholderEmail } from './auth-onboarding'
+
 export interface ConsultationPersistencePlan {
   isAnonymous: boolean
   trackToken: string | null
@@ -89,9 +91,10 @@ export function resolveSignedInConsultationIdentity(args: {
     phone?: string
   } | null
 }) {
+  const visibleUserEmail = isPlaceholderEmail(args.user.email) ? '' : args.user.email
   const draftEmail = args.draft?.email?.trim().toLowerCase()
-  const userEmail = args.user.email.trim().toLowerCase()
-  const sameUserDraft = !draftEmail || draftEmail === userEmail
+  const userEmail = visibleUserEmail.trim().toLowerCase()
+  const sameUserDraft = !draftEmail || (userEmail !== '' && draftEmail === userEmail)
 
   return {
     firstName: sameUserDraft && args.draft?.firstName?.trim()
@@ -100,7 +103,7 @@ export function resolveSignedInConsultationIdentity(args: {
     lastName: sameUserDraft && args.draft?.lastName?.trim()
       ? args.draft.lastName
       : args.user.lastName,
-    email: args.user.email,
+    email: visibleUserEmail,
     phone: (sameUserDraft ? args.draft?.phone : undefined) || args.user.phone || '',
   }
 }

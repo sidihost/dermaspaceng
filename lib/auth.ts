@@ -29,6 +29,9 @@ export interface User {
    * grant it from /admin/staff.
    */
   can_manage_services: boolean
+  profile_complete?: boolean
+  x_username?: string | null
+  has_social_auth?: boolean
   created_at: Date
 }
 
@@ -247,6 +250,9 @@ export async function getCurrentUser(): Promise<User | null> {
       SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
              COALESCE(is_super_admin, FALSE) AS is_super_admin,
              COALESCE(can_manage_services, FALSE) AS can_manage_services,
+             COALESCE(profile_complete, FALSE) AS profile_complete,
+             x_username,
+             (google_id IS NOT NULL OR microsoft_id IS NOT NULL OR x_id IS NOT NULL) AS has_social_auth,
              created_at
       FROM users WHERE id = ${session.user_id}
     `
@@ -394,6 +400,9 @@ export async function getUserById(userId: string): Promise<User | null> {
       SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
              COALESCE(is_super_admin, FALSE) AS is_super_admin,
              COALESCE(can_manage_services, FALSE) AS can_manage_services,
+             COALESCE(profile_complete, FALSE) AS profile_complete,
+             x_username,
+             (google_id IS NOT NULL OR microsoft_id IS NOT NULL OR x_id IS NOT NULL) AS has_social_auth,
              created_at
       FROM users WHERE id = ${userId}
     `

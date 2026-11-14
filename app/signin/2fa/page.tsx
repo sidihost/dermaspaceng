@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense, KeyboardEvent, ClipboardEvent } 
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft, HelpCircle } from 'lucide-react'
+import { resolvePostAuthRedirect } from '@/lib/auth-onboarding'
 
 /**
  * Two-Factor Authentication screen.
@@ -126,7 +127,11 @@ function TwoFactorForm() {
         body: JSON.stringify({ partialToken, code }),
       })
 
-      const data = (await res.json()) as { error?: string; code?: string }
+      const data = (await res.json()) as {
+        error?: string
+        code?: string
+        user?: { needsProfileCompletion?: boolean }
+      }
 
       if (!res.ok) {
         // The API distinguishes between an expired sign-in session
@@ -144,7 +149,7 @@ function TwoFactorForm() {
 
       // Full-page navigation so the freshly-issued session cookie is
       // definitely picked up on the destination route.
-      window.location.href = redirectTo
+      window.location.href = resolvePostAuthRedirect(redirectTo, data.user)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed')
       // Clear the slots on error so the user can retype cleanly.
