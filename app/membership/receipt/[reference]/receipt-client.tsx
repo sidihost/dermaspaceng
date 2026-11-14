@@ -362,13 +362,12 @@ export default function ReceiptClient({
           <footer className="mt-7 pt-6 border-t border-gray-100 text-xs text-gray-500 leading-relaxed">
             <p>
               This document is your official receipt for membership purchase.
-              Keep it for your records. If you have any questions, reply to
-              your confirmation email or contact{' '}
+              Keep it for your records. If you have any questions, please email{' '}
               <a
-                href="mailto:hello@dermaspaceng.com"
+                href="mailto:info@dermaspaceng.com"
                 className="text-[#7B2D8E] font-semibold hover:underline"
               >
-                hello@dermaspaceng.com
+                info@dermaspaceng.com
               </a>
               .
             </p>

@@ -295,7 +295,7 @@ function getEmailTemplate(
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 12px;">
                 <tr>
                   <td class="ds-footer-cell" valign="top" style="padding-right: 12px; vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
-                    ${footerIcon('mail')}<a href="mailto:hello@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">hello@dermaspaceng.com</a>
+                    ${footerIcon('mail')}<a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>
                   </td>
                   <td class="ds-footer-cell" valign="top" style="padding-right: 12px; vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
                     ${footerIcon('phone')}<a href="tel:+2349013134945" style="color:${BRAND_COLOR};font-weight:600;">09013134945 / 09061836625</a>
@@ -850,7 +850,7 @@ export async function sendConsultationStatusEmail(data: {
     }
     ${ctaHtml}
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Need assistance? Reply to this email or call 09013134945 / 09061836625.
+      Need assistance? Email us at <a href="mailto:info@dermaspaceng.com" style="color: ${BRAND_COLOR}; font-weight: 600;">info@dermaspaceng.com</a> or call 09013134945 / 09061836625.
     </p>
   `
 
@@ -1243,7 +1243,7 @@ export async function sendBookingReminder(data: {
     </table>
 
     <p style="margin: 0 0 16px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
-      Please arrive 10 minutes early. If you need to reschedule, reply to this email or call <strong>09013134945 / 09061836625</strong> as soon as possible.
+      Please arrive 10 minutes early. If you need to reschedule, email us at <a href="mailto:info@dermaspaceng.com" style="color: ${BRAND_COLOR}; font-weight: 600;">info@dermaspaceng.com</a> or call <strong>09013134945 / 09061836625</strong> as soon as possible.
     </p>
   `
   return sendEmail({
@@ -1574,7 +1574,7 @@ export async function sendGiftCardConfirmation(data: {
     </ol>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      If you have any questions, please contact us at hello@dermaspaceng.com or call 09013134945 / 09061836625.
+      If you have any questions, please contact us at <a href="mailto:info@dermaspaceng.com" style="color: ${BRAND_COLOR}; font-weight: 600;">info@dermaspaceng.com</a> or call 09013134945 / 09061836625.
     </p>
   `
   
@@ -1720,7 +1720,7 @@ export async function sendGiftCardPaymentReceipt(data: {
     </ol>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Keep this email as your payment receipt. If you have any questions, please contact us at hello@dermaspaceng.com or call 09013134945 / 09061836625.
+      Keep this email as your payment receipt. If you have any questions, please contact us at <a href="mailto:info@dermaspaceng.com" style="color: ${BRAND_COLOR}; font-weight: 600;">info@dermaspaceng.com</a> or call 09013134945 / 09061836625.
     </p>
   `
   
@@ -1774,7 +1774,7 @@ export async function sendGiftCardPaymentCancelled(data: {
     </table>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Need help? Contact us at hello@dermaspaceng.com or call 09013134945 / 09061836625.
+      Need help? Contact us at <a href="mailto:info@dermaspaceng.com" style="color: ${BRAND_COLOR}; font-weight: 600;">info@dermaspaceng.com</a> or call 09013134945 / 09061836625.
     </p>
   `
   
@@ -1834,18 +1834,29 @@ export async function sendPaymentCancelledEmail(data: {
     : ''
 
   const content = `
-    <!-- Status icon -->
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+    <!-- Stylized payment-card emblem (pure table HTML, Gmail-safe) -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 4px 0 20px;">
       <tr>
         <td align="center">
-          <table role="presentation" cellspacing="0" cellpadding="0">
+          <table role="presentation" cellspacing="0" cellpadding="0" style="border-collapse: separate;">
             <tr>
-              <td align="center" valign="middle" width="52" height="52" style="width: 52px; height: 52px; border-radius: 50%; background-color: #fee2e2; border: 1px solid #fecaca; text-align: center; vertical-align: middle;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block; margin: 0 auto;">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="m15 9-6 6"></path>
-                  <path d="m9 9 6 6"></path>
-                </svg>
+              <td align="center" valign="middle" width="60" height="60" style="width: 60px; height: 60px; border-radius: 16px; background-color: #FAF6FB; border: 1px solid #E8D8EE; text-align: center; vertical-align: middle;">
+                <table role="presentation" cellspacing="0" cellpadding="0" width="32" style="width: 32px; margin: 0 auto; border-collapse: separate; background-color: #ffffff; border: 1.5px solid ${BRAND_COLOR}; border-radius: 6px; overflow: hidden;">
+                  <tr>
+                    <td height="6" style="height: 6px; background-color: ${BRAND_COLOR}; font-size: 0; line-height: 6px;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 4px 4px 5px;">
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td width="12" height="4" style="width: 12px; height: 4px; background-color: #E8D8EE; border-radius: 2px; font-size: 0; line-height: 4px;">&nbsp;</td>
+                          <td style="font-size: 0; line-height: 4px;">&nbsp;</td>
+                          <td width="6" height="6" style="width: 6px; height: 6px; background-color: #b91c1c; border-radius: 999px; font-size: 0; line-height: 6px;">&nbsp;</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
@@ -1912,7 +1923,7 @@ export async function sendPaymentCancelledEmail(data: {
     </table>
 
     <p style="margin: 0; font-size: 12px; color: #787a82; line-height: 1.6; text-align: center;">
-      You can <a href="${txUrl}" style="color: ${BRAND_COLOR}; font-weight: 600;">view this transaction</a> anytime or reply to this email if you need help.
+      You can <a href="${txUrl}" style="color: ${BRAND_COLOR}; font-weight: 600;">view this transaction</a> anytime. If you need help, email us at <a href="mailto:info@dermaspaceng.com" style="color: ${BRAND_COLOR}; font-weight: 600;">info@dermaspaceng.com</a>.
     </p>
   `
 
@@ -1921,6 +1932,7 @@ export async function sendPaymentCancelledEmail(data: {
     subject: `Payment cancelled \u00B7 ${data.reference} \u00B7 Dermaspace`,
     html: getEmailTemplate(content, {
       preheader: `Your ${introLabel} of ${formattedAmount} was cancelled before completion. No funds were charged.`,
+      eyebrow: 'Payment cancelled',
     }),
   })
 }
@@ -2825,7 +2837,7 @@ export async function sendWelcomeEmail(data: {
     </table>
 
     <p style="margin: 0 0 8px; font-size: 14px; color: #65676b; line-height: 1.6;">
-      Questions? Just reply to this email or message us through the live
+      Questions? Email us at <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> or message us through the live
       chat in the app — a real person will pick it up.
     </p>
 
@@ -3454,7 +3466,7 @@ export async function sendBookingReceipt(data: {
     </table>
 
     <p style="margin: 0; font-size: 12px; color: #787a82; line-height: 1.6; text-align: center;">
-      Need to reschedule? Reply to this email or message us at least 24 hours before your slot.<br>
+      Need to reschedule? Email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> or message us at least 24 hours before your slot.<br>
       We can&rsquo;t wait to host you at Dermaspace.
     </p>
   `
@@ -3597,7 +3609,7 @@ export async function sendBookingCancellation(data: {
     </table>
 
     <p style="margin: 0; font-size: 12px; color: #787a82; line-height: 1.6; text-align: center;">
-      Didn&rsquo;t request this? Reply to this email and we&rsquo;ll look into it right away.
+      Didn&rsquo;t request this? Email us at <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> and we&rsquo;ll look into it right away.
     </p>
   `
 

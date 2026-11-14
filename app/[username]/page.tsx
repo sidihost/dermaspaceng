@@ -466,6 +466,21 @@ export default function PublicProfilePage() {
                     Go to Homepage
                   </Link>
                 </div>
+                <p className="mt-5 text-xs text-gray-500">
+                  Need help? Call{' '}
+                  <a href="tel:+2349061836625" className="text-[#7B2D8E] font-medium hover:underline">
+                    +234 906 183 6625
+                  </a>{' '}
+                  or{' '}
+                  <a href="tel:+2349013134945" className="text-[#7B2D8E] font-medium hover:underline">
+                    +234 901 313 4945
+                  </a>
+                  , or email{' '}
+                  <a href="mailto:info@dermaspaceng.com" className="text-[#7B2D8E] font-medium hover:underline">
+                    info@dermaspaceng.com
+                  </a>
+                  .
+                </p>
               </div>
             </div>
           </div>

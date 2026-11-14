@@ -61,13 +61,28 @@ export default function OfflineContent() {
             </div>
 
             {/* Hairline + contact strip */}
-            <div className="mt-5 pt-4 border-t border-gray-100">
+            <div className="mt-5 pt-4 border-t border-gray-100 flex flex-col items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                <a
+                  href="tel:+2349061836625"
+                  className="inline-flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
+                >
+                  <Phone className="w-3.5 h-3.5" aria-hidden />
+                  +234 906 183 6625
+                </a>
+                <a
+                  href="tel:+2349013134945"
+                  className="inline-flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
+                >
+                  <Phone className="w-3.5 h-3.5" aria-hidden />
+                  +234 901 313 4945
+                </a>
+              </div>
               <a
-                href="tel:+2349061836625"
-                className="inline-flex items-center justify-center gap-1.5 text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
+                href="mailto:info@dermaspaceng.com"
+                className="text-[12px] font-medium text-gray-500 hover:text-[#7B2D8E] hover:underline"
               >
-                <Phone className="w-3.5 h-3.5" aria-hidden />
-                +234 906 183 6625
+                info@dermaspaceng.com
               </a>
             </div>
           </div>

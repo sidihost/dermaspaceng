@@ -128,6 +128,21 @@ export function TransactionList({
     }
   }
   
+  const getStatusTextColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'text-[#7B2D8E]'
+      case 'pending':
+        return 'text-amber-600'
+      case 'failed':
+        return 'text-red-600'
+      case 'cancelled':
+        return 'text-muted-foreground'
+      default:
+        return 'text-muted-foreground'
+    }
+  }
+  
   // Credits/refunds use the brand purple (not green) so the wallet
   // stays on the Dermaspace palette. Debits stay neutral dark.
   const getTypeStyles = (type: string) => {
@@ -172,6 +187,9 @@ export function TransactionList({
     <div className="space-y-2">
       {transactions.map((transaction, index) => {
         const styles = getTypeStyles(transaction.type)
+        const title =
+          transaction.description ||
+          `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} Transaction`
         
         return (
           <motion.div
@@ -183,39 +201,38 @@ export function TransactionList({
             <button
               type="button"
               onClick={() => openDetail(transaction)}
-              className="w-full text-left flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50 cursor-pointer"
+              className="w-full text-left flex items-start sm:items-center gap-3 sm:gap-4 rounded-lg border bg-card p-3.5 sm:p-4 transition-colors hover:bg-muted/50 cursor-pointer"
             >
               {/* Icon */}
-              <div className={cn('flex h-12 w-12 items-center justify-center rounded-full flex-shrink-0', styles.icon)}>
+              <div className={cn('flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full flex-shrink-0 mt-0.5 sm:mt-0', styles.icon)}>
                 {getTransactionIcon(transaction.type, transaction.description)}
               </div>
               
-              {/* Details */}
+              {/* Details + Amount */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-foreground truncate">
-                    {transaction.description || `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} Transaction`}
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm sm:text-base font-medium text-foreground leading-snug break-words">
+                    {title}
                   </p>
-                  {getStatusIcon(transaction.status)}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className={cn('text-sm sm:text-base font-semibold tabular-nums whitespace-nowrap', styles.amount)}>
+                      {styles.prefix}{transaction.formattedAmount || formatCurrency(transaction.amount, transaction.currency)}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0" />
+                  </div>
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-                  <span className="capitalize">{transaction.payment_method.replace('_', ' ')}</span>
-                  <span>•</span>
-                  <span>{transaction.formattedDate || formatDate(transaction.created_at)}</span>
+
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="capitalize">{transaction.payment_method.replace('_', ' ')}</span>
+                    <span aria-hidden="true">&bull;</span>
+                    <span className="whitespace-nowrap">{transaction.formattedDate || formatDate(transaction.created_at)}</span>
+                  </div>
+                  <div className={cn('inline-flex items-center gap-1 capitalize font-medium whitespace-nowrap', getStatusTextColor(transaction.status))}>
+                    {getStatusIcon(transaction.status)}
+                    <span>{transaction.status}</span>
+                  </div>
                 </div>
-              </div>
-              
-              {/* Amount */}
-              <div className="text-right flex items-center gap-2 flex-shrink-0">
-                <div>
-                  <p className={cn('font-semibold', styles.amount)}>
-                    {styles.prefix}{transaction.formattedAmount || formatCurrency(transaction.amount, transaction.currency)}
-                  </p>
-                  {transaction.status !== 'completed' && (
-                    <p className="text-xs capitalize text-muted-foreground">{transaction.status}</p>
-                  )}
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
               </div>
             </button>
           </motion.div>
@@ -226,13 +243,13 @@ export function TransactionList({
       {isLoading && (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 rounded-lg border bg-card p-4">
-              <div className="h-12 w-12 animate-pulse rounded-full bg-muted" />
+            <div key={i} className="flex items-center gap-3 sm:gap-4 rounded-lg border bg-card p-3.5 sm:p-4">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 animate-pulse rounded-full bg-muted flex-shrink-0" />
               <div className="flex-1 space-y-2">
                 <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
                 <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
               </div>
-              <div className="h-5 w-20 animate-pulse rounded bg-muted" />
+              <div className="h-5 w-20 animate-pulse rounded bg-muted flex-shrink-0" />
             </div>
           ))}
         </div>

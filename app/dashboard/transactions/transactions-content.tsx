@@ -411,23 +411,23 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         : 'Payment')
 
   const rowInner = (
-    <div className="flex items-center gap-3 sm:gap-4">
+    <div className="flex items-start sm:items-center gap-3 sm:gap-4">
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${iconTone}`}
+          className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0 ${iconTone}`}
         >
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-[14.5px] font-semibold text-gray-900 truncate">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-[14.5px] font-semibold text-gray-900 leading-snug break-words">
               {description}
             </p>
-            <p className={`text-[14.5px] font-semibold whitespace-nowrap ${tone}`}>
+            <p className={`text-[14.5px] font-semibold tabular-nums whitespace-nowrap flex-shrink-0 ${tone}`}>
               {sign}
               {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
             </p>
           </div>
-          <div className="mt-0.5 flex items-center gap-2 text-[12px] text-gray-500">
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-gray-500">
             <span>{formatRelativeDate(tx.created_at)}</span>
             <span aria-hidden="true">&middot;</span>
             <span className="capitalize">

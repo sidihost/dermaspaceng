@@ -182,26 +182,28 @@ export default function GlobalError({
                 : "We hit an unexpected hiccup loading the page. It\u2019s on us, not you. Give it another go \u2014 most issues clear up with a quick retry."}
             </p>
 
-            {isOffline ? (
-              <div
+            <div
+              style={{
+                background: isOffline ? "rgba(123, 45, 142, 0.05)" : "#ffffff",
+                border: isOffline
+                  ? "1px solid rgba(123, 45, 142, 0.1)"
+                  : "1px solid #F1F5F9",
+                borderRadius: 16,
+                padding: 16,
+                textAlign: "left",
+              }}
+            >
+              <p
                 style={{
-                  background: "rgba(123, 45, 142, 0.05)",
-                  border: "1px solid rgba(123, 45, 142, 0.1)",
-                  borderRadius: 16,
-                  padding: 16,
-                  textAlign: "left",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  margin: "0 0 8px 0",
+                  color: "#0F172A",
                 }}
               >
-                <p
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    margin: "0 0 8px 0",
-                    color: "#0F172A",
-                  }}
-                >
-                  Need to reach us?
-                </p>
+                {isOffline ? "Need to reach us?" : "Need help? Contact us directly"}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <a
                   href="tel:+2349061836625"
                   style={{
@@ -212,22 +214,46 @@ export default function GlobalError({
                     textDecoration: "none",
                   }}
                 >
-                  +234 906 183 6625
+                  +234 906 183 6625 (Victoria Island)
                 </a>
-                <p
+                <a
+                  href="tel:+2349013134945"
                   style={{
-                    fontSize: 12,
-                    color: "#64748B",
-                    margin: "8px 0 0 0",
-                    lineHeight: 1.5,
+                    display: "block",
+                    fontSize: 14,
+                    color: BRAND,
+                    fontWeight: 500,
+                    textDecoration: "none",
                   }}
                 >
-                  Victoria Island: 237B Muri Okunola St
-                  <br />
-                  Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Estate
-                </p>
+                  +234 901 313 4945 (Ikoyi)
+                </a>
+                <a
+                  href="mailto:info@dermaspaceng.com"
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    color: BRAND,
+                    fontWeight: 500,
+                    textDecoration: "none",
+                  }}
+                >
+                  info@dermaspaceng.com
+                </a>
               </div>
-            ) : null}
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "#64748B",
+                  margin: "10px 0 0 0",
+                  lineHeight: 1.5,
+                }}
+              >
+                Victoria Island: 237B Muri Okunola St
+                <br />
+                Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Estate
+              </p>
+            </div>
           </div>
 
           <div

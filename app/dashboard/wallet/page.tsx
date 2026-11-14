@@ -525,7 +525,7 @@ function WalletDashboardContent() {
               </div>
               {transactions.length > 0 && (
                 <span className="text-xs sm:text-sm text-gray-500">
-                  {transactions.length} transactions
+                  {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
                 </span>
               )}
             </div>

@@ -235,7 +235,7 @@ const OFFLINE_HTML = `<!doctype html>
         <span id="status">Waiting for connection&hellip;</span>
       </div>
       <div class="help">
-        Need us urgently? <a href="tel:+2349061836625">+234 906 183 6625</a>
+        Need us urgently? <a href="tel:+2349061836625">+234 906 183 6625</a> &middot; <a href="tel:+2349013134945">+234 901 313 4945</a>
       </div>
     </div>
   </main>

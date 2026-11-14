@@ -27,7 +27,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ButterflyLogo } from "@/components/shared/butterfly-logo"
-import { RefreshCw, Home, WifiOff, Phone } from "lucide-react"
+import { RefreshCw, Home, WifiOff, Phone, Mail } from "lucide-react"
 
 export default function RouteError({
   error,
@@ -142,14 +142,30 @@ export default function RouteError({
               <p className="text-xs font-semibold text-gray-900 mb-2">
                 Need to reach us?
               </p>
-              <a
-                href="tel:+2349061836625"
-                className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium"
-              >
-                <Phone className="w-4 h-4" />
-                +234 906 183 6625
-              </a>
-              <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              <div className="space-y-1.5">
+                <a
+                  href="tel:+2349061836625"
+                  className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium hover:underline"
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <span>+234 906 183 6625 (Victoria Island)</span>
+                </a>
+                <a
+                  href="tel:+2349013134945"
+                  className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium hover:underline"
+                >
+                  <Phone className="w-4 h-4 flex-shrink-0" />
+                  <span>+234 901 313 4945 (Ikoyi)</span>
+                </a>
+                <a
+                  href="mailto:info@dermaspaceng.com"
+                  className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium hover:underline"
+                >
+                  <Mail className="w-4 h-4 flex-shrink-0" />
+                  <span>info@dermaspaceng.com</span>
+                </a>
+              </div>
+              <p className="text-xs text-gray-500 mt-2.5 leading-relaxed">
                 Victoria Island: 237B Muri Okunola St
                 <br />
                 Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Estate
@@ -210,6 +226,35 @@ export default function RouteError({
             We hit an unexpected hiccup loading this page. It&apos;s on us, not
             you. Give it another go — most issues clear up with a quick retry.
           </p>
+
+          <div className="mb-6 bg-white border border-gray-100 rounded-2xl px-4 py-4 text-left">
+            <p className="text-xs font-semibold text-gray-900 mb-2">
+              Need help? Contact us directly
+            </p>
+            <div className="space-y-1.5">
+              <a
+                href="tel:+2349061836625"
+                className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium hover:underline"
+              >
+                <Phone className="w-4 h-4 flex-shrink-0" />
+                <span>+234 906 183 6625 (Victoria Island)</span>
+              </a>
+              <a
+                href="tel:+2349013134945"
+                className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium hover:underline"
+              >
+                <Phone className="w-4 h-4 flex-shrink-0" />
+                <span>+234 901 313 4945 (Ikoyi)</span>
+              </a>
+              <a
+                href="mailto:info@dermaspaceng.com"
+                className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium hover:underline"
+              >
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span>info@dermaspaceng.com</span>
+              </a>
+            </div>
+          </div>
 
           {/* Hidden error detail — collapsed by default. Helps support
               triage without scaring the user. The digest is what Next.js
