@@ -9,6 +9,7 @@
 import { randomUUID } from 'crypto'
 import { sql, query } from './db'
 import { sendPushToUser, type PushPayload } from './push'
+import { getCanonicalAppOrigin } from './push-origin'
 import { isFeatureEnabled } from './feature-flags'
 import { resolveReadColumn, ensureNotificationsSchema } from './notifications-column'
 
@@ -184,11 +185,7 @@ type BookingForNotify = {
 }
 
 function appBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.APP_URL ||
-    'https://dermaspaceng.com'
-  ).replace(/\/$/, '')
+  return getCanonicalAppOrigin()
 }
 
 export async function notifyBookingPaymentFailed(

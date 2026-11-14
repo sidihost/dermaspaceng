@@ -101,7 +101,10 @@ function defaultScheduleValue() {
 }
 
 export default function BroadcastPage() {
-  const { data: vapid } = useSWR<{ configured: boolean }>('/api/push/vapid-public-key', fetcher)
+  const { data: vapid } = useSWR<{ configured: boolean; previewBlocked?: boolean }>(
+    '/api/push/vapid-public-key',
+    fetcher,
+  )
   const { data: history, mutate: mutateHistory } = useSWR<{ broadcasts: Broadcast[] }>(
     '/api/admin/broadcast',
     fetcher,
@@ -237,14 +240,25 @@ export default function BroadcastPage() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
           <AlertTriangle className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-amber-900">
-            <p className="font-semibold">Push notifications are not configured.</p>
-            <p className="text-amber-800 mt-0.5 text-xs">
-              In-app notifications will still be delivered. To enable browser
-              push, run <code className="font-mono bg-white/60 px-1 rounded">node scripts/generate-vapid.mjs</code> and
-              add <code className="font-mono bg-white/60 px-1 rounded">VAPID_PUBLIC_KEY</code>,&nbsp;
-              <code className="font-mono bg-white/60 px-1 rounded">VAPID_PRIVATE_KEY</code>,&nbsp;
-              <code className="font-mono bg-white/60 px-1 rounded">VAPID_SUBJECT</code> to your project.
+            <p className="font-semibold">
+              {vapid.previewBlocked
+                ? 'Browser push is disabled on preview deployments.'
+                : 'Push notifications are not configured.'}
             </p>
+            {vapid.previewBlocked ? (
+              <p className="text-amber-800 mt-0.5 text-xs">
+                Web Push notifications only run on the canonical domain (dermaspaceng.com) so
+                subscribers never receive preview deployment alerts.
+              </p>
+            ) : (
+              <p className="text-amber-800 mt-0.5 text-xs">
+                In-app notifications will still be delivered. To enable browser
+                push, run <code className="font-mono bg-white/60 px-1 rounded">node scripts/generate-vapid.mjs</code> and
+                add <code className="font-mono bg-white/60 px-1 rounded">VAPID_PUBLIC_KEY</code>,&nbsp;
+                <code className="font-mono bg-white/60 px-1 rounded">VAPID_PRIVATE_KEY</code>,&nbsp;
+                <code className="font-mono bg-white/60 px-1 rounded">VAPID_SUBJECT</code> to your project.
+              </p>
+            )}
           </div>
         </div>
       )}

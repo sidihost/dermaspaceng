@@ -5,6 +5,13 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Mail, ArrowRight, Loader2 } from 'lucide-react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import {
+  getAutoSendStorageKey,
+  getRemainingResendCooldownSeconds,
+  getResendCooldownStorageKey,
+  shouldAutoSendVerificationOtp,
+  stripVerifySendParam,
+} from '@/lib/verify-email-guard'
 
 // ---------------------------------------------------------------------------
 // Standalone email-verification page.
@@ -33,9 +40,10 @@ function VerifyEmailInner() {
   const emailParam = (searchParams.get('email') || '').trim()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
   // Only auto-issue a fresh code when the link explicitly asks for it
-  // (?send=1, used by the onboarding reminder email). The OTP email and
-  // admin "resend" already deliver a valid code, so auto-sending there
-  // would invalidate the very code the user is reading.
+  // (?send=1, used by the onboarding reminder email). Once handled we
+  // immediately strip `send` from the browser URL and record a session
+  // cooldown timestamp so refreshing the page does not overwrite the
+  // code the user is currently entering.
   const shouldAutoSend = searchParams.get('send') === '1'
 
   const [email, setEmail] = useState(emailParam)
@@ -50,6 +58,21 @@ function VerifyEmailInner() {
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resendNotice, setResendNotice] = useState('')
 
+  // Restore any active manual resend cooldown for this email across refreshes.
+  useEffect(() => {
+    if (!email || typeof window === 'undefined') return
+    try {
+      const raw = window.sessionStorage.getItem(getResendCooldownStorageKey(email))
+      if (!raw) return
+      const remaining = getRemainingResendCooldownSeconds(Number(raw))
+      if (remaining > 0) {
+        setResendCooldown(remaining)
+      }
+    } catch {
+      // ignore storage failures
+    }
+  }, [email])
+
   // Count down the resend cooldown once per second.
   useEffect(() => {
     if (resendCooldown <= 0) return
@@ -57,17 +80,56 @@ function VerifyEmailInner() {
     return () => clearTimeout(t)
   }, [resendCooldown])
 
-  // Auto-send a fresh code the first time someone lands here with an email
-  // already known (e.g. from the reminder email's button), so there's always
-  // a valid code waiting without an extra tap. Guarded so it only fires once.
+  // Auto-send a fresh code the first time someone lands here with ?send=1
+  // and a known email. Immediately strips `send=1` from the address bar and
+  // records a session timestamp so reloading the page never fires a new OTP.
   const autoSent = useRef(false)
   useEffect(() => {
-    if (shouldAutoSend && emailConfirmed && email && !autoSent.current) {
+    if (typeof window !== 'undefined' && window.location.search.includes('send=')) {
+      const cleanedUrl = stripVerifySendParam(
+        window.location.pathname,
+        window.location.search,
+      )
+      window.history.replaceState(window.history.state, '', cleanedUrl)
+    }
+
+    let lastAutoSentAtMs: number | null = null
+    if (email && typeof window !== 'undefined') {
+      try {
+        const stored = window.sessionStorage.getItem(getAutoSendStorageKey(email))
+        if (stored) {
+          const parsed = Number(stored)
+          if (Number.isFinite(parsed)) lastAutoSentAtMs = parsed
+        }
+      } catch {
+        // ignore storage failures
+      }
+    }
+
+    if (
+      shouldAutoSendVerificationOtp({
+        shouldAutoSend,
+        emailConfirmed,
+        email,
+        alreadyTriggered: autoSent.current,
+        lastAutoSentAtMs,
+      })
+    ) {
       autoSent.current = true
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(
+            getAutoSendStorageKey(email),
+            String(Date.now()),
+          )
+        } catch {
+          // ignore storage failures
+        }
+      }
       void sendCode(email, { silent: true })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [emailConfirmed, email])
+  }, [emailConfirmed, email, shouldAutoSend])
 
   const sendCode = async (
     targetEmail: string,
@@ -90,6 +152,16 @@ function VerifyEmailInner() {
       }
       setResendNotice('A code is on its way to your inbox.')
       setResendCooldown(30)
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(
+            getResendCooldownStorageKey(targetEmail),
+            String(Date.now() + 30_000),
+          )
+        } catch {
+          // ignore storage failures
+        }
+      }
       setOtp('')
     } catch {
       setOtpError('Could not send the code. Please try again.')
@@ -124,6 +196,16 @@ function VerifyEmailInner() {
         setOtpError(data.error || 'That code is incorrect. Please try again.')
         setOtp('')
         return
+      }
+
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.removeItem(getAutoSendStorageKey(email))
+          window.sessionStorage.removeItem(getResendCooldownStorageKey(email))
+        } catch {
+          // ignore storage failures
+        }
+        window.dispatchEvent(new Event('user-updated'))
       }
 
       // Verified + auto-logged-in by the API — go straight to the dashboard.

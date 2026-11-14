@@ -39,29 +39,40 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    if (data.status === 'failed') {
+    const channel = (transaction.metadata as { channel?: string } | null)?.channel
+    const { classifyPaystackStatusForReconcile } = await import(
+      '@/lib/payment-reconcile-policy'
+    )
+    const decision = classifyPaystackStatusForReconcile({
+      paystackStatus: data.status,
+      gatewayResponse: data.gateway_response,
+      channel,
+      isDirectCallback: true,
+    })
+
+    if (decision.action === 'fail') {
       await finalizePendingTransactionFailureOrCancel({
         transaction,
         nextStatus: 'failed',
-        reason: data.gateway_response || 'Payment failed',
+        reason: decision.reason,
         customerEmail: data.customer?.email,
       })
       return NextResponse.redirect(
         `${appUrl}/membership?error=payment_failed&message=${encodeURIComponent(
-          data.gateway_response || 'Payment failed',
+          decision.reason,
         )}`,
       )
     }
-    if (data.status === 'abandoned') {
+    if (decision.action === 'cancel') {
       await finalizePendingTransactionFailureOrCancel({
         transaction,
         nextStatus: 'cancelled',
-        reason: 'Payment abandoned by user',
+        reason: decision.reason,
         customerEmail: data.customer?.email,
       })
       return NextResponse.redirect(`${appUrl}/membership?error=payment_abandoned`)
     }
-    if (data.status !== 'success') {
+    if (decision.action !== 'credit') {
       return NextResponse.redirect(`${appUrl}/membership?error=unknown_status`)
     }
 

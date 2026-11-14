@@ -22,6 +22,7 @@
 
 import * as React from 'react'
 import { Bell, X } from 'lucide-react'
+import { isCanonicalPushOrigin } from '@/lib/push-origin'
 
 const DISMISS_KEY = 'dermaspace-push-prompt-dismissed'
 
@@ -40,15 +41,34 @@ export function PushSubscribePrompt({ enabled }: { enabled: boolean }) {
   const [busy, setBusy] = React.useState(false)
 
   React.useEffect(() => {
-    if (!enabled) return
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+
+    const isCanonicalOrigin = isCanonicalPushOrigin(window.location.origin, {
+      configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
+      allowLocalhost: process.env.NODE_ENV === 'development',
+    })
+
+    // On Vercel preview or any non-canonical host, never prompt and proactively
+    // remove any prior push subscription bound to this origin.
+    if (!isCanonicalOrigin) {
+      navigator.serviceWorker
+        .getRegistrations?.()
+        .then(async (regs) => {
+          for (const reg of regs) {
+            const existing = await reg.pushManager?.getSubscription().catch(() => null)
+            if (existing) {
+              await existing.unsubscribe().catch(() => {})
+            }
+          }
+        })
+        .catch(() => {})
+      return
+    }
+
+    if (!enabled) return
     if (Notification.permission !== 'default') return
     if (sessionStorage.getItem(DISMISS_KEY) || localStorage.getItem(DISMISS_KEY)) return
-    
-    // Only show push prompt on the production domain
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
-    if (appUrl && window.location.origin !== appUrl) return
 
     let cancelled = false
     const t = window.setTimeout(async () => {
@@ -56,8 +76,8 @@ export function PushSubscribePrompt({ enabled }: { enabled: boolean }) {
       try {
         const res = await fetch('/api/push/vapid-public-key')
         if (!res.ok) return
-        const { publicKey } = await res.json()
-        if (!publicKey || cancelled) return
+        const { publicKey, previewBlocked } = await res.json()
+        if (previewBlocked || !publicKey || cancelled) return
         // If we already have an active subscription, don't show.
         const reg = await navigator.serviceWorker.ready
         const existing = await reg.pushManager.getSubscription()

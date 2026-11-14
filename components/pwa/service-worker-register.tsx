@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { X, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import Image from 'next/image'
+import { isCanonicalPushOrigin } from '@/lib/push-origin'
 
 export function ServiceWorkerRegister() {
   // `usePathname()` can return `null` during certain app-shell
@@ -113,10 +114,14 @@ export function ServiceWorkerRegister() {
     window.addEventListener('error', onError)
     window.addEventListener('unhandledrejection', onUnhandledRejection)
 
-    // Register service worker only on the production domain
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
-    const isProductionDomain = !appUrl || window.location.origin === appUrl
-    
+    // Register service worker ONLY on canonical production domains (never
+    // on *.vercel.app or other preview deployments, even when NEXT_PUBLIC_APP_URL
+    // is unset).
+    const isProductionDomain = isCanonicalPushOrigin(window.location.origin, {
+      configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
+      allowLocalhost: process.env.NODE_ENV === 'development',
+    })
+
     if ('serviceWorker' in navigator && isProductionDomain) {
       navigator.serviceWorker
         .register('/sw.js')
@@ -149,7 +154,23 @@ export function ServiceWorkerRegister() {
         window.location.reload()
       })
     } else if ('serviceWorker' in navigator && !isProductionDomain) {
-      console.log('[SW] Skipping registration: not on production domain')
+      console.log('[SW] Cleaning up SW and push subscriptions on non-canonical domain')
+      navigator.serviceWorker
+        .getRegistrations?.()
+        .then(async (regs) => {
+          for (const reg of regs) {
+            const sub = await reg.pushManager?.getSubscription().catch(() => null)
+            if (sub) {
+              await sub.unsubscribe().catch(() => {})
+            }
+            await reg.unregister().catch(() => {})
+          }
+          if ('caches' in window) {
+            const names = await caches.keys().catch(() => [] as string[])
+            await Promise.all(names.map((n) => caches.delete(n).catch(() => {})))
+          }
+        })
+        .catch(() => {})
     }
 
     // Handle install prompt
@@ -209,6 +230,14 @@ export function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator)) return
+    if (
+      !isCanonicalPushOrigin(window.location.origin, {
+        configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
+        allowLocalhost: process.env.NODE_ENV === 'development',
+      })
+    ) {
+      return
+    }
     if (!navigator.onLine) return
     if (!pathname) return
     // Skip non-page routes — defence in depth; the SW also filters

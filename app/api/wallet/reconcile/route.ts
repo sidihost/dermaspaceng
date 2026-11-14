@@ -2,42 +2,31 @@
  * GET /api/wallet/reconcile
  *
  * On-demand reconciliation for the signed-in user's own pending
- * Paystack fundings. The wallet page calls this on load (and after a
- * checkout redirect) so a customer whose webhook was missed still
- * sees their balance update instead of staring at a stuck "pending".
- *
- * It re-checks each of the user's pending funding transactions
- * directly with Paystack and credits/fails/cancels them to match.
- * All crediting goes through the shared idempotent
- * `finalizeWalletFunding`, so this can never double-credit even if a
- * webhook lands at the same moment.
+ * Paystack fundings. Accepts an optional `?reference=` query param for
+ * zero-delay single-reference reconciliation from the payment-status page.
  */
 
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import {
   getPendingFundingTransactions,
   expireStalePendingFundings,
 } from '@/lib/wallet'
-import { reconcileUserPendingFundings } from '@/lib/reconcile-payments'
+import {
+  reconcileUserPendingFundings,
+  reconcileUserReference,
+} from '@/lib/reconcile-payments'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Grab recent pending fundings, then narrow to this user's rows.
-    // We give a small min-age (15s) so we don't race a checkout that's
-    // literally mid-flight, and a 30-day window so older stuck rows
-    // (the ones the old 72h limit stranded forever) still get rescued.
-    const pending = await getPendingFundingTransactions(15, 24 * 30, 200)
-    const mine = pending.filter(
-      (tx) => String(tx.user_id) === String(user.id),
-    )
+    const targetRef = request.nextUrl.searchParams.get('reference')?.trim() || ''
 
     let result = {
       checked: 0,
@@ -46,23 +35,40 @@ export async function GET() {
       cancelled: 0,
       stillPending: 0,
       errors: 0,
+      noticesRecovered: 0,
     }
 
-    if (mine.length > 0) {
-      const refs = mine
-        .map(
-          (tx) =>
-            tx.payment_reference ||
-            (tx as { reference?: string }).reference ||
-            '',
-        )
-        .filter(Boolean)
-      result = { ...result, ...(await reconcileUserPendingFundings(refs)) }
+    if (targetRef) {
+      const targetOutcome = await reconcileUserReference(user.id, targetRef)
+      result = { ...result, ...targetOutcome }
     }
 
-    // Retire this user's pending fundings that are too old to ever
-    // complete. Verification ran first, so a real success is already
-    // credited and safe from expiry.
+    const pending = await getPendingFundingTransactions(15, 24 * 30, 200)
+    const mine = pending.filter(
+      (tx) => String(tx.user_id) === String(user.id),
+    )
+
+    const refs = mine
+      .map(
+        (tx) =>
+          tx.payment_reference ||
+          (tx as { reference?: string }).reference ||
+          '',
+      )
+      .filter((r) => Boolean(r) && r !== targetRef)
+
+    const batchOutcome = await reconcileUserPendingFundings(refs, user.id)
+    result = {
+      checked: result.checked + batchOutcome.checked,
+      credited: result.credited + batchOutcome.credited,
+      failed: result.failed + batchOutcome.failed,
+      cancelled: result.cancelled + batchOutcome.cancelled,
+      stillPending: result.stillPending + batchOutcome.stillPending,
+      errors: result.errors + batchOutcome.errors,
+      noticesRecovered:
+        result.noticesRecovered + (batchOutcome.noticesRecovered ?? 0),
+    }
+
     const expired = await expireStalePendingFundings(24, user.id)
 
     return NextResponse.json({ success: true, ...result, expired })

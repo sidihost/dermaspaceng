@@ -144,23 +144,32 @@ function PaymentStatusContent() {
     }
   }, [reference, fetchTransaction])
 
-  // While pending: nudge server-side reconciliation (it asks Paystack
-  // for the true status and credits/cancels idempotently), then
-  // re-fetch. Stops after MAX_POLLS so we never spin forever.
+  // While pending: immediately nudge single-reference reconciliation on first
+  // mount (pollCount === 0) so cancelled/completed payments settle without lag,
+  // then continue polling at POLL_INTERVAL_MS up to MAX_POLLS.
   useEffect(() => {
-    if (!tx || tx.status !== 'pending' || pollCount >= MAX_POLLS) return
+    if (!tx || tx.status !== 'pending' || pollCount >= MAX_POLLS || !reference) return
+    const delayMs = pollCount === 0 ? 0 : POLL_INTERVAL_MS
+    let cancelled = false
     const timer = setTimeout(async () => {
       try {
-        await fetch('/api/wallet/reconcile', { credentials: 'include' })
+        await fetch(
+          `/api/wallet/reconcile?reference=${encodeURIComponent(reference)}`,
+          { credentials: 'include' },
+        )
       } catch {
         // best effort — the re-fetch below still runs
       }
+      if (cancelled) return
       const fresh = await fetchTransaction()
-      if (fresh) setTx(fresh)
-      setPollCount((c) => c + 1)
-    }, POLL_INTERVAL_MS)
-    return () => clearTimeout(timer)
-  }, [tx, pollCount, fetchTransaction])
+      if (!cancelled && fresh) setTx(fresh)
+      if (!cancelled) setPollCount((c) => c + 1)
+    }, delayMs)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [tx, pollCount, reference, fetchTransaction])
 
   // "I cancelled on Paystack — stop showing this as pending." The
   // endpoint re-verifies with Paystack first, so if the charge actually

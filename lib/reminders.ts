@@ -32,15 +32,10 @@
 
 import { sql } from '@/lib/db'
 import { getQStash, cancelMessage } from '@/lib/qstash'
+import { getCanonicalAppOrigin, isPreviewDeploymentEnv } from '@/lib/push-origin'
 
-// We re-derive the public base URL here instead of importing the
-// (private) `publicBaseUrl()` from lib/qstash.ts. Keeps this file's
-// surface contained without changing the qstash.ts module's public API.
 function publicBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL
-  if (explicit) return explicit.replace(/\/+$/, '')
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-  return 'https://www.dermaspaceng.com'
+  return getCanonicalAppOrigin()
 }
 
 export type ReminderKind =
@@ -64,6 +59,7 @@ async function enqueue({
   id,
   fireAt,
 }: SchedulePayload & { fireAt: Date }): Promise<string | null> {
+  if (isPreviewDeploymentEnv()) return null
   // Refuse to schedule into the past — QStash would reject it anyway,
   // and this saves a network call when somebody books for "today, 30
   // minutes from now" (the booking 24h reminder is already moot).

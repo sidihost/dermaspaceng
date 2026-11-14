@@ -30,6 +30,7 @@ import {
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
 import 'leaflet/dist/leaflet.css'
 import { useAuth } from '@/hooks/use-auth'
+import { getMapTileLayerConfig } from '@/lib/map-tiles'
 
 // Escape user-supplied strings before they go into the marker's innerHTML.
 function escapeHtml(value: string) {
@@ -462,16 +463,14 @@ export default function InteractiveMap({
       })
       mapRef.current = map
 
-      // CartoDB "Positron" tiles — clean, light, on-brand with our palette
-      L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-        {
-          subdomains: 'abcd',
-          maxZoom: 19,
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO',
-        }
-      ).addTo(map)
+      // CARTO Voyager tiles when NEXT_PUBLIC_CARTO_API_KEY is configured,
+      // falling back cleanly to OSM standard tiles when no key is set.
+      const tileConfig = getMapTileLayerConfig(process.env.NEXT_PUBLIC_CARTO_API_KEY)
+      L.tileLayer(tileConfig.url, {
+        ...(tileConfig.subdomains ? { subdomains: tileConfig.subdomains } : {}),
+        maxZoom: tileConfig.maxZoom,
+        attribution: tileConfig.attribution,
+      }).addTo(map)
 
       // NOTE: we deliberately do NOT add Leaflet's default zoom control on
       // the full-page map — it's a stack of tiny square buttons that

@@ -19,7 +19,11 @@ import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useNotify } from '@/components/shared/notify'
 import PageLoader from '@/components/shared/page-loader'
-import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
+import {
+  formatAccountSubtitle,
+  getVisibleEmail,
+  shouldPromptEmailVerification,
+} from '@/lib/auth-onboarding'
 
 interface UserData {
   id: string
@@ -28,6 +32,9 @@ interface UserData {
   email: string
   xUsername?: string | null
   emailIsPlaceholder?: boolean
+  emailVerified?: boolean
+  mustChangePassword?: boolean
+  needsProfileCompletion?: boolean
   phone?: string
   avatarUrl?: string
   username?: string
@@ -1461,6 +1468,18 @@ function SettingsPageContent() {
                               </Link>{' '}
                               to add your email address
                             </p>
+                          ) : shouldPromptEmailVerification(user) ? (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] font-medium">
+                                Unverified
+                              </span>
+                              <Link
+                                href={`/verify-email?email=${encodeURIComponent(getVisibleEmail(user))}&send=1`}
+                                className="font-semibold text-[#7B2D8E] hover:underline"
+                              >
+                                Verify your email
+                              </Link>
+                            </div>
                           ) : (
                             <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                           )}

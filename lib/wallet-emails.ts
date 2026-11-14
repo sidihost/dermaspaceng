@@ -1,20 +1,10 @@
-import nodemailer from 'nodemailer'
+import { sendMailWithRetry } from './smtp-transport'
 
 const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
 const FROM_EMAIL = 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
 // Brand color
 const BRAND_COLOR = '#7B2D8E'
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zeptomail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: 'emailapikey',
-    pass: SMTP_PASSWORD
-  }
-})
 
 interface EmailOptions {
   to: string
@@ -89,23 +79,13 @@ function getEmailTemplate(content: string) {
 }
 
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
-  if (!SMTP_PASSWORD) {
-    console.error('ZEPTO_MAIL_PASSWORD not configured')
-    return false
-  }
-  
-  try {
-    await transporter.sendMail({
-      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
-      to,
-      subject,
-      html
-    })
-    return true
-  } catch (error) {
-    console.error('Email send error:', error)
-    return false
-  }
+  return sendMailWithRetry({
+    password: SMTP_PASSWORD,
+    from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+    to,
+    subject,
+    html,
+  })
 }
 
 function formatCurrency(amount: number): string {

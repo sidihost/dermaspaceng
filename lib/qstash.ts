@@ -39,6 +39,7 @@
 // ---------------------------------------------------------------------------
 
 import { Client, Receiver } from "@upstash/qstash"
+import { getCanonicalAppOrigin } from "./push-origin"
 
 let _client: Client | null = null
 let _receiver: Receiver | null = null
@@ -76,10 +77,7 @@ function getReceiver(): Receiver {
 // staging URL) and fall back to the Vercel-provided VERCEL_URL.
 
 function publicBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL
-  if (explicit) return explicit.replace(/\/+$/, "")
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-  return "https://www.dermaspaceng.com"
+  return getCanonicalAppOrigin()
 }
 
 /**

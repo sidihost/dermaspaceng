@@ -21,6 +21,7 @@ import {
   sendPushToUsers,
   type PushPayload,
 } from './push'
+import { getCanonicalAppOrigin } from './push-origin'
 
 export type BroadcastRow = {
   id: string
@@ -119,11 +120,7 @@ export async function dispatchBroadcast(broadcastId: string): Promise<DispatchRe
     let pushSent = 0
     let pushRemoved = 0
     if (b.push_enabled) {
-      const baseUrl = (
-        process.env.NEXT_PUBLIC_APP_URL ||
-        process.env.APP_URL ||
-        'https://dermaspaceng.com'
-      ).replace(/\/$/, '')
+      const baseUrl = getCanonicalAppOrigin()
       const payload: PushPayload = {
         title: b.title,
         body: b.message,

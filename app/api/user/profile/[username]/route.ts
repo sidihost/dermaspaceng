@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { getCurrentUser } from '@/lib/auth'
-
-const sql = neon(process.env.DATABASE_URL!)
+import { classifyProfileSegment } from '@/lib/profile-route-guard'
 
 export async function GET(
   _request: Request,
@@ -15,6 +14,22 @@ export async function GET(
       return NextResponse.json({ error: 'Username required' }, { status: 400 })
     }
 
+    const decision = classifyProfileSegment(username)
+    if (decision.kind !== 'lookup') {
+      return NextResponse.json(
+        { error: 'User not found', suggestions: [] },
+        { status: 404 },
+      )
+    }
+
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: 'User not found', suggestions: [] },
+        { status: 404 },
+      )
+    }
+
+    const sql = neon(process.env.DATABASE_URL)
     const cleanUsername = username.trim().toLowerCase()
 
     // Columns we read on both lookup paths. Extracted into a constant so

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { notFound, useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   Calendar,
@@ -36,16 +36,7 @@ import { ShareSheet } from '@/components/profile/share-sheet'
 import { FollowListSheet } from '@/components/profile/follow-list-sheet'
 import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
-import { aliasFor, isReservedUsername } from '@/lib/reserved-usernames'
-
-// The same regex used everywhere else in the app to validate a real
-// username (`/api/user/username`, `/api/auth/set-username`,
-// `/api/auth/complete-profile`). If the URL segment doesn't match
-// this shape it can't possibly be a Dermaspace handle, so we should
-// render a real "page not found" instead of the misleading
-// "Profile Not Found" the catch-all used to surface for any garbage
-// path that happened to fall through.
-const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/
+import { classifyProfileSegment } from '@/lib/profile-route-guard'
 
 interface UserProfile {
   id: string
@@ -141,31 +132,14 @@ export default function PublicProfilePage() {
   const router = useRouter()
   const username = params.username as string
 
+  const segmentDecision = classifyProfileSegment(username)
+
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(segmentDecision.kind === 'lookup')
   const [notFoundError, setNotFoundError] = useState(false)
-  // "Did you mean..." suggestions returned by the profile API when no
-  // exact match was found. Powers the helpful list of nearby public
-  // profiles on the not-found state — turns a dead-end "Profile Not
-  // Found" into something useful when the visitor mistyped a handle.
-  const [suggestions, setSuggestions] = useState<
-    Array<{
-      username: string
-      firstName: string | null
-      lastName: string | null
-      avatarUrl: string | null
-    }>
-  >([])
   // Separate "server error" state so a 500 on the API doesn't get
-  // silently rendered as a misleading "Profile Not Found".
+  // silently rendered as a misleading 404.
   const [serverError, setServerError] = useState(false)
-  // True when the URL segment doesn't even look like a username
-  // (e.g. `/some.weird-path`, `/ab` (too short), `/this/has/slashes`,
-  // any path with characters outside the username alphabet). For
-  // these we render a generic "Page Not Found" — implying the path
-  // is a real user handle would be misleading and was the original
-  // bug the user complained about.
-  const [genericNotFound, setGenericNotFound] = useState(false)
 
   // Who's looking? We need this to decide whether to show the follow
   // button (never on your own profile) and to unlock the avatar picker
@@ -204,54 +178,25 @@ export default function PublicProfilePage() {
   const follow = useFollow(username)
   const notify = useNotify()
 
-  // Guard the catch-all from leaking reserved words into the profile
-  // fetch. If a marketing link sends someone to `/register` or
-  // `/login`, the middleware should already have redirected them —
-  // this is a defense-in-depth fallback. Aliases (`/register`,
-  // `/login`, …) we know about get a client-side replace to the
-  // canonical page; everything else reserved (`/api`, `/admin`, …
-  // any new route added later) falls through to the "not found" UI
-  // so we never imply the path is a real user handle.
   useEffect(() => {
     if (!username) return
-    const target = aliasFor(username)
-    if (target) {
-      router.replace(target)
+    if (segmentDecision.kind === 'redirect') {
+      router.replace(segmentDecision.to)
       return
     }
-    if (isReservedUsername(username)) {
+    if (segmentDecision.kind === 'not_found') {
       setNotFoundError(true)
       setLoading(false)
-      return
     }
-    // Defense-in-depth — the catch-all only ever matches a single
-    // path segment, but defensive engineering is cheap. If the
-    // segment can't possibly be a username (wrong length, wrong
-    // alphabet) bail out immediately with a real 404 page instead
-    // of pretending the URL was supposed to be a profile.
-    if (!USERNAME_PATTERN.test(username)) {
-      setGenericNotFound(true)
-      setLoading(false)
-    }
-  }, [username, router])
+  }, [username, segmentDecision.kind, segmentDecision.kind === 'redirect' ? segmentDecision.to : '', router])
 
   useEffect(() => {
+    if (!username || segmentDecision.kind !== 'lookup') return
+
     async function fetchProfile() {
       try {
-        const res = await fetch(`/api/user/profile/${username}`)
+        const res = await fetch(`/api/user/profile/${encodeURIComponent(username)}`)
         if (res.status === 404) {
-          // Capture any "did you mean" suggestions returned by the API
-          // so the not-found state can render a helpful list instead
-          // of a dead-end. Failing to parse the JSON is non-fatal — we
-          // still show the not-found state, just without suggestions.
-          try {
-            const data = await res.json()
-            if (Array.isArray(data?.suggestions)) {
-              setSuggestions(data.suggestions)
-            }
-          } catch {
-            /* ignore */
-          }
           setNotFoundError(true)
           return
         }
@@ -294,20 +239,9 @@ export default function PublicProfilePage() {
       }
     }
 
-    // Reserved/aliased segments are handled by the guard effect above
-    // — don't waste a round-trip looking up "/register" or "/admin"
-    // as if they were real handles. Same goes for anything that
-    // doesn't even match the username alphabet — we can prove from
-    // the URL alone that it isn't a profile.
-    if (
-      username &&
-      !isReservedUsername(username) &&
-      USERNAME_PATTERN.test(username)
-    ) {
-      fetchProfile()
-      fetchViewer()
-    }
-  }, [username])
+    fetchProfile()
+    fetchViewer()
+  }, [username, segmentDecision.kind])
 
   const handleFollow = async () => {
     if (!viewer.loaded) return
@@ -490,145 +424,8 @@ export default function PublicProfilePage() {
     )
   }
 
-  // Not a username at all (didn't match our alphabet) — render a
-  // generic "Page not found" so we don't imply the URL was supposed
-  // to be a profile. This is the case when someone types
-  // dermaspaceng.com/desktop or any other arbitrary path that the
-  // app doesn't have a real route for.
-  if (genericNotFound) {
-    return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-white">
-          <div className="py-6 md:py-8 px-4">
-            <div className="max-w-6xl mx-auto">
-              <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center">
-                <div className="w-16 h-16 mx-auto bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mb-5">
-                  <span className="text-2xl font-bold text-[#7B2D8E]">404</span>
-                </div>
-                <h1 className="text-xl font-semibold text-gray-900 mb-2">
-                  Page not found
-                </h1>
-                <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-                  We couldn&apos;t find the page you&apos;re looking for at{' '}
-                  <span className="font-medium text-gray-700 break-all">
-                    /{username}
-                  </span>
-                  . The link might be broken, or the page may have moved.
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
-                  >
-                    Go to Homepage
-                  </Link>
-                  <Link
-                    href="/contact"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
-                  >
-                    Contact us
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    )
-  }
-
-  if (notFoundError || !profile) {
-    return (
-      <>
-        <Header />
-        <main className="min-h-screen bg-white">
-          <div className="py-6 md:py-8 px-4">
-            <div className="max-w-xl mx-auto">
-              <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-10 text-center">
-                <div className="w-16 h-16 mx-auto bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mb-5">
-                  <span className="text-2xl font-bold text-[#7B2D8E]">?</span>
-                </div>
-                <h1 className="text-xl font-semibold text-gray-900 mb-2">
-                  Profile Not Found
-                </h1>
-                <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
-                  The user{' '}
-                  <span className="font-medium text-gray-700">@{username}</span>{' '}
-                  doesn&apos;t exist or hasn&apos;t set up their profile yet.
-                </p>
-
-                {suggestions.length > 0 && (
-                  <div className="mb-6 text-left">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E] mb-2.5 text-center">
-                      Did you mean
-                    </p>
-                    <ul className="space-y-1.5">
-                      {suggestions.map((s) => {
-                        const display = `${s.firstName || ''} ${s.lastName || ''}`.trim()
-                        const initials = `${s.firstName?.[0] || s.username[0] || ''}${
-                          s.lastName?.[0] || ''
-                        }`.toUpperCase()
-                        return (
-                          <li key={s.username}>
-                            <Link
-                              href={`/${s.username}`}
-                              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors"
-                            >
-                              <div className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center text-xs font-semibold overflow-hidden flex-shrink-0">
-                                {s.avatarUrl ? (
-                                  /* eslint-disable-next-line @next/next/no-img-element */
-                                  <img
-                                    src={s.avatarUrl}
-                                    alt=""
-                                    aria-hidden="true"
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  initials || '?'
-                                )}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                {display ? (
-                                  <p className="text-sm font-medium text-gray-900 truncate">
-                                    {display}
-                                  </p>
-                                ) : null}
-                                <p className="text-xs text-gray-500 truncate">
-                                  @{s.username}
-                                </p>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                            </Link>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                )}
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
-                  >
-                    Go to Homepage
-                  </Link>
-                  <Link
-                    href="/dashboard/settings"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
-                  >
-                    Claim your username
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    )
+  if (segmentDecision.kind === 'not_found' || notFoundError || !profile) {
+    notFound()
   }
 
   const initials = `${profile.firstName?.charAt(0) || ''}${

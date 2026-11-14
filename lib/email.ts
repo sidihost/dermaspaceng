@@ -1,20 +1,8 @@
-import nodemailer from 'nodemailer'
+import { sendMailWithRetry } from './smtp-transport'
 
 const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
 const FROM_EMAIL = 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
-
-// Create SMTP transporter for Zepto Mail
-// Username for Zepto Mail SMTP is "emailapikey", password is your SendMail token
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zeptomail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: 'emailapikey',
-    pass: SMTP_PASSWORD
-  }
-})
 
 interface EmailOptions {
   to: string
@@ -445,26 +433,15 @@ export async function sendNewsletterCampaign(input: {
   })
 }
 
-// Send email via Zepto Mail SMTP
+// Send email via Zepto Mail SMTP with bounded timeouts and transient retry
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
-  if (!SMTP_PASSWORD) {
-    console.error('ZEPTO_MAIL_PASSWORD not configured')
-    return false
-  }
-  
-  try {
-    await transporter.sendMail({
-      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
-      to,
-      subject,
-      html
-    })
-    
-    return true
-  } catch (error) {
-    console.error('Email send error:', error)
-    return false
-  }
+  return sendMailWithRetry({
+    password: SMTP_PASSWORD,
+    from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+    to,
+    subject,
+    html,
+  })
 }
 
 // Email verification - Clean design like Facebook

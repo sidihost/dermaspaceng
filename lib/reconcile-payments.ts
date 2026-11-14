@@ -1,34 +1,8 @@
 /**
  * lib/reconcile-payments.ts
  *
- * Active reconciliation for pending Paystack wallet fundings.
- *
- * Webhooks are the primary signal that a payment succeeded, but they
- * are not guaranteed: the webhook URL can be misconfigured in the
- * Paystack dashboard, a delivery can be dropped, or the customer can
- * close the tab before the browser redirect fires. When that happens
- * the transaction sits at `pending` forever and the customer's money
- * never reaches their wallet — exactly the "stuck pending" symptom.
- *
- * This module asks Paystack the source-of-truth question — "what is
- * the real status of this charge?" — for every stale pending funding
- * and reconciles our row to match:
- *
- *   success   → credit the wallet via finalizeWalletFunding (idempotent)
- *   failed    → mark the transaction failed
- *   abandoned → mark cancelled (customer never paid)
- *   pending   → leave it; we'll re-check on the next sweep
- *
- * It is safe to run from anywhere and as often as we like:
- *   - finalizeWalletFunding claims the pending row atomically, so even
- *     if the webhook lands at the same instant only one path credits.
- *   - We never downgrade a row that some other path already completed.
- *
- * Callers:
- *   - GET /api/wallet/reconcile  (the user's own pending fundings, hit
- *     when the wallet page loads)
- *   - POST/GET /api/cron/reconcile-payments  (QStash sweep across all
- *     users every few minutes)
+ * Active reconciliation for pending Paystack wallet fundings, gift cards, and
+ * membership subscriptions.
  */
 
 import {
@@ -40,7 +14,12 @@ import {
 import { finalizeWalletFunding } from './wallet-funding'
 import { finalizeGiftCardPaystackPayment } from './gift-cards'
 import { finalizeMembershipPaystackPayment } from './membership-activation'
-import { finalizePendingTransactionFailureOrCancel } from './transaction-failure-notice'
+import {
+  finalizePendingTransactionFailureOrCancel,
+  getPendingFailureNoticeTransactions,
+  retryPendingFailureNotice,
+} from './transaction-failure-notice'
+import { classifyPaystackStatusForReconcile } from './payment-reconcile-policy'
 import { verifyPayment, fromKobo } from './paystack'
 
 export interface ReconcileResult {
@@ -51,13 +30,21 @@ export interface ReconcileResult {
   stillPending: number
   errors: number
   expired?: number
+  noticesRecovered?: number
+}
+
+function channelFor(tx: Transaction): string | undefined {
+  return (tx.metadata as { channel?: string } | null)?.channel
 }
 
 function channelLabelFor(tx: Transaction): string {
-  return (tx.metadata as { channel?: string } | null)?.channel ===
-    'bank_transfer'
-    ? 'Bank Transfer'
-    : 'Paystack'
+  return channelFor(tx) === 'bank_transfer' ? 'Bank Transfer' : 'Paystack'
+}
+
+function transactionAgeSeconds(tx: Transaction): number {
+  const created = new Date(tx.created_at).getTime()
+  if (!Number.isFinite(created)) return 0
+  return Math.max(0, Math.floor((Date.now() - created) / 1000))
 }
 
 /**
@@ -66,12 +53,10 @@ function channelLabelFor(tx: Transaction): string {
  */
 export async function reconcileOnePending(
   tx: Transaction,
+  opts?: { isDirectCallback?: boolean },
 ): Promise<'credited' | 'failed' | 'cancelled' | 'pending' | 'error'> {
   const txType = (tx.metadata as { type?: string } | null)?.type
 
-  // Prefer Paystack's own reference when we have it, otherwise our
-  // reference (Paystack accepts either on the verify endpoint when the
-  // transaction was initialized with our reference).
   const ref =
     tx.paystack_reference ||
     tx.payment_reference ||
@@ -83,7 +68,15 @@ export async function reconcileOnePending(
     const data = verification?.data
     if (!data) return 'pending'
 
-    if (data.status === 'success') {
+    const decision = classifyPaystackStatusForReconcile({
+      paystackStatus: data.status,
+      gatewayResponse: data.gateway_response,
+      channel: channelFor(tx),
+      ageSeconds: transactionAgeSeconds(tx),
+      isDirectCallback: opts?.isDirectCallback,
+    })
+
+    if (decision.action === 'credit') {
       const amount = fromKobo(data.amount)
       if (txType === 'membership_subscription') {
         const msResult = await finalizeMembershipPaystackPayment({
@@ -92,7 +85,9 @@ export async function reconcileOnePending(
           amountPaid: amount,
           customerEmail: data.customer?.email,
         })
-        return msResult.activated || msResult.alreadyProcessed ? 'credited' : 'error'
+        return msResult.activated || msResult.alreadyProcessed
+          ? 'credited'
+          : 'error'
       }
 
       if (txType === 'gift_card') {
@@ -103,7 +98,9 @@ export async function reconcileOnePending(
           customerEmail: data.customer?.email,
           channelLabel: channelLabelFor(tx),
         })
-        return gcResult.finalized || gcResult.alreadyProcessed ? 'credited' : 'error'
+        return gcResult.finalized || gcResult.alreadyProcessed
+          ? 'credited'
+          : 'error'
       }
 
       const result = await finalizeWalletFunding({
@@ -120,31 +117,51 @@ export async function reconcileOnePending(
       return result.credited || result.alreadyProcessed ? 'credited' : 'error'
     }
 
-    if (data.status === 'failed') {
+    if (decision.action === 'fail') {
       await finalizePendingTransactionFailureOrCancel({
         transaction: tx,
         nextStatus: 'failed',
-        reason: data.gateway_response || 'Payment failed',
+        reason: decision.reason,
         customerEmail: data.customer?.email,
       })
       return 'failed'
     }
 
-    if (data.status === 'abandoned') {
+    if (decision.action === 'cancel') {
       await finalizePendingTransactionFailureOrCancel({
         transaction: tx,
         nextStatus: 'cancelled',
-        reason: 'Payment abandoned by user',
+        reason: decision.reason,
         customerEmail: data.customer?.email,
       })
       return 'cancelled'
     }
 
-    // Still pending on Paystack's side too — leave it for next sweep.
     return 'pending'
   } catch (error) {
     console.error('[reconcile-payments] verify failed for', ref, error)
     return 'error'
+  }
+}
+
+/**
+ * Recover any failed/cancelled transactions whose initial SMTP notification
+ * did not deliver so no first cancellation email stays lost.
+ */
+async function recoverUnsentFailureNotices(
+  userId?: string | number,
+): Promise<number> {
+  try {
+    const unsent = await getPendingFailureNoticeTransactions({ userId, limit: 50 })
+    let recovered = 0
+    for (const tx of unsent) {
+      const sent = await retryPendingFailureNotice(tx)
+      if (sent) recovered++
+    }
+    return recovered
+  } catch (err) {
+    console.error('[reconcile-payments] recoverUnsentFailureNotices error:', err)
+    return 0
   }
 }
 
@@ -172,6 +189,7 @@ export async function reconcilePendingFundings(opts?: {
     stillPending: 0,
     errors: 0,
     expired: 0,
+    noticesRecovered: 0,
   }
 
   for (const tx of pending) {
@@ -183,26 +201,20 @@ export async function reconcilePendingFundings(opts?: {
     else result.errors++
   }
 
-  // After asking Paystack about every row, retire anything that is
-  // still pending and too old to ever complete. Verification ran first,
-  // so a genuinely successful charge is already credited and can never
-  // be expired here.
   result.expired = await expireStalePendingFundings(
     opts?.expireOlderThanHours ?? 24,
   )
+  result.noticesRecovered = await recoverUnsentFailureNotices()
 
   return result
 }
 
 /**
- * Reconcile only the pending fundings belonging to a single user.
- * Used by the on-demand endpoint the wallet page calls, so a customer
- * who just paid sees their balance update without waiting for the
- * next cron sweep. We look the rows up by reference to reuse the same
- * single-transaction path.
+ * Reconcile pending fundings belonging to a single user.
  */
 export async function reconcileUserPendingFundings(
   references: string[],
+  userId?: string | number,
 ): Promise<ReconcileResult> {
   const result: ReconcileResult = {
     checked: 0,
@@ -211,11 +223,18 @@ export async function reconcileUserPendingFundings(
     cancelled: 0,
     stillPending: 0,
     errors: 0,
+    noticesRecovered: 0,
   }
 
   for (const ref of references) {
     const tx = await getTransactionByReference(ref)
-    if (!tx || tx.status !== 'pending') continue
+    if (!tx) continue
+    if (tx.status === 'cancelled' || tx.status === 'failed') {
+      const recovered = await retryPendingFailureNotice(tx)
+      if (recovered) result.noticesRecovered = (result.noticesRecovered ?? 0) + 1
+      continue
+    }
+    if (tx.status !== 'pending') continue
     result.checked++
     const outcome = await reconcileOnePending(tx)
     if (outcome === 'credited') result.credited++
@@ -224,6 +243,56 @@ export async function reconcileUserPendingFundings(
     else if (outcome === 'pending') result.stillPending++
     else result.errors++
   }
+
+  if (userId !== undefined && userId !== null) {
+    result.noticesRecovered =
+      (result.noticesRecovered ?? 0) +
+      (await recoverUnsentFailureNotices(userId))
+  }
+
+  return result
+}
+
+/**
+ * Immediately reconcile a single reference owned by `userId` (no age delay),
+ * used when returning to or polling `/dashboard/wallet/payment-status`.
+ */
+export async function reconcileUserReference(
+  userId: string | number,
+  reference: string,
+): Promise<ReconcileResult> {
+  const result: ReconcileResult = {
+    checked: 0,
+    credited: 0,
+    failed: 0,
+    cancelled: 0,
+    stillPending: 0,
+    errors: 0,
+    noticesRecovered: 0,
+  }
+
+  const tx = await getTransactionByReference(reference)
+  if (!tx || String(tx.user_id) !== String(userId)) {
+    return result
+  }
+
+  if (tx.status === 'cancelled' || tx.status === 'failed') {
+    const recovered = await retryPendingFailureNotice(tx)
+    if (recovered) result.noticesRecovered = 1
+    return result
+  }
+
+  if (tx.status !== 'pending') {
+    return result
+  }
+
+  result.checked = 1
+  const outcome = await reconcileOnePending(tx, { isDirectCallback: true })
+  if (outcome === 'credited') result.credited++
+  else if (outcome === 'failed') result.failed++
+  else if (outcome === 'cancelled') result.cancelled++
+  else if (outcome === 'pending') result.stillPending++
+  else result.errors++
 
   return result
 }

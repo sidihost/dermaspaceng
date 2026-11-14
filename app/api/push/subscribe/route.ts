@@ -1,42 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import {
+  isCanonicalPushOrigin,
+  isPreviewDeploymentEnv,
+  isPreviewRequestHost,
+} from '@/lib/push-origin'
 
 /**
  * Canonical origins we accept push subscriptions from.
  *
  * Browser notifications carry the SW's origin in the OS notification
- * UI ("from dermaspaceng.com"). If we let users subscribe on a Vercel
- * preview URL, the OS shows "from dermaspace-xyz.vercel.app" forever
- * — which was happening on the brand's phones. Subscriptions are now
- * rejected unless they come from the canonical apex domain or localhost.
+ * UI ("from dermaspaceng.com"). Reject preview / `.vercel.app` origins
+ * and preview deployment environments unconditionally.
  */
-function isAllowedOrigin(origin: string | null): boolean {
-  if (!origin) return false
-  try {
-    const host = new URL(origin).hostname.toLowerCase()
-    if (host === 'localhost' || host.endsWith('.local')) return true
-    const allowed = new Set<string>([
-      'dermaspaceng.com',
-      'www.dermaspaceng.com',
-    ])
-    const configured = process.env.NEXT_PUBLIC_APP_URL
-    if (configured) {
-      try { allowed.add(new URL(configured).hostname.toLowerCase()) } catch {}
-    }
-    return allowed.has(host)
-  } catch {
-    return false
-  }
-}
-
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const origin = request.headers.get('origin')
-  if (!isAllowedOrigin(origin)) {
-    console.warn('[push/subscribe] rejecting non-canonical origin', origin)
+  const referer = request.headers.get('referer')
+  const host = request.headers.get('host')
+  const forwardedHost = request.headers.get('x-forwarded-host')
+  const effectiveHost = forwardedHost?.split(',')[0]?.trim() || host
+
+  const canonicalOptions = {
+    configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
+    allowLocalhost: process.env.NODE_ENV !== 'production',
+  }
+
+  const isPreview =
+    isPreviewDeploymentEnv() ||
+    isPreviewRequestHost({ origin, referer, host, forwardedHost })
+  const originValid = isCanonicalPushOrigin(origin, canonicalOptions)
+  const hostValid =
+    !effectiveHost || isCanonicalPushOrigin(effectiveHost, canonicalOptions)
+
+  if (isPreview || !originValid || !hostValid) {
+    console.warn('[push/subscribe] rejecting non-canonical origin/host', {
+      origin,
+      effectiveHost,
+      isPreview,
+    })
     return NextResponse.json(
       { error: 'Push notifications are only available on dermaspaceng.com' },
       { status: 403 },

@@ -1,22 +1,24 @@
 /**
  * Server-side layout for public profile routes.
  *
- * The profile page itself is a client component (interactive follow
- * button, picker modals, etc.), so we cannot put `generateMetadata`
- * on it directly. Layouts are always server components in Next.js,
- * which makes this file the right home for the Open Graph + Twitter
- * card tags that chat apps (WhatsApp, iMessage, Telegram, Slack)
- * and social platforms (X, Facebook, LinkedIn) read when a link is
- * pasted into a conversation.
- *
- * Without these tags WhatsApp falls back to a generic link preview
- * with no image — which is exactly what the user wanted to fix.
+ * Also acts as the canonical server gate for unknown top-level paths that
+ * Next.js falls through to `app/[username]`:
+ *   - Known aliases redirect cleanly to their canonical destination.
+ *   - Reserved slugs, invalid handle shapes, nonexistent users, and private
+ *     profiles viewed by non-owners trigger Next.js `notFound()`, returning a
+ *     real HTTP 404 and rendering `app/not-found.tsx` instead of a misleading
+ *     "Profile Not Found" card.
  */
 
 import type { Metadata } from 'next'
+import { notFound, redirect } from 'next/navigation'
 import { neon } from '@neondatabase/serverless'
+import { getCurrentUser } from '@/lib/auth'
+import { classifyProfileSegment } from '@/lib/profile-route-guard'
+import { getCanonicalAppOrigin } from '@/lib/push-origin'
 
 type ProfileRow = {
+  id: string
   first_name: string
   last_name: string
   username: string | null
@@ -25,51 +27,47 @@ type ProfileRow = {
   is_public: boolean | null
 }
 
-async function loadProfile(username: string): Promise<ProfileRow | null> {
-  const clean = username.trim().toLowerCase()
-  if (!clean) return null
-  // Lazy-init the SQL client INSIDE the loader so the module itself
-  // never throws at import time when DATABASE_URL is missing. This
-  // matters because Next.js resolves dynamic segments like
-  // `[username]` for paths like `/favicon.ico` — if the module
-  // throws there, the whole app can 500 instead of cleanly returning
-  // fallback metadata.
-  if (!process.env.DATABASE_URL) return null
+type ProfileLoadResult =
+  | { status: 'found'; profile: ProfileRow }
+  | { status: 'not_found' }
+  | { status: 'unavailable' }
+
+async function loadProfile(username: string): Promise<ProfileLoadResult> {
+  const decision = classifyProfileSegment(username)
+  if (decision.kind !== 'lookup') {
+    return { status: 'not_found' }
+  }
+
+  if (!process.env.DATABASE_URL) {
+    return { status: 'unavailable' }
+  }
+
   const sql = neon(process.env.DATABASE_URL)
   try {
-    let rows = (await sql`
-      SELECT first_name, last_name, username, avatar_url, bio, is_public
-      FROM users
-      WHERE LOWER(username) = ${clean}
-      LIMIT 1
-    `) as ProfileRow[]
-
-    // Support /{uuid} link sharing for users without a handle yet.
-    if (rows.length === 0) {
+    let rows: ProfileRow[] = []
+    if (!decision.isUuid) {
       rows = (await sql`
-        SELECT first_name, last_name, username, avatar_url, bio, is_public
+        SELECT id, first_name, last_name, username, avatar_url, bio, is_public
         FROM users
-        WHERE id::text = ${username}
+        WHERE LOWER(username) = ${decision.cleanHandle}
+        LIMIT 1
+      `) as ProfileRow[]
+    } else {
+      rows = (await sql`
+        SELECT id, first_name, last_name, username, avatar_url, bio, is_public
+        FROM users
+        WHERE id::text = ${decision.cleanHandle}
         LIMIT 1
       `) as ProfileRow[]
     }
-    return rows[0] ?? null
-  } catch {
-    return null
-  }
-}
 
-// Resolve an absolute URL we can feed to OG tags. Vercel sets
-// VERCEL_URL, local dev falls back to the request origin via the
-// browser — for server-rendered metadata we only have env vars,
-// so we prefer an explicit NEXT_PUBLIC_SITE_URL when the team sets
-// one (for production domains), then VERCEL_URL, then a dev default.
-function resolveBaseUrl(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL
-  if (explicit) return explicit.replace(/\/$/, '')
-  const vercel = process.env.VERCEL_URL
-  if (vercel) return `https://${vercel}`
-  return 'http://localhost:3000'
+    if (rows.length === 0) {
+      return { status: 'not_found' }
+    }
+    return { status: 'found', profile: rows[0] }
+  } catch {
+    return { status: 'unavailable' }
+  }
 }
 
 export async function generateMetadata({
@@ -78,18 +76,19 @@ export async function generateMetadata({
   params: Promise<{ username: string }>
 }): Promise<Metadata> {
   const { username } = await params
-  const profile = await loadProfile(username)
-  const base = resolveBaseUrl()
+  const decision = classifyProfileSegment(username)
+  if (decision.kind !== 'lookup') {
+    return {
+      title: 'Page Not Found | Dermaspace',
+      robots: { index: false, follow: false },
+    }
+  }
+
+  const result = await loadProfile(username)
+  const profile = result.status === 'found' ? result.profile : null
+  const base = getCanonicalAppOrigin()
   const url = `${base}/${encodeURIComponent(username)}`
 
-  // Profile not found OR marked private → return a generic metadata
-  // block so the link still renders *something* sensible in chats,
-  // without leaking private user details.
-  //
-  // We also `noindex` this case explicitly: Google had been crawling
-  // unknown handles, hitting the client-side error fallback ("Something
-  // went wrong") and surfacing it as a sitelink on the brand SERP. With
-  // robots.noindex, those URLs drop out of the index entirely.
   if (!profile || profile.is_public === false) {
     return {
       title: 'Dermaspace',
@@ -121,9 +120,6 @@ export async function generateMetadata({
     (profile.bio && profile.bio.trim()) ||
     `Follow ${displayName} on Dermaspace — skincare, wellness, and bookings.`
 
-  // Absolute avatar URL for OG. Our curated avatars live on blob
-  // storage and are already absolute; we just guard against relative
-  // paths sneaking in from older records.
   const avatarUrl = profile.avatar_url
     ? profile.avatar_url.startsWith('http')
       ? profile.avatar_url
@@ -134,10 +130,6 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: url },
-    // Member profiles are personal pages, not pages we want competing
-    // with the brand domain in search results. Keep them out of the
-    // index but still let crawlers follow outbound links so social
-    // graph signals aren't lost.
     robots: { index: false, follow: true },
     openGraph: {
       title,
@@ -153,9 +145,6 @@ export async function generateMetadata({
           alt: `${displayName}'s avatar`,
         },
       ],
-      // Hint social networks that this is a person, not an article.
-      // `firstName` / `lastName` aren't standard OG but FB/LinkedIn
-      // are known to surface them.
       ...(profile.username ? { username: profile.username } : {}),
     },
     twitter: {
@@ -167,10 +156,34 @@ export async function generateMetadata({
   }
 }
 
-export default function UsernameLayout({
+export default async function UsernameLayout({
   children,
+  params,
 }: {
   children: React.ReactNode
+  params: Promise<{ username: string }>
 }) {
+  const { username } = await params
+  const decision = classifyProfileSegment(username)
+
+  if (decision.kind === 'redirect') {
+    redirect(decision.to)
+  }
+  if (decision.kind === 'not_found') {
+    notFound()
+  }
+
+  const result = await loadProfile(username)
+  if (result.status === 'not_found') {
+    notFound()
+  }
+
+  if (result.status === 'found' && result.profile.is_public === false) {
+    const viewer = await getCurrentUser().catch(() => null)
+    if (!viewer || String(viewer.id) !== String(result.profile.id)) {
+      notFound()
+    }
+  }
+
   return <>{children}</>
 }

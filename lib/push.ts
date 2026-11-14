@@ -2,19 +2,26 @@
  * Web Push notifications
  *
  * Wraps the `web-push` library with a thin, fail-soft API. If VAPID
- * keys aren't configured in the environment, every send becomes a
- * no-op (logged once) so the rest of the app keeps working — pushes
- * are always best-effort.
+ * keys aren't configured in the environment, or if we are executing inside
+ * a Vercel preview deployment, every send becomes a no-op so preview
+ * deployments never emit push notifications and never dispatch pushes to
+ * `*.vercel.app` / legacy non-canonical subscriptions.
  *
  * Env vars (set them on Vercel):
  *   VAPID_PUBLIC_KEY    — base64url public key
  *   VAPID_PRIVATE_KEY   — base64url private key
- *   VAPID_SUBJECT       — "mailto:you@example.com" or your site URL
+ *   VAPID_SUBJECT       — "mailto:you@example.com" or your canonical site URL
  *
  * Run `node scripts/generate-vapid.mjs` to mint a fresh pair.
  */
 
 import { sql } from './db'
+import {
+  filterCanonicalPushSubscriptions,
+  isPreviewDeploymentEnv,
+  sanitizePushActionUrl,
+  sanitizeVapidSubject,
+} from './push-origin'
 
 export type PushPayload = {
   title: string
@@ -27,11 +34,32 @@ export type PushPayload = {
 }
 
 let warnedMissing = false
+let ensuredOriginColumn = false
+
+async function ensurePushOriginColumn() {
+  if (ensuredOriginColumn) return
+  try {
+    await sql`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS origin TEXT`
+    ensuredOriginColumn = true
+  } catch {
+    // Non-fatal: continue with best-effort query
+  }
+}
+
+function subscriptionFilterOptions() {
+  return {
+    configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
+    allowLocalhost: process.env.NODE_ENV !== 'production',
+  }
+}
 
 function getVapid() {
+  if (isPreviewDeploymentEnv()) {
+    return null
+  }
   const publicKey = process.env.VAPID_PUBLIC_KEY
   const privateKey = process.env.VAPID_PRIVATE_KEY
-  const subject = process.env.VAPID_SUBJECT || 'mailto:info@dermaspaceng.com'
+  const subject = sanitizeVapidSubject(process.env.VAPID_SUBJECT)
   if (!publicKey || !privateKey) {
     if (!warnedMissing) {
       console.warn('[push] VAPID keys not configured — push notifications disabled')
@@ -43,10 +71,12 @@ function getVapid() {
 }
 
 export function isPushConfigured() {
+  if (isPreviewDeploymentEnv()) return false
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY)
 }
 
 export function getPublicVapidKey(): string | null {
+  if (isPreviewDeploymentEnv()) return null
   return process.env.VAPID_PUBLIC_KEY || null
 }
 
@@ -56,6 +86,15 @@ type Subscription = {
   p256dh: string
   auth: string
   user_id: string | null
+  origin: string | null
+}
+
+async function deleteSubscriptionById(id: string) {
+  try {
+    await sql`DELETE FROM push_subscriptions WHERE id = ${id}`
+  } catch (err) {
+    console.warn('[push] failed to delete subscription', id, err)
+  }
 }
 
 async function sendToSubscription(
@@ -63,13 +102,17 @@ async function sendToSubscription(
   sub: Subscription,
   payload: PushPayload,
 ): Promise<{ ok: boolean; expired?: boolean }> {
+  const safePayload: PushPayload = {
+    ...payload,
+    url: sanitizePushActionUrl(payload.url),
+  }
   try {
     await webpush.sendNotification(
       {
         endpoint: sub.endpoint,
         keys: { p256dh: sub.p256dh, auth: sub.auth },
       },
-      JSON.stringify(payload),
+      JSON.stringify(safePayload),
       { TTL: 60 * 60 * 24 }, // 24h — old notifications aren't worth delivering
     )
     return { ok: true }
@@ -101,44 +144,87 @@ async function loadWebPush() {
   return webpush
 }
 
-/** Send a push to every subscription for a given user id. */
+/**
+ * Remove any stored push subscriptions whose origin is missing or belongs to
+ * a Vercel preview / non-canonical host so those devices stop receiving
+ * notifications showing a preview origin.
+ */
+export async function purgeNonCanonicalPushSubscriptions(): Promise<number> {
+  await ensurePushOriginColumn()
+  const subs = (await sql`
+    SELECT id, origin
+    FROM push_subscriptions
+  `) as unknown as Array<{ id: string; origin: string | null }>
+
+  const { stale } = filterCanonicalPushSubscriptions(subs, subscriptionFilterOptions())
+  for (const sub of stale) {
+    await deleteSubscriptionById(sub.id)
+  }
+  return stale.length
+}
+
+/** Send a push to every canonical subscription for a given user id. */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
+  if (isPreviewDeploymentEnv()) return { sent: 0, removed: 0 }
   const webpush = await loadWebPush()
   if (!webpush) return { sent: 0, removed: 0 }
 
+  await ensurePushOriginColumn()
   const subs = (await sql`
-    SELECT id, endpoint, p256dh, auth, user_id
+    SELECT id, endpoint, p256dh, auth, user_id, origin
     FROM push_subscriptions
     WHERE user_id = ${userId}
   `) as unknown as Subscription[]
 
+  const { valid, stale } = filterCanonicalPushSubscriptions(
+    subs,
+    subscriptionFilterOptions(),
+  )
+
   let sent = 0
   let removed = 0
-  for (const sub of subs) {
+  for (const staleSub of stale) {
+    await deleteSubscriptionById(staleSub.id)
+    removed++
+  }
+
+  for (const sub of valid) {
     const res = await sendToSubscription(webpush, sub, payload)
     if (res.ok) sent++
     if (res.expired) {
-      await sql`DELETE FROM push_subscriptions WHERE id = ${sub.id}`
+      await deleteSubscriptionById(sub.id)
       removed++
     }
   }
   return { sent, removed }
 }
 
-/** Send a push to *every* subscriber. Used by admin broadcasts. */
+/** Send a push to *every* canonical subscriber. Used by admin broadcasts. */
 export async function sendPushToAll(payload: PushPayload) {
+  if (isPreviewDeploymentEnv()) return { sent: 0, removed: 0, total: 0 }
   const webpush = await loadWebPush()
   if (!webpush) return { sent: 0, removed: 0, total: 0 }
 
+  await ensurePushOriginColumn()
   const subs = (await sql`
-    SELECT id, endpoint, p256dh, auth, user_id
+    SELECT id, endpoint, p256dh, auth, user_id, origin
     FROM push_subscriptions
   `) as unknown as Subscription[]
 
+  const { valid, stale } = filterCanonicalPushSubscriptions(
+    subs,
+    subscriptionFilterOptions(),
+  )
+
   let sent = 0
   let removed = 0
+  for (const staleSub of stale) {
+    await deleteSubscriptionById(staleSub.id)
+    removed++
+  }
+
   // Send concurrently, capped at 10 in flight to avoid hammering FCM.
-  const queue = subs.slice()
+  const queue = valid.slice()
   const workers = Array.from({ length: Math.min(10, queue.length) }, async () => {
     while (queue.length) {
       const sub = queue.shift()
@@ -146,13 +232,13 @@ export async function sendPushToAll(payload: PushPayload) {
       const res = await sendToSubscription(webpush, sub, payload)
       if (res.ok) sent++
       if (res.expired) {
-        await sql`DELETE FROM push_subscriptions WHERE id = ${sub.id}`
+        await deleteSubscriptionById(sub.id)
         removed++
       }
     }
   })
   await Promise.all(workers)
-  return { sent, removed, total: subs.length }
+  return { sent, removed, total: valid.length }
 }
 
 /** Send a push to a list of user ids. */

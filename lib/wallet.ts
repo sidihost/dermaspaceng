@@ -470,11 +470,9 @@ export async function expireStalePendingFundings(
       params.push(userId)
       userClause = ` AND user_id = $${params.length}`
     }
-    const result = await query<{ id: number }>(
-      `UPDATE transactions
-          SET status = 'cancelled',
-              error_message = 'Payment session expired before it was completed',
-              updated_at = NOW()
+    const staleResult = await query<Transaction>(
+      `SELECT *, reference AS payment_reference
+         FROM transactions
         WHERE status = 'pending'
           AND payment_method IN ('paystack', 'bank_transfer')
           AND (
@@ -483,10 +481,32 @@ export async function expireStalePendingFundings(
             (type = 'debit' AND metadata->>'type' = 'gift_card')
           )
           AND created_at <= NOW() - ($1 || ' hours')::interval${userClause}
-        RETURNING id`,
+        ORDER BY created_at ASC
+        LIMIT 50`,
       params,
     )
-    return result.rowCount ?? result.rows.length
+
+    if (staleResult.rows.length === 0) {
+      return 0
+    }
+
+    const { finalizePendingTransactionFailureOrCancel } = await import(
+      './transaction-failure-notice'
+    )
+
+    let expired = 0
+    for (const tx of staleResult.rows) {
+      const { transitioned } = await finalizePendingTransactionFailureOrCancel({
+        transaction: tx,
+        nextStatus: 'cancelled',
+        reason: 'Payment session expired before it was completed',
+      })
+      if (transitioned) {
+        expired++
+      }
+    }
+
+    return expired
   } catch (error) {
     console.error('Expire stale pending fundings error:', error)
     return 0

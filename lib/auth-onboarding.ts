@@ -1,6 +1,8 @@
 export interface OnboardingUserLike {
   email?: string | null
   emailIsPlaceholder?: boolean | null
+  emailVerified?: boolean | null
+  mustChangePassword?: boolean | null
   username?: string | null
   xUsername?: string | null
   role?: string | null
@@ -162,3 +164,23 @@ export function isOnboardingGatedPath(pathname: string): boolean {
     pathname.startsWith('/consultation/')
   )
 }
+
+/**
+ * True when an authenticated user has a real (non-placeholder) email address
+ * that has not been verified yet, and is not currently blocked on profile
+ * completion or a forced temporary-password change.
+ */
+export function shouldPromptEmailVerification(
+  user: OnboardingUserLike | null | undefined,
+): boolean {
+  if (!user) return false
+  if (user.emailVerified === true) return false
+  if (user.emailIsPlaceholder === true || isPlaceholderEmail(user.email)) {
+    return false
+  }
+  if (user.needsProfileCompletion === true || user.mustChangePassword === true) {
+    return false
+  }
+  return getVisibleEmail(user) !== ''
+}
+

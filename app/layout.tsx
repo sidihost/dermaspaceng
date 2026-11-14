@@ -16,6 +16,7 @@ import { NotifyProvider } from '@/components/shared/notify'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
 import { SiteBanner } from '@/components/shared/site-banner'
 import { IncompleteProfileBanner } from '@/components/auth/incomplete-profile-banner'
+import { UnverifiedEmailBanner } from '@/components/auth/unverified-email-banner'
 import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prompt-gate'
 import { PageViewTracker } from '@/components/shared/page-view-tracker'
 import { RoleBadge } from '@/components/shared/role-badge'
@@ -507,6 +508,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 don't nag on every reload. */}
             <RootErrorBoundary label="site-banner"><SiteBanner /></RootErrorBoundary>
             <RootErrorBoundary label="incomplete-profile-banner"><IncompleteProfileBanner /></RootErrorBoundary>
+            <RootErrorBoundary label="unverified-email-banner"><UnverifiedEmailBanner /></RootErrorBoundary>
             {/* One-time-per-user web push opt-in nudge. Self-gated:
                 only shows for signed-in users on supported browsers
                 that haven't already subscribed or dismissed it. Lives

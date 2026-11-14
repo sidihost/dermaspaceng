@@ -23,7 +23,12 @@ import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
 import { logoutAndRedirect } from '@/lib/logout'
-import { formatAccountSubtitle, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import {
+  formatAccountSubtitle,
+  getVisibleEmail,
+  shouldPromptEmailVerification,
+  shouldRequireProfileCompletion,
+} from '@/lib/auth-onboarding'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -71,6 +76,8 @@ export default function DashboardPage() {
     username?: string | null
     xUsername?: string | null
     emailIsPlaceholder?: boolean
+    emailVerified?: boolean
+    mustChangePassword?: boolean
     profileComplete?: boolean
     hasSocialAuth?: boolean
     needsProfileCompletion?: boolean
@@ -679,9 +686,19 @@ export default function DashboardPage() {
                   <h1 className="text-[15px] md:text-base lg:text-2xl lg:font-bold lg:tracking-tight font-semibold text-gray-900 truncate">
                     Welcome, {user?.firstName}!
                   </h1>
-                  <p className="text-[11.5px] md:text-[13px] lg:text-sm text-gray-500 truncate lg:mt-1">
-                    {formatAccountSubtitle(user)}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:mt-1">
+                    <p className="text-[11.5px] md:text-[13px] lg:text-sm text-gray-500 truncate">
+                      {formatAccountSubtitle(user)}
+                    </p>
+                    {shouldPromptEmailVerification(user) && (
+                      <Link
+                        href={`/verify-email?email=${encodeURIComponent(getVisibleEmail(user))}&send=1`}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-semibold hover:bg-[#7B2D8E]/15 transition-colors shrink-0"
+                      >
+                        Verify your email
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
               <Link

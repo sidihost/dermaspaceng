@@ -614,7 +614,18 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'Dermaspace', body: event.data.text() };
   }
-  const url = data.url || '/';
+  let url = data.url || '/';
+  try {
+    const parsed = new URL(url, self.location.origin);
+    if (
+      parsed.hostname.endsWith('.vercel.app') ||
+      parsed.hostname.endsWith('.vercel.dev')
+    ) {
+      url = `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
+    }
+  } catch {
+    url = '/';
+  }
   event.waitUntil(
     self.registration.showNotification(data.title || 'Dermaspace', {
       body: data.body || '',
