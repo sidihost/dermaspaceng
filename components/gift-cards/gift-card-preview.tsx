@@ -45,39 +45,24 @@ function EditorialFrame({ accentHex }: { accentHex: string }) {
         fill={accentHex}
         fillOpacity="0.38"
       />
-      {/* Subtle architectural champagne spine */}
+      {/* Subtle architectural brand lavender spine */}
       <path
-        d="M208 8 C192 56, 192 171, 208 219"
-        stroke="#E5C896"
-        strokeOpacity="0.28"
-        strokeWidth="0.75"
-      />
-      {/* Double metallic hairline frame */}
-      <rect
-        x="8"
-        y="8"
-        width="344"
-        height="211"
-        rx="11"
+        d="M208 6 C192 54, 192 173, 208 221"
         stroke="#E9D5FF"
-        strokeOpacity="0.28"
-        strokeWidth="1"
+        strokeOpacity="0.36"
+        strokeWidth="0.9"
       />
+      {/* Clean single architectural hairline frame clear of typography */}
       <rect
-        x="12"
-        y="12"
-        width="336"
-        height="203"
-        rx="8"
-        stroke="#E5C896"
-        strokeOpacity="0.34"
-        strokeWidth="0.8"
+        x="6.5"
+        y="6.5"
+        width="347"
+        height="212"
+        rx="12"
+        stroke="#E9D5FF"
+        strokeOpacity="0.3"
+        strokeWidth="0.9"
       />
-      {/* Corner foil registration ticks */}
-      <path d="M18 18 H26 M18 18 V26" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
-      <path d="M342 18 H334 M342 18 V26" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
-      <path d="M18 209 H26 M18 209 V201" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
-      <path d="M342 209 H334 M342 209 V201" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
     </>
   )
 }
@@ -114,7 +99,7 @@ function ChristmasCardArtwork({
           y1="9"
           x2="291"
           y2="216"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.38"
           strokeWidth="0.85"
         />
@@ -123,7 +108,7 @@ function ChristmasCardArtwork({
           y1="9"
           x2="301"
           y2="216"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.38"
           strokeWidth="0.85"
         />
@@ -169,19 +154,19 @@ function ChristmasCardArtwork({
             y1="42"
             x2="262"
             y2="68"
-            stroke="#E5C896"
+            stroke="#E9D5FF"
             strokeOpacity="0.85"
             strokeWidth="1.2"
           />
-          <rect x="256" y="67" width="12" height="5" rx="1.5" fill="#E5C896" />
-          <path d="M262 67 C254 60, 246 64, 255 69 Z" fill="#E5C896" />
-          <path d="M262 67 C270 60, 278 64, 269 69 Z" fill="#E5C896" />
+          <rect x="256" y="67" width="12" height="5" rx="1.5" fill="#E9D5FF" />
+          <path d="M262 67 C254 60, 246 64, 255 69 Z" fill="#E9D5FF" />
+          <path d="M262 67 C270 60, 278 64, 269 69 Z" fill="#E9D5FF" />
           <circle
             cx="262"
             cy="98"
             r="26"
             fill={medallionHex}
-            stroke="#E5C896"
+            stroke="#E9D5FF"
             strokeWidth="1.6"
           />
           <circle
@@ -203,7 +188,7 @@ function ChristmasCardArtwork({
             <polyline points="270.2,89.5 269.2,93.8 273.5,94.5" fill="none" />
             <polyline points="253.8,106.5 254.8,102.2 250.5,101.5" fill="none" />
           </g>
-          <circle cx="262" cy="98" r="3" fill="#E5C896" />
+          <circle cx="262" cy="98" r="3" fill="#E9D5FF" />
         </g>
         <g>
           <line
@@ -211,22 +196,22 @@ function ChristmasCardArtwork({
             y1="47"
             x2="319"
             y2="92"
-            stroke="#E5C896"
+            stroke="#E9D5FF"
             strokeOpacity="0.8"
             strokeWidth="1.15"
           />
-          <rect x="314" y="91" width="10" height="4.5" rx="1.5" fill="#E5C896" />
+          <rect x="314" y="91" width="10" height="4.5" rx="1.5" fill="#E9D5FF" />
           <circle
             cx="319"
             cy="115"
             r="19.5"
             fill="#B8333A"
-            stroke="#E5C896"
+            stroke="#E9D5FF"
             strokeWidth="1.5"
           />
           <path
             d="M300.5 111 H337.5 M300.5 119 H337.5"
-            stroke="#E5C896"
+            stroke="#E9D5FF"
             strokeWidth="1.2"
           />
           <path
@@ -242,7 +227,7 @@ function ChristmasCardArtwork({
             <line x1="0" y1="-7" x2="0" y2="7" />
             <line x1="-6.1" y1="-3.5" x2="6.1" y2="3.5" />
             <line x1="6.1" y1="-3.5" x2="-6.1" y2="3.5" />
-            <circle cx="0" cy="0" r="1.4" fill="#E5C896" stroke="none" />
+            <circle cx="0" cy="0" r="1.4" fill="#E9D5FF" stroke="none" />
           </g>
           <g transform="translate(242, 140)">
             <line x1="0" y1="-8.5" x2="0" y2="8.5" />
@@ -259,11 +244,11 @@ function ChristmasCardArtwork({
             <line x1="0" y1="-6" x2="0" y2="6" />
             <line x1="-5.2" y1="-3" x2="5.2" y2="3" />
             <line x1="5.2" y1="-3" x2="-5.2" y2="3" />
-            <circle cx="0" cy="0" r="1.3" fill="#E5C896" stroke="none" />
+            <circle cx="0" cy="0" r="1.3" fill="#E9D5FF" stroke="none" />
           </g>
         </g>
         <circle cx="215" cy="118" r="1.4" fill="#E9D5FF" fillOpacity="0.45" />
-        <circle cx="282" cy="144" r="1.6" fill="#E5C896" fillOpacity="0.65" />
+        <circle cx="282" cy="144" r="1.6" fill="#E9D5FF" fillOpacity="0.65" />
         <circle cx="342" cy="138" r="1.3" fill="#E9D5FF" fillOpacity="0.4" />
         <circle cx="268" cy="154" r="1.3" fill="#E9D5FF" fillOpacity="0.4" />
       </svg>
@@ -295,15 +280,15 @@ function BirthdayCardArtwork({
         <g transform="translate(0, 20)" opacity="0.88">
           <path
             d="M206 16 Q275 40 348 22"
-            stroke="#E5C896"
+            stroke="#E9D5FF"
             strokeOpacity="0.7"
             strokeWidth="1.2"
           />
           <polygon points="222,21 232,24 224,33" fill="#F9D5E5" />
-          <polygon points="244,26 255,28 248,38" fill="#E5C896" />
+          <polygon points="244,26 255,28 248,38" fill="#E9D5FF" />
           <polygon points="268,29 279,30 273,40" fill="#F8F0FC" />
           <polygon points="292,29 303,29 298,39" fill="#F4A6B8" />
-          <polygon points="316,27 327,25 323,36" fill="#E5C896" />
+          <polygon points="316,27 327,25 323,36" fill="#E9D5FF" />
         </g>
 
         {/* Circular medallion backing behind celebration cake */}
@@ -313,15 +298,15 @@ function BirthdayCardArtwork({
           r="50"
           fill={medallionHex}
           fillOpacity="0.55"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.45"
           strokeWidth="1.2"
         />
 
         {/* Pedestal cake stand */}
-        <rect x="260" y="156" width="52" height="4.5" rx="2.25" fill="#E5C896" />
-        <rect x="281" y="160" width="10" height="7" fill="#E5C896" />
-        <rect x="268" y="166" width="36" height="4" rx="2" fill="#E5C896" />
+        <rect x="260" y="156" width="52" height="4.5" rx="2.25" fill="#E9D5FF" />
+        <rect x="281" y="160" width="10" height="7" fill="#E9D5FF" />
+        <rect x="268" y="166" width="36" height="4" rx="2" fill="#E9D5FF" />
 
         {/* Bottom tier */}
         <rect
@@ -331,14 +316,14 @@ function BirthdayCardArtwork({
           height="28"
           rx="5"
           fill="#F8F0FC"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="1.2"
         />
         <path
           d="M252 136 Q260.5 143 269 136 Q277.5 143 286 136 Q294.5 143 303 136 Q311.5 143 320 136 V128 H252 Z"
           fill="#F4A6B8"
         />
-        <rect x="252" y="147" width="68" height="4" fill="#E5C896" fillOpacity="0.85" />
+        <rect x="252" y="147" width="68" height="4" fill="#E9D5FF" fillOpacity="0.85" />
 
         {/* Top tier */}
         <rect
@@ -348,12 +333,12 @@ function BirthdayCardArtwork({
           height="26"
           rx="5"
           fill="#FDE8EF"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="1.2"
         />
         <path
           d="M264 110 Q271 116 278.5 110 Q286 116 293.5 110 Q301 116 308 110 V102 H264 Z"
-          fill="#E5C896"
+          fill="#E9D5FF"
         />
         <circle cx="274" cy="120" r="2" fill="#7B2D8E" />
         <circle cx="286" cy="120" r="2" fill="#B8336A" />
@@ -363,11 +348,11 @@ function BirthdayCardArtwork({
         {[273, 286, 299].map((cx) => (
           <g key={cx}>
             <rect x={cx - 2.2} y="83" width="4.4" height="19" rx="2" fill="#F8F0FC" />
-            <line x1={cx - 2} y1="89" x2={cx + 2} y2="92" stroke="#E5C896" strokeWidth="1.2" />
-            <line x1={cx - 2} y1="95" x2={cx + 2} y2="98" stroke="#E5C896" strokeWidth="1.2" />
+            <line x1={cx - 2} y1="89" x2={cx + 2} y2="92" stroke="#E9D5FF" strokeWidth="1.2" />
+            <line x1={cx - 2} y1="95" x2={cx + 2} y2="98" stroke="#E9D5FF" strokeWidth="1.2" />
             <path
               d={`M${cx} 70 C${cx + 4.5} 75, ${cx + 4} 81, ${cx} 81 C${cx - 4} 81, ${cx - 4.5} 75, ${cx} 70 Z`}
-              fill="#E5C896"
+              fill="#E9D5FF"
             />
             <path
               d={`M${cx} 73.5 C${cx + 2.2} 76.5, ${cx + 2} 79.5, ${cx} 79.5 C${cx - 2} 79.5, ${cx - 2.2} 76.5, ${cx} 73.5 Z`}
@@ -385,14 +370,14 @@ function BirthdayCardArtwork({
         />
         <path
           d="M332 82 C338 88, 333 95, 340 101"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="2"
           strokeLinecap="round"
         />
-        <rect x="229" y="122" width="6" height="6" rx="1.2" transform="rotate(24 229 122)" fill="#E5C896" />
+        <rect x="229" y="122" width="6" height="6" rx="1.2" transform="rotate(24 229 122)" fill="#E9D5FF" />
         <rect x="334" y="138" width="6" height="6" rx="1.2" transform="rotate(-18 334 138)" fill="#F9D5E5" />
         <circle cx="240" cy="154" r="3" fill="#F8F0FC" fillOpacity="0.8" />
-        <circle cx="337" cy="60" r="2.8" fill="#E5C896" />
+        <circle cx="337" cy="60" r="2.8" fill="#E9D5FF" />
         <circle cx="222" cy="100" r="2.2" fill="#F4A6B8" />
       </svg>
     </div>
@@ -420,7 +405,7 @@ function AnniversaryCardArtwork({
         <EditorialFrame accentHex={accentHex} />
 
         {/* Vertical champagne ribbon band */}
-        <rect x="281" y="9" width="10" height="207" fill="#E5C896" fillOpacity="0.22" />
+        <rect x="281" y="9" width="10" height="207" fill="#E9D5FF" fillOpacity="0.22" />
 
         {/* Medallion backdrop */}
         <circle
@@ -429,7 +414,7 @@ function AnniversaryCardArtwork({
           r="46"
           fill={medallionHex}
           fillOpacity="0.55"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.5"
           strokeWidth="1.2"
         />
@@ -456,17 +441,17 @@ function AnniversaryCardArtwork({
         <ellipse cx="316" cy="138" rx="6" ry="3" transform="rotate(35 316 138)" fill="#A7D7C5" />
 
         {/* Twin interlocking anniversary rings */}
-        <circle cx="274" cy="110" r="20" stroke="#E5C896" strokeWidth="4.5" />
+        <circle cx="274" cy="110" r="20" stroke="#E9D5FF" strokeWidth="4.5" />
         <circle cx="298" cy="110" r="20" stroke="#F8F0FC" strokeWidth="4.5" />
         <circle cx="274" cy="110" r="20" stroke="#FFF4D2" strokeOpacity="0.5" strokeWidth="1" />
 
         {/* Faceted diamond crest at the crown */}
-        <polygon points="286,78 294,85 286,93 278,85" fill="#F8F0FC" stroke="#E5C896" strokeWidth="1.2" />
+        <polygon points="286,78 294,85 286,93 278,85" fill="#F8F0FC" stroke="#E9D5FF" strokeWidth="1.2" />
 
         {/* Small accent beads */}
-        <circle cx="242" cy="84" r="2.2" fill="#E5C896" />
-        <circle cx="330" cy="84" r="2.2" fill="#E5C896" />
-        <circle cx="286" cy="154" r="2.6" fill="#E5C896" />
+        <circle cx="242" cy="84" r="2.2" fill="#E9D5FF" />
+        <circle cx="330" cy="84" r="2.2" fill="#E9D5FF" />
+        <circle cx="286" cy="154" r="2.6" fill="#E9D5FF" />
       </svg>
     </div>
   )
@@ -501,7 +486,7 @@ function ThankYouCardArtwork({
           rx="14"
           fill={medallionHex}
           fillOpacity="0.5"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.45"
           strokeWidth="1.1"
         />
@@ -530,7 +515,7 @@ function ThankYouCardArtwork({
               fill="#F8F0FC"
             />
           ))}
-          <circle cx="0" cy="0" r="5" fill="#E5C896" />
+          <circle cx="0" cy="0" r="5" fill="#E9D5FF" />
         </g>
 
         <g transform="translate(263, 76) scale(0.75)">
@@ -545,7 +530,7 @@ function ThankYouCardArtwork({
               fill="#F9D5E5"
             />
           ))}
-          <circle cx="0" cy="0" r="4.5" fill="#E5C896" />
+          <circle cx="0" cy="0" r="4.5" fill="#E9D5FF" />
         </g>
 
         <g transform="translate(310, 78) scale(0.75)">
@@ -560,13 +545,13 @@ function ThankYouCardArtwork({
               fill="#F9D5E5"
             />
           ))}
-          <circle cx="0" cy="0" r="4.5" fill="#E5C896" />
+          <circle cx="0" cy="0" r="4.5" fill="#E9D5FF" />
         </g>
 
         {/* Tied ribbon bow & wax gratitude seal */}
-        <path d="M286 138 C272 130, 266 142, 280 144 Z" fill="#E5C896" />
-        <path d="M286 138 C300 130, 306 142, 292 144 Z" fill="#E5C896" />
-        <path d="M283 144 L274 166 M289 144 L298 166" stroke="#E5C896" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M286 138 C272 130, 266 142, 280 144 Z" fill="#E9D5FF" />
+        <path d="M286 138 C300 130, 306 142, 292 144 Z" fill="#E9D5FF" />
+        <path d="M283 144 L274 166 M289 144 L298 166" stroke="#E9D5FF" strokeWidth="2.5" strokeLinecap="round" />
         <circle cx="286" cy="142" r="9.5" fill="#D98B9E" stroke="#F8F0FC" strokeWidth="1.2" />
         <circle cx="286" cy="142" r="5.5" stroke="#FFF4D2" strokeWidth="0.9" />
       </svg>
@@ -609,7 +594,7 @@ function SelfCareCardArtwork({
           cy="144"
           rx="40"
           ry="11"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.48"
           strokeWidth="1.1"
         />
@@ -645,17 +630,17 @@ function SelfCareCardArtwork({
         <path
           d="M286 136 C272 110, 272 80, 286 60 C300 80, 300 110, 286 136 Z"
           fill="#FFFFFF"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="1.2"
         />
-        <circle cx="286" cy="96" r="4" fill="#E5C896" />
+        <circle cx="286" cy="96" r="4" fill="#E9D5FF" />
 
         {/* Balanced smooth spa stones below ripple */}
-        <ellipse cx="286" cy="164" rx="22" ry="7.5" fill={medallionHex} stroke="#E5C896" strokeWidth="1.1" />
+        <ellipse cx="286" cy="164" rx="22" ry="7.5" fill={medallionHex} stroke="#E9D5FF" strokeWidth="1.1" />
         <ellipse cx="286" cy="153" rx="14" ry="5.5" fill="#A7D7C5" stroke="#F8F0FC" strokeWidth="1" />
 
         {/* Subtle botanical dew drops */}
-        <circle cx="242" cy="64" r="2.2" fill="#E5C896" />
+        <circle cx="242" cy="64" r="2.2" fill="#E9D5FF" />
         <circle cx="330" cy="68" r="2.2" fill="#A7D7C5" />
         <circle cx="286" cy="46" r="2.5" fill="#F8F0FC" />
       </svg>
@@ -694,7 +679,7 @@ function WeddingCardArtwork({
         />
         <path
           d="M250 174 V98 C250 74, 322 74, 322 98 V174"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.45"
           strokeWidth="1"
         />
@@ -703,19 +688,19 @@ function WeddingCardArtwork({
         <circle cx="286" cy="66" r="9" fill="#F8F0FC" />
         <circle cx="274" cy="70" r="6.5" fill="#F9D5E5" />
         <circle cx="298" cy="70" r="6.5" fill="#F9D5E5" />
-        <circle cx="286" cy="66" r="3.5" fill="#E5C896" />
+        <circle cx="286" cy="66" r="3.5" fill="#E9D5FF" />
         <ellipse cx="263" cy="76" rx="7" ry="3.2" transform="rotate(-25 263 76)" fill="#A7D7C5" />
         <ellipse cx="309" cy="76" rx="7" ry="3.2" transform="rotate(25 309 76)" fill="#A7D7C5" />
 
         {/* Interlocking bridal rings */}
-        <circle cx="277" cy="122" r="15.5" stroke="#E5C896" strokeWidth="3.8" />
+        <circle cx="277" cy="122" r="15.5" stroke="#E9D5FF" strokeWidth="3.8" />
         <circle cx="295" cy="122" r="15.5" stroke="#F8F0FC" strokeWidth="3.8" />
-        <polygon points="286,95 292,101 286,108 280,101" fill="#F8F0FC" stroke="#E5C896" strokeWidth="1" />
+        <polygon points="286,95 292,101 286,108 280,101" fill="#F8F0FC" stroke="#E9D5FF" strokeWidth="1" />
 
         {/* Satin ribbon floor sash */}
         <path
           d="M258 156 H314 L308 164 L314 172 H258 L264 164 Z"
-          fill="#E5C896"
+          fill="#E9D5FF"
           fillOpacity="0.9"
         />
         <line x1="268" y1="164" x2="304" y2="164" stroke={medallionHex} strokeOpacity="0.55" strokeWidth="1" />
@@ -751,7 +736,7 @@ function MothersDayCardArtwork({
           r="46"
           fill={medallionHex}
           fillOpacity="0.5"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.45"
           strokeWidth="1.2"
         />
@@ -797,13 +782,13 @@ function MothersDayCardArtwork({
             />
           ))}
           <circle cx="0" cy="0" r="11" fill="#F8F0FC" />
-          <circle cx="0" cy="0" r="5.5" fill="#E5C896" />
+          <circle cx="0" cy="0" r="5.5" fill="#E9D5FF" />
         </g>
 
         {/* Champagne corner flourish dots */}
-        <circle cx="242" cy="68" r="2.2" fill="#E5C896" />
+        <circle cx="242" cy="68" r="2.2" fill="#E9D5FF" />
         <circle cx="330" cy="74" r="2.2" fill="#F9D5E5" />
-        <circle cx="322" cy="154" r="2.4" fill="#E5C896" />
+        <circle cx="322" cy="154" r="2.4" fill="#E9D5FF" />
       </svg>
     </div>
   )
@@ -839,7 +824,7 @@ function ValentinesCardArtwork({
           r="46"
           fill={medallionHex}
           fillOpacity="0.55"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.5"
           strokeWidth="1.2"
         />
@@ -857,14 +842,14 @@ function ValentinesCardArtwork({
         <path
           d="M278 148 C278 148, 248 128, 248 106 C248 94, 258 86, 269 92 C274 95, 277 99, 278 102 C279 99, 282 95, 287 92 C298 86, 308 94, 308 106 C308 128, 278 148, 278 148 Z"
           fill="#D4577A"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="1.6"
         />
         <circle cx="265" cy="105" r="3" fill="#F9D5E5" fillOpacity="0.85" />
 
         {/* Delicate floating petals */}
         <ellipse cx="236" cy="76" rx="4.5" ry="2.5" transform="rotate(-30 236 76)" fill="#F9D5E5" />
-        <ellipse cx="336" cy="82" rx="4.5" ry="2.5" transform="rotate(30 336 82)" fill="#E5C896" />
+        <ellipse cx="336" cy="82" rx="4.5" ry="2.5" transform="rotate(30 336 82)" fill="#E9D5FF" />
         <ellipse cx="328" cy="148" rx="4" ry="2.2" transform="rotate(-20 328 148)" fill="#F4A6B8" />
       </svg>
     </div>
@@ -898,7 +883,7 @@ function JustBecauseCardArtwork({
           r="46"
           fill={medallionHex}
           fillOpacity="0.55"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.45"
           strokeWidth="1.2"
         />
@@ -911,7 +896,7 @@ function JustBecauseCardArtwork({
           height="48"
           rx="6"
           fill="#F8F0FC"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="1.4"
         />
         {/* Box lid */}
@@ -922,33 +907,33 @@ function JustBecauseCardArtwork({
           height="13"
           rx="4"
           fill="#FFFFFF"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeWidth="1.4"
         />
         {/* Vertical & horizontal satin ribbons */}
-        <rect x="281" y="94" width="10" height="58" fill="#E5C896" />
+        <rect x="281" y="94" width="10" height="58" fill="#E9D5FF" />
         <rect x="256" y="124" width="60" height="7" fill={accentHex} fillOpacity="0.85" />
 
         {/* Sculpted ribbon bow */}
         <path
           d="M286 94 C272 78, 256 86, 272 94 Z"
-          fill="#E5C896"
+          fill="#E9D5FF"
           stroke="#FFF4D2"
           strokeWidth="1"
         />
         <path
           d="M286 94 C300 78, 316 86, 300 94 Z"
-          fill="#E5C896"
+          fill="#E9D5FF"
           stroke="#FFF4D2"
           strokeWidth="1"
         />
         <circle cx="286" cy="93" r="4.5" fill={medallionHex} stroke="#FFF4D2" strokeWidth="1" />
 
         {/* Playful botanical & confetti dots */}
-        <circle cx="236" cy="80" r="2.8" fill="#E5C896" />
+        <circle cx="236" cy="80" r="2.8" fill="#E9D5FF" />
         <circle cx="334" cy="84" r="2.8" fill="#F9D5E5" />
         <circle cx="242" cy="146" r="2.4" fill="#A7D7C5" />
-        <circle cx="332" cy="148" r="2.4" fill="#E5C896" />
+        <circle cx="332" cy="148" r="2.4" fill="#E9D5FF" />
       </svg>
     </div>
   )
@@ -979,7 +964,7 @@ function ClassicCardArtwork({
           r="38"
           fill={medallionHex}
           fillOpacity="0.45"
-          stroke="#E5C896"
+          stroke="#E9D5FF"
           strokeOpacity="0.4"
           strokeWidth="1.1"
         />
@@ -993,7 +978,7 @@ function ClassicCardArtwork({
         />
         <path
           d="M286 90 C295 102, 295 122, 286 134 C277 122, 277 102, 286 90 Z"
-          fill="#E5C896"
+          fill="#E9D5FF"
           fillOpacity="0.7"
         />
         <path
@@ -1097,7 +1082,7 @@ export function GiftCardPreview({
         data-testid="gift-card-preview"
         data-template={design.id}
         data-occasion-motif={motif}
-        className="relative aspect-[1.586/1] w-full rounded-2xl p-3.5 sm:p-5 overflow-hidden border border-[#E5C896]/45 flex flex-col justify-between"
+        className="relative aspect-[1.586/1] w-full rounded-2xl p-4 sm:p-5 overflow-hidden border border-[#E9D5FF]/40 flex flex-col justify-between"
         style={{ backgroundColor: design.surfaceHex }}
       >
         {renderMotifArtwork(motif, design.accentHex, medallionHex)}
@@ -1115,8 +1100,8 @@ export function GiftCardPreview({
               className="h-4 sm:h-6 w-auto object-contain brightness-0 invert"
             />
           </div>
-          <div className="text-right shrink-0">
-            <span className="block text-[8.5px] sm:text-[10px] font-semibold uppercase tracking-[0.2em] text-[#E5C896] whitespace-nowrap">
+          <div className="text-right shrink-0 pt-0.5">
+            <span className="block text-[8.5px] sm:text-[10px] font-semibold uppercase tracking-[0.2em] text-[#E9D5FF] whitespace-nowrap">
               Gift Card
             </span>
           </div>
@@ -1125,7 +1110,7 @@ export function GiftCardPreview({
         {/* Center Left — Recipient + Amount locked clear of right motif */}
         <div className="relative max-w-[53%] space-y-1.5 sm:space-y-2.5 my-auto py-0.5">
           <div>
-            <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.18em] text-[#E5C896]/90 font-semibold leading-none mb-1">
+            <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.18em] text-[#E9D5FF] font-semibold leading-none mb-1">
               Presented To
             </p>
             <p
@@ -1136,7 +1121,7 @@ export function GiftCardPreview({
           </div>
 
           <div>
-            <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.18em] text-white/65 font-semibold leading-none mb-1">
+            <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.18em] text-white/70 font-semibold leading-none mb-1">
               Card Value
             </p>
             <p
@@ -1147,14 +1132,14 @@ export function GiftCardPreview({
           </div>
         </div>
 
-        {/* Bottom Row — hairline champagne rule + edition & sender */}
-        <div className="relative shrink-0 pt-1.5 sm:pt-2 border-t border-[#E5C896]/25 flex items-center justify-between gap-2">
+        {/* Bottom Row — hairline brand rule + edition & sender */}
+        <div className="relative shrink-0 pt-1.5 sm:pt-2 border-t border-[#E9D5FF]/30 flex items-center justify-between gap-2">
           <span className="text-[9px] sm:text-[11px] font-medium text-white/90 tracking-wide truncate">
             {occasion ? occasionMeta.editionLabel : 'Signature Sanctuary'}
           </span>
-          <p className="text-white/85 text-[9px] sm:text-[11px] truncate text-right">
+          <p className="text-[#E9D5FF] text-[9px] sm:text-[11px] truncate text-right">
             From:{' '}
-            <span className="text-[#E5C896] font-semibold">
+            <span className="text-white font-semibold">
               {senderName?.trim() || 'Your Name'}
             </span>
           </p>
@@ -1244,19 +1229,17 @@ export function GiftCardBackPreview({
   showBleedGuide = false,
   className = '',
 }: GiftCardBackPreviewProps) {
+  void design
+
   return (
     <div className={`relative ${className}`}>
       <div
         data-testid="gift-card-back-preview"
         data-verification-code={verificationCode}
-        className="relative aspect-[1.586/1] w-full rounded-2xl bg-[#FCFAFD] overflow-hidden border flex flex-col justify-between"
-        style={{ borderColor: design.surfaceHex }}
+        className="relative aspect-[1.586/1] w-full rounded-2xl bg-white overflow-hidden border border-[#7B2D8E]/30 flex flex-col justify-between"
       >
         {/* Top Security / Brand Header Band */}
-        <div
-          className="shrink-0 px-3.5 sm:px-5 py-1.5 sm:py-2.5 flex items-center justify-between gap-2 border-b-2 border-[#D4B377]"
-          style={{ backgroundColor: design.surfaceHex }}
-        >
+        <div className="shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 bg-[#7B2D8E] border-b-2 border-[#E9D5FF] flex items-center justify-between gap-2">
           <Image
             src="/images/dermaspace-header-logo.png"
             alt="Dermaspace"
@@ -1267,7 +1250,7 @@ export function GiftCardBackPreview({
             className="h-3.5 sm:h-5 w-auto object-contain brightness-0 invert"
           />
           <div className="text-right leading-tight">
-            <span className="block text-[7px] sm:text-[8px] font-semibold uppercase tracking-[0.18em] text-[#E5C896]">
+            <span className="block text-[7px] sm:text-[8px] font-semibold uppercase tracking-[0.18em] text-[#E9D5FF]">
               Authorized Gift Card
             </span>
             <span className="block text-[8.5px] sm:text-[10px] font-mono font-bold text-white tracking-wider">
@@ -1277,40 +1260,37 @@ export function GiftCardBackPreview({
         </div>
 
         {/* Center Safe-Area Body */}
-        <div className="relative flex-1 px-3.5 sm:px-5 py-2 sm:py-3 flex items-center gap-2.5 sm:gap-3 min-h-0 overflow-hidden">
+        <div className="relative flex-1 px-4 sm:px-5 py-2.5 sm:py-3 flex items-center gap-3 sm:gap-4 min-h-0 overflow-hidden bg-white">
           {showBleedGuide && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-2 border border-dashed border-[#D4B377]/70 rounded-lg"
+              className="pointer-events-none absolute inset-2 border border-dashed border-[#7B2D8E]/45 rounded-lg"
             />
           )}
 
-          {/* Left Column — Dedication Note & Redemption Terms */}
-          <div className="flex-1 min-w-0 h-full flex flex-col justify-between gap-1.5 overflow-hidden">
-            <div
-              className="shrink-0 rounded-lg bg-[#FAF6FB] border border-[#7B2D8E]/15 border-l-2 px-2.5 py-1.5 sm:py-2"
-              style={{ borderLeftColor: design.surfaceHex }}
-            >
-              <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.16em] font-bold text-[#7B2D8E] mb-0.5 leading-none">
+          {/* Left Column — Unboxed Editorial Note & Redemption Terms */}
+          <div className="flex-1 min-w-0 flex flex-col justify-center gap-2 sm:gap-2.5 overflow-hidden">
+            <div className="min-w-0 space-y-1">
+              <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.18em] font-bold text-[#7B2D8E] leading-none">
                 {personalMessage?.trim() ? 'Personal Note' : 'Dermaspace Sanctuary'}
               </p>
               <p
-                className={`text-[9px] sm:text-[10.5px] text-[#1a0d1f] italic leading-[1.25] line-clamp-2 sm:line-clamp-3 ${fontClassName}`}
+                className={`text-[9.5px] sm:text-[11px] text-[#1a0d1f] leading-[1.35] line-clamp-3 ${fontClassName}`}
               >
-                &ldquo;
-                {personalMessage?.trim() ||
-                  'An invitation to rest, restore, and glow at Dermaspace Esthetic & Wellness Centre.'}
-                &rdquo;
+                {`\u201C${
+                  personalMessage?.trim() ||
+                  'An invitation to rest, restore, and glow at Dermaspace Esthetic & Wellness Centre.'
+                }\u201D`}
               </p>
               {senderName?.trim() && (
-                <p className="text-[8px] sm:text-[9px] font-semibold text-[#5A1D6A] text-right mt-0.5 leading-none truncate">
+                <p className="text-[8px] sm:text-[9px] font-semibold text-[#7B2D8E] leading-none truncate pt-0.5">
                   — {senderName.trim()}
                 </p>
               )}
             </div>
 
-            <div className="shrink-0 space-y-0.5 text-[7.5px] sm:text-[8.5px] text-gray-600 leading-[1.22]">
-              <p className="font-semibold text-[#1a0d1f] uppercase tracking-[0.12em] text-[6.5px] sm:text-[7.5px] leading-none">
+            <div className="shrink-0 pt-1.5 border-t border-[#7B2D8E]/15 space-y-0.5 text-[7.5px] sm:text-[8.5px] text-gray-600 leading-[1.25]">
+              <p className="font-semibold text-[#1a0d1f] uppercase tracking-[0.14em] text-[6.5px] sm:text-[7.5px] leading-none">
                 How to Redeem
               </p>
               <p className="truncate">Present card at VI or Ikoyi reception.</p>
@@ -1319,9 +1299,9 @@ export function GiftCardBackPreview({
           </div>
 
           {/* Right Column — Live Scannable QR Security Module */}
-          <div className="w-[31%] max-w-[108px] shrink-0 rounded-xl bg-white border border-[#7B2D8E]/25 p-1.5 sm:p-2 flex flex-col items-center justify-center">
+          <div className="w-[30%] max-w-[104px] shrink-0 rounded-xl bg-white border border-[#7B2D8E]/20 p-1.5 sm:p-2 flex flex-col items-center justify-center">
             <GiftCardQrCode value={verificationUrl} size={112} />
-            <span className="mt-1 text-[6.5px] sm:text-[7.5px] font-bold uppercase tracking-[0.12em] text-[#7B2D8E] text-center leading-none">
+            <span className="mt-1 text-[6px] sm:text-[7px] font-bold uppercase tracking-[0.08em] text-[#7B2D8E] text-center whitespace-nowrap leading-tight">
               Scan to Verify
             </span>
           </div>

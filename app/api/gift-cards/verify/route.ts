@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUser } from '@/lib/auth'
 import { isDatabaseConfigured, query } from '@/lib/db'
 import { ensureGiftCardSchema, type GiftCardRequestRecord } from '@/lib/gift-cards'
 import {
+  canRoleVerifyGiftCard,
   evaluateGiftCardRedemptionState,
+  extractGiftCardCodeFromScan,
   formatGiftCardSerial,
   maskEmailForVerification,
   verifyGiftCardCodeSignature,
@@ -10,8 +13,36 @@ import {
 
 export async function GET(req: NextRequest) {
   try {
-    const rawCode = req.nextUrl.searchParams.get('code') || ''
-    if (!rawCode.trim()) {
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        {
+          valid: false,
+          state: 'unauthorized',
+          headline: 'Sign In Required',
+          summary:
+            'Only authorized Dermaspace administrators and reception staff can verify gift cards.',
+        },
+        { status: 401 },
+      )
+    }
+
+    if (!canRoleVerifyGiftCard(user.role, user.is_active)) {
+      return NextResponse.json(
+        {
+          valid: false,
+          state: 'forbidden',
+          headline: 'Admin & Staff Access Only',
+          summary:
+            'Gift card verification is restricted to authorized Dermaspace administrators and staff.',
+        },
+        { status: 403 },
+      )
+    }
+
+    const rawParam = req.nextUrl.searchParams.get('code') || ''
+    const rawCode = extractGiftCardCodeFromScan(rawParam)
+    if (!rawCode) {
       return NextResponse.json(
         {
           valid: false,

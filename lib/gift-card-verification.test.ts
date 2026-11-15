@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import {
   buildGiftCardVerificationCode,
   buildGiftCardVerificationUrl,
+  canRoleVerifyGiftCard,
   evaluateGiftCardRedemptionState,
+  extractGiftCardCodeFromScan,
   formatGiftCardSerial,
   maskEmailForVerification,
   parseGiftCardVerificationCode,
@@ -60,6 +62,31 @@ test('builds clean encoded verification URL for QR codes', () => {
     url,
     `https://dermaspaceng.com/gift-cards/verify?code=${encodeURIComponent(code)}`,
   )
+})
+
+test('extracts verification code cleanly from QR URLs, relative paths, and raw codes', () => {
+  const code = buildGiftCardVerificationCode(12, TEST_SECRET)
+  const fullUrl = buildGiftCardVerificationUrl('https://dermaspaceng.com', code)
+
+  assert.equal(extractGiftCardCodeFromScan(fullUrl), code)
+  assert.equal(
+    extractGiftCardCodeFromScan(`/gift-cards/verify?code=${encodeURIComponent(code.toLowerCase())}`),
+    code,
+  )
+  assert.equal(extractGiftCardCodeFromScan(`  ${code.toLowerCase()}  `), code)
+  assert.equal(extractGiftCardCodeFromScan(`Card Serial: ${code} (VI)`), code)
+  assert.equal(extractGiftCardCodeFromScan('   '), '')
+})
+
+test('enforces admin and staff only verification access control', () => {
+  assert.equal(canRoleVerifyGiftCard('admin', true), true)
+  assert.equal(canRoleVerifyGiftCard('staff', true), true)
+  assert.equal(canRoleVerifyGiftCard('ADMIN', undefined), true)
+  assert.equal(canRoleVerifyGiftCard('admin', false), false)
+  assert.equal(canRoleVerifyGiftCard('staff', false), false)
+  assert.equal(canRoleVerifyGiftCard('user', true), false)
+  assert.equal(canRoleVerifyGiftCard('', true), false)
+  assert.equal(canRoleVerifyGiftCard(null, true), false)
 })
 
 test('evaluates redemption status accurately for paid/unpaid/cancelled states', () => {

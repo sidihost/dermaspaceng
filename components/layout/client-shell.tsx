@@ -63,8 +63,6 @@ const ImpersonationBanner = dynamic(
   { ssr: false, loading: () => null },
 )
 
-import { NewsletterPopup } from '@/components/shared/newsletter-popup'
-
 // Festive Christmas Snowfall animation — controlled via Admin Dashboard
 const ChristmasAnimation = dynamic(
   () => import('@/components/shared/christmas-animation'),
@@ -78,7 +76,6 @@ export default function ClientShell() {
   // assistant never hides during the brief pre-hydration window
   // (see `useFeatureFlag` doc comment for the safety rationale).
   const aiEnabled = useFeatureFlag('ai_chat')
-  const newsletterEnabled = useFeatureFlag('newsletter')
   return (
     <>
       <RootErrorBoundary label="christmas-animation">
@@ -134,13 +131,6 @@ export default function ClientShell() {
       <RootErrorBoundary label="impersonation-banner">
         <ImpersonationBanner />
       </RootErrorBoundary>
-      {/* Newsletter opt-in popup — frequency-capped and self-suppressed
-          on admin/staff/auth/booking routes and for existing subscribers. */}
-      {newsletterEnabled && (
-        <RootErrorBoundary label="newsletter-popup">
-          <NewsletterPopup />
-        </RootErrorBoundary>
-      )}
     </>
   )
 }

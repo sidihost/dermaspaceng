@@ -681,9 +681,9 @@ export default function GiftCardsClient() {
 
                 {/* Message preview */}
                 {personalMessage && (
-                  <div className="mt-3 bg-white/10 rounded-lg p-3 border border-white/20 max-w-xs mx-auto lg:mx-0">
-                    <p className={`text-white/90 text-xs italic ${selectedFont.className}`}>&ldquo;{personalMessage}&rdquo;</p>
-                    {senderName && <p className="text-white/60 mt-1.5 text-xs">— {senderName}</p>}
+                  <div className="mt-3 pt-3 border-t border-white/15 max-w-xs mx-auto lg:mx-0">
+                    <p className={`text-white/90 text-xs italic leading-relaxed ${selectedFont.className}`}>&ldquo;{personalMessage}&rdquo;</p>
+                    {senderName && <p className="text-white/75 mt-1 text-xs font-medium">— {senderName}</p>}
                   </div>
                 )}
               </div>

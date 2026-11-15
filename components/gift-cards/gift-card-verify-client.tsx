@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   AlertCircle,
   ArrowRight,
+  Camera,
   CheckCircle2,
   Clock,
   Loader2,
@@ -14,6 +15,8 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
+import { GiftCardScanner } from '@/components/gift-cards/gift-card-scanner'
+import { extractGiftCardCodeFromScan } from '@/lib/gift-card-code-helpers'
 import {
   findGiftCardDesignById,
   findGiftCardFontById,
@@ -48,29 +51,41 @@ interface VerificationResult {
     | 'cancelled'
     | 'not_found'
     | 'invalid_code'
+    | 'unauthorized'
+    | 'forbidden'
   code?: string
   headline: string
   summary: string
   card?: VerificationCardPayload
 }
 
-export function GiftCardVerifyClient({ initialCode }: { initialCode: string }) {
+export function GiftCardVerifyClient({
+  initialCode = '',
+  userRole,
+  compact = false,
+}: {
+  initialCode?: string
+  userRole?: 'admin' | 'staff'
+  compact?: boolean
+}) {
   const [codeInput, setCodeInput] = useState(initialCode)
   const [loading, setLoading] = useState(Boolean(initialCode.trim()))
+  const [scannerOpen, setScannerOpen] = useState(false)
   const [result, setResult] = useState<VerificationResult | null>(null)
 
   const runVerification = useCallback(async (rawCode: string) => {
-    const trimmed = rawCode.trim()
-    if (!trimmed) {
+    const extracted = extractGiftCardCodeFromScan(rawCode)
+    if (!extracted) {
       setResult(null)
       setLoading(false)
       return
     }
 
+    setCodeInput(extracted)
     setLoading(true)
     try {
       const res = await fetch(
-        `/api/gift-cards/verify?code=${encodeURIComponent(trimmed)}`,
+        `/api/gift-cards/verify?code=${encodeURIComponent(extracted)}`,
         { cache: 'no-store' },
       )
       const data = (await res.json()) as VerificationResult
@@ -79,7 +94,7 @@ export function GiftCardVerifyClient({ initialCode }: { initialCode: string }) {
       setResult({
         valid: false,
         state: 'not_found',
-        code: trimmed,
+        code: extracted,
         headline: 'Verification Unavailable',
         summary: 'Network error while verifying this gift card. Please try again.',
       })
@@ -96,15 +111,29 @@ export function GiftCardVerifyClient({ initialCode }: { initialCode: string }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = codeInput.trim()
-    if (!trimmed) return
-    if (typeof window !== 'undefined') {
+    const extracted = extractGiftCardCodeFromScan(codeInput)
+    if (!extracted) return
+    if (!compact && typeof window !== 'undefined') {
       const url = new URL(window.location.href)
-      url.searchParams.set('code', trimmed)
+      url.searchParams.set('code', extracted)
       window.history.replaceState({}, '', url.toString())
     }
-    void runVerification(trimmed)
+    void runVerification(extracted)
   }
+
+  const handleScanDetected = useCallback(
+    (extractedCode: string) => {
+      setScannerOpen(false)
+      setCodeInput(extractedCode)
+      if (!compact && typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.set('code', extractedCode)
+        window.history.replaceState({}, '', url.toString())
+      }
+      void runVerification(extractedCode)
+    },
+    [compact, runVerification],
+  )
 
   const card = result?.card
   const cardDesign = card
@@ -113,61 +142,98 @@ export function GiftCardVerifyClient({ initialCode }: { initialCode: string }) {
   const cardFont = card ? findGiftCardFontById(card.font || card.fontName) : null
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10 sm:py-14 space-y-6">
+    <div
+      className={
+        compact
+          ? 'space-y-4'
+          : 'max-w-3xl mx-auto px-4 py-10 sm:py-14 space-y-6'
+      }
+    >
       {/* Page Header */}
-      <div className="text-center max-w-xl mx-auto space-y-2">
-        <div className="inline-flex items-center gap-2 text-[#7B2D8E] text-xs font-bold uppercase tracking-[0.18em]">
-          <QrCode className="w-4 h-4" aria-hidden="true" />
-          <span>Gift Card Verification</span>
+      {!compact && (
+        <div className="text-center max-w-xl mx-auto space-y-2">
+          <div className="inline-flex items-center gap-2 text-[#7B2D8E] text-xs font-bold uppercase tracking-[0.18em]">
+            <QrCode className="w-4 h-4" aria-hidden="true" />
+            <span>
+              {userRole === 'admin'
+                ? 'Admin Gift Card Verification'
+                : 'Staff Gift Card Verification'}
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#1a0d1f] tracking-tight">
+            Scan or Verify a Gift Card
+          </h1>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Scan the QR code on the back of a Dermaspace gift card with your camera, upload a QR snapshot, or enter the serial code below.
+          </p>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-[#1a0d1f] tracking-tight">
-          Verify a Dermaspace Gift Card
-        </h1>
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Scan the QR code on the back of any printed or digital Dermaspace gift card, or enter its verification serial below to confirm authenticity and value.
-        </p>
-      </div>
+      )}
 
-      {/* Lookup Bar */}
+      {/* Lookup & Scanner Bar */}
       <form
         onSubmit={handleSubmit}
         className="rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 flex flex-col sm:flex-row gap-2.5"
       >
-        <label htmlFor="gift-card-verify-input" className="sr-only">
+        <label htmlFor={compact ? 'gift-card-modal-verify-input' : 'gift-card-verify-input'} className="sr-only">
           Gift card verification code
         </label>
-        <div className="relative flex-1">
+        <div className="relative flex-1 min-w-0">
           <Search
             className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"
             aria-hidden="true"
           />
           <input
-            id="gift-card-verify-input"
+            id={compact ? 'gift-card-modal-verify-input' : 'gift-card-verify-input'}
             type="text"
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value)}
-            placeholder="Enter code (e.g. DSGC-00012-7F3A9C1E04)"
+            placeholder="Enter code or paste QR URL (e.g. DSGC-00012-7F3A9C1E04)"
             className="w-full h-11 pl-10 pr-3 rounded-xl border border-gray-200 bg-[#FAF6FB] text-sm font-mono text-[#1a0d1f] placeholder:font-sans placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading || !codeInput.trim()}
-          className="h-11 px-5 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-60 cursor-pointer shrink-0"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Checking...</span>
-            </>
-          ) : (
-            <>
-              <span>Verify Card</span>
-              <ArrowRight className="w-4 h-4" />
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setScannerOpen((v) => !v)}
+            aria-expanded={scannerOpen}
+            className={`h-11 px-3.5 rounded-xl border text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors cursor-pointer whitespace-nowrap ${
+              scannerOpen
+                ? 'border-[#7B2D8E] bg-[#FAF6FB] text-[#7B2D8E]'
+                : 'border-[#7B2D8E]/30 bg-white hover:bg-[#FAF6FB] text-[#7B2D8E]'
+            }`}
+          >
+            <Camera className="w-4 h-4" aria-hidden="true" />
+            <span>{scannerOpen ? 'Hide Scanner' : 'Scan QR'}</span>
+          </button>
+
+          <button
+            type="submit"
+            disabled={loading || !codeInput.trim()}
+            className="h-11 px-4 sm:px-5 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-sm font-semibold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-60 cursor-pointer whitespace-nowrap"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Checking...</span>
+              </>
+            ) : (
+              <>
+                <span>Verify Card</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
       </form>
+
+      {/* Live QR Scanner Panel */}
+      {scannerOpen && (
+        <GiftCardScanner
+          onDetected={handleScanDetected}
+          onClose={() => setScannerOpen(false)}
+          autoStartCamera={true}
+        />
+      )}
 
       {/* Result Stage */}
       {loading && (
@@ -324,16 +390,21 @@ export function GiftCardVerifyClient({ initialCode }: { initialCode: string }) {
         </div>
       )}
 
-      {/* Helpful footer action */}
-      <div className="text-center pt-2">
-        <Link
-          href="/gift-cards"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#7B2D8E] hover:underline"
-        >
-          <span>Order a Dermaspace Gift Card</span>
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
+      {/* Console return links */}
+      {!compact && userRole && (
+        <div className="text-center pt-2 flex flex-wrap items-center justify-center gap-4">
+          <Link
+            href={userRole === 'admin' ? '/admin/gift-cards' : '/staff/gift-cards'}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#7B2D8E] hover:underline"
+          >
+            <span>
+              Back to {userRole === 'admin' ? 'Admin' : 'Staff'} Gift Cards Console
+            </span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
+

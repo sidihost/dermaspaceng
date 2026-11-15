@@ -24,6 +24,7 @@ import {
   getGiftCardOccasionMeta,
 } from '@/lib/gift-card-templates'
 import { formatGiftCardSerial } from '@/lib/gift-card-code-helpers'
+import { GiftCardVerifyDialog } from '@/components/gift-cards/gift-card-verify-dialog'
 
 interface GiftCardRequest {
   id: number
@@ -193,13 +194,19 @@ export default function GiftCardDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" /> Back to gift cards
         </Link>
-        <Link
-          href="/gift-cards/verify"
-          target="_blank"
-          className="text-xs font-semibold text-[#7B2D8E] hover:underline"
-        >
-          Open Public QR Verifier
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <GiftCardVerifyDialog
+            userRole="admin"
+            initialCode={verificationCode}
+            buttonLabel="Verify This Card"
+          />
+          <Link
+            href={`/gift-cards/verify?code=${encodeURIComponent(verificationCode)}`}
+            className="text-xs font-semibold text-[#7B2D8E] hover:underline"
+          >
+            Open Gift Card Verifier
+          </Link>
+        </div>
       </div>
 
       <Card className="border-gray-200 print:border-0">

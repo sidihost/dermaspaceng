@@ -222,7 +222,7 @@ export function GiftCardPrintStudio({
                 {showSafeGuide && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-3 border border-dashed border-[#E5C896]/80 rounded-xl"
+                    className="pointer-events-none absolute inset-3 border border-dashed border-[#E9D5FF]/80 rounded-xl"
                   />
                 )}
               </div>

@@ -1,10 +1,17 @@
 import crypto from 'node:crypto'
 import {
   buildGiftCardVerificationUrl,
+  canRoleVerifyGiftCard,
+  extractGiftCardCodeFromScan,
   formatGiftCardSerial,
 } from './gift-card-code-helpers'
 
-export { buildGiftCardVerificationUrl, formatGiftCardSerial }
+export {
+  buildGiftCardVerificationUrl,
+  canRoleVerifyGiftCard,
+  extractGiftCardCodeFromScan,
+  formatGiftCardSerial,
+}
 
 export interface ParsedGiftCardCode {
   id: number

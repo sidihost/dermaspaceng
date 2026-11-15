@@ -258,14 +258,15 @@ function drawFrontMotifVector(
   medallionRgb: [number, number, number],
   accentRgb: [number, number, number],
 ) {
-  const gold: [number, number, number] = [229, 200, 150]
+  const lavender: [number, number, number] = [233, 213, 255]
   const cream: [number, number, number] = [248, 240, 252]
   const blush: [number, number, number] = [249, 213, 229]
   const sage: [number, number, number] = [167, 215, 197]
+  const gold: [number, number, number] = lavender
 
   // Outer medallion halo
   doc.setFillColor(...medallionRgb)
-  doc.setDrawColor(...gold)
+  doc.setDrawColor(...lavender)
   doc.setLineWidth(0.38)
   doc.circle(cx, cy, 10.2, 'FD')
 
@@ -400,8 +401,8 @@ function renderCardFrontAt(
   const accentRgb = hexToRgb(design.accentHex, [155, 77, 176])
   const medallionRgb = hexToRgb(getDesignMedallionHex(design), [74, 21, 88])
   const cardFont = pdfFontForCard(input.fontId || input.fontName)
-  const goldRgb: [number, number, number] = [229, 200, 150]
   const lightLavender: [number, number, number] = [233, 213, 255]
+  const goldRgb: [number, number, number] = lightLavender
 
   // 1. Full-bleed background fill
   doc.setFillColor(...surfaceRgb)
@@ -429,12 +430,12 @@ function renderCardFrontAt(
     'F',
   )
 
-  // Vertical champagne accent line dividing content & emblem wing
-  doc.setDrawColor(...goldRgb)
+  // Vertical brand lavender accent line dividing content & emblem wing
+  doc.setDrawColor(...lightLavender)
   doc.setLineWidth(0.22)
   doc.line(rightPanelX, trimY + 3.2, rightPanelX, trimY + trimHeightMm - 3.2)
 
-  // 3. Double luxury metallic frame strictly inside trim bounds
+  // 3. Clean single architectural hairline frame inside trim bounds
   doc.setDrawColor(...lightLavender)
   doc.setLineWidth(0.24)
   doc.roundedRect(
@@ -444,17 +445,6 @@ function renderCardFrontAt(
     trimHeightMm - 4.4,
     2.2,
     2.2,
-    'S',
-  )
-  doc.setDrawColor(...goldRgb)
-  doc.setLineWidth(0.18)
-  doc.roundedRect(
-    trimX + 3.1,
-    trimY + 3.1,
-    trimWidthMm - 6.2,
-    trimHeightMm - 6.2,
-    1.6,
-    1.6,
     'S',
   )
 
@@ -553,41 +543,26 @@ function renderCardBackAt(
   qrDataUrl: string,
 ) {
   const { bleedWidthMm, bleedHeightMm, trimWidthMm, trimHeightMm, bleedMm } = CR80_SPEC
-  const design = findGiftCardDesignById(input.designId || input.designName)
-  const surfaceRgb = hexToRgb(design.surfaceHex, [123, 45, 142])
-  const medallionRgb = hexToRgb(getDesignMedallionHex(design), [74, 21, 88])
+  const brandPurple: [number, number, number] = [123, 45, 142]
+  const softLavenderLine: [number, number, number] = [233, 213, 255]
+  const hairlinePurple: [number, number, number] = [225, 212, 234]
   const cardFont = pdfFontForCard(input.fontId || input.fontName)
-  const goldRgb: [number, number, number] = [212, 179, 119]
-  const porcelainRgb: [number, number, number] = [252, 250, 253]
-  const lavenderSurface: [number, number, number] = [247, 242, 250]
+  const whiteBg: [number, number, number] = [255, 255, 255]
   const textDark: [number, number, number] = [26, 13, 31]
   const textMuted: [number, number, number] = [88, 76, 98]
 
-  // 1. Full-bleed warm porcelain background
-  doc.setFillColor(...porcelainRgb)
+  // 1. Full-bleed crisp porcelain white background
+  doc.setFillColor(...whiteBg)
   doc.rect(bleedX, bleedY, bleedWidthMm, bleedHeightMm, 'F')
 
-  // 2. Top plum/theme band extending smoothly into top/left/right bleed
+  // 2. Top Dermaspace brand purple header band extending smoothly into bleed
   const headerBottomY = trimY + 11.4
-  doc.setFillColor(...surfaceRgb)
+  doc.setFillColor(...brandPurple)
   doc.rect(bleedX, bleedY, bleedWidthMm, headerBottomY - bleedY, 'F')
 
-  // Metallic champagne accent rule under top band (full bleed width)
-  doc.setFillColor(...goldRgb)
-  doc.rect(bleedX, headerBottomY, bleedWidthMm, 0.85, 'F')
-
-  // Subtle champagne inner frame inside card trim
-  doc.setDrawColor(...goldRgb)
-  doc.setLineWidth(0.22)
-  doc.roundedRect(
-    trimX + 2.5,
-    headerBottomY + 2.6,
-    trimWidthMm - 5,
-    trimY + trimHeightMm - headerBottomY - 5.1,
-    1.6,
-    1.6,
-    'S',
-  )
+  // Brand lavender hairline under top band (full bleed width)
+  doc.setFillColor(...softLavenderLine)
+  doc.rect(bleedX, headerBottomY, bleedWidthMm, 0.75, 'F')
 
   const safeX = trimX + CR80_SPEC.safeInsetMm
   const safeRight = trimX + trimWidthMm - CR80_SPEC.safeInsetMm
@@ -606,7 +581,7 @@ function renderCardBackAt(
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(4.9)
-  doc.setTextColor(229, 200, 150)
+  doc.setTextColor(...softLavenderLine)
   doc.text('AUTHORIZED GIFT CARD', safeRight, trimY + 5.1, { align: 'right' })
 
   doc.setFont('courier', 'bold')
@@ -614,7 +589,7 @@ function renderCardBackAt(
   doc.setTextColor(255, 255, 255)
   doc.text(input.verificationCode, safeRight, trimY + 8.4, { align: 'right' })
 
-  // 3. Body Grid: Left Message & Terms | Right QR Validation Box
+  // 3. Body Grid: Left Unboxed Editorial Message & Terms | Right QR Validation Box
   const bodyTopY = headerBottomY + 4.4
   const footerTopY = trimY + trimHeightMm - 8.4
 
@@ -624,7 +599,7 @@ function renderCardBackAt(
   const qrBoxX = safeRight - qrBoxW
 
   doc.setFillColor(255, 255, 255)
-  doc.setDrawColor(...surfaceRgb)
+  doc.setDrawColor(...hairlinePurple)
   doc.setLineWidth(0.28)
   doc.roundedRect(qrBoxX, bodyTopY, qrBoxW, qrBoxH, 1.5, 1.5, 'FD')
 
@@ -635,7 +610,7 @@ function renderCardBackAt(
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(4.7)
-  doc.setTextColor(...surfaceRgb)
+  doc.setTextColor(...brandPurple)
   doc.text('SCAN TO VERIFY', qrBoxX + qrBoxW / 2, qrImgY + qrSize + 2.6, {
     align: 'center',
   })
@@ -648,48 +623,43 @@ function renderCardBackAt(
     maxWidth: qrBoxW - 2,
   })
 
-  // Left Editorial Column
-  const leftColW = qrBoxX - safeX - 3.6
-  const msgBoxH = 13.8
-
-  doc.setFillColor(...lavenderSurface)
-  doc.setDrawColor(225, 212, 234)
-  doc.setLineWidth(0.2)
-  doc.roundedRect(safeX, bodyTopY, leftColW, msgBoxH, 1.4, 1.4, 'FD')
-
-  doc.setFillColor(...surfaceRgb)
-  doc.rect(safeX, bodyTopY + 1.6, 0.9, msgBoxH - 3.2, 'F')
+  // Left Editorial Column — clean unboxed typography directly on card surface
+  const leftColW = qrBoxX - safeX - 4.0
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(4.6)
-  doc.setTextColor(...surfaceRgb)
+  doc.setFontSize(4.8)
+  doc.setTextColor(...brandPurple)
   doc.text(
-    input.personalMessage?.trim() ? 'PERSONAL MESSAGE' : 'DERMASPACE SANCTUARY',
-    safeX + 2.4,
-    bodyTopY + 3.2,
+    input.personalMessage?.trim() ? 'PERSONAL NOTE' : 'DERMASPACE SANCTUARY',
+    safeX,
+    bodyTopY + 2.2,
   )
 
   const noteText =
     input.personalMessage?.trim() ||
     'An invitation to rest, restore, and glow at Dermaspace Esthetic & Wellness Centre.'
-  doc.setFont(cardFont, 'italic')
-  doc.setFontSize(6.0)
+  doc.setFont(cardFont, 'normal')
+  doc.setFontSize(6.3)
   doc.setTextColor(...textDark)
-  const wrappedNote = doc.splitTextToSize(`"${noteText}"`, leftColW - 4.4).slice(0, 3)
-  doc.text(wrappedNote, safeX + 2.4, bodyTopY + 6.1)
+  const wrappedNote = doc.splitTextToSize(`"${noteText}"`, leftColW).slice(0, 3)
+  doc.text(wrappedNote, safeX, bodyTopY + 5.6)
 
   if (input.senderName?.trim()) {
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(5)
-    doc.setTextColor(...medallionRgb)
-    doc.text(`— ${input.senderName.trim()}`, safeX + leftColW - 2, bodyTopY + msgBoxH - 1.6, {
-      align: 'right',
-      maxWidth: leftColW - 4,
+    doc.setFontSize(5.1)
+    doc.setTextColor(...brandPurple)
+    doc.text(`— ${input.senderName.trim()}`, safeX, bodyTopY + 14.0, {
+      maxWidth: leftColW,
     })
   }
 
-  // Redemption terms below message box
-  const termsY = bodyTopY + msgBoxH + 3.0
+  // Hairline divider before redemption terms
+  const dividerY = bodyTopY + 15.8
+  doc.setDrawColor(...hairlinePurple)
+  doc.setLineWidth(0.2)
+  doc.line(safeX, dividerY, safeX + leftColW, dividerY)
+
+  const termsY = dividerY + 2.8
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(4.7)
   doc.setTextColor(...textDark)
@@ -698,15 +668,15 @@ function renderCardBackAt(
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(4.6)
   doc.setTextColor(...textMuted)
-  doc.text('• Present card at Victoria Island or Ikoyi reception.', safeX, termsY + 2.5, {
+  doc.text('Present card at Victoria Island or Ikoyi reception.', safeX, termsY + 2.4, {
     maxWidth: leftColW,
   })
-  doc.text('• Valid on all spa treatments & rituals · Never expires.', safeX, termsY + 4.9, {
+  doc.text('Valid on all spa treatments · Never expires.', safeX, termsY + 4.7, {
     maxWidth: leftColW,
   })
 
   // 4. Bottom Branch Footer
-  doc.setDrawColor(225, 212, 234)
+  doc.setDrawColor(...hairlinePurple)
   doc.setLineWidth(0.2)
   doc.line(safeX, footerTopY, safeRight, footerTopY)
 
@@ -721,7 +691,7 @@ function renderCardBackAt(
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(4.8)
-  doc.setTextColor(...surfaceRgb)
+  doc.setTextColor(...brandPurple)
   doc.text('dermaspaceng.com', safeRight, footerTopY + 3.1, { align: 'right' })
 
   // Silence unused bleedMm lint note by checking consistency
@@ -840,7 +810,7 @@ export async function generateGiftCardA4CutSheetPdfBlob(
   const contentW = sheet.pageWidthMm - marginX * 2
   const brandDeep: [number, number, number] = [74, 21, 88]
   const brandPurple: [number, number, number] = [123, 45, 142]
-  const gold: [number, number, number] = [212, 179, 119]
+  const softLavenderLine: [number, number, number] = [233, 213, 255]
   const borderGray: [number, number, number] = [228, 228, 231]
   const softLavender: [number, number, number] = [250, 246, 251]
   const textDark: [number, number, number] = [26, 13, 31]
@@ -849,7 +819,7 @@ export async function generateGiftCardA4CutSheetPdfBlob(
   // Top brand stripe
   doc.setFillColor(...brandDeep)
   doc.rect(0, 0, sheet.pageWidthMm, 2.5, 'F')
-  doc.setFillColor(...gold)
+  doc.setFillColor(...softLavenderLine)
   doc.rect(0, 2.5, sheet.pageWidthMm, 0.7, 'F')
 
   // Header masthead

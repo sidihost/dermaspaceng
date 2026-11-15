@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +39,7 @@ import {
   Mail,
   Phone,
   Calendar as CalendarIcon,
+  QrCode,
 } from "lucide-react"
 import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
@@ -48,6 +50,7 @@ import {
   getGiftCardOccasionMeta,
 } from "@/lib/gift-card-templates"
 import { formatGiftCardSerial } from "@/lib/gift-card-code-helpers"
+import { GiftCardVerifyDialog } from "@/components/gift-cards/gift-card-verify-dialog"
 
 interface GiftCardRequest {
   id: number
@@ -277,13 +280,25 @@ export default function StaffGiftCardsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-          Gift card requests
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Approve and process customer gift card orders.
-        </p>
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+            Gift card requests
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Approve, verify, and process customer gift card orders.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <GiftCardVerifyDialog userRole="staff" />
+          <Link
+            href="/gift-cards/verify"
+            className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-[#7B2D8E]/30 bg-white text-xs font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors whitespace-nowrap"
+          >
+            <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Full Verifier Page</span>
+          </Link>
+        </div>
       </header>
 
       {/* Error banner */}
@@ -454,7 +469,7 @@ export default function StaffGiftCardsPage() {
 
       {/* View Dialog */}
       <Dialog open={!!selected && !actionDialogOpen} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto shadow-none border-gray-200 bg-white">
           <DialogHeader>
             <DialogTitle>Gift card request</DialogTitle>
             <DialogDescription>Print-ready card preview, QR verification, and request details</DialogDescription>
@@ -646,7 +661,7 @@ export default function StaffGiftCardsPage() {
 
       {/* Action Dialog */}
       <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
-        <DialogContent>
+        <DialogContent className="shadow-none border-gray-200 bg-white">
           <DialogHeader>
             <DialogTitle>Update gift card request</DialogTitle>
             <DialogDescription>

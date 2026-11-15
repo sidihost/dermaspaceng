@@ -12,6 +12,7 @@ import {
   findGiftCardFontById,
   getGiftCardOccasionMeta,
 } from '@/lib/gift-card-templates'
+import { GiftCardVerifyDialog } from '@/components/gift-cards/gift-card-verify-dialog'
 
 interface GiftCardRequest {
   id: number
@@ -105,14 +106,16 @@ export default function GiftCardsPage() {
             Manage gift card orders, download CR80 print-ready PDFs, and verify QR codes
           </p>
         </div>
-        <Link
-          href="/gift-cards/verify"
-          target="_blank"
-          className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-[#7B2D8E]/30 bg-white text-xs font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors self-start sm:self-auto"
-        >
-          <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Verify Card Code</span>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <GiftCardVerifyDialog userRole="admin" />
+          <Link
+            href="/gift-cards/verify"
+            className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-[#7B2D8E]/30 bg-white text-xs font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors whitespace-nowrap"
+          >
+            <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Full Verifier Page</span>
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}

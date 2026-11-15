@@ -5,7 +5,6 @@ import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChristmasLogoHat } from "@/components/shared/christmas-logo-hat"
 import {
   LayoutDashboard,
@@ -23,6 +22,8 @@ import {
   BarChart3,
   Headset,
   Lightbulb,
+  QrCode,
+  X,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -39,7 +40,6 @@ const DERMASPACE_LOGO =
  * sidebar so the two consoles feel identical on mobile.
  */
 function HamburgerIcon({ open }: { open: boolean }) {
-  // Slim 18×12 grid with 1.5px bars — matches the admin console exactly.
   return (
     <span
       aria-hidden="true"
@@ -63,45 +63,20 @@ function HamburgerIcon({ open }: { open: boolean }) {
   )
 }
 
-// The "Blog" entry is intentionally always rendered for staff. The page
-// itself (and the underlying API routes) enforce per-user permissions
-// granted from /admin/blog/permissions, so a staff member without rights
-// will see a friendly "request access" screen rather than a working
-// editor. This keeps the nav simple (no client fetch on mount) while the
-// permissions remain strict at the data layer.
 const navItems = [
-  { title: "Dashboard",          href: "/staff",              icon: LayoutDashboard },
-  // Appointments lives second because the operator's day starts with
-  // "what am I doing today?" — a small but meaningful nav order win.
-  { title: "Appointments",       href: "/staff/appointments", icon: CalendarCheck },
-  { title: "Clients",            href: "/staff/clients",      icon: Users },
-  // Loyalty & Promos: rewards programme management — points, redemption
-  // rate, top members. Lives just below Clients because it's about
-  // engagement with the same audience.
-  { title: "Loyalty & Promos",   href: "/staff/loyalty",      icon: BadgePercent },
-  // Money was here. The admin asked us to hide the salon-wallet /
-  // finance section from the staff console — staff should not see
-  // revenue, virtual account or expense data. The page itself still
-  // exists for admins, but it's intentionally not linked from the
-  // staff sidebar anymore.
-  { title: "Reports",            href: "/staff/reports",      icon: BarChart3 },
-  { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
-  { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
-  { title: "Consultations",      href: "/staff/consultations",icon: Calendar },
-  // Feature Requests: the client-submitted ideas board. Staff can triage
-  // and respond to them just like admins.
-  { title: "Feature Requests",   href: "/staff/feature-requests", icon: Lightbulb },
-  // Live Chat: real-time conversation inbox between staff and
-  // signed-in customers. The page exists at /staff/live-chat and
-  // pulls from the same WebSocket-style polling endpoints the
-  // customer chat widget uses.
-  //
-  // Headset reads as a live-support channel and reads as visually
-  // distinct from "Complaints" (MessageSquare), so operators
-  // recognize the two surfaces at a glance even on mobile.
-  { title: "Live Chat",          href: "/staff/live-chat",    icon: Headset },
-  { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
-  { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
+  { title: "Dashboard", href: "/staff", icon: LayoutDashboard },
+  { title: "Appointments", href: "/staff/appointments", icon: CalendarCheck },
+  { title: "Clients", href: "/staff/clients", icon: Users },
+  { title: "Loyalty & Promos", href: "/staff/loyalty", icon: BadgePercent },
+  { title: "Reports", href: "/staff/reports", icon: BarChart3 },
+  { title: "Gift Card Requests", href: "/staff/gift-cards", icon: Gift },
+  { title: "Verify Gift Card", href: "/gift-cards/verify", icon: QrCode },
+  { title: "Complaints", href: "/staff/complaints", icon: MessageSquare },
+  { title: "Consultations", href: "/staff/consultations", icon: Calendar },
+  { title: "Feature Requests", href: "/staff/feature-requests", icon: Lightbulb },
+  { title: "Live Chat", href: "/staff/live-chat", icon: Headset },
+  { title: "Surveys", href: "/staff/surveys", icon: FileText },
+  { title: "Blog", href: "/staff/blog", icon: BookOpen },
 ]
 
 export function StaffSidebar() {
@@ -109,14 +84,26 @@ export function StaffSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  // Live "pending tasks" widget at the bottom of the sidebar — used to
-  // be hard-coded "12 / 5". Now we hit the same dashboard endpoint the
-  // main panel uses so the count never lies. Poll every 60 s and lean
-  // on browser cache when it's idle.
   const [pending, setPending] = useState<{ requests: number; urgent: number }>({
     requests: 0,
     urgent: 0,
   })
+
+  // Close mobile drawer on navigation
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  // Prevent background page scroll while mobile drawer is open
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [mobileOpen])
+
   useEffect(() => {
     let alive = true
     const load = async () => {
@@ -146,9 +133,6 @@ export function StaffSidebar() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    // Shared helper — wipes the localStorage user cache before
-    // redirecting so the next page paint reads as signed-out
-    // immediately instead of flashing the previous user.
     await logoutAndRedirect("/")
   }
 
@@ -165,13 +149,11 @@ export function StaffSidebar() {
 
   return (
     <>
-      {/* Mobile Top Bar — full-width header that pairs the logo with the
-          animated hamburger. Matches the admin surface exactly. */}
-      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 lg:hidden">
+      {/* Mobile Top Bar */}
+      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-gray-100 lg:hidden">
         <div className="flex items-center justify-between h-full px-3">
-          {/* Unboxed hamburger — mirrors the admin console. No box/border,
-              just the animated lines on the toolbar. */}
           <button
+            type="button"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
@@ -196,36 +178,40 @@ export function StaffSidebar() {
                 className="h-7 w-auto object-contain"
               />
             </div>
-            <span className="hidden xs:inline-block text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5">
+            <span className="hidden sm:inline-block text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5">
               Staff
             </span>
           </Link>
 
-          {/* Spacer to keep logo centered */}
-          <span className="w-10 h-10" aria-hidden />
+          <span className="w-9 h-9" aria-hidden="true" />
         </div>
       </header>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden animate-fade-in"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar */}
       <aside
+        data-testid="staff-sidebar"
+        aria-label="Staff navigation"
         className={cn(
-          // No drop shadow — the panel sits cleanly against the content
-          // with just a hairline border, matching the admin console.
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-100 bg-white transition-transform duration-300 lg:translate-x-0",
+          "fixed top-0 bottom-0 left-0 z-50 flex h-[100dvh] max-h-[100dvh] w-[85vw] max-w-[18rem] lg:w-72 flex-col border-r border-gray-100 bg-white overflow-hidden transition-transform duration-300 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Logo — actual brand wordmark, not a gradient "D" tile. */}
-        <div className="flex h-20 items-center gap-3 border-b border-gray-100 px-5">
-          <Link href="/staff" className="flex items-center gap-2 group min-w-0" onClick={() => setMobileOpen(false)}>
+        {/* Header */}
+        <div className="shrink-0 flex h-16 sm:h-20 items-center justify-between gap-2 border-b border-gray-100 px-4 sm:px-5">
+          <Link
+            href="/staff"
+            className="flex items-center gap-2 min-w-0"
+            onClick={() => setMobileOpen(false)}
+          >
             <div className="relative inline-block">
               <ChristmasLogoHat className="w-5 h-5 -top-2 left-0" />
               <Image
@@ -234,21 +220,32 @@ export function StaffSidebar() {
                 width={140}
                 height={36}
                 priority
-                className="h-9 w-auto object-contain"
+                className="h-8 sm:h-9 w-auto object-contain"
               />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5 whitespace-nowrap">
               Staff
             </span>
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close sidebar"
+            className="lg:hidden h-8 w-8 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center text-gray-600 shrink-0"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
         </div>
 
-        {/* Navigation */}
-        <ScrollArea className="flex-1 px-4 py-6">
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-3">Menu</p>
+        {/* Scrollable Navigation (min-h-0 guarantees footer always stays anchored & visible on short screens) */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-4 py-3 sm:py-5">
+          <div className="mb-2.5 sm:mb-3">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3">
+              Menu
+            </p>
           </div>
-          <nav className="space-y-1.5">
+          <nav className="space-y-1">
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -259,71 +256,84 @@ export function StaffSidebar() {
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-colors group",
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors group",
                     isActive
-                      ? "bg-[#7B2D8E] text-white shadow-sm"
+                      ? "bg-[#7B2D8E] text-white"
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
                   <item.icon
                     className={cn(
-                      "h-5 w-5 shrink-0 transition-transform group-hover:scale-110",
-                      isActive ? "text-white" : "text-gray-400 group-hover:text-[#7B2D8E]"
+                      "h-[18px] w-[18px] shrink-0",
+                      isActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-[#7B2D8E]"
                     )}
+                    aria-hidden="true"
                   />
-                  {item.title}
+                  <span className="truncate">{item.title}</span>
                 </Link>
               )
             })}
           </nav>
-        </ScrollArea>
+        </div>
 
-        {/* Pending tasks card — on-brand tint, no amber/orange gradient. */}
-        <div className="px-4 py-3">
-          <div className="rounded-xl bg-[#7B2D8E]/5 border border-[#7B2D8E]/10 p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                <Bell className="w-4 h-4 text-[#7B2D8E]" />
+        {/* Responsive Bottom Anchor: Pending Tasks + Sign Out */}
+        <div
+          data-testid="staff-sidebar-footer"
+          className="mt-auto shrink-0 border-t border-gray-100 bg-white px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-3 sm:pb-3.5 space-y-2.5"
+        >
+          {/* Pending tasks card */}
+          <div className="rounded-xl bg-[#7B2D8E]/5 border border-[#7B2D8E]/10 p-2.5 sm:p-3">
+            <div className="flex items-center gap-2.5 mb-2 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4 text-[#7B2D8E]" aria-hidden="true" />
               </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Pending tasks</p>
-                <p className="text-xs text-gray-500">Requires attention</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate leading-tight">
+                  Pending tasks
+                </p>
+                <p className="text-[11px] text-gray-500 truncate leading-tight mt-0.5">
+                  Requires attention
+                </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
               <Link
                 href="/staff/gift-cards"
                 onClick={() => setMobileOpen(false)}
-                className="bg-white rounded-lg px-3 py-2 text-center border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
+                className="min-w-0 bg-white rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
               >
-                <p className="text-lg font-bold text-[#7B2D8E] tabular-nums">
+                <p className="text-base sm:text-lg font-bold text-[#7B2D8E] tabular-nums leading-tight">
                   {pending.requests}
                 </p>
-                <p className="text-[10px] text-gray-500 uppercase">Requests</p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide truncate mt-0.5">
+                  Requests
+                </p>
               </Link>
               <Link
                 href="/staff/complaints"
                 onClick={() => setMobileOpen(false)}
-                className="bg-white rounded-lg px-3 py-2 text-center border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
+                className="min-w-0 bg-white rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-center border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
               >
-                <p className="text-lg font-bold text-[#7B2D8E] tabular-nums">
+                <p className="text-base sm:text-lg font-bold text-[#7B2D8E] tabular-nums leading-tight">
                   {pending.urgent}
                 </p>
-                <p className="text-[10px] text-gray-500 uppercase">Urgent</p>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide truncate mt-0.5">
+                  Urgent
+                </p>
               </Link>
             </div>
           </div>
-        </div>
 
-        {/* Sign out */}
-        <div className="border-t border-gray-100 p-4">
+          {/* Sign out */}
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 rounded-xl py-3 transition-colors"
+            className="w-full justify-start gap-2.5 text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 rounded-lg h-9 sm:h-10 px-3 text-sm font-medium transition-colors"
             onClick={handleLogout}
           >
-            <LogOut className="h-5 w-5" />
-            Sign out
+            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">Sign out</span>
           </Button>
         </div>
       </aside>
