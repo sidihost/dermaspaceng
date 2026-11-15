@@ -5,8 +5,10 @@ import {
   SHOW_COOLDOWN_MS,
   isNewsletterPopupSuppressedPath,
   parseStoredTimestamp,
+  shouldShowHomepageNewsletter,
   shouldShowNewsletterPopup,
 } from './newsletter-popup'
+import { getRecommendationsEyebrow } from './recommendations-label'
 
 const BASE_NOW = 1_800_000_000_000
 
@@ -115,4 +117,37 @@ test('respects feature flag disabled state and parses timestamps safely', () => 
   assert.equal(parseStoredTimestamp('bad'), null)
   assert.equal(parseStoredTimestamp('0'), null)
   assert.equal(parseStoredTimestamp(String(BASE_NOW)), BASE_NOW)
+})
+
+test('hides homepage newsletter section when logged in or already subscribed', () => {
+  assert.equal(
+    shouldShowHomepageNewsletter({ isLoading: true, isLoggedIn: false, subscribed: false }),
+    false,
+  )
+  assert.equal(
+    shouldShowHomepageNewsletter({ isLoading: false, isLoggedIn: true, subscribed: false }),
+    false,
+  )
+  assert.equal(
+    shouldShowHomepageNewsletter({ isLoading: false, isLoggedIn: false, subscribed: true }),
+    false,
+  )
+  assert.equal(
+    shouldShowHomepageNewsletter({
+      isLoading: false,
+      isLoggedIn: false,
+      subscribed: true,
+      justSubmitted: true,
+    }),
+    true,
+  )
+  assert.equal(
+    shouldShowHomepageNewsletter({ isLoading: false, isLoggedIn: false, subscribed: false }),
+    true,
+  )
+})
+
+test('uses Picked for you when logged in and Recommended for you for guests', () => {
+  assert.equal(getRecommendationsEyebrow(true), 'Picked for you')
+  assert.equal(getRecommendationsEyebrow(false), 'Recommended for you')
 })

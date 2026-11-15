@@ -6,6 +6,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { ConsultationResponsesSummary } from '@/components/consultation/consultation-responses-summary'
 import type { ConsultationConversationReply } from '@/components/consultation/consultation-conversation'
+import { RecommendationsEyebrow } from '@/components/shared/recommendations-eyebrow'
 import {
   MapPin,
   Calendar,
@@ -454,7 +455,7 @@ export default function TrackConsultationPage({
                   {data.analysis.recommendations.length > 0 && (
                     <div>
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
-                        Recommended for you
+                        <RecommendationsEyebrow />
                       </h4>
                       <div className="space-y-3">
                         {data.analysis.recommendations.map((r, i) => (

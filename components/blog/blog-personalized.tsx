@@ -23,6 +23,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Star, Clock, BookMarked, History, Heart } from 'lucide-react'
+import { getRecommendationsEyebrow } from '@/lib/recommendations-label'
 
 interface CardPost {
   id: string
@@ -203,7 +204,7 @@ export function BlogPersonalized({ standalone = false }: { standalone?: boolean 
         <>
           <Rail
             icon={<Star className="w-3.5 h-3.5" />}
-            title="Recommended for you"
+            title={getRecommendationsEyebrow(true)}
             posts={data.recommended}
           />
           <Rail

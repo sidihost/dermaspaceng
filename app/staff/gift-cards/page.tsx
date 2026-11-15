@@ -41,12 +41,13 @@ import {
 } from "lucide-react"
 import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
-import { GiftCardPreview } from "@/components/gift-cards/gift-card-preview"
+import { GiftCardPrintStudio } from "@/components/gift-cards/gift-card-print-studio"
 import {
   findGiftCardDesignById,
   findGiftCardFontById,
   getGiftCardOccasionMeta,
 } from "@/lib/gift-card-templates"
+import { formatGiftCardSerial } from "@/lib/gift-card-code-helpers"
 
 interface GiftCardRequest {
   id: number
@@ -73,6 +74,7 @@ interface GiftCardRequest {
   payment_status?: string | null
   invoice_number?: string | null
   recipient_notified_at?: string | null
+  verification_code?: string | null
   created_at: string
 }
 
@@ -452,25 +454,32 @@ export default function StaffGiftCardsPage() {
 
       {/* View Dialog */}
       <Dialog open={!!selected && !actionDialogOpen} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gift card request</DialogTitle>
-            <DialogDescription>Full request details and chosen card style</DialogDescription>
+            <DialogDescription>Print-ready card preview, QR verification, and request details</DialogDescription>
           </DialogHeader>
           {selected && (() => {
             const selectedDesign = findGiftCardDesignById(selected.design || selected.design_name)
             const selectedFont = findGiftCardFontById(selected.font)
             const selectedOccasionMeta = getGiftCardOccasionMeta(selected.occasion)
+            const selectedCode = selected.verification_code || formatGiftCardSerial(selected.id)
             return (
             <div className="space-y-4">
-              <GiftCardPreview
-                design={selectedDesign}
-                amountText={formatCurrency(selected.amount)}
+              <GiftCardPrintStudio
+                id={selected.id}
+                verificationCode={selectedCode}
+                amount={selected.amount}
+                designId={selected.design || selectedDesign.id}
+                designName={selected.design_name || selectedDesign.name}
+                occasion={selected.occasion}
+                fontId={selected.font || selectedFont.id}
+                fontName={selected.font_name || selectedFont.name}
                 recipientName={selected.recipient_name}
                 senderName={selected.sender_name}
-                occasion={selected.occasion}
-                fontClassName={selectedFont.className}
-                showStack={false}
+                personalMessage={selected.personal_message}
+                issuedAt={selected.created_at}
+                compact
               />
 
               <div className="rounded-lg border border-gray-200 bg-[#FBF9FC] p-3 grid grid-cols-3 gap-2 text-xs">

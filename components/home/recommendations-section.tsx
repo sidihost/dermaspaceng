@@ -14,6 +14,8 @@ import {
   Star,
 } from 'lucide-react'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
+import { useAuth } from '@/hooks/use-auth'
+import { getRecommendationsEyebrow } from '@/lib/recommendations-label'
 
 // ---------------------------------------------------------------------------
 // <RecommendationsSection />
@@ -410,6 +412,8 @@ function RailSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function RecommendationsSection() {
+  const { isAuthenticated } = useAuth()
+
   // Visible to everyone — recommendations are a discovery aid for
   // logged-out visitors too. We revalidate on focus / tab visibility
   // so the rail picks up new visits in near-real-time once the
@@ -434,7 +438,7 @@ export default function RecommendationsSection() {
   return (
     <div className="bg-white pb-2">
       <Rail
-        eyebrow="Recommended for you"
+        eyebrow={getRecommendationsEyebrow(isAuthenticated)}
         title="Most-visited services this month"
         subtitle="What other Dermaspace clients are browsing right now."
         viewAllHref="/services"

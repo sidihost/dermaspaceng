@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Gift, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Gift, ChevronLeft, ChevronRight, Printer, QrCode } from 'lucide-react'
 import {
   findGiftCardDesignById,
   findGiftCardFontById,
@@ -36,6 +37,7 @@ interface GiftCardRequest {
   notes: string | null
   payment_status?: string | null
   recipient_notified_at?: string | null
+  verification_code?: string | null
   created_at: string
 }
 
@@ -99,8 +101,18 @@ export default function GiftCardsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Gift card requests</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage and process gift card requests</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage gift card orders, download CR80 print-ready PDFs, and verify QR codes
+          </p>
         </div>
+        <Link
+          href="/gift-cards/verify"
+          target="_blank"
+          className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-[#7B2D8E]/30 bg-white text-xs font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors self-start sm:self-auto"
+        >
+          <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
+          <span>Verify Card Code</span>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -228,12 +240,22 @@ export default function GiftCardsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-gray-500">
-                          {new Date(request.created_at).toLocaleDateString()}
-                        </span>
+                        <div className="space-y-0.5">
+                          <span className="text-sm text-gray-500 block">
+                            {new Date(request.created_at).toLocaleDateString()}
+                          </span>
+                          {request.verification_code && (
+                            <span className="font-mono text-[10px] text-gray-500 block">
+                              {request.verification_code}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
+                        <div className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E]">
+                          <Printer className="w-3.5 h-3.5" aria-hidden="true" />
+                          <ChevronRight className="w-4 h-4 text-gray-300" />
+                        </div>
                       </TableCell>
                     </TableRow>
                   )

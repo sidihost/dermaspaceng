@@ -24,11 +24,13 @@ import {
   Receipt,
   Printer,
   Loader2,
+  FlipHorizontal2,
 } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
 import { downloadGiftCardReceiptPdf } from '@/lib/receipt-pdf'
 import {
+  GiftCardBackPreview,
   GiftCardPreview,
   getOccasionBadgeIcon,
 } from '@/components/gift-cards/gift-card-preview'
@@ -88,6 +90,7 @@ export default function GiftCardsClient() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentError, setPaymentError] = useState('')
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
+  const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front')
   const [completedReceiptRef, setCompletedReceiptRef] = useState('')
   const [completedInvoiceNumber, setCompletedInvoiceNumber] = useState<string | null>(null)
   const [completedPaymentMethod, setCompletedPaymentMethod] = useState<string>('')
@@ -627,16 +630,37 @@ export default function GiftCardsClient() {
               {/* Left Side - Gift Card Preview (2 cols) */}
               <div className="lg:col-span-2 lg:sticky lg:top-24">
                 <div className="max-w-xs mx-auto lg:mx-0">
-                  <GiftCardPreview
-                    design={selectedDesign}
-                    amountText={formatPrice(finalAmount)}
-                    recipientName={recipientName}
-                    senderName={senderName}
-                    occasion={selectedOccasion}
-                    fontClassName={selectedFont.className}
-                  />
+                  {previewSide === 'front' ? (
+                    <GiftCardPreview
+                      design={selectedDesign}
+                      amountText={formatPrice(finalAmount)}
+                      recipientName={recipientName}
+                      senderName={senderName}
+                      occasion={selectedOccasion}
+                      fontClassName={selectedFont.className}
+                    />
+                  ) : (
+                    <GiftCardBackPreview
+                      design={selectedDesign}
+                      verificationCode="DSGC-00000-SPECIMEN"
+                      verificationUrl="https://dermaspaceng.com/gift-cards/verify"
+                      senderName={senderName}
+                      personalMessage={personalMessage}
+                      fontClassName={selectedFont.className}
+                    />
+                  )}
+                  <div className="mt-4 flex justify-center lg:justify-start">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSide((s) => (s === 'front' ? 'back' : 'front'))}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white hover:bg-white/20 transition-colors cursor-pointer"
+                    >
+                      <FlipHorizontal2 className="w-3.5 h-3.5" aria-hidden="true" />
+                      <span>{previewSide === 'front' ? 'Preview Card Back (QR)' : 'Preview Card Front'}</span>
+                    </button>
+                  </div>
                   {/* Active Style Summary */}
-                  <div className="mt-5 rounded-xl bg-white/10 border border-white/15 px-3.5 py-2.5 text-white">
+                  <div className="mt-3 rounded-xl bg-white/10 border border-white/15 px-3.5 py-2.5 text-white">
                     <div className="flex items-center justify-between gap-2 text-xs">
                       <span className="font-semibold text-white truncate">
                         {occasionMeta.editionLabel}

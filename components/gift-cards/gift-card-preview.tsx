@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import QRCode from 'qrcode'
 import {
   Award,
   Cake,
@@ -34,35 +36,48 @@ function EditorialFrame({ accentHex }: { accentHex: string }) {
   return (
     <>
       <path
-        d="M214 0 H360 V225 H214 C194 176, 194 49, 214 0 Z"
+        d="M208 0 H360 V227 H208 C190 176, 190 51, 208 0 Z"
         fill={accentHex}
-        fillOpacity="0.46"
+        fillOpacity="0.48"
       />
       <path
-        d="M240 0 H360 V225 H240 C224 175, 224 50, 240 0 Z"
+        d="M236 0 H360 V227 H236 C220 175, 220 52, 236 0 Z"
         fill={accentHex}
-        fillOpacity="0.34"
+        fillOpacity="0.38"
       />
+      {/* Subtle architectural champagne spine */}
+      <path
+        d="M208 8 C192 56, 192 171, 208 219"
+        stroke="#E5C896"
+        strokeOpacity="0.28"
+        strokeWidth="0.75"
+      />
+      {/* Double metallic hairline frame */}
       <rect
-        x="9"
-        y="9"
-        width="342"
-        height="207"
+        x="8"
+        y="8"
+        width="344"
+        height="211"
         rx="11"
         stroke="#E9D5FF"
-        strokeOpacity="0.26"
+        strokeOpacity="0.28"
         strokeWidth="1"
       />
       <rect
-        x="13"
-        y="13"
-        width="334"
-        height="199"
+        x="12"
+        y="12"
+        width="336"
+        height="203"
         rx="8"
         stroke="#E5C896"
-        strokeOpacity="0.24"
-        strokeWidth="0.75"
+        strokeOpacity="0.34"
+        strokeWidth="0.8"
       />
+      {/* Corner foil registration ticks */}
+      <path d="M18 18 H26 M18 18 V26" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
+      <path d="M342 18 H334 M342 18 V26" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
+      <path d="M18 209 H26 M18 209 V201" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
+      <path d="M342 209 H334 M342 209 V201" stroke="#E5C896" strokeOpacity="0.65" strokeWidth="1" />
     </>
   )
 }
@@ -1082,59 +1097,244 @@ export function GiftCardPreview({
         data-testid="gift-card-preview"
         data-template={design.id}
         data-occasion-motif={motif}
-        className="relative rounded-2xl p-5 overflow-hidden border border-white/25"
+        className="relative aspect-[1.586/1] w-full rounded-2xl p-3.5 sm:p-5 overflow-hidden border border-[#E5C896]/45 flex flex-col justify-between"
         style={{ backgroundColor: design.surfaceHex }}
       >
         {renderMotifArtwork(motif, design.accentHex, medallionHex)}
 
-        {/* Top Row — clean editorial mark, zero badges */}
-        <div className="relative flex items-center justify-between gap-2 mb-6">
-          <div className="relative inline-flex items-center gap-2">
+        {/* Top Row — crisp local white Dermaspace logo mark */}
+        <div className="relative flex items-start justify-between gap-2 shrink-0">
+          <div className="relative inline-flex items-center">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              src="/images/dermaspace-header-logo.png"
               alt="Dermaspace"
-              width={100}
-              height={30}
+              width={118}
+              height={32}
               referrerPolicy="no-referrer"
-              className="h-6 w-auto object-contain brightness-0 invert"
+              style={{ width: 'auto' }}
+              className="h-4 sm:h-6 w-auto object-contain brightness-0 invert"
             />
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75 whitespace-nowrap">
-            Gift Card
-          </span>
-        </div>
-
-        {/* Recipient */}
-        <div className="relative mb-1">
-          <p className={`text-white/80 text-xs ${fontClassName}`}>
-            For:{' '}
-            <span className="text-white font-semibold">
-              {recipientName?.trim() || 'Recipient Name'}
+          <div className="text-right shrink-0">
+            <span className="block text-[8.5px] sm:text-[10px] font-semibold uppercase tracking-[0.2em] text-[#E5C896] whitespace-nowrap">
+              Gift Card
             </span>
-          </p>
+          </div>
         </div>
 
-        {/* Amount */}
-        <div className="relative mb-5">
-          <p className="text-white/70 text-[10px] uppercase tracking-wider mb-0.5">
-            Amount
-          </p>
-          <p className={`text-2xl font-bold text-white tabular-nums ${fontClassName}`}>
-            {amountText}
-          </p>
+        {/* Center Left — Recipient + Amount locked clear of right motif */}
+        <div className="relative max-w-[53%] space-y-1.5 sm:space-y-2.5 my-auto py-0.5">
+          <div>
+            <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.18em] text-[#E5C896]/90 font-semibold leading-none mb-1">
+              Presented To
+            </p>
+            <p
+              className={`text-[13px] sm:text-base font-semibold text-white leading-tight line-clamp-2 ${fontClassName}`}
+            >
+              {recipientName?.trim() || 'Recipient Name'}
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[7.5px] sm:text-[8.5px] uppercase tracking-[0.18em] text-white/65 font-semibold leading-none mb-1">
+              Card Value
+            </p>
+            <p
+              className={`text-lg sm:text-2xl font-bold text-white tabular-nums tracking-tight leading-none ${fontClassName}`}
+            >
+              {amountText}
+            </p>
+          </div>
         </div>
 
-        {/* Bottom Row — plain typography, zero badges */}
-        <div className="relative flex items-center justify-between gap-2">
-          <span className="text-[11px] font-medium text-white/90 tracking-wide whitespace-nowrap">
-            {occasion ? occasionMeta.editionLabel : 'Signature Gift Card'}
+        {/* Bottom Row — hairline champagne rule + edition & sender */}
+        <div className="relative shrink-0 pt-1.5 sm:pt-2 border-t border-[#E5C896]/25 flex items-center justify-between gap-2">
+          <span className="text-[9px] sm:text-[11px] font-medium text-white/90 tracking-wide truncate">
+            {occasion ? occasionMeta.editionLabel : 'Signature Sanctuary'}
           </span>
-          <p className="text-white/85 text-xs truncate">
+          <p className="text-white/85 text-[9px] sm:text-[11px] truncate text-right">
             From:{' '}
-            <span className="text-white font-medium">
+            <span className="text-[#E5C896] font-semibold">
               {senderName?.trim() || 'Your Name'}
             </span>
           </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function GiftCardQrCode({
+  value,
+  size = 112,
+  className = '',
+}: {
+  value: string
+  size?: number
+  className?: string
+}) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (!value) return
+
+    QRCode.toDataURL(value, {
+      width: Math.max(240, size * 2),
+      margin: 1,
+      errorCorrectionLevel: 'H',
+      color: {
+        dark: '#1a0d1f',
+        light: '#FFFFFF',
+      },
+    })
+      .then((url) => {
+        if (active) setDataUrl(url)
+      })
+      .catch(() => {
+        if (active) setDataUrl(null)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [value, size])
+
+  if (!dataUrl) {
+    return (
+      <div
+        aria-label="Generating QR verification code"
+        className={`aspect-square w-full bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded flex items-center justify-center text-[9px] font-mono text-[#7B2D8E] ${className}`}
+      >
+        QR
+      </div>
+    )
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={dataUrl}
+      alt={`QR verification code for ${value}`}
+      width={size}
+      height={size}
+      className={`aspect-square w-full h-auto block bg-white ${className}`}
+    />
+  )
+}
+
+interface GiftCardBackPreviewProps {
+  design: GiftCardDesign
+  verificationCode: string
+  verificationUrl: string
+  senderName?: string | null
+  personalMessage?: string | null
+  fontClassName?: string
+  showBleedGuide?: boolean
+  className?: string
+}
+
+export function GiftCardBackPreview({
+  design,
+  verificationCode,
+  verificationUrl,
+  senderName,
+  personalMessage,
+  fontClassName = 'font-serif',
+  showBleedGuide = false,
+  className = '',
+}: GiftCardBackPreviewProps) {
+  return (
+    <div className={`relative ${className}`}>
+      <div
+        data-testid="gift-card-back-preview"
+        data-verification-code={verificationCode}
+        className="relative aspect-[1.586/1] w-full rounded-2xl bg-[#FCFAFD] overflow-hidden border flex flex-col justify-between"
+        style={{ borderColor: design.surfaceHex }}
+      >
+        {/* Top Security / Brand Header Band */}
+        <div
+          className="shrink-0 px-3.5 sm:px-5 py-1.5 sm:py-2.5 flex items-center justify-between gap-2 border-b-2 border-[#D4B377]"
+          style={{ backgroundColor: design.surfaceHex }}
+        >
+          <Image
+            src="/images/dermaspace-header-logo.png"
+            alt="Dermaspace"
+            width={102}
+            height={28}
+            referrerPolicy="no-referrer"
+            style={{ width: 'auto' }}
+            className="h-3.5 sm:h-5 w-auto object-contain brightness-0 invert"
+          />
+          <div className="text-right leading-tight">
+            <span className="block text-[7px] sm:text-[8px] font-semibold uppercase tracking-[0.18em] text-[#E5C896]">
+              Authorized Gift Card
+            </span>
+            <span className="block text-[8.5px] sm:text-[10px] font-mono font-bold text-white tracking-wider">
+              {verificationCode}
+            </span>
+          </div>
+        </div>
+
+        {/* Center Safe-Area Body */}
+        <div className="relative flex-1 px-3.5 sm:px-5 py-2 sm:py-3 flex items-center gap-2.5 sm:gap-3 min-h-0 overflow-hidden">
+          {showBleedGuide && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-2 border border-dashed border-[#D4B377]/70 rounded-lg"
+            />
+          )}
+
+          {/* Left Column — Dedication Note & Redemption Terms */}
+          <div className="flex-1 min-w-0 h-full flex flex-col justify-between gap-1.5 overflow-hidden">
+            <div
+              className="shrink-0 rounded-lg bg-[#FAF6FB] border border-[#7B2D8E]/15 border-l-2 px-2.5 py-1.5 sm:py-2"
+              style={{ borderLeftColor: design.surfaceHex }}
+            >
+              <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.16em] font-bold text-[#7B2D8E] mb-0.5 leading-none">
+                {personalMessage?.trim() ? 'Personal Note' : 'Dermaspace Sanctuary'}
+              </p>
+              <p
+                className={`text-[9px] sm:text-[10.5px] text-[#1a0d1f] italic leading-[1.25] line-clamp-2 sm:line-clamp-3 ${fontClassName}`}
+              >
+                &ldquo;
+                {personalMessage?.trim() ||
+                  'An invitation to rest, restore, and glow at Dermaspace Esthetic & Wellness Centre.'}
+                &rdquo;
+              </p>
+              {senderName?.trim() && (
+                <p className="text-[8px] sm:text-[9px] font-semibold text-[#5A1D6A] text-right mt-0.5 leading-none truncate">
+                  — {senderName.trim()}
+                </p>
+              )}
+            </div>
+
+            <div className="shrink-0 space-y-0.5 text-[7.5px] sm:text-[8.5px] text-gray-600 leading-[1.22]">
+              <p className="font-semibold text-[#1a0d1f] uppercase tracking-[0.12em] text-[6.5px] sm:text-[7.5px] leading-none">
+                How to Redeem
+              </p>
+              <p className="truncate">Present card at VI or Ikoyi reception.</p>
+              <p className="truncate">Valid on spa treatments · Never expires.</p>
+            </div>
+          </div>
+
+          {/* Right Column — Live Scannable QR Security Module */}
+          <div className="w-[31%] max-w-[108px] shrink-0 rounded-xl bg-white border border-[#7B2D8E]/25 p-1.5 sm:p-2 flex flex-col items-center justify-center">
+            <GiftCardQrCode value={verificationUrl} size={112} />
+            <span className="mt-1 text-[6.5px] sm:text-[7.5px] font-bold uppercase tracking-[0.12em] text-[#7B2D8E] text-center leading-none">
+              Scan to Verify
+            </span>
+          </div>
+        </div>
+
+        {/* Bottom Branch Footer */}
+        <div className="shrink-0 px-3.5 sm:px-5 py-1 sm:py-1.5 border-t border-[#7B2D8E]/15 bg-[#FAF6FB] flex items-center justify-between gap-2 text-[7px] sm:text-[8.5px] text-gray-600">
+          <span className="truncate font-medium">
+            237B Muri Okunola St, VI · 9 Agbeke Rotinwa Cl, Ikoyi
+          </span>
+          <span className="font-semibold text-[#7B2D8E] shrink-0">
+            dermaspaceng.com
+          </span>
         </div>
       </div>
     </div>

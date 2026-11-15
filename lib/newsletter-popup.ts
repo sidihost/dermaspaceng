@@ -5,6 +5,8 @@ export const NEWSLETTER_STORAGE_KEYS = {
   sessionShown: 'ds.newsletter.sessionShown',
 } as const
 
+export const NEWSLETTER_SUBSCRIBED_EVENT = 'ds:newsletter-subscribed'
+
 // Normal website cadence:
 // - If a visitor explicitly dismisses the popup, stay quiet for 14 days.
 // - Even if they close without dismissing or navigate away, wait at least
@@ -76,6 +78,23 @@ export function shouldShowNewsletterPopup(
     return false
   }
 
+  return true
+}
+
+export interface HomepageNewsletterVisibilityInput {
+  isLoading: boolean
+  isLoggedIn: boolean
+  subscribed: boolean
+  justSubmitted?: boolean
+}
+
+export function shouldShowHomepageNewsletter(
+  input: HomepageNewsletterVisibilityInput,
+): boolean {
+  if (input.justSubmitted) return true
+  if (input.isLoading) return false
+  if (input.isLoggedIn) return false
+  if (input.subscribed) return false
   return true
 }
 

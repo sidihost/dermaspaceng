@@ -15,6 +15,7 @@ import {
   MessageSquare,
   Check,
 } from 'lucide-react'
+import { getRecommendationsEyebrow } from '@/lib/recommendations-label'
 
 // -----------------------------------------------------------------------------
 // /survey — customer feedback survey.
@@ -383,7 +384,7 @@ export default function SurveyPage() {
                   className="block w-1 h-3 rounded-full bg-[#7B2D8E]"
                 />
                 <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
-                  Recommended for you
+                  {getRecommendationsEyebrow(Boolean(user))}
                 </h2>
               </div>
               <div className="space-y-1.5">

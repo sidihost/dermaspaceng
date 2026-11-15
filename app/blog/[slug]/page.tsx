@@ -38,6 +38,7 @@ import { CopyLinkButton } from '@/components/blog/copy-link-button'
 import { AuthorAvatar } from '@/components/blog/author-avatar'
 import { BlogComments } from '@/components/blog/blog-comments'
 import FavoriteButton from '@/components/favorite-button'
+import { RecommendationsEyebrow } from '@/components/shared/recommendations-eyebrow'
 import {
   getPostBySlug,
   getPublishedPosts,
@@ -408,7 +409,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <section className="mt-12 pt-6 border-t border-[#7B2D8E]/20">
           <div className="flex items-baseline justify-between mb-4">
             <h2 className="text-[17px] font-bold text-[#1a0d1f] tracking-tight">
-              Recommended for you
+              <RecommendationsEyebrow />
             </h2>
             <Link
               href="/blog"

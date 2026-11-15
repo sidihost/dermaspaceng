@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { ArrowRight, Check, Info, Mail, X } from 'lucide-react'
 import {
   NEWSLETTER_STORAGE_KEYS,
+  NEWSLETTER_SUBSCRIBED_EVENT,
   isNewsletterPopupSuppressedPath,
   parseStoredTimestamp,
   shouldShowNewsletterPopup,
@@ -33,7 +35,7 @@ function writeStorage(key: string, value: string, storage: 'local' | 'session') 
       window.sessionStorage.setItem(key, value)
     }
   } catch {
-    // Private browsing or quota errors — keep working in memory.
+    // Private browsing or quota errors: keep working in memory.
   }
 }
 
@@ -49,6 +51,7 @@ export function NewsletterPopup() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   const triggeredRef = useRef(false)
+  const submittedRef = useRef(false)
 
   const suppress =
     !newsletterEnabled || isNewsletterPopupSuppressedPath(pathname)
@@ -60,6 +63,22 @@ export function NewsletterPopup() {
       'local',
     )
     setOpen(false)
+  }, [])
+
+  useEffect(() => {
+    const onSubscribedElsewhere = () => {
+      triggeredRef.current = true
+      if (!submittedRef.current) {
+        setOpen(false)
+      }
+    }
+    window.addEventListener(NEWSLETTER_SUBSCRIBED_EVENT, onSubscribedElsewhere)
+    return () => {
+      window.removeEventListener(
+        NEWSLETTER_SUBSCRIBED_EVENT,
+        onSubscribedElsewhere,
+      )
+    }
   }, [])
 
   useEffect(() => {
@@ -114,7 +133,7 @@ export function NewsletterPopup() {
           userEmail = meJson?.user?.email ?? null
         }
       } catch {
-        // Guest visitor — proceed.
+        // Guest visitor: proceed.
       }
       if (cancelled) return
 
@@ -256,6 +275,8 @@ export function NewsletterPopup() {
       }
 
       writeStorage(NEWSLETTER_STORAGE_KEYS.subscribed, '1', 'local')
+      submittedRef.current = true
+      window.dispatchEvent(new Event(NEWSLETTER_SUBSCRIBED_EVENT))
       setAlreadySubscribed(Boolean(data?.alreadySubscribed))
       setSubmitted(true)
     } catch {
@@ -270,125 +291,148 @@ export function NewsletterPopup() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="newsletter-popup-title"
-      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-[2px] p-3 sm:p-4"
+      data-testid="newsletter-popup"
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-[#1a0d1f]/55 p-3 sm:p-5"
       onClick={dismiss}
     >
       <div
-        className="relative w-full max-w-md rounded-2xl overflow-hidden bg-white border border-gray-200"
+        className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-[#7B2D8E]/20 grid md:grid-cols-[46%_54%]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Solid Dermaspace plum header */}
-        <div className="bg-[#7B2D8E] px-5 py-5 sm:px-6 text-white flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-white/85 mb-2">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white/15">
-                <Mail className="w-3.5 h-3.5 text-white" aria-hidden="true" />
-              </span>
-              <span>Monthly Journal</span>
-            </div>
-            <h2
-              id="newsletter-popup-title"
-              className="text-lg sm:text-xl font-bold leading-snug text-balance"
-            >
-              {submitted
-                ? alreadySubscribed
-                  ? "You're already on the list"
-                  : "You're subscribed"
-                : 'Skincare notes & early slot access'}
-            </h2>
-          </div>
-
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label="Close newsletter popup"
-            className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {/* Editorial sanctuary photo panel */}
+        <div className="relative h-64 sm:h-72 md:h-auto md:min-h-[390px] bg-[#FAF6FB] border-b md:border-b-0 md:border-r border-[#7B2D8E]/15 overflow-hidden">
+          <Image
+            src="/images/newsletter-spa-portrait-clean.jpg"
+            alt="Dark-skinned woman with luminous skin wearing a crisp white waffle spa robe and a plum silk drape"
+            fill
+            loading="eager"
+            sizes="(max-width: 768px) 100vw, 320px"
+            referrerPolicy="no-referrer"
+            className="object-cover object-[center_20%]"
+          />
         </div>
 
-        <div className="p-5 sm:p-6">
-          {submitted ? (
-            <div className="text-center py-2">
-              <div className="w-11 h-11 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
-                {alreadySubscribed ? (
-                  <Info className="w-5 h-5" aria-hidden="true" />
-                ) : (
-                  <Check className="w-5 h-5" aria-hidden="true" />
-                )}
+        {/* Content panel */}
+        <div className="p-6 sm:p-8 bg-white flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="inline-flex items-center gap-2 text-[#7B2D8E]">
+                <Mail className="w-4 h-4" aria-hidden="true" />
+                <span className="text-xs font-bold uppercase tracking-[0.16em]">
+                  Newsletter
+                </span>
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed max-w-xs mx-auto">
-                {alreadySubscribed
-                  ? "We already have your address saved. You'll receive our next monthly issue on the first."
-                  : 'Welcome to the Dermaspace list. Expect one calm email a month with skin tips and member perks.'}
-              </p>
+
               <button
                 type="button"
-                onClick={() => setOpen(false)}
-                className="mt-5 w-full inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-sm font-semibold transition-colors cursor-pointer"
+                onClick={dismiss}
+                aria-label="Close newsletter popup"
+                className="shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 hover:text-[#1a0d1f] hover:border-[#7B2D8E]/35 transition-colors cursor-pointer"
               >
-                Done
+                <X className="w-4 h-4" />
               </button>
             </div>
-          ) : (
-            <>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                One thoughtful email a month — seasonal facial offers, skin care
-                guidance, and priority appointment openings in VI &amp; Ikoyi.
-              </p>
 
-              <form onSubmit={handleSubmit} className="space-y-3">
-                <label htmlFor="newsletter-popup-email" className="sr-only">
-                  Email address
-                </label>
-                <input
-                  id="newsletter-popup-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  required
-                  autoComplete="email"
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:border-transparent"
-                />
-
-                {errorMsg && (
-                  <p className="text-xs text-rose-600" role="alert">
-                    {errorMsg}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer"
-                >
-                  {submitting ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Subscribing…</span>
-                    </>
+            {submitted ? (
+              <div className="py-3">
+                <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center mb-4">
+                  {alreadySubscribed ? (
+                    <Info className="w-5 h-5" aria-hidden="true" />
                   ) : (
-                    <>
-                      <span>Subscribe</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
+                    <Check className="w-5 h-5" aria-hidden="true" />
                   )}
-                </button>
-              </form>
+                </div>
 
-              <div className="mt-4 flex items-center justify-between gap-2 text-xs text-gray-400">
-                <span>No spam. Unsubscribe anytime.</span>
+                <h2
+                  id="newsletter-popup-title"
+                  className="text-xl font-bold text-[#1a0d1f] leading-snug mb-2"
+                >
+                  {alreadySubscribed
+                    ? "You're already subscribed"
+                    : "You're subscribed"}
+                </h2>
+
+                <p className="text-sm text-gray-600 leading-relaxed mb-6">
+                  {alreadySubscribed
+                    ? "We already have your email saved, so you won't miss our next update."
+                    : 'Thanks for subscribing. Watch your inbox for our next monthly update and seasonal offers.'}
+                </p>
+
                 <button
                   type="button"
-                  onClick={dismiss}
-                  className="font-medium text-gray-500 hover:text-[#7B2D8E] transition-colors cursor-pointer py-1 px-1"
+                  onClick={() => setOpen(false)}
+                  className="w-full inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-sm font-semibold transition-colors cursor-pointer"
                 >
-                  Maybe later
+                  Done
                 </button>
               </div>
-            </>
+            ) : (
+              <>
+                <h2
+                  id="newsletter-popup-title"
+                  className="text-xl sm:text-2xl font-bold text-[#1a0d1f] leading-snug text-balance mb-2.5"
+                >
+                  Skincare tips &amp; early booking access
+                </h2>
+
+                <p className="text-sm text-gray-600 leading-relaxed mb-6">
+                  Subscribe for practical skincare advice from our aestheticians, seasonal offers, and early notice on weekend appointments.
+                </p>
+
+                <form onSubmit={handleSubmit} className="space-y-3">
+                  <label htmlFor="newsletter-popup-email" className="sr-only">
+                    Email address
+                  </label>
+                  <input
+                    id="newsletter-popup-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
+                    required
+                    autoComplete="email"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-[#1a0d1f] placeholder:text-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:border-transparent"
+                  />
+
+                  {errorMsg && (
+                    <p className="text-xs text-rose-600" role="alert">
+                      {errorMsg}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                  >
+                    {submitting ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Subscribing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Subscribe</span>
+                        <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+
+          {!submitted && (
+            <div className="mt-5 pt-3.5 border-t border-gray-100 flex items-center justify-between gap-2 text-xs text-gray-500">
+              <span>One email a month. Unsubscribe anytime.</span>
+              <button
+                type="button"
+                onClick={dismiss}
+                className="font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors cursor-pointer py-1 px-1 shrink-0"
+              >
+                Maybe later
+              </button>
+            </div>
           )}
         </div>
       </div>

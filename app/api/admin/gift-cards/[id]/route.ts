@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { ensureGiftCardSchema } from '@/lib/gift-cards'
+import { buildGiftCardVerificationCode } from '@/lib/gift-card-verification'
 
 /**
  * Admin gift-card detail API.
@@ -36,7 +37,12 @@ export async function GET(
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Gift card request not found' }, { status: 404 })
     }
-    return NextResponse.json({ request: rows[0] })
+    return NextResponse.json({
+      request: {
+        ...rows[0],
+        verification_code: buildGiftCardVerificationCode(numericId),
+      },
+    })
   } catch (error) {
     console.error('Get gift-card detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch gift card'

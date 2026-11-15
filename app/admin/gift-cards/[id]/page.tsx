@@ -16,15 +16,14 @@ import {
   ArrowLeft, Loader2, AlertCircle, User, Mail, Phone,
   Calendar, Clock, Palette, Type, Send, CheckCircle2,
 } from 'lucide-react'
-import {
-  GiftCardPreview,
-  getOccasionBadgeIcon,
-} from '@/components/gift-cards/gift-card-preview'
+import { getOccasionBadgeIcon } from '@/components/gift-cards/gift-card-preview'
+import { GiftCardPrintStudio } from '@/components/gift-cards/gift-card-print-studio'
 import {
   findGiftCardDesignById,
   findGiftCardFontById,
   getGiftCardOccasionMeta,
 } from '@/lib/gift-card-templates'
+import { formatGiftCardSerial } from '@/lib/gift-card-code-helpers'
 
 interface GiftCardRequest {
   id: number
@@ -53,6 +52,7 @@ interface GiftCardRequest {
   payment_status?: string | null
   invoice_number?: string | null
   recipient_notified_at?: string | null
+  verification_code?: string | null
   created_at: string
 }
 
@@ -182,43 +182,62 @@ export default function GiftCardDetailPage() {
   const occasionMeta = getGiftCardOccasionMeta(req.occasion)
   const OccasionIcon = getOccasionBadgeIcon(occasionMeta.id)
 
-  return (
-    <div className="space-y-4 max-w-3xl">
-      <Link
-        href="/admin/gift-cards"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#7B2D8E]"
-      >
-        <ArrowLeft className="w-4 h-4" /> Back to gift cards
-      </Link>
+  const verificationCode = req.verification_code || formatGiftCardSerial(req.id)
 
-      <Card className="border-gray-200">
+  return (
+    <div className="space-y-4 max-w-5xl">
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        <Link
+          href="/admin/gift-cards"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#7B2D8E]"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to gift cards
+        </Link>
+        <Link
+          href="/gift-cards/verify"
+          target="_blank"
+          className="text-xs font-semibold text-[#7B2D8E] hover:underline"
+        >
+          Open Public QR Verifier
+        </Link>
+      </div>
+
+      <Card className="border-gray-200 print:border-0">
         <CardContent className="p-5 sm:p-6 space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs text-gray-500">Gift card request</p>
-              <h1 className="text-lg font-semibold text-gray-900">#{req.id}</h1>
+              <div className="flex flex-wrap items-center gap-2.5 mt-0.5">
+                <h1 className="text-lg font-semibold text-gray-900">#{req.id}</h1>
+                <code className="font-mono text-xs text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2 py-0.5 rounded">
+                  {verificationCode}
+                </code>
+              </div>
             </div>
             <Badge variant="outline" className="bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20 capitalize">
               {req.status}
             </Badge>
           </div>
 
-          {/* Card preview + Chosen Style breakdown */}
-          <div className="grid md:grid-cols-12 gap-5 items-start">
-            <div className="md:col-span-7">
-              <GiftCardPreview
-                design={chosenDesign}
-                amountText={`₦${req.amount.toLocaleString()}`}
-                recipientName={req.recipient_name}
-                senderName={req.sender_name}
-                occasion={req.occasion}
-                fontClassName={chosenFont.className}
-                showStack={false}
-                className="max-w-md"
-              />
-            </div>
+          {/* Commercial Print-Ready Card Studio (Front + Scannable QR Back + PDF Export) */}
+          <GiftCardPrintStudio
+            id={req.id}
+            verificationCode={verificationCode}
+            amount={req.amount}
+            designId={req.design || chosenDesign.id}
+            designName={req.design_name || chosenDesign.name}
+            occasion={req.occasion}
+            fontId={req.font || chosenFont.id}
+            fontName={req.font_name || chosenFont.name}
+            recipientName={req.recipient_name}
+            senderName={req.sender_name}
+            personalMessage={req.personal_message}
+            issuedAt={req.created_at}
+          />
 
-            <div className="md:col-span-5 rounded-xl border border-gray-200 bg-[#FBF9FC] p-4 space-y-3">
+          {/* Chosen Style breakdown */}
+          <div className="grid md:grid-cols-12 gap-5 items-start print:hidden">
+            <div className="md:col-span-12 rounded-xl border border-gray-200 bg-[#FBF9FC] p-4 space-y-3">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                 Chosen card style
               </h2>

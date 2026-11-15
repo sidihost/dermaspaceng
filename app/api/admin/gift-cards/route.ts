@@ -5,6 +5,7 @@ import {
   deliverGiftCardToRecipient,
   ensureGiftCardSchema,
 } from '@/lib/gift-cards'
+import { buildGiftCardVerificationCode } from '@/lib/gift-card-verification'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -52,8 +53,13 @@ export async function GET(request: NextRequest) {
       GROUP BY status
     `
 
+    const enrichedRequests = requests.map((row) => ({
+      ...row,
+      verification_code: buildGiftCardVerificationCode(Number(row.id)),
+    }))
+
     return NextResponse.json({
-      requests,
+      requests: enrichedRequests,
       pagination: {
         page,
         limit,
@@ -191,9 +197,16 @@ export async function PUT(request: NextRequest) {
       LIMIT 1
     `
 
+    const refreshedRow = refreshed[0]
+      ? {
+          ...refreshed[0],
+          verification_code: buildGiftCardVerificationCode(Number(refreshed[0].id)),
+        }
+      : null
+
     return NextResponse.json({
       success: true,
-      request: refreshed[0] ?? null,
+      request: refreshedRow,
       recipientEmailSent,
     })
   } catch (error) {

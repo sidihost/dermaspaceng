@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Gem, ArrowRight, Star } from 'lucide-react'
 import type { SkinTip } from '@/lib/skin-tips'
+import { getRecommendationsEyebrow } from '@/lib/recommendations-label'
 
 interface RecommendedForYouProps {
   skinType?: string
@@ -44,13 +45,15 @@ export default function RecommendedForYou({
   const categories = pageType === 'laser' ? laserCategories : serviceCategories
 
   return (
-    <section className="pt-8 pb-4 sm:pb-5 bg-gradient-to-b from-[#7B2D8E]/5 to-white">
+    <section className="pt-8 pb-4 sm:pb-5 bg-[#7B2D8E]/[0.03] border-b border-[#7B2D8E]/10">
       <div className="max-w-6xl mx-auto px-4">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-5">
           <div className="inline-flex self-start items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E]/10 whitespace-nowrap">
             <Gem className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            <span className="text-xs font-semibold text-[#7B2D8E]">Recommended For You</span>
+            <span className="text-xs font-semibold text-[#7B2D8E]">
+              {getRecommendationsEyebrow(true)}
+            </span>
           </div>
           {skinType && (
             <span className="text-xs text-gray-500">
@@ -64,7 +67,7 @@ export default function RecommendedForYou({
           {tips.slice(0, 3).map((tip, index) => (
             <div 
               key={index}
-              className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+              className="p-4 bg-white rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors"
             >
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">

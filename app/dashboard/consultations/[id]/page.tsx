@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 import { ConsultationResponsesSummary } from "@/components/consultation/consultation-responses-summary"
 import type { ConsultationConversationReply } from "@/components/consultation/consultation-conversation"
+import { getRecommendationsEyebrow } from "@/lib/recommendations-label"
 
 interface ConsultationAnalysis {
   summary: string
@@ -317,7 +318,7 @@ export default function ConsultationDetailPage() {
                 {c.analysis.recommendations?.length > 0 && (
                   <div>
                     <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Recommended for you
+                      {getRecommendationsEyebrow(true)}
                     </h3>
                     <div className="space-y-3">
                       {c.analysis.recommendations.map((rec, i) => (
