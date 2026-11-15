@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   AlertTriangle,
   Loader2,
+  MailOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -39,6 +40,8 @@ interface UserConsultation {
   notes: string | null
   status: string
   createdAt: string
+  replyCount?: number
+  teamReplyCount?: number
 }
 
 const fetcher = (u: string) =>
@@ -253,16 +256,24 @@ export default function DashboardConsultationsPage() {
                     )}
                   </div>
                 </div>
-                <p className="mt-3 border-t border-gray-100 pt-2 text-[10.5px] text-gray-400">
-                  Submitted{" "}
-                  {new Date(c.createdAt).toLocaleString("en-NG", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2 text-[10.5px] text-gray-400">
+                  <span>
+                    Submitted{" "}
+                    {new Date(c.createdAt).toLocaleString("en-NG", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  {(c.replyCount ?? 0) > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[10.5px] font-semibold text-[#7B2D8E]">
+                      <MailOpen className="h-3 w-3" />
+                      {c.replyCount} {c.replyCount === 1 ? "response" : "responses"}
+                    </span>
+                  )}
+                </div>
               </Link>
               </li>
             )

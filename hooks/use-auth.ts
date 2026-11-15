@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import {
   readCachedUser,
@@ -121,10 +121,19 @@ const fetcher = async (url: string) => {
  *    tree refreshes at once.
  */
 export function useAuth(): AuthState {
-  // Read the cached user once, on mount. This runs on every render in
-  // theory, but localStorage reads are sub-millisecond and we let SWR
-  // memoise the resulting `fallbackData` after the first call.
-  const cached = typeof window !== 'undefined' ? readCachedUser() : null
+  // Never read localStorage during SSR or React's initial hydration pass.
+  // Doing so while a cached user exists on the client causes SSR HTML
+  // (logged-out) and hydration JSX (logged-in) to diverge and trigger a
+  // hydration error. Deferring until after mount keeps the first client
+  // pass identical to the server render, then immediately hydrates from
+  // the localStorage cache on the very next commit.
+  const [hasMounted, setHasMounted] = useState(false)
+
+  useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  const cached = hasMounted ? readCachedUser() : null
 
   const { data, isLoading, mutate } = useSWR(
     '/api/auth/me',

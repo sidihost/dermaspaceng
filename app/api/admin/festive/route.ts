@@ -21,7 +21,9 @@ export async function POST(req: NextRequest) {
     const enabled = typeof body.enabled === 'boolean' ? body.enabled : true
     const intensity = body.intensity === 'festive' ? 'festive' : 'gentle'
 
+    const { setFeatureVisibility } = await import('@/lib/feature-flags')
     const updated = await setChristmasSettings(enabled, intensity, user?.id ?? null)
+    await setFeatureVisibility('festive', enabled ? 'on' : 'off', user?.id ?? null).catch(() => {})
     return NextResponse.json({ success: true, settings: updated })
   } catch (err) {
     console.error('[api/admin/festive POST]', err)

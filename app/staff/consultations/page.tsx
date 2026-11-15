@@ -28,7 +28,7 @@ import {
   Calendar,
   Search,
   Eye,
-  MessageSquare,
+  MailOpen,
   Clock,
   CheckCircle2,
   XCircle,
@@ -407,7 +407,7 @@ export default function StaffConsultationsPage() {
                           className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                         >
                           <a href={`/staff/consultations/${c.id}`}>
-                            <MessageSquare className="h-3.5 w-3.5" />
+                            <MailOpen className="h-3.5 w-3.5" />
                             Action
                           </a>
                         </Button>

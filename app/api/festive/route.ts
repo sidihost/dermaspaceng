@@ -1,24 +1,21 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getChristmasSettings, setChristmasSettings } from '@/lib/christmas-settings'
 import { getCurrentUser } from '@/lib/auth'
-import { isFeatureEnabled, setFeatureVisibility, type FeatureVisibility } from '@/lib/feature-flags'
+import {
+  getFestiveState,
+  setFeatureVisibility,
+  type FeatureVisibility,
+} from '@/lib/feature-flags'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Public & Admin API for Christmas / Festive Animation state.
+ * Public & Admin API for Christmas / Festive features state.
  * GET: returns current { enabled: boolean, intensity: string, visibility: string }
  * POST: updates state if requested by an admin
  */
 export async function GET() {
-  const settings = await getChristmasSettings()
-  const flagEnabled = await isFeatureEnabled('festive').catch(() => true)
-  const isEnabled = settings.enabled && flagEnabled
-  return NextResponse.json({
-    enabled: isEnabled,
-    intensity: settings.intensity,
-    visibility: isEnabled ? 'on' : 'off',
-  }, {
+  const state = await getFestiveState()
+  return NextResponse.json(state, {
     headers: {
       'Cache-Control': 'no-store, max-age=0',
     },
@@ -45,10 +42,9 @@ export async function POST(req: NextRequest) {
     const enabled = visibility !== 'off'
     const intensity = body.intensity === 'festive' ? 'festive' : 'gentle'
 
+    const { setChristmasSettings } = await import('@/lib/christmas-settings')
     const updated = await setChristmasSettings(enabled, intensity, user?.id ?? null)
-    if (user?.id) {
-      await setFeatureVisibility('festive', visibility, user.id).catch(() => {})
-    }
+    await setFeatureVisibility('festive', visibility, user?.id ?? null).catch(() => {})
 
     return NextResponse.json({ success: true, settings: { ...updated, visibility } })
   } catch (err) {

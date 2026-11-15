@@ -3,7 +3,8 @@
 import React from 'react'
 import useSWR from 'swr'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 /**
  * ChristmasLogoHat
@@ -35,8 +36,9 @@ export function ChristmasLogoHat({
   variant?: 'classic' | 'brand'
 }) {
   const { data } = useSWR<{ enabled: boolean }>('/api/festive', fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 60_000,
+    revalidateOnFocus: true,
+    revalidateOnMount: true,
+    dedupingInterval: 2_000,
   })
 
   // Respect admin switch. Default to true during loading so there's zero layout flash.

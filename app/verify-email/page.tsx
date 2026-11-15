@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Mail, ArrowRight, Loader2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Mail, ArrowRight, Loader2, Check } from 'lucide-react'
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
 import {
   getAutoSendStorageKey,
@@ -33,7 +33,6 @@ import {
 //      rate-limited server-side).
 // ---------------------------------------------------------------------------
 function VerifyEmailInner() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   // Seed the email from the query string. If it's absent the user enters it.
@@ -53,6 +52,7 @@ function VerifyEmailInner() {
   const [otp, setOtp] = useState('')
   const [otpError, setOtpError] = useState('')
   const [verifying, setVerifying] = useState(false)
+  const [verified, setVerified] = useState(false)
 
   const [resending, setResending] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
@@ -208,13 +208,44 @@ function VerifyEmailInner() {
         window.dispatchEvent(new Event('user-updated'))
       }
 
-      // Verified + auto-logged-in by the API — go straight to the dashboard.
-      router.push(redirectTo)
+      // Verified + auto-logged-in by the API — show explicit confirmation
+      // before continuing to the dashboard.
+      setVerified(true)
     } catch {
       setOtpError('Something went wrong. Please try again.')
     } finally {
       setVerifying(false)
     }
+  }
+
+  if (verified) {
+    return (
+      <div className="min-h-screen bg-white flex items-start justify-center overflow-y-auto px-4 py-12 sm:py-20">
+        <div className="max-w-md w-full my-auto text-center">
+          <Link href="/" className="inline-block mb-6" aria-label="Dermaspace home">
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+              alt="Dermaspace"
+              className="h-9 w-auto mx-auto"
+            />
+          </Link>
+          <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+            <Check className="w-8 h-8 text-[#7B2D8E]" strokeWidth={2.5} />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-3">Email verified</h1>
+          <p className="text-gray-600 mb-8">
+            <strong>{email}</strong> has been confirmed. Your account is ready.
+          </p>
+          <Link
+            href={redirectTo}
+            className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors flex items-center justify-center gap-2"
+          >
+            Continue to dashboard
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

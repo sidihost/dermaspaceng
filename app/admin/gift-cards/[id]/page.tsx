@@ -16,6 +16,8 @@ import {
   ArrowLeft, Loader2, AlertCircle, User, Mail, Phone,
   Calendar, Clock,
 } from 'lucide-react'
+import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
+import { findGiftCardDesignById } from '@/lib/gift-card-templates'
 
 interface GiftCardRequest {
   id: number
@@ -138,17 +140,15 @@ export default function GiftCardDetailPage() {
           </div>
 
           {/* Card preview */}
-          <div className="bg-[#7B2D8E] rounded-xl p-5 sm:p-6 text-white">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium opacity-80">Dermaspace Gift Card</span>
-              <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-                {req.occasion}
-              </Badge>
-            </div>
-            <p className="text-3xl font-bold">N{req.amount.toLocaleString()}</p>
-            <p className="text-sm opacity-80 mt-2">For: {req.recipient_name}</p>
-            <p className="text-xs opacity-60">From: {req.sender_name}</p>
-          </div>
+          <GiftCardPreview
+            design={findGiftCardDesignById(req.design)}
+            amountText={`₦${req.amount.toLocaleString()}`}
+            recipientName={req.recipient_name}
+            senderName={req.sender_name}
+            occasion={req.occasion}
+            showStack={false}
+            className="max-w-md"
+          />
 
           {/* Status control */}
           <div>

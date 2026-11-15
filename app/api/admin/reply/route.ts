@@ -5,6 +5,16 @@ import { sendReplyNotification } from '@/lib/email'
 import { sendPushToUser } from '@/lib/push'
 import { ensureNotificationsSchema } from '@/lib/notifications-column'
 import { resolveAdminAvatar } from '@/lib/admin-avatars'
+import {
+  ensureConsultationRepliesSchema,
+  ensureConsultationTrackToken,
+} from '@/lib/consultation-replies'
+import {
+  buildConsultationReplyTarget,
+  formatConsultationLocation,
+} from '@/lib/consultation-mode'
+import { resolveEmailOrigin } from '@/lib/email-url'
+import { sanitizeReplyAttachments, type ReplyAttachment } from '@/lib/attachments'
 
 // The admin reply thread MUST always read fresh — any cached snapshot
 // produces the "my reply disappears after refresh" bug because the
@@ -29,28 +39,41 @@ async function safeInsertAdminReply(opts: {
   message: string
   isInternal: boolean
   senderDisplayName: string | null
+  attachments?: ReplyAttachment[]
 }): Promise<string | number> {
-  const { requestType, requestId, userEmail, staffId, message, isInternal, senderDisplayName } = opts
-  // NOTE: the message body lives in the `reply_text` column on admin_replies
-  // (NOT `message`). An earlier version of this route inserted into a
-  // non-existent `message` column, which made every consultation / complaint
-  // reply INSERT throw — the POST 500'd, the optimistic row rolled back, and
-  // the admin saw "my reply never shows". We write `reply_text` here and the
-  // GET handler aliases it back to `message` for the client.
+  const {
+    requestType,
+    requestId,
+    userEmail,
+    staffId,
+    message,
+    isInternal,
+    senderDisplayName,
+    attachments = [],
+  } = opts
+  await ensureConsultationRepliesSchema()
   try {
     const rows = await sql`
       INSERT INTO admin_replies
-        (request_type, request_id, user_email, staff_id, reply_text, is_internal, sender_display_name)
+        (request_type, request_id, user_email, staff_id, reply_text, is_internal, is_staff, sender_display_name, attachments)
       VALUES
-        (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal}, ${senderDisplayName})
+        (
+          ${requestType},
+          ${requestId},
+          ${userEmail || ''},
+          ${staffId},
+          ${message},
+          ${isInternal},
+          TRUE,
+          ${senderDisplayName},
+          ${attachments.length > 0 ? JSON.stringify(attachments) : null}::jsonb
+        )
       RETURNING id
     `
     return rows[0].id
   } catch (err) {
-    // If the optional sender_display_name column doesn't exist yet, retry
-    // without it so the reply still saves while the migration catches up.
     const msg = err instanceof Error ? err.message : String(err)
-    if (/sender_display_name/i.test(msg)) {
+    if (/sender_display_name|is_staff|attachments/i.test(msg)) {
       const fallback = await sql`
         INSERT INTO admin_replies
           (request_type, request_id, user_email, staff_id, reply_text, is_internal)
@@ -73,16 +96,11 @@ export async function POST(request: NextRequest) {
       userEmail,
       message,
       isInternal,
-      // When requestType is 'ticket' we need the public ticket code
-      // (e.g. DS-2026-000123) because ticket_responses.ticket_id is a VARCHAR
-      // that references support_tickets.ticket_id, not the numeric PK.
       ticketCode,
-      // Optional display name override. The reply composer lets admins
-      // sign as "Admin", "Franca", "Itunu" or their own name when
-      // replying on behalf of a salon contact. We fall back to the
-      // signed-in admin's name if nothing is provided.
       senderDisplayName,
+      attachments,
     } = await request.json()
+    const cleanAttachments = sanitizeReplyAttachments(attachments)
 
     if (!requestType || !requestId || !message) {
       return NextResponse.json(
@@ -169,6 +187,7 @@ export async function POST(request: NextRequest) {
         message,
         isInternal: Boolean(isInternal),
         senderDisplayName: resolvedDisplayName,
+        attachments: cleanAttachments,
       })
     }
 
@@ -199,10 +218,65 @@ export async function POST(request: NextRequest) {
         // exactly the "notifications aren't working" symptom that was
         // reported.
         let userResult: { id: string; first_name: string | null }[] = []
+        let consultationMeta: {
+          id: string
+          user_id: string | null
+          first_name: string | null
+          email: string | null
+          location: string | null
+          status: string | null
+          is_anonymous: boolean | null
+          track_token: string | null
+        } | null = null
 
-        if (userEmail) {
+        if (requestType === 'consultation') {
+          await ensureConsultationRepliesSchema()
+          const cRows = (await sql`
+            SELECT
+              c.id::text AS id,
+              c.user_id,
+              c.first_name,
+              c.email,
+              c.location,
+              c.status,
+              c.is_anonymous,
+              c.track_token,
+              COALESCE(c.user_id, cu.id) AS linked_user_id,
+              cu.first_name AS linked_first_name
+            FROM consultations c
+            LEFT JOIN users cu ON cu.id = c.user_id OR LOWER(cu.email) = LOWER(c.email)
+            WHERE c.id = ${String(requestId)}
+            LIMIT 1
+          `) as unknown as Array<{
+            id: string
+            user_id: string | null
+            first_name: string | null
+            email: string | null
+            location: string | null
+            status: string | null
+            is_anonymous: boolean | null
+            track_token: string | null
+            linked_user_id: string | null
+            linked_first_name: string | null
+          }>
+
+          if (cRows[0]) {
+            consultationMeta = cRows[0]
+            if (cRows[0].linked_user_id) {
+              userResult = [
+                {
+                  id: cRows[0].linked_user_id,
+                  first_name: cRows[0].linked_first_name || cRows[0].first_name,
+                },
+              ]
+            }
+          }
+        }
+
+        const lookupEmail = userEmail || consultationMeta?.email || ''
+        if (userResult.length === 0 && lookupEmail) {
           userResult = (await sql`
-            SELECT id, first_name FROM users WHERE email = ${userEmail}
+            SELECT id, first_name FROM users WHERE LOWER(email) = LOWER(${lookupEmail}) LIMIT 1
           `) as unknown as typeof userResult
         }
 
@@ -219,24 +293,31 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        let consultationReplyTarget: ReturnType<typeof buildConsultationReplyTarget> | null = null
+        if (requestType === 'consultation') {
+          const hasUserAccount = userResult.length > 0
+          const isAnon = Boolean((consultationMeta?.is_anonymous ?? true) && !hasUserAccount)
+          const resolvedToken = isAnon
+            ? await ensureConsultationTrackToken(String(requestId), consultationMeta?.track_token)
+            : consultationMeta?.track_token
+          consultationReplyTarget = buildConsultationReplyTarget({
+            isAnonymous: isAnon,
+            hasUserAccount,
+            appUrl: resolveEmailOrigin(),
+            consultationId: String(requestId),
+            trackToken: resolvedToken,
+          })
+        }
+
         if (userResult.length > 0) {
           try {
-            // Build a deep-link so tapping the bell entry takes the user
-            // straight to their ticket / complaint thread instead of the
-            // generic notifications inbox. Tickets resolve by code; the
-            // others fall back to /dashboard/notifications since we don't
-            // expose customer-facing detail pages for them yet.
             const actionUrl =
               requestType === 'ticket'
                 ? `/dashboard/support/${ticketCode || ''}`.replace(/\/$/, '')
-                : '/dashboard/notifications'
+                : requestType === 'consultation'
+                  ? `/dashboard/consultations/${encodeURIComponent(String(requestId))}/responses`
+                  : '/dashboard/notifications'
 
-            // Idempotent schema patch. On older databases the
-            // user_notifications table is missing action_url /
-            // reference_* columns, so this INSERT used to fail
-            // silently — the customer never saw the bell entry even
-            // though the reply itself saved fine. This was the
-            // entire reason "notifications never worked".
             await ensureNotificationsSchema()
             await sql`
               INSERT INTO user_notifications (
@@ -261,9 +342,6 @@ export async function POST(request: NextRequest) {
             console.error('Reply notification insert failed:', notifErr)
           }
 
-          // Fire web push so the user is alerted instantly even when the
-          // dashboard isn't open. Best-effort — silently no-ops when
-          // VAPID keys aren't configured or no devices are subscribed.
           try {
             const requestLabel =
               requestType === 'complaint' ? 'complaint'
@@ -276,7 +354,9 @@ export async function POST(request: NextRequest) {
               url:
                 requestType === 'ticket'
                   ? `/dashboard/support`
-                  : `/dashboard/notifications`,
+                  : requestType === 'consultation'
+                    ? `/dashboard/consultations/${encodeURIComponent(String(requestId))}/responses`
+                    : `/dashboard/notifications`,
               tag: `reply-${requestType}-${requestId}`,
             })
           } catch (pushErr) {
@@ -284,17 +364,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Send email notification (best-effort). Tickets are included now —
-        // the helper was extended to accept 'ticket' and a `ticketId` so the
-        // "View" CTA deeplinks to /dashboard/support/<code> instead of just
-        // the dashboard root.
-        //
-        // We need a real recipient address — the in-app + push paths fall
-        // back to support_tickets.user_id when userEmail is missing, but
-        // the email transport obviously can't. Skip cleanly instead of
-        // calling Resend with an undefined `to`.
+        const emailRecipient = userEmail || consultationMeta?.email
         if (
-          userEmail &&
+          emailRecipient &&
           (
             requestType === 'gift_card' ||
             requestType === 'complaint' ||
@@ -303,11 +375,11 @@ export async function POST(request: NextRequest) {
           )
         ) {
           try {
-            const firstName = userResult[0]?.first_name || 'Customer'
+            const firstName =
+              userResult[0]?.first_name ||
+              consultationMeta?.first_name ||
+              'Customer'
 
-            // For tickets we need the public ticket code for the deeplink.
-            // We already resolved it above when handling the insert; grab it
-            // again defensively for the email.
             let ticketDeepLink: string | undefined
             let ticketSubject: string | undefined
             if (requestType === 'ticket') {
@@ -318,21 +390,20 @@ export async function POST(request: NextRequest) {
               ticketSubject = codeRow[0]?.subject
             }
 
+            const consultationLoc = consultationMeta?.location
+              ? formatConsultationLocation(consultationMeta.location)
+              : ''
             const titleForEmail =
               requestType === 'ticket'
                 ? ticketSubject || `Ticket ${ticketDeepLink || ''}`.trim()
-                : `${requestType
-                    .replace(/_/g, ' ')
-                    .replace(/\b\w/g, (c) => c.toUpperCase())} Request`
+                : requestType === 'consultation'
+                  ? consultationLoc
+                    ? `Consultation · ${consultationLoc}`
+                    : 'Consultation Request'
+                  : `${requestType
+                      .replace(/_/g, ' ')
+                      .replace(/\b\w/g, (c) => c.toUpperCase())} Request`
 
-            // Resolve the responder's portrait so the email avatar
-            // matches the photo the admin / staff member picked in
-            // their profile. The session user object returned by
-            // requireAdminOrStaff() doesn't carry avatar_url, so we
-            // look it up directly. `resolveAdminAvatar` prefers an
-            // uploaded portrait, then falls back to the role-specific
-            // default tile (admin / staff). When nothing matches we
-            // leave it null so the email renders the initial-disc.
             let responderAvatarUrl: string | null = null
             try {
               const senderRow = await sql`
@@ -346,17 +417,18 @@ export async function POST(request: NextRequest) {
             }
 
             await sendReplyNotification({
-              email: userEmail,
+              email: emailRecipient,
               firstName,
               requestType,
               requestTitle: titleForEmail,
               replyMessage: message,
-              // Use the chosen display name (Admin / Franca / Itunu /
-              // override) so the customer's email matches what they
-              // see in the in-app conversation.
               responderName: resolvedDisplayName,
               responderAvatarUrl,
+              newStatus: requestType === 'consultation' ? consultationMeta?.status || undefined : undefined,
               ticketId: ticketDeepLink,
+              ctaUrl: consultationReplyTarget?.ctaUrl,
+              ctaLabel: consultationReplyTarget?.ctaLabel,
+              footerNote: consultationReplyTarget?.footerNote,
             })
           } catch (emailErr) {
             console.error('Reply email send failed:', emailErr)
@@ -574,6 +646,7 @@ export async function GET(request: NextRequest) {
     // (which renders `reply.message`) sees the text. We try to also project
     // sender_display_name; if that column doesn't exist yet we fall back to
     // a query without it so the admin UI keeps working before migration 043.
+    await ensureConsultationRepliesSchema()
     let replies: unknown[] = []
     try {
       replies = await sql`
@@ -584,11 +657,12 @@ export async function GET(request: NextRequest) {
           ar.created_at,
           ar.request_type,
           ar.request_id,
-          true                AS is_staff,
+          COALESCE(ar.is_staff, TRUE) AS is_staff,
           ar.sender_display_name AS sender_display_name,
-          u.first_name        AS staff_first_name,
-          u.last_name         AS staff_last_name,
-          NULL::text          AS customer_first_name,
+          ar.attachments      AS attachments,
+          CASE WHEN COALESCE(ar.is_staff, TRUE) = TRUE THEN u.first_name ELSE NULL END AS staff_first_name,
+          CASE WHEN COALESCE(ar.is_staff, TRUE) = TRUE THEN u.last_name ELSE NULL END AS staff_last_name,
+          CASE WHEN COALESCE(ar.is_staff, TRUE) = FALSE THEN ar.sender_display_name ELSE NULL END AS customer_first_name,
           NULL::text          AS customer_last_name,
           u.avatar_url        AS author_avatar_url,
           u.role              AS author_role
@@ -620,13 +694,18 @@ export async function GET(request: NextRequest) {
       `
     }
 
-    const resolvedReplies = (replies as Record<string, unknown>[]).map((row) => ({
-      ...row,
-      author_avatar_url: resolveAdminAvatar(
-        row.author_avatar_url as string | null,
-        row.author_role as string | null,
-      ),
-    }))
+    const resolvedReplies = (replies as Record<string, unknown>[]).map((row) => {
+      const isStaff = row.is_staff !== false
+      return {
+        ...row,
+        author_avatar_url: isStaff
+          ? resolveAdminAvatar(
+              row.author_avatar_url as string | null,
+              row.author_role as string | null,
+            )
+          : null,
+      }
+    })
 
     return NextResponse.json({ replies: resolvedReplies })
   } catch (error) {

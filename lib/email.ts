@@ -783,13 +783,14 @@ export async function sendConsultationStatusEmail(data: {
   const badgeBg = data.status === 'cancelled' ? '#fee2e2' : '#f3e8f7'
   const badgeColor = data.status === 'cancelled' ? '#991b1b' : '#7B2D8E'
 
+  const resolvedCtaLabel = data.ctaLabel || (data.ctaUrl ? 'View Consultation' : null)
   const ctaHtml =
-    data.ctaUrl && data.ctaLabel
+    data.ctaUrl && resolvedCtaLabel
       ? `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="text-align: center;">
-          <a href="${data.ctaUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 10px;">${escapeHtml(data.ctaLabel)}</a>
+          <a href="${data.ctaUrl}" style="display: inline-block; padding: 12px 28px; background-color: #7B2D8E; color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; border-radius: 10px;">${escapeHtml(resolvedCtaLabel)}</a>
         </td>
       </tr>
     </table>`
@@ -2028,6 +2029,12 @@ export async function sendReplyNotification(data: {
   // "View" button straight to that ticket's thread so the customer lands on
   // the conversation instead of the dashboard root.
   ticketId?: string
+  // Optional override CTA & footer copy (used by consultations so registered
+  // users deep-link to /dashboard/consultations/[id] and anonymous visitors
+  // deep-link to /consultation/track/[token]).
+  ctaUrl?: string
+  ctaLabel?: string
+  footerNote?: string
 }): Promise<boolean> {
   const typeLabels = {
     gift_card: 'Gift Card Request',
@@ -2169,19 +2176,29 @@ export async function sendReplyNotification(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${PUBLIC_ORIGIN}${
-            data.requestType === 'ticket' && data.ticketId
-              ? `/dashboard/support/${data.ticketId}`
-              : '/dashboard'
+          <a href="${
+            data.ctaUrl
+              ? data.ctaUrl
+              : `${PUBLIC_ORIGIN}${
+                  data.requestType === 'ticket' && data.ticketId
+                    ? `/dashboard/support/${data.ticketId}`
+                    : '/dashboard'
+                }`
           }" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
-            ${data.requestType === 'ticket' ? 'View Ticket' : 'View in Dashboard'}
+            ${escapeHtml(
+              data.ctaLabel ||
+                (data.requestType === 'ticket' ? 'View Ticket' : 'View in Dashboard'),
+            )}
           </a>
         </td>
       </tr>
     </table>
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      You can view all your requests and responses in your dashboard at any time.
+      ${escapeHtml(
+        data.footerNote ||
+          'You can view all your requests and responses in your dashboard at any time.',
+      )}
     </p>
   `
   
@@ -2262,6 +2279,63 @@ export async function sendCustomerReplyAlert(data: {
   return sendEmail({
     to: data.to,
     subject: `New reply on ticket ${data.ticketCode} - Dermaspace`,
+    html: getEmailTemplate(content),
+  })
+}
+
+// Staff alert: sent when a registered or anonymous customer replies on a consultation
+export async function sendConsultationCustomerReplyAlert(data: {
+  to: string
+  customerName: string
+  customerEmail?: string | null
+  consultationId: string
+  locationLabel?: string | null
+  replyMessage: string
+  isAnonymous?: boolean
+}): Promise<boolean> {
+  const safeName = escapeHtml(data.customerName || 'Customer')
+  const safeEmail = data.customerEmail ? escapeHtml(data.customerEmail) : ''
+  const safeLocation = data.locationLabel ? escapeHtml(data.locationLabel) : ''
+  const safeMessage = escapeHtml(data.replyMessage)
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Consultation Reply</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      <strong>${safeName}</strong>${data.isAnonymous ? ' (via tracking link)' : ''} sent a follow-up message on their consultation${safeLocation ? ` (${safeLocation})` : ''}.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border-left: 4px solid #7B2D8E;">
+      <tr>
+        <td style="padding: 20px;">
+          <p style="margin: 0 0 6px; font-size: 12px; color: #7B2D8E; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+            Consultation #${escapeHtml(String(data.consultationId).slice(0, 8))}
+          </p>
+          <div style="padding: 16px; background-color: white; border-radius: 8px; margin-top: 10px;">
+            <p style="margin: 0; font-size: 14px; color: #1a1a1a; white-space: pre-wrap; line-height: 1.6;">${safeMessage}</p>
+          </div>
+          ${
+            safeEmail
+              ? `<p style="margin: 12px 0 0; font-size: 12px; color: #888;">From ${safeName} &lt;${safeEmail}&gt;</p>`
+              : ''
+          }
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${PUBLIC_ORIGIN}/admin/consultations/${encodeURIComponent(data.consultationId)}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Open consultation in admin
+          </a>
+        </td>
+      </tr>
+    </table>
+  `
+
+  return sendEmail({
+    to: data.to,
+    subject: `New consultation reply from ${data.customerName || 'Customer'} - Dermaspace`,
     html: getEmailTemplate(content),
   })
 }

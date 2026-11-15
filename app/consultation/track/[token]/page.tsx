@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useCallback, useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import { ConsultationResponsesSummary } from '@/components/consultation/consultation-responses-summary'
+import type { ConsultationConversationReply } from '@/components/consultation/consultation-conversation'
 import {
   MapPin,
   Calendar,
+  CalendarPlus,
   Clock,
   Check,
+  Download,
   Stethoscope,
   ClipboardList,
   Lightbulb,
@@ -19,12 +23,11 @@ import {
 // ---------------------------------------------------------------------------
 // /consultation/track/[token]
 //
-// Private, account-free status page for a submitted consultation. The
-// anonymous customer reaches it via the unguessable token they got on
-// submit (and by email). It shows the current request status plus the
-// AI-generated skin analysis. There is NO dashboard link here — instead
-// we gently invite the visitor to create an account for a richer,
-// saved experience.
+// Private, account-free status & conversation page for a submitted
+// consultation. The anonymous customer reaches it via the unguessable
+// token they got on submit (and by email). It shows the current request
+// status, appointment details (+ calendar add), two-way clinical team
+// conversation, and the personalised skin analysis.
 // ---------------------------------------------------------------------------
 
 const locationNames: Record<string, { name: string; address: string }> = {
@@ -54,6 +57,7 @@ interface Analysis {
 }
 
 interface Consultation {
+  id: string
   firstName: string
   location: string
   appointmentDate: string
@@ -63,6 +67,7 @@ interface Consultation {
   status: string
   analysis: Analysis | null
   createdAt: string
+  replies: ConsultationConversationReply[]
 }
 
 function statusIndex(status: string): number {
@@ -72,8 +77,10 @@ function statusIndex(status: string): number {
 }
 
 function formatDate(value: string): string {
+  if (!value) return 'Awaiting confirmation'
   try {
-    return new Date(value).toLocaleDateString('en-US', {
+    const iso = /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00:00` : value
+    return new Date(iso).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -82,6 +89,25 @@ function formatDate(value: string): string {
   } catch {
     return value
   }
+}
+
+function parseSlotTime(slot: string): { hours: number; minutes: number } {
+  const match = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+  if (!match) return { hours: 10, minutes: 0 }
+  let hours = parseInt(match[1], 10)
+  const minutes = parseInt(match[2], 10)
+  const meridiem = match[3].toUpperCase()
+  if (meridiem === 'PM' && hours !== 12) hours += 12
+  if (meridiem === 'AM' && hours === 12) hours = 0
+  return { hours, minutes }
+}
+
+function formatCalendarStamp(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
+    `T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+  )
 }
 
 export default function TrackConsultationPage({
@@ -94,33 +120,119 @@ export default function TrackConsultationPage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    const load = async () => {
+  const load = useCallback(
+    async (silent = false) => {
       try {
-        const res = await fetch(`/api/consultation/track/${token}`)
-        const json = await res.json()
-        if (cancelled) return
+        const res = await fetch(`/api/consultation/track/${token}`, {
+          cache: 'no-store',
+        })
+        const json = await res.json().catch(() => ({}))
         if (!res.ok) {
-          setError(json.error || 'Unable to load this consultation.')
+          if (!silent) {
+            setError(json.error || 'Unable to load this consultation.')
+          }
         } else {
           setData(json.consultation)
+          if (!silent) setError(null)
         }
       } catch {
-        if (!cancelled) setError('Something went wrong. Please try again.')
+        if (!silent) setError('Something went wrong. Please try again.')
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!silent) setLoading(false)
       }
-    }
-    load()
+    },
+    [token],
+  )
+
+  useEffect(() => {
+    void load(false)
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void load(true)
+      }
+    }, 20_000)
     return () => {
-      cancelled = true
+      window.clearInterval(interval)
     }
-  }, [token])
+  }, [load])
 
   const loc = data ? locationNames[data.location] : undefined
   const activeStep = data ? statusIndex(data.status) : 0
   const cancelled = data?.status === 'cancelled'
+
+  const calendarUrls = (() => {
+    if (!data || cancelled || !data.appointmentDate || !data.appointmentTime) {
+      return null
+    }
+    const isoDay = data.appointmentDate.slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDay)) return null
+    const baseDate = new Date(`${isoDay}T00:00:00`)
+    if (Number.isNaN(baseDate.getTime())) return null
+
+    const { hours, minutes } = parseSlotTime(data.appointmentTime)
+    baseDate.setHours(hours, minutes, 0, 0)
+    const endDate = new Date(baseDate.getTime() + 30 * 60 * 1000)
+
+    const startStr = formatCalendarStamp(baseDate)
+    const endStr = formatCalendarStamp(endDate)
+    const title = 'Dermaspace Consultation'
+    const clinicName = loc?.name ?? data.location
+    const address = loc?.address ?? clinicName
+    const description = `Complimentary skin consultation at Dermaspace ${clinicName}.`
+
+    const googleUrl =
+      `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+      `&text=${encodeURIComponent(title)}` +
+      `&dates=${startStr}/${endStr}` +
+      `&details=${encodeURIComponent(description)}` +
+      `&location=${encodeURIComponent(address)}`
+
+    const downloadIcs = () => {
+      const escape = (s: string) =>
+        s
+          .replace(/\\/g, '\\\\')
+          .replace(/\n/g, '\\n')
+          .replace(/,/g, '\\,')
+          .replace(/;/g, '\\;')
+
+      const ics = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Dermaspace//Consultation//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        `UID:${data.id || Date.now()}@dermaspaceng.com`,
+        `DTSTAMP:${formatCalendarStamp(new Date())}`,
+        `DTSTART:${startStr}`,
+        `DTEND:${endStr}`,
+        `SUMMARY:${escape(title)}`,
+        `DESCRIPTION:${escape(description)}`,
+        `LOCATION:${escape(address)}`,
+        'STATUS:CONFIRMED',
+        'BEGIN:VALARM',
+        'ACTION:DISPLAY',
+        'DESCRIPTION:Reminder',
+        'TRIGGER:-PT1H',
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR',
+        '',
+      ].join('\r\n')
+
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'dermaspace-consultation.ics'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    }
+
+    return { googleUrl, downloadIcs }
+  })()
 
   return (
     <main className="min-h-screen bg-white">
@@ -175,8 +287,8 @@ export default function TrackConsultationPage({
                 Hi {data.firstName}, here&apos;s your consultation
               </h2>
               <p className="text-sm text-gray-600 text-pretty">
-                Bookmark this page to check your status and revisit your
-                personalised skin analysis anytime.
+                Bookmark this page to check your status, read responses from our
+                clinical team, and revisit your personalised skin analysis anytime.
               </p>
             </div>
 
@@ -186,10 +298,19 @@ export default function TrackConsultationPage({
                 Status
               </h3>
               {cancelled ? (
-                <p className="text-sm font-medium text-gray-900">
-                  This consultation was cancelled. Please book again if you
-                  still need to be seen.
-                </p>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-gray-900">
+                    This consultation was cancelled. Please book again if you
+                    still need to be seen.
+                  </p>
+                  <Link
+                    href="/consultation"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-xs font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                  >
+                    Book a new consultation
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               ) : (
                 <div className="flex items-center">
                   {STATUS_STEPS.map((s, i) => (
@@ -257,7 +378,44 @@ export default function TrackConsultationPage({
                   <p className="font-medium text-gray-900">{data.appointmentTime}</p>
                 </div>
               </div>
+
+              {calendarUrls && (
+                <div className="mt-5 border-t border-gray-100 pt-4">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <CalendarPlus className="w-4 h-4 text-[#7B2D8E]" />
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#7B2D8E]">
+                      Add to calendar
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <a
+                      href={calendarUrls.googleUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] text-xs font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      Google Calendar
+                    </a>
+                    <button
+                      type="button"
+                      onClick={calendarUrls.downloadIcs}
+                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] text-xs font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Apple / Outlook (.ics)
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Clinical responses link card */}
+            <ConsultationResponsesSummary
+              replies={data.replies ?? []}
+              href={`/consultation/track/${token}/responses`}
+              customerLabel={data.firstName || 'You'}
+            />
 
             {/* AI analysis */}
             {data.analysis && (

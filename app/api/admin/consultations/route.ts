@@ -113,10 +113,18 @@ export async function PUT(request: NextRequest) {
     }
 
     switch (action) {
-      case 'update_status':
+      case 'update_status': {
         if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(value)) {
           return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
         }
+        const [{ ensureConsultationRepliesSchema, ensureConsultationTrackToken }, { formatConsultationDateLabel, formatConsultationLocation, buildConsultationEmailAction }, { resolveEmailOrigin }] =
+          await Promise.all([
+            import('@/lib/consultation-replies'),
+            import('@/lib/consultation-mode'),
+            import('@/lib/email-url'),
+          ])
+        await ensureConsultationRepliesSchema()
+
         await sql`
           UPDATE consultations 
           SET status = ${value}, updated_at = NOW()
@@ -134,11 +142,10 @@ export async function PUT(request: NextRequest) {
           VALUES (${user.id}, 'consultation_status_changed', 'consultation', ${consultationId}, ${`Status changed to ${value}`})
         `
 
-        // Light up the customer's bell. We look the customer up by
-        // user_id first (set on signed-in submissions) and fall back
-        // to a fuzzy match on email so older anonymous-submitted
-        // rows still get a notification if the email matches a real
-        // account. Failures are logged but never break the PUT.
+        // Light up the customer's bell and send the status email. We look the
+        // customer up by user_id first (set on signed-in submissions) and fall
+        // back to a case-insensitive match on email so older rows still link
+        // cleanly. Failures are logged but never break the PUT.
         try {
           const target = (await sql`
             SELECT
@@ -146,7 +153,7 @@ export async function PUT(request: NextRequest) {
               c.email,
               c.first_name,
               c.location,
-              c.appointment_date,
+              TO_CHAR(c.appointment_date, 'YYYY-MM-DD') AS appointment_date,
               c.appointment_time,
               c.is_anonymous,
               c.track_token
@@ -165,6 +172,9 @@ export async function PUT(request: NextRequest) {
             track_token: string | null
           }>
           const recipient = target[0]
+          const formattedDate = formatConsultationDateLabel(recipient?.appointment_date)
+          const formattedLocation = formatConsultationLocation(recipient?.location)
+
           if (recipient?.notify_user_id) {
             const { notifyUser } = await import('@/lib/notifications')
             const titles: Record<string, string> = {
@@ -173,8 +183,11 @@ export async function PUT(request: NextRequest) {
               cancelled: 'Consultation cancelled',
               pending: 'Consultation pending',
             }
+            const dateTimeClause = formattedDate
+              ? ` for ${formattedDate}${recipient.appointment_time ? ' at ' + recipient.appointment_time : ''}`
+              : ''
             const messages: Record<string, string> = {
-              confirmed: `Great news! Your consultation is confirmed${recipient.appointment_date ? ` for ${recipient.appointment_date}${recipient.appointment_time ? ' at ' + recipient.appointment_time : ''}` : ''}.`,
+              confirmed: `Great news! Your consultation is confirmed${dateTimeClause}.`,
               completed: 'Thanks for visiting us. We hope you loved your consultation — leave a quick review when you have a moment.',
               cancelled: 'Your consultation has been cancelled. Tap to rebook a new slot whenever you\u2019re ready.',
               pending: 'Your consultation is back to pending. We\u2019ll reach out shortly.',
@@ -192,34 +205,39 @@ export async function PUT(request: NextRequest) {
           }
 
           if (recipient?.email && ['confirmed', 'completed', 'cancelled'].includes(value)) {
-            const [{ sendConsultationStatusEmail }, { buildConsultationEmailAction }, { resolveEmailOrigin }] =
-              await Promise.all([
-                import('@/lib/email'),
-                import('@/lib/consultation-mode'),
-                import('@/lib/email-url'),
-              ])
+            const { sendConsultationStatusEmail } = await import('@/lib/email')
+            const isAnonRecipient = Boolean(
+              (recipient.is_anonymous ?? true) && !recipient.notify_user_id,
+            )
+            const resolvedToken = isAnonRecipient
+              ? await ensureConsultationTrackToken(consultationId, recipient.track_token)
+              : recipient.track_token
             const emailAction = buildConsultationEmailAction({
-              isAnonymous: Boolean(recipient.is_anonymous && !recipient.notify_user_id),
+              isAnonymous: isAnonRecipient,
               appUrl: resolveEmailOrigin(),
               consultationId,
-              trackToken: recipient.track_token,
+              trackToken: resolvedToken,
               status: value as 'confirmed' | 'completed' | 'cancelled',
             })
-            await sendConsultationStatusEmail({
+            const sent = await sendConsultationStatusEmail({
               email: recipient.email,
               firstName: recipient.first_name || 'there',
               status: value as 'confirmed' | 'completed' | 'cancelled',
-              location: recipient.location,
-              date: recipient.appointment_date,
+              location: formattedLocation || recipient.location,
+              date: formattedDate || recipient.appointment_date,
               time: recipient.appointment_time,
               ctaUrl: emailAction.ctaUrl,
               ctaLabel: emailAction.ctaLabel,
             })
+            if (!sent) {
+              console.warn('consultation status email was not delivered for', consultationId)
+            }
           }
         } catch (err) {
           console.error('consultation status notify/email failed', err)
         }
         break
+      }
 
       case 'assign':
         await sql`

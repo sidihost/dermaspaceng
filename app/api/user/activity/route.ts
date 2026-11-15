@@ -90,7 +90,7 @@ export async function GET() {
         c.id,
         'consultation' as type,
         c.concerns as concern_type,
-        c.appointment_date as preferred_date,
+        TO_CHAR(c.appointment_date, 'YYYY-MM-DD') as preferred_date,
         c.appointment_time as preferred_time,
         c.status,
         c.created_at,
@@ -106,9 +106,13 @@ export async function GET() {
           '[]'
         ) as replies
       FROM consultations c
-      LEFT JOIN admin_replies ar ON ar.request_type = 'consultation' AND ar.request_id = c.id::text
+      LEFT JOIN admin_replies ar
+        ON ar.request_type = 'consultation'
+       AND ar.request_id = c.id::text
+       AND COALESCE(ar.is_internal, false) = false
       LEFT JOIN users u ON u.id::text = ar.staff_id::text
       WHERE c.user_id = $1
+         OR (c.user_id IS NULL AND LOWER(c.email) = LOWER($2))
       GROUP BY c.id
       ORDER BY c.created_at DESC
       LIMIT 10
@@ -117,7 +121,7 @@ export async function GET() {
     const [giftCardRes, complaintsRes, consultationsRes] = await Promise.all([
       query(giftCardSql, [user.id]),
       query(complaintsSql, [user.id]),
-      query(consultationsSql, [user.id]),
+      query(consultationsSql, [user.id, user.email || '']),
     ])
     const giftCardRequests = giftCardRes.rows
     const complaints = complaintsRes.rows

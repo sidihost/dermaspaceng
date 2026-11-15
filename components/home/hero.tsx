@@ -10,7 +10,8 @@ import { ChristmasHeroIllustration } from './christmas-hero-illustration'
 // Toggle to false (or turn off Festive in Admin) to revert the hero back to the 3 standard slides.
 const CHRISTMAS_HERO_SLIDE_ENABLED = true
 
-const festiveFetcher = (url: string) => fetch(url).then((r) => r.json())
+const festiveFetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 interface HeroSlide {
   image: string
@@ -138,8 +139,9 @@ export default function Hero() {
     CHRISTMAS_HERO_SLIDE_ENABLED ? '/api/festive' : null,
     festiveFetcher,
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 60_000,
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
+      dedupingInterval: 2_000,
     },
   )
 

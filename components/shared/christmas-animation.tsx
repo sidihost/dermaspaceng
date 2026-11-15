@@ -38,11 +38,14 @@ interface SnowflakeParticle {
   type: 'bell' | 'crystal' | 'star' | 'circle'
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 export default function ChristmasAnimation() {
   const { data } = useSWR<{ enabled: boolean; intensity?: string }>('/api/festive', fetcher, {
-    revalidateOnFocus: false,
+    revalidateOnFocus: true,
+    revalidateOnMount: true,
+    dedupingInterval: 2_000,
     refreshInterval: 30_000,
   })
 

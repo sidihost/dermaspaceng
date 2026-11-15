@@ -30,6 +30,8 @@ import {
   Check,
   Lightbulb,
 } from "lucide-react"
+import { ConsultationResponsesSummary } from "@/components/consultation/consultation-responses-summary"
+import type { ConsultationConversationReply } from "@/components/consultation/consultation-conversation"
 
 interface ConsultationAnalysis {
   summary: string
@@ -58,6 +60,7 @@ interface ConsultationDetail {
   aiGeneratedAt?: string | null
   createdAt: string
   updatedAt: string | null
+  replies?: ConsultationConversationReply[]
 }
 
 const LOCATION_LABELS: Record<string, string> = {
@@ -126,10 +129,23 @@ export default function ConsultationDetailPage() {
   const { data, error, isLoading, mutate } = useSWR<{
     consultation: ConsultationDetail
   }>(id ? `/api/user/consultations/${id}` : null, fetcher, {
-    revalidateOnFocus: false,
+    revalidateOnFocus: true,
+    refreshInterval: 15_000,
   })
 
   const c = data?.consultation
+
+  React.useEffect(() => {
+    if (!c?.id) return
+    fetch("/api/user/activity", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        referenceType: "consultation",
+        referenceId: c.id,
+      }),
+    }).catch(() => {})
+  }, [c?.id])
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6">
@@ -217,6 +233,12 @@ export default function ConsultationDetailPage() {
               </div>
             </div>
           </div>
+
+          <ConsultationResponsesSummary
+            replies={c.replies ?? []}
+            href={`/dashboard/consultations/${c.id}/responses`}
+            customerLabel={c.firstName || "You"}
+          />
 
           {/* Concerns */}
           {(c.concerns.length > 0 || c.concernType) && (

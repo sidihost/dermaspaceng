@@ -75,6 +75,7 @@ function SignUpForm() {
   const [otp, setOtp] = useState('')
   const [otpError, setOtpError] = useState('')
   const [otpVerifying, setOtpVerifying] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
   const [resending, setResending] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [resendNotice, setResendNotice] = useState('')
@@ -310,8 +311,12 @@ function SignUpForm() {
         return
       }
 
-      // Verified + auto-logged-in. Straight to the dashboard.
-      router.push(redirectTo)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('user-updated'))
+      }
+
+      // Verified + auto-logged-in — confirm email verification before continuing.
+      setEmailVerified(true)
     } catch {
       setOtpError('Something went wrong. Please try again.')
     } finally {
@@ -346,6 +351,36 @@ function SignUpForm() {
   }
 
   if (success) {
+    if (emailVerified) {
+      return (
+        <div className="min-h-screen bg-white flex items-center justify-center p-4">
+          <div className="max-w-md w-full text-center">
+            <Link href="/" className="inline-block mb-6" aria-label="Dermaspace home">
+              <img
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                alt="Dermaspace"
+                className="h-9 w-auto mx-auto"
+              />
+            </Link>
+            <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+              <Check className="w-8 h-8 text-[#7B2D8E]" strokeWidth={2.5} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Email verified</h1>
+            <p className="text-gray-600 mb-8">
+              <strong>{formData.email}</strong> has been confirmed. Your account is ready.
+            </p>
+            <Link
+              href={redirectTo}
+              className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors flex items-center justify-center gap-2"
+            >
+              Continue to dashboard
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full">

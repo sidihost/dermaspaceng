@@ -9,10 +9,11 @@
  */
 
 import { useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { mutate as globalMutate } from 'swr'
 import { Snowflake, Loader2, EyeOff, Users, Globe } from 'lucide-react'
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 type Visibility = 'on' | 'preview' | 'off'
 
@@ -30,7 +31,7 @@ export function ChristmasToggleCard() {
   const { data, mutate } = useSWR<{ enabled: boolean; visibility?: Visibility }>(
     '/api/festive',
     fetcher,
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: true },
   )
 
   const [saving, setSaving] = useState(false)
@@ -56,6 +57,8 @@ export function ChristmasToggleCard() {
     } finally {
       setSaving(false)
       mutate()
+      globalMutate('/api/admin/feature-flags')
+      globalMutate('/api/feature-flags')
     }
   }
 

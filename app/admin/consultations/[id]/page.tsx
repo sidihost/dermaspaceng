@@ -111,9 +111,12 @@ interface Reply {
   id: string
   message: string
   is_internal: boolean
+  is_staff?: boolean
   created_at: string
   staff_first_name: string | null
   staff_last_name: string | null
+  customer_first_name?: string | null
+  customer_last_name?: string | null
   // The customer-facing display name set on the reply (Admin / Franca /
   // Itunu / custom). Optional — falls back to the real staff name.
   sender_display_name?: string | null
@@ -266,7 +269,21 @@ export default function ConsultationDetailPage() {
           value: status,
         }),
       })
-      if (res.ok) setConsultation({ ...consultation, status })
+      const body = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setConsultation({ ...consultation, status })
+        const noticeMap: Record<string, string> = {
+          confirmed: 'Consultation confirmed and confirmation email triggered.',
+          completed: 'Consultation marked completed.',
+          cancelled: 'Consultation marked cancelled.',
+          pending: 'Consultation moved back to pending.',
+        }
+        notify.success('Status updated', noticeMap[status] || `Status changed to ${status}.`)
+      } else {
+        notify.error('Could not update status', body.error || 'Please try again.')
+      }
+    } catch {
+      notify.error('Network error', 'Failed to update consultation status.')
     } finally {
       setUpdating(false)
     }
@@ -747,7 +764,11 @@ export default function ConsultationDetailPage() {
               ) : (
                 <ol className="space-y-3">
                   {replies.map((r) => (
-                    <ConversationBubble key={r.id} reply={r} />
+                    <ConversationBubble
+                      key={r.id}
+                      reply={r}
+                      customerFallbackName={displayName}
+                    />
                   ))}
                 </ol>
               )}
@@ -1090,7 +1111,13 @@ function MetaRow({
   )
 }
 
-function ConversationBubble({ reply }: { reply: Reply }) {
+function ConversationBubble({
+  reply,
+  customerFallbackName,
+}: {
+  reply: Reply
+  customerFallbackName?: string
+}) {
   const realName =
     [reply.staff_first_name, reply.staff_last_name].filter(Boolean).join(' ') ||
     'Staff'
@@ -1107,9 +1134,9 @@ function ConversationBubble({ reply }: { reply: Reply }) {
     minute: '2-digit',
   })
 
-  // Internal notes float left in amber; outgoing customer replies sit
-  // on the right in brand purple. The contrast makes the conversation
-  // skim-able even at speed.
+  // Internal notes float left in amber; customer follow-up messages float
+  // left in neutral gray; outgoing staff replies sit on the right in
+  // brand purple.
   if (reply.is_internal) {
     return (
       <li className={`max-w-[88%] ${reply._pending ? 'opacity-60' : ''}`}>
@@ -1124,6 +1151,37 @@ function ConversationBubble({ reply }: { reply: Reply }) {
           </span>
         </div>
         <div className="rounded-2xl rounded-tl-md bg-amber-50 border border-amber-200/80 px-4 py-3">
+          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+            {reply.message}
+          </p>
+          <AttachmentList attachments={reply.attachments} tone="light" />
+        </div>
+      </li>
+    )
+  }
+
+  if (reply.is_staff === false) {
+    const customerName =
+      [reply.customer_first_name, reply.customer_last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim() ||
+      reply.sender_display_name ||
+      customerFallbackName ||
+      'Customer'
+
+    return (
+      <li className={`max-w-[88%] ${reply._pending ? 'opacity-60' : ''}`}>
+        <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-500">
+          <span className="font-medium text-gray-700">{customerName}</span>
+          <span className="font-semibold uppercase tracking-wide text-[9px] text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-1.5 py-0.5">
+            Customer
+          </span>
+          <span className="ml-auto">
+            {reply._pending ? 'Sending…' : time}
+          </span>
+        </div>
+        <div className="rounded-2xl rounded-tl-md bg-gray-100 border border-gray-200 px-4 py-3">
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
             {reply.message}
           </p>

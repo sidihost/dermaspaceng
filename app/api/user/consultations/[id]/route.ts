@@ -12,6 +12,13 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import {
+  ensureConsultationRepliesSchema,
+  listPublicConsultationReplies,
+} from '@/lib/consultation-replies'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 function normalizeConcerns(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw as string[]
@@ -34,6 +41,7 @@ export async function GET(
   }
 
   const { id } = await params
+  await ensureConsultationRepliesSchema()
 
   const rows = (await sql`
     SELECT id::text                                 AS id,
@@ -65,6 +73,7 @@ export async function GET(
   }
 
   const r = rows[0]
+  const replies = await listPublicConsultationReplies(String(r.id))
   let analysis = null
   if (r.ai_analysis) {
     if (typeof r.ai_analysis === 'string') {
@@ -97,6 +106,7 @@ export async function GET(
       aiGeneratedAt: r.ai_generated_at ?? null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      replies,
     },
   })
 }

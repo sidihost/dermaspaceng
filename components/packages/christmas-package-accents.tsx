@@ -18,15 +18,17 @@ import useSWR from 'swr'
  */
 export const CHRISTMAS_PACKAGE_DESIGN_ENABLED = true
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = (url: string) =>
+  fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 function useChristmasDesignActive(): boolean {
   const { data } = useSWR<{ enabled: boolean }>(
     CHRISTMAS_PACKAGE_DESIGN_ENABLED ? '/api/festive' : null,
     fetcher,
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 60_000,
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
+      dedupingInterval: 2_000,
     },
   )
 

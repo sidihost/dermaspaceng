@@ -11,6 +11,10 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import { ensureConsultationRepliesSchema } from '@/lib/consultation-replies'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function GET() {
   const me = await getCurrentUser()
@@ -18,26 +22,39 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  await ensureConsultationRepliesSchema()
+
   const rows = (await sql`
-    SELECT id::text                                 AS id,
-           first_name,
-           last_name,
-           email,
-           phone,
-           location,
-           TO_CHAR(appointment_date, 'YYYY-MM-DD')  AS appointment_date,
-           appointment_time,
-           concerns,
-           notes,
-           status,
-           created_at
-      FROM consultations
-     WHERE user_id = ${me.id}
-        OR (user_id IS NULL AND LOWER(email) = LOWER(${me.email}))
+    SELECT c.id::text                                 AS id,
+           c.first_name,
+           c.last_name,
+           c.email,
+           c.phone,
+           c.location,
+           TO_CHAR(c.appointment_date, 'YYYY-MM-DD')  AS appointment_date,
+           c.appointment_time,
+           c.concerns,
+           c.notes,
+           c.status,
+           c.created_at,
+           COALESCE(rc.reply_count, 0)::int           AS reply_count,
+           COALESCE(rc.team_reply_count, 0)::int      AS team_reply_count
+      FROM consultations c
+      LEFT JOIN (
+        SELECT request_id,
+               COUNT(*) AS reply_count,
+               COUNT(*) FILTER (WHERE COALESCE(is_staff, TRUE) = TRUE) AS team_reply_count
+          FROM admin_replies
+         WHERE request_type = 'consultation'
+           AND COALESCE(is_internal, FALSE) = FALSE
+         GROUP BY request_id
+      ) rc ON rc.request_id = c.id::text
+     WHERE c.user_id = ${me.id}
+        OR (c.user_id IS NULL AND LOWER(c.email) = LOWER(${me.email}))
      ORDER BY
-       CASE WHEN status IN ('pending','confirmed') THEN 0 ELSE 1 END,
-       COALESCE(appointment_date, created_at::date) DESC,
-       created_at DESC
+       CASE WHEN c.status IN ('pending','confirmed') THEN 0 ELSE 1 END,
+       COALESCE(c.appointment_date, c.created_at::date) DESC,
+       c.created_at DESC
      LIMIT 25
   `) as any[]
 
@@ -66,6 +83,8 @@ export async function GET() {
       notes: r.notes,
       status: r.status,
       createdAt: r.created_at,
+      replyCount: Number(r.reply_count ?? 0),
+      teamReplyCount: Number(r.team_reply_count ?? 0),
     })),
   })
 }

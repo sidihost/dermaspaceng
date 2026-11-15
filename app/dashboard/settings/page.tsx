@@ -1481,7 +1481,13 @@ function SettingsPageContent() {
                               </Link>
                             </div>
                           ) : (
-                            <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] font-medium">
+                                <Check className="w-3 h-3" />
+                                Email verified
+                              </span>
+                              <span className="text-gray-400">Email cannot be changed</span>
+                            </div>
                           )}
                         </div>
                       </div>

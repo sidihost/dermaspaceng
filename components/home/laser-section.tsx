@@ -43,7 +43,7 @@ const benefits = [
 ]
 
 export default function LaserSection() {
-  const { formatPrice } = useGeo()
+  const { formatPrice, country } = useGeo()
 
   return (
     <section className="py-12 md:py-16 bg-gray-50">
@@ -59,23 +59,23 @@ export default function LaserSection() {
         <div className="grid lg:grid-cols-2 gap-8 items-center">
           {/* Left - Static Dermaspace Laser Illustration with Flat Info Card */}
           <div className="relative">
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-[#7B2D8E]/15 bg-[#7B2D8E]">
+            <div className="relative min-h-[270px] sm:min-h-0 sm:aspect-[4/3] rounded-2xl overflow-hidden border border-[#7B2D8E]/15 bg-[#7B2D8E]">
               <LaserHairRemovalIllustration className="absolute inset-0 w-full h-full" />
 
               {/* Floating Card (flat solid fill, zero shadow, zero gradient) */}
-              <div className="absolute bottom-4 left-4 right-4 bg-white/95 rounded-xl p-4 border border-[#7B2D8E]/15">
+              <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 bg-white/95 rounded-xl p-3 sm:p-4 border border-[#7B2D8E]/15">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center">
-                    <span className="text-white text-lg font-bold">{formatPrice(1).charAt(0)}</span>
+                  <div className="w-10 h-10 shrink-0 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+                    <span className="text-white text-base sm:text-lg font-bold leading-none whitespace-nowrap">{country.symbol}</span>
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-xs text-gray-500">Starting from</p>
-                    <p className="text-lg font-bold text-gray-900">{formatPrice(20000)}</p>
+                    <p className="text-lg font-bold text-gray-900 tabular-nums whitespace-nowrap">{formatPrice(20000)}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {benefits.map((benefit, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
+                    <div key={i} className="flex items-center gap-1.5 min-w-0">
                       <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
                         <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
                       </div>
@@ -111,7 +111,7 @@ export default function LaserSection() {
                     {treatment.title}
                   </h3>
                   <p className="text-xs text-gray-500 mb-1">{treatment.desc}</p>
-                  <p className="text-xs font-semibold text-[#7B2D8E]">From {formatPrice(treatment.price)}</p>
+                  <p className="text-xs font-semibold text-[#7B2D8E] tabular-nums whitespace-nowrap">From {formatPrice(treatment.price)}</p>
                 </div>
 
                 {/* Arrow */}

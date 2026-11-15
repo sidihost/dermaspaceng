@@ -15,8 +15,8 @@ import {
   Clock,
   Hourglass,
   Mail,
+  MailOpen,
   MapPin,
-  MessageSquare,
   Phone,
   Search,
   UserCheck,
@@ -494,7 +494,7 @@ export default function ConsultationsPage() {
                         {/* Row 4: message preview */}
                         {c.message ? (
                           <p className="mt-2 line-clamp-1 flex items-start gap-1.5 text-xs italic text-gray-500">
-                            <MessageSquare
+                            <MailOpen
                               className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-gray-400"
                               aria-hidden="true"
                             />

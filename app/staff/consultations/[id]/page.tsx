@@ -30,7 +30,7 @@ import {
   MapPin,
   StickyNote,
   Loader2,
-  MessageSquare,
+  MailOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -349,7 +349,7 @@ export default function StaffConsultationDetailPage({
           {consultation.message && (
             <section className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
-                <MessageSquare className="h-4 w-4 text-[#7B2D8E]" />
+                <MailOpen className="h-4 w-4 text-[#7B2D8E]" />
                 Customer message
               </h2>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">

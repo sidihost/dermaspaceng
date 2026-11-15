@@ -53,6 +53,44 @@ export type FeatureFlag = {
 const REDIS_TTL_SECONDS = 60
 const MEMO_TTL_MS = 5_000
 let memo: { at: number; rows: FeatureFlag[] } | null = null
+const memFlagOverrides = new Map<string, FeatureVisibility>()
+
+export function isFestiveFlagKey(key: string): boolean {
+  return key === 'festive' || key === 'christmas_animation'
+}
+
+const FESTIVE_FLAG_META = {
+  key: 'festive',
+  label: 'Christmas & holiday features',
+  description:
+    'Homepage Christmas card preview & hero slide, holiday snowfall, logo Santa hat, and seasonal package & gift card accents.',
+  scope: 'site' as const,
+}
+
+async function buildFallbackFestiveFlag(): Promise<FeatureFlag> {
+  const override =
+    memFlagOverrides.get('festive') ?? memFlagOverrides.get('christmas_animation')
+  try {
+    const { getChristmasSettings } = await import('./christmas-settings')
+    const festiveSettings = await getChristmasSettings()
+    const visibility: FeatureVisibility =
+      override ?? (festiveSettings.enabled ? 'on' : 'off')
+    return {
+      ...FESTIVE_FLAG_META,
+      enabled: visibility !== 'off',
+      visibility,
+      updated_at: festiveSettings.updatedAt || new Date().toISOString(),
+    }
+  } catch {
+    const visibility: FeatureVisibility = override ?? 'on'
+    return {
+      ...FESTIVE_FLAG_META,
+      enabled: visibility !== 'off',
+      visibility,
+      updated_at: new Date().toISOString(),
+    }
+  }
+}
 
 export async function getAllFlags(force = false): Promise<FeatureFlag[]> {
   if (!force && memo && Date.now() - memo.at < MEMO_TTL_MS) {
@@ -85,32 +123,9 @@ export async function getAllFlags(force = false): Promise<FeatureFlag[]> {
       ORDER BY scope, label
     `) as unknown as FeatureFlag[]
 
-    const hasFestive = rows.some((r) => r.key === 'festive' || r.key === 'christmas_animation')
+    const hasFestive = rows.some((r) => isFestiveFlagKey(r.key))
     if (!hasFestive) {
-      try {
-        const { getChristmasSettings } = await import('./christmas-settings')
-        const festiveSettings = await getChristmasSettings()
-        rows.push({
-          key: 'festive',
-          label: 'Christmas & holiday features',
-          description: 'Subtle holiday snowfall, festive bells, and Santa hat accent on the Dermaspace logo.',
-          scope: 'site',
-          enabled: festiveSettings.enabled,
-          visibility: festiveSettings.enabled ? 'on' : 'off',
-          updated_at: festiveSettings.updatedAt || new Date().toISOString(),
-        })
-      } catch {
-        // Fallback default
-        rows.push({
-          key: 'festive',
-          label: 'Christmas & holiday features',
-          description: 'Subtle holiday snowfall, festive bells, and Santa hat accent on the Dermaspace logo.',
-          scope: 'site',
-          enabled: true,
-          visibility: 'on',
-          updated_at: new Date().toISOString(),
-        })
-      }
+      rows.push(await buildFallbackFestiveFlag())
     }
 
     memo = { at: Date.now(), rows }
@@ -126,9 +141,12 @@ export async function getAllFlags(force = false): Promise<FeatureFlag[]> {
 
     return rows
   } catch {
-    // Table missing in dev / before migration runs — treat as empty so
-    // the site still works.
-    return memo?.rows ?? []
+    // Table missing in dev / before migration runs — preserve festive control
+    // alongside any memoized flags so /admin/features stays functional.
+    if (memo?.rows && memo.rows.length > 0) {
+      return memo.rows
+    }
+    return [await buildFallbackFestiveFlag()]
   }
 }
 
@@ -181,6 +199,53 @@ export async function isFeatureEnabled(key: string): Promise<boolean> {
 }
 
 /**
+ * Unified festive state resolver. Checks both `festive` and legacy
+ * `christmas_animation` feature flags as well as `christmas-settings`
+ * so turning Christmas Off in /admin/features disables every Christmas
+ * visual across the entire site.
+ */
+export async function getFestiveState(): Promise<{
+  enabled: boolean
+  intensity: 'gentle' | 'festive'
+  visibility: FeatureVisibility
+}> {
+  const [{ getChristmasSettings }, flags] = await Promise.all([
+    import('./christmas-settings'),
+    getAllFlags().catch(() => [] as FeatureFlag[]),
+  ])
+  const settings = await getChristmasSettings()
+
+  const festiveFlags = flags.filter((f) => isFestiveFlagKey(f.key))
+  let resolvedVisibility: FeatureVisibility = settings.enabled ? 'on' : 'off'
+
+  if (festiveFlags.length > 0) {
+    // Prefer the canonical `festive` row if present, else `christmas_animation`.
+    const primary =
+      festiveFlags.find((f) => f.key === 'festive') ?? festiveFlags[0]
+    resolvedVisibility = primary.visibility
+    if (festiveFlags.some((f) => f.visibility === 'off')) {
+      resolvedVisibility = 'off'
+    } else if (festiveFlags.some((f) => f.visibility === 'preview')) {
+      resolvedVisibility = 'preview'
+    }
+  }
+
+  let flagVisible = true
+  if (resolvedVisibility === 'off') {
+    flagVisible = false
+  } else if (resolvedVisibility === 'preview') {
+    flagVisible = await currentUserCanPreview()
+  }
+
+  const enabled = settings.enabled && flagVisible
+  return {
+    enabled,
+    intensity: settings.intensity,
+    visibility: enabled ? resolvedVisibility : resolvedVisibility === 'preview' ? 'preview' : 'off',
+  }
+}
+
+/**
  * Like `isFeatureEnabled` but also reports whether the viewer is only
  * seeing the feature because they're an admin/staff previewing it while
  * it's hidden from the public. Used to render a "preview mode" banner.
@@ -214,9 +279,13 @@ export async function getEffectiveFlagMap(): Promise<Record<string, boolean>> {
 export async function setFeatureVisibility(
   key: string,
   visibility: FeatureVisibility,
-  updatedBy: string,
+  updatedBy: string | null,
 ): Promise<void> {
-  if (key === 'festive' || key === 'christmas_animation') {
+  memFlagOverrides.set(key, visibility)
+
+  if (isFestiveFlagKey(key)) {
+    memFlagOverrides.set('festive', visibility)
+    memFlagOverrides.set('christmas_animation', visibility)
     try {
       const { setChristmasSettings } = await import('./christmas-settings')
       await setChristmasSettings(visibility !== 'off', 'gentle', updatedBy)
@@ -228,32 +297,54 @@ export async function setFeatureVisibility(
   // Keep the legacy `enabled` boolean mirrored so any un-migrated reader
   // still behaves (a preview flag reads as enabled; the role check is
   // what restricts it).
-  await sql`
-    INSERT INTO feature_flags (key, label, description, scope, enabled, visibility, updated_by)
-    VALUES (
-      ${key},
-      ${key === 'festive' ? 'Christmas & holiday features' : key},
-      ${key === 'festive' ? 'Subtle holiday snowfall, festive bells, and Santa hat accent on the Dermaspace logo.' : null},
-      'site',
-      ${visibility !== 'off'},
-      ${visibility},
-      ${updatedBy}
-    )
-    ON CONFLICT (key) DO UPDATE
-    SET visibility = EXCLUDED.visibility,
-        enabled = EXCLUDED.enabled,
-        updated_by = EXCLUDED.updated_by,
-        updated_at = NOW()
-  `
+  try {
+    await sql`
+      INSERT INTO feature_flags (key, label, description, scope, enabled, visibility, updated_by)
+      VALUES (
+        ${key},
+        ${isFestiveFlagKey(key) ? FESTIVE_FLAG_META.label : key},
+        ${isFestiveFlagKey(key) ? FESTIVE_FLAG_META.description : null},
+        'site',
+        ${visibility !== 'off'},
+        ${visibility},
+        ${updatedBy}
+      )
+      ON CONFLICT (key) DO UPDATE
+      SET visibility = EXCLUDED.visibility,
+          enabled = EXCLUDED.enabled,
+          updated_by = EXCLUDED.updated_by,
+          updated_at = NOW()
+    `
+    if (isFestiveFlagKey(key)) {
+      const siblingKey = key === 'festive' ? 'christmas_animation' : 'festive'
+      await sql`
+        UPDATE feature_flags
+        SET visibility = ${visibility},
+            enabled = ${visibility !== 'off'},
+            updated_by = ${updatedBy},
+            updated_at = NOW()
+        WHERE key = ${siblingKey}
+      `.catch(() => {})
+    }
+  } catch (err) {
+    if (!isFestiveFlagKey(key) || process.env.DATABASE_URL) {
+      throw err
+    }
+  }
   await invalidateFeatureFlagCache()
 }
 
 export async function setFeatureEnabled(
   key: string,
   enabled: boolean,
-  updatedBy: string,
+  updatedBy: string | null,
 ): Promise<void> {
-  if (key === 'festive' || key === 'christmas_animation') {
+  const visibility: FeatureVisibility = enabled ? 'on' : 'off'
+  memFlagOverrides.set(key, visibility)
+
+  if (isFestiveFlagKey(key)) {
+    memFlagOverrides.set('festive', visibility)
+    memFlagOverrides.set('christmas_animation', visibility)
     try {
       const { setChristmasSettings } = await import('./christmas-settings')
       await setChristmasSettings(enabled, 'gentle', updatedBy)
@@ -262,23 +353,40 @@ export async function setFeatureEnabled(
     }
   }
 
-  await sql`
-    INSERT INTO feature_flags (key, label, description, scope, enabled, visibility, updated_by)
-    VALUES (
-      ${key},
-      ${key === 'festive' ? 'Christmas & holiday features' : key},
-      ${key === 'festive' ? 'Subtle holiday snowfall, festive bells, and Santa hat accent on the Dermaspace logo.' : null},
-      'site',
-      ${enabled},
-      ${enabled ? 'on' : 'off'},
-      ${updatedBy}
-    )
-    ON CONFLICT (key) DO UPDATE
-    SET enabled = EXCLUDED.enabled,
-        visibility = EXCLUDED.visibility,
-        updated_by = EXCLUDED.updated_by,
-        updated_at = NOW()
-  `
+  try {
+    await sql`
+      INSERT INTO feature_flags (key, label, description, scope, enabled, visibility, updated_by)
+      VALUES (
+        ${key},
+        ${isFestiveFlagKey(key) ? FESTIVE_FLAG_META.label : key},
+        ${isFestiveFlagKey(key) ? FESTIVE_FLAG_META.description : null},
+        'site',
+        ${enabled},
+        ${visibility},
+        ${updatedBy}
+      )
+      ON CONFLICT (key) DO UPDATE
+      SET enabled = EXCLUDED.enabled,
+          visibility = EXCLUDED.visibility,
+          updated_by = EXCLUDED.updated_by,
+          updated_at = NOW()
+    `
+    if (isFestiveFlagKey(key)) {
+      const siblingKey = key === 'festive' ? 'christmas_animation' : 'festive'
+      await sql`
+        UPDATE feature_flags
+        SET enabled = ${enabled},
+            visibility = ${visibility},
+            updated_by = ${updatedBy},
+            updated_at = NOW()
+        WHERE key = ${siblingKey}
+      `.catch(() => {})
+    }
+  } catch (err) {
+    if (!isFestiveFlagKey(key) || process.env.DATABASE_URL) {
+      throw err
+    }
+  }
   await invalidateFeatureFlagCache()
 }
 

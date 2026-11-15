@@ -18,7 +18,7 @@
  * shadows, no gradients, no sparkle/star iconography.
  */
 
-import useSWR from 'swr'
+import useSWR, { mutate as globalMutate } from 'swr'
 import Link from 'next/link'
 import {
   Power,
@@ -105,6 +105,17 @@ export default function FeatureFlagsPage() {
         },
       { revalidate: false },
     )
+    if (key === 'festive' || key === 'christmas_animation') {
+      globalMutate(
+        '/api/festive',
+        (prev: { enabled?: boolean; intensity?: string; visibility?: Visibility } | undefined) => ({
+          ...(prev ?? {}),
+          enabled: visibility !== 'off',
+          visibility,
+        }),
+        { revalidate: false },
+      )
+    }
     try {
       await fetch('/api/admin/feature-flags', {
         method: 'PATCH',
@@ -116,6 +127,10 @@ export default function FeatureFlagsPage() {
     } finally {
       setSavingKey(null)
       mutate()
+      globalMutate('/api/feature-flags')
+      if (key === 'festive' || key === 'christmas_animation') {
+        globalMutate('/api/festive')
+      }
     }
   }
 
