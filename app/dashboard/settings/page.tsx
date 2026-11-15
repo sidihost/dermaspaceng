@@ -12,7 +12,7 @@ import {
   Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe, Lock,
 } from 'lucide-react'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
-import { PermissionsPanel } from '@/components/shared/permissions-panel'
+import { PermissionsPanel, syncBrowserPushSubscription } from '@/components/shared/permissions-panel'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -89,12 +89,40 @@ function SettingsPageContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
   const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications' | 'permissions' | 'assistant'>('account')
+  const [guidePermId, setGuidePermId] = useState<string | null>(null)
+  const [browserNotifPerm, setBrowserNotifPerm] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default')
+
+  const refreshBrowserNotifPerm = React.useCallback(() => {
+    if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+      setBrowserNotifPerm('unsupported')
+      return
+    }
+    setBrowserNotifPerm(Notification.permission)
+  }, [])
+
+  useEffect(() => {
+    refreshBrowserNotifPerm()
+    window.addEventListener('focus', refreshBrowserNotifPerm)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') refreshBrowserNotifPerm()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('focus', refreshBrowserNotifPerm)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [refreshBrowserNotifPerm])
   
   // Handle tab/section parameter from URL and trigger actions
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('section')
     const action = searchParams.get('action')
+    const guide = searchParams.get('guide')
     
+    if (guide) {
+      setGuidePermId(guide)
+    }
+
     if (tab && ['account', 'security', 'wallet', 'notifications', 'permissions', 'assistant'].includes(tab)) {
       setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications' | 'permissions' | 'assistant')
     }
@@ -2424,6 +2452,63 @@ function SettingsPageContent() {
                     </div>
                   )}
 
+                  {browserNotifPerm === 'default' && (
+                    <div className="mb-4 rounded-xl border border-[#7B2D8E]/20 bg-[#FAF6FB] p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-semibold text-gray-900">
+                          Browser notifications are turned off
+                        </p>
+                        <p className="text-xs text-gray-600 mt-0.5">
+                          Allow browser alerts so you don&apos;t miss support replies or booking updates.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (typeof Notification === 'undefined') return
+                          const p = await Notification.requestPermission()
+                          setBrowserNotifPerm(p)
+                          if (p === 'granted') {
+                            void syncBrowserPushSubscription()
+                            notify.success('Notifications enabled', 'You will now receive browser alerts.')
+                          } else if (p === 'denied') {
+                            setGuidePermId('notifications')
+                            setActiveSection('permissions')
+                          }
+                        }}
+                        className="inline-flex items-center justify-center px-3.5 py-2 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] transition-colors flex-shrink-0"
+                      >
+                        Turn on notifications
+                      </button>
+                    </div>
+                  )}
+
+                  {browserNotifPerm === 'denied' && (
+                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs sm:text-sm font-semibold text-gray-900">
+                          Browser notifications are blocked
+                        </p>
+                        <p className="text-xs text-amber-800 mt-0.5">
+                          Your browser is currently blocking alerts for Dermaspace. Re-enable them in site settings.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGuidePermId('notifications')
+                          setActiveSection('permissions')
+                          router.replace('/dashboard/settings?section=permissions&guide=notifications', {
+                            scroll: false,
+                          })
+                        }}
+                        className="inline-flex items-center justify-center px-3.5 py-2 rounded-lg border border-amber-300 bg-white text-amber-800 text-xs font-semibold hover:bg-amber-100/60 transition-colors flex-shrink-0"
+                      >
+                        Open settings
+                      </button>
+                    </div>
+                  )}
+
                   <div className="space-y-2.5 sm:space-y-3">
                     {[
                       { key: 'email_notifications', label: 'Email Notifications', description: 'Receive notifications via email' },
@@ -2439,10 +2524,22 @@ function SettingsPageContent() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setWalletSettings(prev => ({ 
-                            ...prev, 
-                            [item.key]: !prev[item.key as keyof WalletSettings] 
-                          }))}
+                          onClick={async () => {
+                            const nextVal = !walletSettings[item.key as keyof WalletSettings]
+                            setWalletSettings(prev => ({ 
+                              ...prev, 
+                              [item.key]: nextVal 
+                            }))
+                            if (item.key === 'push_notifications' && nextVal && typeof Notification !== 'undefined') {
+                              if (Notification.permission === 'default') {
+                                const p = await Notification.requestPermission()
+                                setBrowserNotifPerm(p)
+                                if (p === 'granted') void syncBrowserPushSubscription()
+                              } else if (Notification.permission === 'granted') {
+                                void syncBrowserPushSubscription()
+                              }
+                            }
+                          }}
                           className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                             walletSettings[item.key as keyof WalletSettings] 
                               ? 'bg-[#7B2D8E]' 
@@ -2519,7 +2616,11 @@ function SettingsPageContent() {
                       <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Manage what Dermaspace can access on your device</p>
                     </div>
                   </div>
-                  <PermissionsPanel onClose={() => { /* dashboard owns navigation */ }} />
+                  <PermissionsPanel
+                    initialGuideId={guidePermId}
+                    onNotificationGranted={refreshBrowserNotifPerm}
+                    onClose={() => { /* dashboard owns navigation */ }}
+                  />
                 </div>
               )}
 

@@ -245,7 +245,7 @@ const FAQ = [
   },
   {
     q: 'Do I need a Dermaspace account?',
-    a: 'You can browse services and our journal without one, but you\u2019ll need to sign in to book, chat, or use your wallet. The app uses the same account you already use on dermaspaceng.com.',
+    a: 'You can browse services and our blog without one, but you\u2019ll need to sign in to book, chat, or use your wallet. The app uses the same account you already use on dermaspaceng.com.',
   },
   {
     q: 'How do I update the app?',

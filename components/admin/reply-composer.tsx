@@ -237,7 +237,7 @@ export default function ReplyComposer({
                 // the right edge once the row no longer wraps.
                 // `max-w-[calc(100vw-2rem)]` keeps it inside the
                 // viewport even if the trigger is wide.
-                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white z-20 overflow-hidden">
                   <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                     Display name
                   </div>
@@ -335,7 +335,7 @@ export default function ReplyComposer({
         <div className="border-t border-gray-100 bg-[#7B2D8E]/[0.025] px-3 py-2.5">
           <div className="flex items-center flex-wrap gap-1.5">
             <span className="inline-flex items-center gap-1.5 pr-1.5 mr-0.5 border-r border-gray-200">
-              <span className="grid place-items-center w-6 h-6 rounded-md bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex-shrink-0">
+              <span className="grid place-items-center w-6 h-6 rounded-md bg-[#7B2D8E] flex-shrink-0">
                 {/* Wand2 keeps the "AI rewrite" semantic without the
                     sparkle/star bling the team is dropping. */}
                 <Wand2 className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />

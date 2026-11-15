@@ -137,7 +137,7 @@ export function ServiceWorkerRegister() {
             .then((readyReg) => {
               readyReg.active?.postMessage({
                 type: 'CACHE_URLS',
-                urls: ['/offline', '/services', '/gift-cards', '/contact'],
+                urls: ['/', '/offline', '/services', '/gift-cards', '/contact', '/blog', '/about'],
               })
             })
             .catch(() => {})
@@ -279,21 +279,20 @@ export function ServiceWorkerRegister() {
 
     const url = pathname + window.location.search
 
-    // Defer to idle so we don't compete with the page's own
-    // hydration / data fetches for bandwidth on slow connections.
+    // Use a bounded 350ms idle window so rapid client navigations are
+    // still warmed in cache before the user loses connectivity.
     const ric = (window as any).requestIdleCallback as
       | ((cb: () => void, opts?: { timeout?: number }) => number)
       | undefined
     const cic = (window as any).cancelIdleCallback as
       | ((id: number) => void)
       | undefined
-    const schedule = ric ?? ((cb: () => void) => window.setTimeout(cb, 1500))
-    const cancel = cic ?? ((id: number) => window.clearTimeout(id))
 
-    const handle = schedule(() => {
-      const send = () => {
+    const triggerCache = () => {
+      const send = (target?: ServiceWorker | null) => {
         try {
-          navigator.serviceWorker.controller?.postMessage({
+          const worker = target ?? navigator.serviceWorker.controller
+          worker?.postMessage({
             type: 'CACHE_NAVIGATION',
             url,
           })
@@ -301,18 +300,26 @@ export function ServiceWorkerRegister() {
           /* ignore — best-effort */
         }
       }
-      // If the SW isn't controlling yet (first install on this
-      // page), wait for `ready` and try once when it takes over.
       if (navigator.serviceWorker.controller) {
-        send()
+        send(navigator.serviceWorker.controller)
       } else {
-        navigator.serviceWorker.ready.then(send).catch(() => {})
+        navigator.serviceWorker.ready
+          .then((reg) => send(reg.active))
+          .catch(() => {})
       }
-    })
+    }
+
+    const handle = ric
+      ? ric(triggerCache, { timeout: 350 })
+      : window.setTimeout(triggerCache, 350)
 
     return () => {
       try {
-        cancel(handle as number)
+        if (ric && cic) {
+          cic(handle)
+        } else {
+          window.clearTimeout(handle)
+        }
       } catch {
         /* ignore */
       }

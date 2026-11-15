@@ -8,13 +8,34 @@ const mockNeon = (async () => {
   return []
 }) as unknown as NeonQueryFunction<false, false>
 
+/**
+ * Returns true only when DATABASE_URL is present and parses as a postgres://
+ * or postgresql:// connection string. Prevents @neondatabase/serverless from
+ * throwing `NeonDbError: Wrong URL scheme or missing user, host or database`
+ * in preview/unconfigured environments.
+ */
+export function isDatabaseConfigured(url: string | undefined = process.env.DATABASE_URL): boolean {
+  const trimmed = url?.trim()
+  if (!trimmed) return false
+  try {
+    const parsed = new URL(trimmed)
+    return (
+      (parsed.protocol === 'postgres:' || parsed.protocol === 'postgresql:') &&
+      Boolean(parsed.hostname)
+    )
+  } catch {
+    return false
+  }
+}
+
 function getSql(): NeonQueryFunction<false, false> {
-  if (!process.env.DATABASE_URL) {
+  const url = process.env.DATABASE_URL?.trim()
+  if (!isDatabaseConfigured(url)) {
     return mockNeon
   }
   if (!_sql) {
     try {
-      _sql = neon(process.env.DATABASE_URL)
+      _sql = neon(url!)
     } catch {
       return mockNeon
     }

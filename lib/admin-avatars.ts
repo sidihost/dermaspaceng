@@ -14,11 +14,59 @@ export const ADMIN_DEFAULT_AVATAR = '/avatars/admin-default.jpg'
 // The Dermaspace clinical team is all-female, so the default staff
 // portrait must reflect that. We point at the curated `staff-1.jpg`
 // from the team avatars pool (lib/team-avatars.ts) which is rendered
-// in the same 3D Pixar style as the admin default. The legacy
-// `/avatars/staff-default.jpg` was a male portrait — pointing the
-// constant at the female team tile fixes the wrong-gender default
-// without touching the picker UI.
+// in the same 3D Pixar style as the admin default.
 export const STAFF_DEFAULT_AVATAR = '/avatars/team/staff-1.jpg'
+
+/**
+ * Curated female portrait pool for the staff dashboard and therapist
+ * roster (matches `STAFF_AVATARS` in `lib/team-avatars.ts`).
+ */
+export const STAFF_FEMALE_AVATAR_POOL = [
+  '/avatars/team/staff-1.jpg',
+  '/avatars/team/staff-2.jpg',
+  '/avatars/team/staff-3.jpg',
+  '/avatars/team/staff-4.jpg',
+  '/avatars/team/staff-5.jpg',
+  '/avatars/team/staff-6.jpg',
+] as const
+
+/**
+ * True when an avatar URL points to a known male portrait in /public/avatars
+ * (e.g. `admin-default.jpg`, `admin-m1.jpg`..`admin-m4.jpg`, `admin-it.jpg`,
+ * or customer male avatars `m1.jpg`..`m11.jpg`). Used to guarantee the
+ * staff dashboard never displays a male portrait even if an admin with a
+ * male profile opens /staff or appears on the therapist roster.
+ */
+export function isMaleAvatarUrl(url?: string | null): boolean {
+  if (!url || typeof url !== 'string') return false
+  const cleaned = url.trim().toLowerCase().split('?')[0]
+  if (!cleaned) return false
+  if (cleaned === '/avatars/admin-default.jpg') return true
+  if (/^\/avatars\/team\/admin-(m\d+|it)\.(jpg|jpeg|png|webp)$/i.test(cleaned)) {
+    return true
+  }
+  if (/^\/avatars\/m\d+\.(jpg|jpeg|png|webp)$/i.test(cleaned)) {
+    return true
+  }
+  return false
+}
+
+/**
+ * Always resolves to a female portrait URL for the staff dashboard and
+ * front-desk therapist roster. Preserves uploaded / female team portraits
+ * and replaces null, blank, or known-male URLs with a female team avatar.
+ */
+export function resolveStaffAvatar(
+  uploaded?: string | null,
+  fallbackIndex = 0,
+): string {
+  const trimmed = typeof uploaded === 'string' ? uploaded.trim() : ''
+  if (trimmed && !isMaleAvatarUrl(trimmed)) {
+    return trimmed
+  }
+  const idx = Math.abs(Math.trunc(fallbackIndex)) % STAFF_FEMALE_AVATAR_POOL.length
+  return STAFF_FEMALE_AVATAR_POOL[idx]
+}
 
 /**
  * Returns the right default avatar for a given role. Falls back to

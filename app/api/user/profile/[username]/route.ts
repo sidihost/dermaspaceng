@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
+import { isDatabaseConfigured, sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { classifyProfileSegment } from '@/lib/profile-route-guard'
 
@@ -22,14 +22,13 @@ export async function GET(
       )
     }
 
-    if (!process.env.DATABASE_URL) {
+    if (!isDatabaseConfigured()) {
       return NextResponse.json(
         { error: 'User not found', suggestions: [] },
         { status: 404 },
       )
     }
 
-    const sql = neon(process.env.DATABASE_URL)
     const cleanUsername = username.trim().toLowerCase()
 
     // Columns we read on both lookup paths. Extracted into a constant so

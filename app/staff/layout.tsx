@@ -8,6 +8,7 @@ import { StaffTopBar } from "@/components/staff/staff-top-bar"
 // admin/staff invitee should see exactly the same first-sign-in
 // flow whether they land on /admin or /staff.
 import { AdminWelcomeGate } from "@/components/admin/admin-welcome-gate"
+import { resolveStaffAvatar } from "@/lib/admin-avatars"
 
 export default async function StaffLayout({
   children,
@@ -40,7 +41,7 @@ export default async function StaffLayout({
           // avatar picker. `user.avatar_url` is the canonical source
           // (set when the user selects a preset portrait); when null
           // the StaffTopBar falls back to the initials pill.
-          avatarUrl={(user as { avatar_url?: string | null }).avatar_url ?? null}
+          avatarUrl={resolveStaffAvatar((user as { avatar_url?: string | null }).avatar_url)}
         />
         {/* Staff console working area. Capped at max-w-[1400px] on
             ultra-wide displays so tables / lists stay readable, with

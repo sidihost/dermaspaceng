@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
+import { isDatabaseConfigured, sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 
 /**
@@ -28,8 +28,6 @@ export const dynamic = 'force-dynamic'
 
 const MAX_BYTES = 16 * 1024 // 16KB — plenty for a stack trace, blocks abuse
 
-const sql = neon(process.env.DATABASE_URL!)
-
 // Idempotent schema patch: ensure client_errors exists. The migration
 // in scripts/640-client-errors.sql is the source of truth, but this
 // guard means the route still works on environments where the
@@ -38,6 +36,7 @@ const sql = neon(process.env.DATABASE_URL!)
 let schemaReady = false
 let schemaInflight: Promise<void> | null = null
 async function ensureClientErrorsSchema(): Promise<void> {
+  if (!isDatabaseConfigured()) return
   if (schemaReady) return
   if (schemaInflight) return schemaInflight
   schemaInflight = (async () => {
@@ -123,30 +122,31 @@ export async function POST(request: Request) {
     console.error('[CLIENT-ERROR]', JSON.stringify(report))
 
     // Best-effort persistence so the admin user-detail page can show
-    // this user's recent errors. Resolving the current user is also
-    // best-effort — anonymous visitors still get a row with NULL
-    // user_id so we don't lose the report.
-    try {
-      await ensureClientErrorsSchema()
-      const me = await getCurrentUser().catch(() => null)
-      await sql`
-        INSERT INTO client_errors (
-          user_id, source, message, stack, digest, url, user_agent, ip
-        ) VALUES (
-          ${me?.id ?? null},
-          ${report.source || null},
-          ${report.message || 'unknown error'},
-          ${report.stack || null},
-          ${report.digest || null},
-          ${report.url || null},
-          ${report.ua || null},
-          ${report.ip || null}
-        )
-      `
-    } catch (persistErr) {
-      // Never let persistence failure break the sink — the log line
-      // above is still captured.
-      console.error('[CLIENT-ERROR] persist failed', persistErr)
+    // this user's recent errors. Skip cleanly when DATABASE_URL is not
+    // configured (e.g. preview environments) so we never emit NeonDbError.
+    if (isDatabaseConfigured()) {
+      try {
+        await ensureClientErrorsSchema()
+        const me = await getCurrentUser().catch(() => null)
+        await sql`
+          INSERT INTO client_errors (
+            user_id, source, message, stack, digest, url, user_agent, ip
+          ) VALUES (
+            ${me?.id ?? null},
+            ${report.source || null},
+            ${report.message || 'unknown error'},
+            ${report.stack || null},
+            ${report.digest || null},
+            ${report.url || null},
+            ${report.ua || null},
+            ${report.ip || null}
+          )
+        `
+      } catch (persistErr) {
+        // Never let persistence failure break the sink — the log line
+        // above is still captured.
+        console.error('[CLIENT-ERROR] persist failed', persistErr)
+      }
     }
 
     return NextResponse.json({ ok: true })

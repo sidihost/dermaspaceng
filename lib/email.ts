@@ -3279,6 +3279,102 @@ export async function sendTicketResolvedReview(data: {
   })
 }
 
+/**
+ * Ticket / support request status change email.
+ * Uses the exact same Dermaspace `getEmailTemplate` shell, `#FAF6FB` ticket
+ * reference card, and status transition pill styling used across all
+ * transactional Dermaspace emails.
+ */
+export async function sendTicketStatusUpdateEmail(data: {
+  email: string
+  firstName: string
+  target: 'ticket' | 'complaint'
+  ticketId?: string | null
+  subject: string
+  oldStatus?: string | null
+  newStatus: 'open' | 'in_progress' | 'resolved' | 'closed'
+  updatedByName?: string | null
+}): Promise<boolean> {
+  const { getTicketStatusEmailMeta } = await import('./ticket-status-email')
+  const meta = getTicketStatusEmailMeta(data.newStatus, data.target)
+
+  const refLabel = data.ticketId ? `Ticket ${data.ticketId}` : ''
+  const ticketUrl = data.ticketId
+    ? `${PUBLIC_ORIGIN}/dashboard/support/${encodeURIComponent(data.ticketId)}`
+    : `${PUBLIC_ORIGIN}/contact`
+
+  const oldStatusLabel = data.oldStatus
+    ? data.oldStatus.replace(/_/g, ' ')
+    : null
+
+  const actorLine = data.updatedByName
+    ? `${escapeHtml(data.updatedByName)} on the Dermaspace care team updated the status of your ${data.target === 'ticket' ? 'support ticket' : 'support request'}.`
+    : meta.intro
+
+  const content = `
+    <h1 style="margin: 0 0 12px; font-size: 22px; line-height: 1.25; font-weight: 700; color: #111827; letter-spacing: -0.01em;">
+      ${escapeHtml(meta.heading)}
+    </h1>
+    <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #374151;">
+      Hi ${escapeHtml(data.firstName)},<br><br>
+      ${actorLine}${data.updatedByName ? ` ${escapeHtml(meta.intro)}` : ''}
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="padding: 16px; background-color: #FAF6FB; border: 1px solid #EFE5F4; border-radius: 12px;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #7B2D8E;">
+            ${escapeHtml(data.ticketId ? `Ticket ${data.ticketId}` : 'Support request')}
+          </p>
+          <p style="margin: 0 0 12px; font-size: 15px; font-weight: 600; color: #111827; line-height: 1.4;">
+            ${escapeHtml(data.subject || 'Your support request')}
+          </p>
+          <div>
+            ${
+              oldStatusLabel
+                ? `<span style="display: inline-block; padding: 4px 12px; background-color: #f3f4f6; color: #6b7280; border-radius: 20px; font-size: 12px; text-transform: capitalize; text-decoration: line-through; vertical-align: middle;">
+                    ${escapeHtml(oldStatusLabel)}
+                  </span>
+                  <span style="display: inline-block; padding: 0 6px; font-size: 14px; color: #9ca3af; vertical-align: middle;">&rarr;</span>`
+                : ''
+            }
+            <span style="display: inline-block; padding: 6px 14px; background-color: ${meta.badgeBg}; color: ${meta.badgeText}; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize; vertical-align: middle;">
+              ${escapeHtml(meta.statusLabel)}
+            </span>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 6px 0 18px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 10px;">
+          <a href="${ticketUrl}" style="display: inline-block; padding: 13px 26px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            ${escapeHtml(meta.ctaLabel)}
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #6b7280;">
+      Need to add anything else? Just reply directly to this email${
+        data.ticketId
+          ? ` regarding <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong>`
+          : ''
+      } and our team will pick it right back up.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: meta.subjectLine(refLabel),
+    html: getEmailTemplate(content, {
+      preheader: `${meta.heading} — Status: ${meta.statusLabel}.`,
+      eyebrow: meta.eyebrow,
+    }),
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Booking RECEIPT email
 // ---------------------------------------------------------------------------

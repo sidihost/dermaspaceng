@@ -133,7 +133,7 @@ export function BlogLiveList({
                 setQuery('')
               }
             }}
-            placeholder="Search the journal"
+            placeholder="Search the blog"
             className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400 py-1.5 min-w-0"
             aria-label="Search posts"
             aria-controls="blog-live-results"

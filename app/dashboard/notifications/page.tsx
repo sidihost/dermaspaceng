@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import { syncBrowserPushSubscription } from '@/components/shared/permissions-panel'
 
 type Notif = {
   id: string
@@ -92,6 +93,21 @@ function timeAgo(iso: string): string {
 
 export default function NotificationsPage() {
   const [filter, setFilter] = React.useState<'all' | 'unread'>('all')
+  const [browserPerm, setBrowserPerm] = React.useState<'granted' | 'denied' | 'default' | 'unsupported'>('granted')
+
+  React.useEffect(() => {
+    const readPerm = () => {
+      if (typeof window === 'undefined' || typeof Notification === 'undefined') {
+        setBrowserPerm('unsupported')
+        return
+      }
+      setBrowserPerm(Notification.permission)
+    }
+    readPerm()
+    window.addEventListener('focus', readPerm)
+    return () => window.removeEventListener('focus', readPerm)
+  }, [])
+
   const { data, mutate, isLoading, error } = useSWR<{
     notifications: Notif[]
     unread: number
@@ -245,6 +261,52 @@ export default function NotificationsPage() {
               )}
             </div>
           </div>
+
+          {/* Browser notification status prompt when turned off or blocked */}
+          {(browserPerm === 'default' || browserPerm === 'denied') && (
+            <div className="mb-4 rounded-2xl border border-gray-200 bg-white p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3 min-w-0">
+                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                  <Bell className="w-4 h-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900">
+                    {browserPerm === 'denied'
+                      ? 'Notifications are blocked in your browser'
+                      : 'Notifications are turned off'}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {browserPerm === 'denied'
+                      ? 'Open permissions settings for step-by-step instructions to re-enable alerts.'
+                      : 'Turn on browser notifications to get instant booking and support updates.'}
+                  </p>
+                </div>
+              </div>
+              {browserPerm === 'default' ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (typeof Notification === 'undefined') return
+                    const p = await Notification.requestPermission()
+                    setBrowserPerm(p)
+                    if (p === 'granted') {
+                      void syncBrowserPushSubscription()
+                    }
+                  }}
+                  className="inline-flex items-center justify-center px-3.5 py-2 rounded-full bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] transition-colors flex-shrink-0"
+                >
+                  Turn on
+                </button>
+              ) : (
+                <Link
+                  href="/dashboard/settings?section=permissions&guide=notifications"
+                  className="inline-flex items-center justify-center px-3.5 py-2 rounded-full border border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-semibold hover:bg-[#7B2D8E]/15 transition-colors flex-shrink-0"
+                >
+                  Open settings
+                </Link>
+              )}
+            </div>
+          )}
 
           {/* Filter chips */}
           <div className="flex items-center gap-2 mb-4">

@@ -142,7 +142,7 @@ export function BlogPersonalized({ standalone = false }: { standalone?: boolean 
         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#7B2D8E]/10">
           <BookMarked className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
         </div>
-        <h2 className="text-base font-semibold text-gray-900">Your personal journal</h2>
+        <h2 className="text-base font-semibold text-gray-900">Your personal blog</h2>
         <p className="mx-auto mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-gray-600 text-pretty">
           Sign in to see recommendations tuned to your skin profile, pick up where you left off,
           and revisit the posts you&apos;ve saved.
@@ -168,7 +168,7 @@ export function BlogPersonalized({ standalone = false }: { standalone?: boolean 
         ? `Tuned to your ${data.skinType.toLowerCase()} skin profile.`
         : data.concerns.length > 0
           ? `Focused on your ${data.concerns[0].toLowerCase()} goals.`
-          : 'Your journal, tuned to what you love to read.'
+          : 'Your blog, tuned to what you love to read.'
 
   return (
     <div

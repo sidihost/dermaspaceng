@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { requireAdminOrStaff } from "@/lib/auth"
+import { resolveStaffAvatar } from "@/lib/admin-avatars"
 
 /**
  * GET /api/staff/front-desk
@@ -245,10 +246,10 @@ export async function GET() {
     `) as any[]
     therapists = rows
       .filter((r) => r.name) // skip rows with no name (placeholder seeds)
-      .map((r) => ({
+      .map((r, idx) => ({
         id: String(r.id),
         name: String(r.name),
-        avatar_url: r.avatar_url ?? null,
+        avatar_url: resolveStaffAvatar(r.avatar_url, idx),
         current_booking_id: r.current_booking_id ?? null,
         current_customer: r.current_customer ?? null,
         current_service: r.current_service ?? null,

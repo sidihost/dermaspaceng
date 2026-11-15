@@ -123,11 +123,12 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v18';
+const VERSION = 'v21';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
 const PAGES_CACHE   = `dermaspace-pages-${VERSION}`;
+const RSC_CACHE     = `dermaspace-rsc-${VERSION}`;
 
 // Keep this list intentionally tiny. We ONLY precache things that are safe
 // to serve forever (icons, manifest). HTML pages are NOT precached this way —
@@ -152,7 +153,8 @@ const PRECACHE_PAGES = [
 
 const RUNTIME_CACHE_LIMIT = 60;
 const IMAGE_CACHE_LIMIT   = 100;
-const PAGES_CACHE_LIMIT   = 40;
+const PAGES_CACHE_LIMIT   = 50;
+const RSC_CACHE_LIMIT     = 80;
 // Cached HTML older than this is considered stale and falls through to
 // the OFFLINE_HTML shell rather than being served. Picks a friendly
 // middle ground: long enough to cover "I lost data on the train and
@@ -188,51 +190,50 @@ const OFFLINE_HTML = `<!doctype html>
   <style>
     *,*::before,*::after{box-sizing:border-box}
     html,body{margin:0;padding:0;background:#FAF6FB;color:#1A0D1F;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-    .wrap{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
-    .card{width:100%;max-width:520px;background:#fff;border-radius:16px;border:1px solid #E5E0EA;overflow:hidden}
+    .wrap{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:16px}
+    .card{width:100%;max-width:460px;background:#fff;border-radius:16px;border:1px solid #E5E0EA;overflow:hidden}
     .strip{height:3px;background:#7B2D8E}
-    .body{padding:24px 20px}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid #F3F4F6}
-    .brand{display:inline-flex;align-items:center;gap:10px;min-width:0}
-    .brand-mark{width:32px;height:32px;border-radius:8px;background:rgba(123,45,142,.1);color:#7B2D8E;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .body{padding:20px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid #F3F4F6}
+    .brand{display:inline-flex;align-items:center;gap:8px;min-width:0}
+    .brand-mark{width:28px;height:28px;border-radius:8px;background:rgba(123,45,142,.1);color:#7B2D8E;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
     .brand-name{font-size:14px;font-weight:600;color:#111827;letter-spacing:-.01em}
     .tag{font-size:12px;font-weight:500;color:#6B7280;white-space:nowrap}
-    .hero{padding-top:24px;text-align:center}
-    .icon{width:48px;height:48px;border-radius:16px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto}
-    .icon svg{width:24px;height:24px}
-    h1{font-size:20px;line-height:1.25;margin:16px 0 0;font-weight:600;letter-spacing:-.01em;color:#111827}
-    p{margin:8px auto 0;max-width:420px;color:#4B5563;font-size:14px;line-height:1.6}
-    .status{margin:12px 0 0;font-size:12px;font-weight:500;color:#6B7280}
+    .hero{padding-top:16px;text-align:center}
+    .icon{width:40px;height:40px;border-radius:12px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto}
+    .icon svg{width:20px;height:20px}
+    h1{font-size:18px;line-height:1.25;margin:12px 0 0;font-weight:600;letter-spacing:-.01em;color:#111827}
+    p{margin:6px auto 0;max-width:360px;color:#4B5563;font-size:13px;line-height:1.45}
+    .status{margin:8px 0 0;font-size:12px;font-weight:500;color:#6B7280}
     .status.online{color:#047857}
-    .actions{margin-top:24px;display:grid;grid-template-columns:1fr;gap:12px}
-    .btn{appearance:none;width:100%;min-height:44px;border:1px solid transparent;cursor:pointer;font:inherit;font-weight:600;font-size:14px;padding:10px 20px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+    .actions{margin-top:16px;display:grid;grid-template-columns:1fr;gap:10px}
+    .btn{appearance:none;width:100%;min-height:42px;border:1px solid transparent;cursor:pointer;font:inherit;font-weight:600;font-size:13px;padding:8px 16px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
     .btn-primary{background:#7B2D8E;border-color:#7B2D8E;color:#fff}
     .btn-primary:hover{background:#5A1D6A;border-color:#5A1D6A}
     .btn-secondary{background:#fff;color:#1F2937;border-color:#E5E0EA}
     .btn-secondary:hover{border-color:rgba(123,45,142,.4);color:#7B2D8E}
-    .quick{margin-top:20px;text-align:center;font-size:12px;color:#6B7280;line-height:1.6}
+    .quick{margin-top:14px;text-align:center;font-size:12px;color:#6B7280;line-height:1.5}
     .quick a{color:#7B2D8E;font-weight:500;text-decoration:none}
     .quick a:hover{text-decoration:underline}
     .sep{margin:0 6px;color:#9CA3AF}
-    .foot{margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6}
-    .foot-title{margin:0 0 12px;font-size:12px;font-weight:600;color:#111827;text-align:center}
-    .branches{display:grid;grid-template-columns:1fr;gap:14px;text-align:left}
-    .branch-name{margin:0;font-size:12px;font-weight:600;color:#111827}
-    .branch-addr{margin:2px 0 0;font-size:12px;line-height:1.4;color:#6B7280}
-    .link{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;font-weight:600;color:#7B2D8E;text-decoration:none;word-break:break-word}
+    .foot{margin-top:16px;padding-top:14px;border-top:1px solid #F3F4F6}
+    .branches{display:grid;grid-template-columns:1fr;gap:10px;text-align:center}
+    .branch-tile{border-radius:12px;background:#FAF6FB;border:1px solid rgba(229,224,234,.7);padding:8px 12px}
+    .branch-name{margin:0;font-size:11px;font-weight:600;color:#111827}
+    .link{display:inline-flex;align-items:center;gap:4px;margin-top:2px;font-size:11px;font-weight:600;color:#7B2D8E;text-decoration:none;white-space:nowrap}
     .link:hover{text-decoration:underline}
-    .email-row{margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6;display:flex;justify-content:center}
-    .email{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#4B5563;text-decoration:none;word-break:break-all}
+    .email-row{margin-top:10px;display:flex;justify-content:center}
+    .email{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:#6B7280;text-decoration:none;word-break:break-all}
     .email:hover{color:#7B2D8E;text-decoration:underline}
-    @media (min-width:520px){
-      .wrap{padding:48px 24px}
-      .body{padding:32px}
-      h1{font-size:24px}
-      p{font-size:15px}
+    @media (min-width:360px){
       .actions{grid-template-columns:1fr 1fr}
-      .foot-title{text-align:left}
-      .branches{grid-template-columns:1fr 1fr}
-      .email-row{justify-content:flex-start}
+      .branches{grid-template-columns:1fr 1fr;text-align:left}
+    }
+    @media (min-width:520px){
+      .wrap{padding:24px}
+      .body{padding:24px}
+      h1{font-size:20px}
+      p{font-size:14px}
     }
   </style>
 </head>
@@ -256,13 +257,13 @@ const OFFLINE_HTML = `<!doctype html>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><line x1="12" y1="20" x2="12.01" y2="20"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
           </div>
           <h1>You&apos;re offline</h1>
-          <p id="msg">We can&apos;t reach Dermaspace right now because your connection dropped. Pages you&apos;ve already visited will keep working.</p>
+          <p id="msg">Your connection dropped. Pages you&apos;ve already visited still work offline.</p>
           <p class="status" id="status" role="status" aria-live="polite">Waiting for internet connection&hellip;</p>
         </div>
 
         <div class="actions">
           <button class="btn btn-primary" id="retry" type="button">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             Try again
           </button>
           <a class="btn btn-secondary" href="/">Back to Home</a>
@@ -274,16 +275,13 @@ const OFFLINE_HTML = `<!doctype html>
         </div>
 
         <div class="foot">
-          <p class="foot-title">Need help? Reach either branch</p>
           <div class="branches">
-            <div>
+            <div class="branch-tile" title="237B Muri Okunola St, VI">
               <p class="branch-name">Victoria Island</p>
-              <p class="branch-addr">237B Muri Okunola St, VI</p>
               <a class="link" href="tel:+2349061836625">+234 906 183 6625</a>
             </div>
-            <div>
+            <div class="branch-tile" title="9 Agbeke Rotinwa Cl, Dolphin Estate">
               <p class="branch-name">Ikoyi</p>
-              <p class="branch-addr">9 Agbeke Rotinwa Cl, Dolphin Estate</p>
               <a class="link" href="tel:+2349013134945">+234 901 313 4945</a>
             </div>
           </div>
@@ -354,13 +352,13 @@ self.addEventListener('install', (event) => {
       await Promise.all(
         PRECACHE_PAGES.map(async (url) => {
           try {
-            const res = await fetch(url, { cache: 'reload' });
-            if (res && res.ok && res.status === 200) {
-              await stampAndCache(PAGES_CACHE, new Request(url), res);
+            const absUrl = new URL(url, self.location.origin).toString();
+            const res = await fetch(absUrl, { cache: 'reload' });
+            if (isCacheableResponse(res, 'html')) {
+              await stampAndCache(PAGES_CACHE, new Request(absUrl), res);
             }
           } catch {
-            /* offline at install time — nothing to seed, the user will
-               populate PAGES_CACHE on their next online navigation */
+            /* offline at install time */
           }
         }),
       );
@@ -380,7 +378,7 @@ self.addEventListener('install', (event) => {
 // reload.
 // ---------------------------------------------------------------------------
 self.addEventListener('activate', (event) => {
-  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE, PAGES_CACHE]);
+  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE, PAGES_CACHE, RSC_CACHE]);
   event.waitUntil(
     (async () => {
       const names = await caches.keys();
@@ -439,6 +437,63 @@ const isFreshEnough = (cachedResponse, maxAgeMs) => {
   return Date.now() - cachedAt < maxAgeMs;
 };
 
+const isRscRequest = (request, url) => {
+  if (request.headers.get('RSC') === '1') return true;
+  return url.searchParams.has('_rsc');
+};
+
+const normalizePageOrRscUrl = (rawUrl) => {
+  const u = new URL(rawUrl, self.location.origin);
+  u.searchParams.delete('_rsc');
+  u.hash = '';
+  return u.toString();
+};
+
+const isCacheableResponse = (res, expectedKind) => {
+  if (!res || !res.ok || res.status !== 200 || res.redirected) return false;
+  const ct = (res.headers.get('Content-Type') || '').toLowerCase();
+  if (expectedKind === 'html') return ct.includes('text/html');
+  if (expectedKind === 'rsc') return ct.includes('text/x-component');
+  return true;
+};
+
+const warmStaticAssetsFromText = async (bodyText) => {
+  if (!bodyText) return;
+  const matches = bodyText.match(
+    /\/_next\/static\/[^\s"'<>\\)]+\.(?:js|css)(?:\?[^\s"'<>\\)]*)?/g,
+  );
+  if (!matches || matches.length === 0) return;
+  const uniqueUrls = Array.from(
+    new Set(
+      matches
+        .map((path) => {
+          try {
+            const u = new URL(path, self.location.origin);
+            return u.origin === self.location.origin ? u.toString() : null;
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean),
+    ),
+  );
+  const staticCache = await caches.open(STATIC_CACHE);
+  await Promise.all(
+    uniqueUrls.map(async (assetUrl) => {
+      try {
+        const existing = await staticCache.match(assetUrl, { ignoreVary: true });
+        if (existing) return;
+        const res = await fetch(assetUrl, { credentials: 'same-origin' });
+        if (res && res.ok && res.status === 200) {
+          await staticCache.put(assetUrl, res);
+        }
+      } catch {
+        /* ignore offline or transient asset errors */
+      }
+    }),
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Fetch routing
 // ---------------------------------------------------------------------------
@@ -465,13 +520,13 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
       caches.open(STATIC_CACHE).then(async (cache) => {
-        const cached = await cache.match(request);
+        const cached = await cache.match(request, { ignoreVary: true });
         const networked = fetch(request)
           .then((res) => {
-            if (res && res.ok) cache.put(request, res.clone());
+            if (res && res.ok && res.status === 200) cache.put(request, res.clone());
             return res;
           })
-          .catch(() => cached);
+          .catch(() => cached || new Response('', { status: 504 }));
         return cached || networked;
       }),
     );
@@ -524,53 +579,99 @@ self.addEventListener('fetch', (event) => {
   }
 
   // -------------------------------------------------------------------------
-  // 4. Page navigations — NETWORK-FIRST. On success we mirror the
-  //    response into PAGES_CACHE so the user can re-open the same URL
-  //    offline. On hard network failure we serve the cached copy if we
-  //    have one (and it isn't older than HTML_MAX_AGE_MS); otherwise
-  //    we fall back to the inline OFFLINE_HTML shell.
-  //
-  //    Online users NEVER see a stale page — we always try the network
-  //    first and only consult the cache when fetch() rejects.
+  // 3.5. Next.js App Router RSC payloads (<Link> client navigations)
+  //      Keyed by normalized URL (stripping ephemeral `?_rsc=` hash) and matched
+  //      with `{ ignoreVary: true }` so offline in-app <Link> clicks succeed!
   // -------------------------------------------------------------------------
-  if (request.mode === 'navigate') {
+  if (isRscRequest(request, url)) {
     event.respondWith(
       (async () => {
-        // Look up a cached copy of this page. Try an exact URL match
-        // first, then retry ignoring the query string — this is what
-        // rescues `/?source=pwa`, UTM-tagged links, and any page the
-        // user reaches with slightly different search params from the
-        // copy we cached. Without the `ignoreSearch` fallback those
-        // navigations missed the cache and dropped to the offline
-        // shell even though the page was sitting in PAGES_CACHE.
-        const lookupCachedPage = async () => {
-          const cache = await caches.open(PAGES_CACHE);
-          let cached = await cache.match(request);
+        const normalizedKey = new Request(normalizePageOrRscUrl(request.url));
+        const lookupCachedRsc = async () => {
+          const cache = await caches.open(RSC_CACHE);
+          let cached = await cache.match(normalizedKey, { ignoreVary: true });
           if (!cached) {
-            cached = await cache.match(request, { ignoreSearch: true });
+            cached = await cache.match(normalizedKey, {
+              ignoreSearch: true,
+              ignoreVary: true,
+            });
           }
           return cached;
         };
 
-        // Kick off the network request. On success we mirror the
-        // response into PAGES_CACHE for offline replay. We deliberately
-        // only cache 200s — caching a 4xx/5xx would mean the user
-        // re-opens the page offline and sees an error page they
-        // shouldn't be persisting.
         const networkPromise = fetch(request).then((fresh) => {
-          if (fresh && fresh.ok && fresh.status === 200) {
-            stampAndCache(PAGES_CACHE, request, fresh.clone())
+          if (isCacheableResponse(fresh, 'rsc')) {
+            stampAndCache(RSC_CACHE, normalizedKey, fresh.clone())
+              .then(() => limitCache(RSC_CACHE, RSC_CACHE_LIMIT))
+              .catch(() => {});
+          }
+          return fresh;
+        });
+
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutId = setTimeout(
+            () => reject(new Error('rsc-network-timeout')),
+            NAV_NETWORK_TIMEOUT_MS,
+          );
+        });
+
+        try {
+          const fresh = await Promise.race([networkPromise, timeoutPromise]);
+          clearTimeout(timeoutId);
+          return fresh;
+        } catch {
+          clearTimeout(timeoutId);
+          const cached = await lookupCachedRsc();
+          if (cached && isFreshEnough(cached, HTML_MAX_AGE_MS)) {
+            event.waitUntil(networkPromise.catch(() => {}));
+            return cached;
+          }
+          try {
+            return await networkPromise;
+          } catch {
+            return new Response('', { status: 503 });
+          }
+        }
+      })(),
+    );
+    return;
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. Page navigations — NETWORK-FIRST. Uses `{ ignoreVary: true }` so
+  //    Next.js App Router `Vary: RSC, Next-Router-State-Tree, ...` headers
+  //    never cause false cache misses when offline.
+  // -------------------------------------------------------------------------
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        const cleanUrl = normalizePageOrRscUrl(request.url);
+        const cleanReq = new Request(cleanUrl);
+        const lookupCachedPage = async () => {
+          const cache = await caches.open(PAGES_CACHE);
+          let cached = await cache.match(request, { ignoreVary: true });
+          if (!cached) {
+            cached = await cache.match(cleanReq, { ignoreVary: true });
+          }
+          if (!cached) {
+            cached = await cache.match(cleanReq, {
+              ignoreSearch: true,
+              ignoreVary: true,
+            });
+          }
+          return cached;
+        };
+
+        const networkPromise = fetch(request).then((fresh) => {
+          if (isCacheableResponse(fresh, 'html')) {
+            stampAndCache(PAGES_CACHE, cleanReq, fresh.clone())
               .then(() => limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT))
               .catch(() => {});
           }
           return fresh;
         });
 
-        // Race the network against a short timeout. A healthy
-        // connection resolves well within the budget and the user gets
-        // the fresh page. A stalled/crawling connection trips the
-        // timeout so we can serve a cached copy instantly instead of
-        // leaving the user staring at a hanging tab.
         let timeoutId;
         const timeoutPromise = new Promise((_, reject) => {
           timeoutId = setTimeout(
@@ -585,27 +686,14 @@ self.addEventListener('fetch', (event) => {
           return fresh;
         } catch {
           clearTimeout(timeoutId);
-          // Either the network failed outright (truly offline) or it
-          // was too slow (poor connection). Prefer a cached page.
           const cached = await lookupCachedPage();
           if (cached && isFreshEnough(cached, HTML_MAX_AGE_MS)) {
-            // Let the in-flight request keep going so the cache is
-            // fresh next time, but don't make the user wait on it.
             event.waitUntil(networkPromise.catch(() => {}));
             return cached;
           }
-          // No usable cache. If the failure was just a timeout the
-          // request may still be in flight and succeed — wait for it
-          // rather than prematurely showing the offline shell.
           try {
             return await networkPromise;
           } catch {
-            // Last-resort offline shell — branded, fully self-contained,
-            // zero chunk/CSS/font deps. Status 200 (not 503) because
-            // some Android browsers replace 5xx responses served from
-            // a SW with their own native "no internet" page on
-            // refresh, which is exactly the "breaks to browser"
-            // symptom we were debugging.
             return new Response(OFFLINE_HTML, {
               status: 200,
               headers: {
@@ -622,12 +710,11 @@ self.addEventListener('fetch', (event) => {
 
   // -------------------------------------------------------------------------
   // 5. Everything else — runtime cache, network-first with a stale fallback.
-  //    This catches things like webfont CSS imports, JSON files, etc.
   // -------------------------------------------------------------------------
   event.respondWith(
     fetch(request)
       .then((res) => {
-        if (res && res.ok) {
+        if (res && res.ok && res.status === 200 && !res.redirected) {
           const clone = res.clone();
           caches.open(RUNTIME_CACHE).then((cache) => {
             cache.put(request, clone);
@@ -637,7 +724,7 @@ self.addEventListener('fetch', (event) => {
         return res;
       })
       .catch(async () => {
-        const cached = await caches.match(request);
+        const cached = await caches.match(request, { ignoreVary: true });
         return cached || new Response('', { status: 504 });
       }),
   );
@@ -771,10 +858,6 @@ const cacheUrlForOfflineNav = async (rawUrl) => {
   } catch {
     return; // malformed input — bail quietly
   }
-  // Don't waste cache on things the navigation handler would skip
-  // anyway. /api/* responses aren't cached (auth/wallet state is too
-  // sensitive to serve stale) and /_next/* is handled by the static
-  // strategy, not PAGES_CACHE.
   if (resolved.origin !== self.location.origin) return;
   if (
     resolved.pathname.startsWith('/api/') ||
@@ -782,26 +865,41 @@ const cacheUrlForOfflineNav = async (rawUrl) => {
   ) {
     return;
   }
-  try {
-    // `cache: 'reload'` skips the HTTP cache so we get the freshest
-    // server-rendered HTML — important because a stale browser-cache
-    // hit would be useless for offline replay (it'd be a redirect or
-    // a 304 with no body).
-    const res = await fetch(resolved.toString(), {
+  const normalizedUrl = normalizePageOrRscUrl(resolved.toString());
+  const cacheReq = new Request(normalizedUrl);
+
+  // Warm both the full HTML document (for offline reload) and the Next.js
+  // App Router RSC payload (for offline <Link> client navigation), plus any
+  // /_next/static/ scripts and stylesheets referenced by those responses.
+  await Promise.all([
+    fetch(normalizedUrl, {
       cache: 'reload',
       credentials: 'same-origin',
-    });
-    if (res && res.ok && res.status === 200) {
-      // Use a same-origin Request keyed by the URL so the cache
-      // lookup in the navigation handler matches it cleanly.
-      await stampAndCache(PAGES_CACHE, new Request(resolved.toString()), res);
-      await limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT);
-    }
-  } catch {
-    // Best-effort — if the user is currently offline or hits a 5xx,
-    // we just don't cache. The navigation path will populate
-    // PAGES_CACHE next time they reach the URL via a hard nav.
-  }
+    })
+      .then(async (res) => {
+        if (isCacheableResponse(res, 'html')) {
+          const textClone = res.clone();
+          await stampAndCache(PAGES_CACHE, cacheReq, res);
+          await limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT);
+          textClone.text().then(warmStaticAssetsFromText).catch(() => {});
+        }
+      })
+      .catch(() => {}),
+    fetch(normalizedUrl, {
+      cache: 'reload',
+      credentials: 'same-origin',
+      headers: { RSC: '1' },
+    })
+      .then(async (res) => {
+        if (isCacheableResponse(res, 'rsc')) {
+          const textClone = res.clone();
+          await stampAndCache(RSC_CACHE, cacheReq, res);
+          await limitCache(RSC_CACHE, RSC_CACHE_LIMIT);
+          textClone.text().then(warmStaticAssetsFromText).catch(() => {});
+        }
+      })
+      .catch(() => {}),
+  ]);
 };
 
 self.addEventListener('message', (event) => {

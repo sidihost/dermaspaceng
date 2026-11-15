@@ -12,7 +12,7 @@
 
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
-import { neon } from '@neondatabase/serverless'
+import { isDatabaseConfigured, sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { classifyProfileSegment } from '@/lib/profile-route-guard'
 import { getCanonicalAppOrigin } from '@/lib/push-origin'
@@ -38,11 +38,10 @@ async function loadProfile(username: string): Promise<ProfileLoadResult> {
     return { status: 'not_found' }
   }
 
-  if (!process.env.DATABASE_URL) {
+  if (!isDatabaseConfigured()) {
     return { status: 'unavailable' }
   }
 
-  const sql = neon(process.env.DATABASE_URL)
   try {
     let rows: ProfileRow[] = []
     if (!decision.isUuid) {

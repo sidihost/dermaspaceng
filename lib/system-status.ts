@@ -44,7 +44,7 @@ export function getSystemStatusCopy(variant: SystemStatusVariant): SystemStatusC
       documentTitle: "You're offline · Dermaspace",
       heading: "You're offline",
       description:
-        "We can't reach Dermaspace right now because your connection dropped. Pages you've already visited will keep working, and we'll reconnect automatically.",
+        "Your connection dropped. Pages you've already visited still work offline.",
       retryLabel: 'Try again',
       homeLabel: 'Back to Home',
     }

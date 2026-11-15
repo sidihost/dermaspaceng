@@ -50,6 +50,7 @@ import {
 } from "lucide-react"
 import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
+import { resolveStaffAvatar, STAFF_DEFAULT_AVATAR } from "@/lib/admin-avatars"
 
 // ---- Types -----------------------------------------------------------------
 
@@ -997,36 +998,23 @@ function LiveStatusGrid({
           <p className="text-xs text-gray-500 py-2">No therapists on roster.</p>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {therapists.map((t) => (
+            {therapists.map((t, idx) => (
               <li
                 key={t.id}
                 className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-2.5 py-2 hover:border-gray-200"
               >
                 <span className="relative flex-shrink-0">
-                  {t.avatar_url ? (
-                    // Real avatar image — shows the therapist's profile photo
-                    // with the initials as fallback in case the image fails
-                    <img
-                      src={t.avatar_url}
-                      alt={t.name}
-                      className="h-8 w-8 rounded-full object-cover bg-[#7B2D8E]/10"
-                      onError={(e) => {
-                        // Fallback to initials if image load fails
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                        const next = target.nextElementSibling as HTMLElement | null
-                        if (next) next.style.display = 'flex'
-                      }}
-                    />
-                  ) : null}
-                  <span
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[11px] font-bold uppercase text-[#7B2D8E]",
-                      t.avatar_url ? "hidden" : "flex",
-                    )}
-                  >
-                    {initials(t.name)}
-                  </span>
+                  <img
+                    src={resolveStaffAvatar(t.avatar_url, idx)}
+                    alt={t.name}
+                    className="h-8 w-8 rounded-full object-cover bg-[#7B2D8E]/10"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      if (!target.src.endsWith(STAFF_DEFAULT_AVATAR)) {
+                        target.src = STAFF_DEFAULT_AVATAR
+                      }
+                    }}
+                  />
                   <span
                     className={cn(
                       "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white",

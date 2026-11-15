@@ -205,7 +205,7 @@ export default function ComplaintDetailPage() {
       if (field === 'status') {
         notify.success(
           `Status set to ${human}`,
-          value === 'resolved' || value === 'closed'
+          complaint.email && previous !== value
             ? 'The customer will be notified by email.'
             : 'The ticket has been updated.',
         )

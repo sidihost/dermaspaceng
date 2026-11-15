@@ -248,14 +248,30 @@ export default function RootLayout({
       return true;
     }
     window.addEventListener("error", function(e){
-      var msg = (e && e.message) || "unknown error";
-      var stk = (e && e.error && e.error.stack) || "";
+      if (!e) return;
+      // Capture-phase window error listeners receive non-bubbling Event objects
+      // for DOM resource loads (<img>, <audio>, blocked third-party analytics
+      // <script> tags). Only report first-party Next.js chunk script failures;
+      // ignore third-party tracker/media blocks so they never spam "unknown error".
+      if (e.target && e.target !== window) {
+        var tag = (e.target.tagName || "").toUpperCase();
+        var src = e.target.src || e.target.href || "";
+        if (tag === "SCRIPT" && src.indexOf("/_next/static/") !== -1) {
+          var chunkMsg = "ChunkLoadError: Failed to load script " + src;
+          send({ source: "inline-onerror", message: chunkMsg, stack: "" });
+          tryChunkReload(chunkMsg, "");
+        }
+        return;
+      }
+      var msg = (e.message || (e.error && e.error.message) || "").trim();
+      var stk = (e.error && e.error.stack) || "";
+      if (!msg || (msg === "Script error." && !stk && !e.lineno)) return;
       send({
         source: "inline-onerror",
         message: msg,
         stack: stk,
-        line: e && e.lineno,
-        column: e && e.colno
+        line: e.lineno,
+        column: e.colno
       });
       tryChunkReload(msg, stk);
     }, true);

@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
 import { headers, cookies } from 'next/headers'
-import { neon } from '@neondatabase/serverless'
+import { sql } from '@/lib/db'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 import { invalidateUserMe } from '@/lib/redis'
-
-const sql = neon(process.env.DATABASE_URL!)
 
 /**
  * POST /api/legal/accept

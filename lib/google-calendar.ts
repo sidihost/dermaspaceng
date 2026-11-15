@@ -23,9 +23,7 @@
  *     can re-push or reconcile after a Google outage.
  */
 
-import { neon } from '@neondatabase/serverless'
-
-const sql = neon(process.env.DATABASE_URL!)
+import { sql } from '@/lib/db'
 
 const GOOGLE_OAUTH_BASE = 'https://oauth2.googleapis.com'
 const GOOGLE_CALENDAR_API = 'https://www.googleapis.com/calendar/v3'

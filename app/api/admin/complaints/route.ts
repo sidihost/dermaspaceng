@@ -26,8 +26,10 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || ''
     const priority = searchParams.get('priority') || ''
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const sourceFilter = searchParams.get('source') || ''
+    const query = (searchParams.get('q') || '').trim().toLowerCase()
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1)
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '20') || 20))
     const offset = (page - 1) * limit
 
     // Fetch both sources in parallel, each wrapped in try/catch so one
@@ -79,9 +81,11 @@ export async function GET(request: NextRequest) {
                 0
               ) AS reply_count,
               u.first_name                    AS assigned_first_name,
-              u.last_name                     AS assigned_last_name
+              u.last_name                     AS assigned_last_name,
+              cu.avatar_url                   AS customer_avatar_url
             FROM contact_messages cm
             LEFT JOIN users u ON u.id::text = cm.assigned_to::text
+            LEFT JOIN users cu ON LOWER(cu.email) = LOWER(cm.email)
             WHERE
               (${status} = '' OR COALESCE(cm.status, 'open') = ${status})
               AND (${priority} = '' OR COALESCE(cm.priority, 'normal') = ${priority})
@@ -129,8 +133,10 @@ export async function GET(request: NextRequest) {
                 (SELECT COUNT(*) FROM ticket_responses tr
                   WHERE tr.ticket_id = st.ticket_id AND tr.is_staff = true),
                 0
-              ) AS reply_count
+              ) AS reply_count,
+              cu.avatar_url                   AS customer_avatar_url
             FROM support_tickets st
+            LEFT JOIN users cu ON LOWER(cu.email) = LOWER(st.email)
             WHERE
               (${status} = '' OR COALESCE(st.status, 'open') = ${status})
               AND (${priority} = '' OR COALESCE(st.priority, 'normal') = ${priority})
@@ -173,6 +179,7 @@ export async function GET(request: NextRequest) {
       // the inbound webhook (hello@dermaspaceng.com). Always undefined
       // for contact-form rows.
       ticket_source?: 'app' | 'email' | null
+      customer_avatar_url?: string | null
     }
 
     const complaints: Row[] = (complaintsRows as Record<string, unknown>[]).map((r) => ({
@@ -194,6 +201,7 @@ export async function GET(request: NextRequest) {
       resolved_at: (r.resolved_at as string | null) ?? null,
       ticket_id: null,
       source: 'complaint',
+      customer_avatar_url: (r.customer_avatar_url as string | null) ?? null,
     }))
 
     const tickets: Row[] = (ticketsRows as Record<string, unknown>[]).map((r) => ({
@@ -216,6 +224,7 @@ export async function GET(request: NextRequest) {
       ticket_id: (r.ticket_id as string | null) ?? null,
       source: 'ticket',
       ticket_source: (r.ticket_source as 'app' | 'email' | null) ?? 'app',
+      customer_avatar_url: (r.customer_avatar_url as string | null) ?? null,
     }))
 
     // Merge + sort. Previously we sorted strictly by priority first
@@ -237,14 +246,37 @@ export async function GET(request: NextRequest) {
     const priorityRank: Record<string, number> = { urgent: 1, high: 2, normal: 3, low: 4 }
     const statusBucket = (status: string) =>
       status === 'resolved' || status === 'closed' ? 1 : 0
-    const merged = [...complaints, ...tickets].sort((a, b) => {
+    const matchesSearch = (row: Row) => {
+      if (!query) return true
+      return (
+        row.name.toLowerCase().includes(query) ||
+        row.email.toLowerCase().includes(query) ||
+        (row.subject ?? '').toLowerCase().includes(query) ||
+        (row.ticket_id ?? '').toLowerCase().includes(query) ||
+        row.message.toLowerCase().includes(query)
+      )
+    }
+
+    const searchMatchedAll = [...complaints, ...tickets].filter(matchesSearch)
+
+    const statusCounts: Record<string, number> = {}
+    for (const row of searchMatchedAll) {
+      const key = row.status || 'open'
+      statusCounts[key] = (statusCounts[key] || 0) + 1
+    }
+
+    const filteredBySource = searchMatchedAll.filter((row) =>
+      sourceFilter === 'ticket' || sourceFilter === 'complaint'
+        ? row.source === sourceFilter
+        : true,
+    )
+
+    const merged = filteredBySource.sort((a, b) => {
       const ab = statusBucket(a.status)
       const bb = statusBucket(b.status)
       if (ab !== bb) return ab - bb
       const at = new Date(a.last_activity_at || a.created_at).getTime()
       const bt = new Date(b.last_activity_at || b.created_at).getTime()
-      // Bucket activity into 60-second windows so two near-simultaneous
-      // updates fall back to priority instead of micro-second skew.
       const aBucket = Math.floor(at / 60_000)
       const bBucket = Math.floor(bt / 60_000)
       if (aBucket !== bBucket) return bBucket - aBucket
@@ -257,13 +289,6 @@ export async function GET(request: NextRequest) {
     const total = merged.length
     const paged = merged.slice(offset, offset + limit)
 
-    // Aggregate status counts across both sources.
-    const statusCounts: Record<string, number> = {}
-    for (const row of merged) {
-      const key = row.status || 'open'
-      statusCounts[key] = (statusCounts[key] || 0) + 1
-    }
-
     return NextResponse.json({
       complaints: paged,
       pagination: {
@@ -273,11 +298,9 @@ export async function GET(request: NextRequest) {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
       statusCounts,
-      // Useful diagnostic that the admin can glance at to confirm both
-      // sources are reachable — avoids the "silent empty inbox" problem.
       sourceCounts: {
-        complaints: complaints.length,
-        tickets: tickets.length,
+        complaints: searchMatchedAll.filter((r) => r.source === 'complaint').length,
+        tickets: searchMatchedAll.filter((r) => r.source === 'ticket').length,
       },
     })
   } catch (error) {
@@ -311,80 +334,143 @@ export async function PUT(request: NextRequest) {
         if (!['open', 'in_progress', 'resolved', 'closed'].includes(value)) {
           return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
         }
-        const isClosing = value === 'resolved' || value === 'closed'
+        const nextStatus = value as 'open' | 'in_progress' | 'resolved' | 'closed'
+        const isClosing = nextStatus === 'resolved' || nextStatus === 'closed'
+        const actorName =
+          `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || null
+
+        let previousStatus: string | null = null
+        let customerEmail: string | null = null
+        let customerName: string | null = null
+        let subjectText: string | null = null
+        let ticketCode: string | null = null
+
         if (target === 'ticket') {
-          // Capture the previous status BEFORE we mutate. We use it
-          // below to decide whether to fire the review-request email
-          // (only on the open/in_progress → resolved transition; we
-          // don't want to spam the customer if an admin clicks the
-          // resolved chip a second time, or moves resolved → closed).
           const before = await sql`
             SELECT status, ticket_id, name, email, subject
               FROM support_tickets
              WHERE id = ${targetId}
              LIMIT 1
           `
-          const previousStatus = (before[0]?.status as string | undefined) ?? null
+          previousStatus = (before[0]?.status as string | undefined) ?? null
+          customerEmail = (before[0]?.email as string | undefined) ?? null
+          customerName = (before[0]?.name as string | undefined) ?? null
+          subjectText = (before[0]?.subject as string | undefined) ?? null
+          ticketCode = (before[0]?.ticket_id as string | undefined) ?? null
+
           await sql`
             UPDATE support_tickets
-            SET status = ${value}, updated_at = NOW()
+            SET status = ${nextStatus}, updated_at = NOW()
             WHERE id = ${targetId}
           `
-
-          // Fire-and-forget the review-request email. We deliberately
-          // don't await — admin UX should never wait on an SMTP round
-          // trip — and we wrap in try/catch so a transient mail
-          // failure can't 500 the status update.
-          if (
-            value === 'resolved' &&
-            previousStatus !== 'resolved' &&
-            before[0]?.email
-          ) {
-            const row = before[0] as {
-              ticket_id: string
-              name: string | null
-              email: string
-              subject: string | null
-            }
-            // Resolve the customer's first name for the salutation.
-            // Falls back to the leading word of the contact name, then
-            // to a friendly "there" so we never ship "Hi ,".
-            const firstName =
-              (row.name ?? '').trim().split(/\s+/)[0] || 'there'
-            // Lazy import keeps the email module out of the cold-start
-            // path of every other admin action.
-            import('@/lib/email')
-              .then(({ sendTicketResolvedReview }) =>
-                sendTicketResolvedReview({
-                  email: row.email,
-                  firstName,
-                  ticketId: row.ticket_id,
-                  subject: row.subject ?? 'Your support ticket',
-                  resolverName:
-                    `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() ||
-                    null,
-                }),
-              )
-              .catch((err) =>
-                console.error('sendTicketResolvedReview failed:', err),
-              )
-          }
         } else {
+          const before = await sql`
+            SELECT status, name, email, subject
+              FROM contact_messages
+             WHERE id = ${targetId}
+             LIMIT 1
+          `
+          previousStatus = (before[0]?.status as string | undefined) ?? null
+          customerEmail = (before[0]?.email as string | undefined) ?? null
+          customerName = (before[0]?.name as string | undefined) ?? null
+          subjectText = (before[0]?.subject as string | undefined) ?? null
+
           // Some legacy migrations didn't add updated_at/resolved_at. We
           // try the full update first and fall back to the minimal form.
           try {
             await sql`
               UPDATE contact_messages
-              SET status = ${value}, updated_at = NOW(),
+              SET status = ${nextStatus}, updated_at = NOW(),
                   resolved_at = ${isClosing ? sql`NOW()` : null}
               WHERE id = ${targetId}
             `
           } catch {
             await sql`
               UPDATE contact_messages
-              SET status = ${value}
+              SET status = ${nextStatus}
               WHERE id = ${targetId}
             `
+          }
+        }
+
+        const { shouldSendTicketStatusEmail, getTicketStatusEmailMeta } = await import(
+          '@/lib/ticket-status-email'
+        )
+        if (
+          customerEmail &&
+          shouldSendTicketStatusEmail({
+            previousStatus,
+            nextStatus,
+            email: customerEmail,
+          })
+        ) {
+          const firstName =
+            (customerName ?? '').trim().split(/\s+/)[0] || 'there'
+
+          // Fire-and-forget customer email on every real status change.
+          // Tickets moving to `resolved` continue using the dedicated review
+          // email (identical Dermaspace shell); every other status transition
+          // sends the Dermaspace status update email.
+          if (target === 'ticket' && nextStatus === 'resolved' && ticketCode) {
+            import('@/lib/email')
+              .then(({ sendTicketResolvedReview }) =>
+                sendTicketResolvedReview({
+                  email: customerEmail!,
+                  firstName,
+                  ticketId: ticketCode!,
+                  subject: subjectText ?? 'Your support ticket',
+                  resolverName: actorName,
+                }),
+              )
+              .catch((err) =>
+                console.error('sendTicketResolvedReview failed:', err),
+              )
+          } else {
+            import('@/lib/email')
+              .then(({ sendTicketStatusUpdateEmail }) =>
+                sendTicketStatusUpdateEmail({
+                  email: customerEmail!,
+                  firstName,
+                  target,
+                  ticketId: ticketCode,
+                  subject: subjectText ?? 'Your support request',
+                  oldStatus: previousStatus,
+                  newStatus: nextStatus,
+                  updatedByName: actorName,
+                }),
+              )
+              .catch((err) =>
+                console.error('sendTicketStatusUpdateEmail failed:', err),
+              )
+          }
+
+          // Best-effort in-app notification if this customer has a Dermaspace account
+          try {
+            const matchedUser = await sql`
+              SELECT id FROM users WHERE LOWER(email) = LOWER(${customerEmail}) LIMIT 1
+            `
+            if (matchedUser[0]?.id) {
+              const meta = getTicketStatusEmailMeta(nextStatus, target)
+              const actionUrl = ticketCode
+                ? `/dashboard/support/${encodeURIComponent(ticketCode)}`
+                : '/dashboard/notifications'
+              await sql`
+                INSERT INTO notifications (
+                  user_id, title, message, type, reference_type, reference_id, action_url, priority
+                ) VALUES (
+                  ${matchedUser[0].id},
+                  ${ticketCode ? `Ticket ${ticketCode} · ${meta.statusLabel}` : `Support request · ${meta.statusLabel}`},
+                  ${meta.intro},
+                  'status_update',
+                  ${target},
+                  ${ticketCode || targetId.toString()},
+                  ${actionUrl},
+                  'normal'
+                )
+              `
+            }
+          } catch {
+            /* in-app notification insert is non-critical */
           }
         }
         try {

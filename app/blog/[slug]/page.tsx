@@ -388,7 +388,7 @@ export default async function BlogPostPage({ params }: PageProps) {
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[#7B2D8E] text-white text-[12px] font-semibold hover:bg-[#6B2278] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Back to Journal
+            Back to Blog
           </Link>
         </div>
       </article>

@@ -17,8 +17,8 @@ import { BlogShell } from '@/components/blog/blog-shell'
 import { BlogPersonalized } from '@/components/blog/blog-personalized'
 
 export const metadata: Metadata = {
-  title: 'For you — Dermaspace Journal',
-  description: 'Your personalized Dermaspace journal: recommendations, reading history, and saved posts.',
+  title: 'For you — Dermaspace Blog',
+  description: 'Your personalized Dermaspace blog: recommendations, reading history, and saved posts.',
   robots: { index: false, follow: false },
 }
 
@@ -33,7 +33,7 @@ export default function BlogForYouPage() {
           </span>
         </div>
         <h1 className="text-lg font-semibold leading-tight text-gray-900 text-balance sm:text-xl">
-          Your personalized journal
+          Your personalized blog
         </h1>
         <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-gray-600 text-pretty">
           Recommendations tuned to your skin profile, the posts you&apos;re still reading, and

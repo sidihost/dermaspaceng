@@ -92,7 +92,7 @@ export default function Footer() {
               {[
                 { name: 'About Us', href: '/about' },
                 { name: 'Gallery', href: '/gallery' },
-                { name: 'Journal', href: '/blog' },
+                { name: 'Blog', href: '/blog' },
                 { name: 'Packages', href: '/packages' },
                 { name: 'Membership', href: '/membership' },
                 // Surfacing the native app from the footer is the
@@ -322,7 +322,7 @@ export default function Footer() {
                 </li>
                 <li>
                   <Link href="/blog" className="text-white/60 hover:text-white transition-colors">
-                    Journal
+                    Blog
                   </Link>
                 </li>
               </ul>

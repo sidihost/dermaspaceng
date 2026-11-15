@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
-import { neon } from '@neondatabase/serverless'
+import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { getRequestGeo, parseUserAgent } from '@/lib/request-meta'
 import {
@@ -32,8 +32,6 @@ import {
 // /survey page — anything not in those lists is rejected so we don't get
 // junk strings written to the table from a crafted request.
 // ---------------------------------------------------------------------------
-
-const sql = neon(process.env.DATABASE_URL!)
 
 const VALID_AGREE = ['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree', '']
 const VALID_DELAY = ['5 mins', '10 mins', '15 mins', '30 mins', '']

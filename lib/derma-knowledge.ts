@@ -282,7 +282,7 @@ export function formatLiveWebsiteStatus(opts: {
 
   if (recentPosts && recentPosts.length > 0) {
     lines.push(
-      `- RECENT JOURNAL ARTICLES (/blog): ${recentPosts
+      `- RECENT BLOG ARTICLES (/blog): ${recentPosts
         .slice(0, 8)
         .map((p) => `"${p.title}" (/blog/${p.slug})`)
         .join(', ')}`,

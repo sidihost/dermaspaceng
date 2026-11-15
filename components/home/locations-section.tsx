@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { MapPin, Phone, Clock, Navigation, Home, ChevronDown, ArrowRight } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
+import { MapErrorBoundary } from '@/components/shared/map-error-boundary'
 
 // WhatsApp Icon
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -198,11 +199,13 @@ export default function LocationsSection() {
                 The dedicated /locations page offers a full-height clear view
                 for anyone who wants to interact with the map without fighting
                 the rest of the home sections. */}
-            <InteractiveMap
-              activeBranchId={activeId}
-              onSelectBranch={setActiveId}
-              height="288px"
-            />
+            <MapErrorBoundary height="288px">
+              <InteractiveMap
+                activeBranchId={activeId}
+                onSelectBranch={setActiveId}
+                height="288px"
+              />
+            </MapErrorBoundary>
 
             {/* Full-map CTA — more prominent than the "other location" toggle
                 because the admin said the compact map felt cramped. */}
@@ -243,11 +246,13 @@ export default function LocationsSection() {
             </div>
 
             <div className="mt-4">
-              <InteractiveMap
-                activeBranchId={activeId}
-                onSelectBranch={setActiveId}
-                height="288px"
-              />
+              <MapErrorBoundary height="288px">
+                <InteractiveMap
+                  activeBranchId={activeId}
+                  onSelectBranch={setActiveId}
+                  height="288px"
+                />
+              </MapErrorBoundary>
             </div>
 
             {/* "Open full map" CTA mirrors the one in the personalised

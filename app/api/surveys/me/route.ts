@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
+import { isDatabaseConfigured, sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 
 // ---------------------------------------------------------------------------
@@ -27,10 +27,12 @@ import { getCurrentUser } from '@/lib/auth'
 // for the full history view.
 // ---------------------------------------------------------------------------
 
-const sql = neon(process.env.DATABASE_URL!)
-
 export async function GET() {
   try {
+    if (!isDatabaseConfigured()) {
+      return NextResponse.json({ submission: null })
+    }
+
     const user = await getCurrentUser().catch(() => null)
     if (!user) {
       return NextResponse.json({ submission: null })

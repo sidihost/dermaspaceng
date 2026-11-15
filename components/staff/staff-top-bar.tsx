@@ -24,6 +24,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import { CalendarDays, Bell, ChevronDown } from 'lucide-react'
 import { NotificationBell } from '@/components/shared/notification-bell'
+import { resolveStaffAvatar, STAFF_DEFAULT_AVATAR } from '@/lib/admin-avatars'
 
 interface Props {
   firstName: string
@@ -87,7 +88,12 @@ export function StaffTopBar({ firstName, lastName, role, avatarUrl }: Props) {
       })
     : ''
 
-  const initials = `${firstName?.charAt(0) ?? ''}${lastName?.charAt(0) ?? ''}`.toUpperCase() || 'S'
+  const resolvedAvatar = resolveStaffAvatar(avatarUrl)
+  const [imgSrc, setImgSrc] = React.useState(resolvedAvatar)
+
+  React.useEffect(() => {
+    setImgSrc(resolveStaffAvatar(avatarUrl))
+  }, [avatarUrl])
 
   return (
     // The top bar used to be translucent (bg-white/85 + backdrop blur)
@@ -140,22 +146,20 @@ export function StaffTopBar({ firstName, lastName, role, avatarUrl }: Props) {
                 the actual sign-out). Adds the "you're signed in as
                 Franca" reassurance the user asked for. */}
             <div className="hidden sm:flex items-center gap-2 rounded-full bg-white border border-gray-200 pl-1 pr-2 py-1 text-xs">
-              {/* Render the staff member's chosen portrait when present;
-                  fall back to the initials pill so seeded accounts that
-                  haven't picked a portrait still get a recognisable
-                  avatar. */}
-              <span className="w-7 h-7 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold flex items-center justify-center overflow-hidden flex-shrink-0">
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={avatarUrl}
-                    alt=""
-                    aria-hidden="true"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  initials
-                )}
+              {/* Always render a curated female portrait for the staff console. */}
+              <span className="w-7 h-7 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imgSrc}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover"
+                  onError={() => {
+                    if (imgSrc !== STAFF_DEFAULT_AVATAR) {
+                      setImgSrc(STAFF_DEFAULT_AVATAR)
+                    }
+                  }}
+                />
               </span>
               <span className="font-medium text-gray-900 truncate max-w-[120px]">
                 {firstName} {lastName}

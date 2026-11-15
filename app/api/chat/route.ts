@@ -499,7 +499,7 @@ const tools = {
         signin: { path: '/signin', description: 'Sign in' },
         signup: { path: '/signup', description: 'Create an account' },
         'forgot-password': { path: '/forgot-password', description: 'Reset your password' },
-        blog: { path: '/blog', description: 'Dermaspace Journal' },
+        blog: { path: '/blog', description: 'Dermaspace Blog' },
         locations: { path: '/locations', description: 'Locations & live map' },
         privacy: { path: '/privacy', description: 'Privacy Policy' },
         terms: { path: '/terms', description: 'Terms of Service' },
@@ -2132,7 +2132,7 @@ SITEMAP (use navigateToPage or provide the path):
 - /packages — Spa packages (Gold, Silver, Bronze Single & Couple Experiences)
 - /membership — Memberships (Silver, Gold, Platinum)
 - /gift-cards — Buy a gift card
-- /blog — Dermaspace Journal
+- /blog — Dermaspace Blog
 - /locations — Branch directory & live map
 - /gallery — Photo gallery
 - /contact — Contact form & locations

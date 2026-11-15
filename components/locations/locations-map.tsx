@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 import { useAuth } from '@/hooks/use-auth'
+import { MapErrorBoundary } from '@/components/shared/map-error-boundary'
 
 // Leaflet has no SSR, so we dynamically import it on the client only. A tiny
 // inline fallback keeps the page from visibly "popping" while the bundle loads.
@@ -218,11 +219,13 @@ export default function LocationsMap() {
           className="relative w-full"
           style={{ height: 'min(720px, max(420px, calc(100vh - 12rem)))' }}
         >
-          <InteractiveMap
-            activeBranchId={activeId}
-            onSelectBranch={setActiveId}
-            height="100%"
-          />
+          <MapErrorBoundary height="100%">
+            <InteractiveMap
+              activeBranchId={activeId}
+              onSelectBranch={setActiveId}
+              height="100%"
+            />
+          </MapErrorBoundary>
         </div>
       </section>
 

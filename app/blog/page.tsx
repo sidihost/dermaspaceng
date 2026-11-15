@@ -37,12 +37,12 @@ import { BlogForYouBanner } from '@/components/blog/blog-for-you-banner'
 import { getCategories, getPublishedPosts } from '@/lib/blog'
 
 export const metadata: Metadata = {
-  title: 'Dermaspace Journal — Skincare, Wellness & Spa Insights from Lagos',
+  title: 'Dermaspace Blog — Skincare, Wellness & Spa Insights from Lagos',
   description:
     'Expert skincare, wellness, and spa guidance from Dermaspace — Lagos & Nigeria. Read about Derma AI, climate-aware skincare routines, and how Dermaspace compares to other luxury spas in Victoria Island and Ikoyi.',
   alternates: { canonical: 'https://dermaspaceng.com/blog' },
   openGraph: {
-    title: 'Dermaspace Journal — Skincare, Wellness & Spa Insights',
+    title: 'Dermaspace Blog — Skincare, Wellness & Spa Insights',
     description: 'Skincare and wellness guidance from Nigeria\'s first AI-powered luxury spa.',
     url: 'https://dermaspaceng.com/blog',
     type: 'website',
@@ -80,7 +80,7 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Blog',
-    name: 'Dermaspace Journal',
+    name: 'Dermaspace Blog',
     url: 'https://dermaspaceng.com/blog',
     publisher: {
       '@type': 'Organization',
@@ -112,7 +112,7 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
         <div className="flex items-center gap-2 mb-2">
           <BookOpen className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
           <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
-            Dermaspace Journal
+            Dermaspace Blog
           </span>
         </div>
         <h1 className="text-lg sm:text-xl font-semibold text-gray-900 leading-tight text-balance">

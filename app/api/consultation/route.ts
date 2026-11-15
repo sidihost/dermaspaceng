@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
+import { sql } from '@/lib/db'
 import { sendConsultationConfirmation } from '@/lib/email'
 import { verifyHCaptcha, getCurrentUser } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
@@ -15,8 +15,6 @@ import {
   buildConsultationEmailAction,
 } from '@/lib/consultation-mode'
 import { resolveEmailOrigin } from '@/lib/email-url'
-
-const sql = neon(process.env.DATABASE_URL!)
 
 const locationNames: Record<string, string> = {
   vi: 'Victoria Island - 237b Muri Okunola St',
