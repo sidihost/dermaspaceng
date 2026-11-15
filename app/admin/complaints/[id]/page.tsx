@@ -18,6 +18,7 @@ import {
   Ticket, Loader2, AlertCircle, Check,
   CircleDot, CircleDashed, CheckCircle2, XCircle,
   Flag, Flame, Trash2, ExternalLink, Copy, Info,
+  MessageSquareText, CornerDownRight,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
@@ -95,10 +96,10 @@ export default function ComplaintDetailPage() {
   // card instead of a raw window.confirm().
   const [showDelete, setShowDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  // Tap-to-copy affordance on the contact rows (email / phone).
-  const [copied, setCopied] = useState<'email' | 'phone' | null>(null)
+  // Tap-to-copy affordance on contact rows and the original request body.
+  const [copied, setCopied] = useState<'email' | 'phone' | 'message' | null>(null)
 
-  const copyToClipboard = (kind: 'email' | 'phone', value: string) => {
+  const copyToClipboard = (kind: 'email' | 'phone' | 'message', value: string) => {
     if (!value) return
     try {
       navigator.clipboard.writeText(value)
@@ -106,6 +107,16 @@ export default function ComplaintDetailPage() {
       window.setTimeout(() => setCopied((c) => (c === kind ? null : c)), 1500)
     } catch {
       /* clipboard blocked — silent */
+    }
+  }
+
+  const scrollToComposer = () => {
+    const el = document.getElementById('reply-composer-section')
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const textarea = el.querySelector('textarea')
+    if (textarea instanceof HTMLTextAreaElement) {
+      window.setTimeout(() => textarea.focus(), 200)
     }
   }
 
@@ -467,17 +478,80 @@ export default function ComplaintDetailPage() {
             </div>
           </section>
 
-          {/* Original message */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-            <SectionHeader
-              icon={<Mail className="w-3.5 h-3.5" />}
-              label={complaint.subject || 'Message'}
-            />
-            <blockquote className="relative pl-4 border-l-2 border-[#7B2D8E]/40">
-              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {complaint.message}
-              </p>
-            </blockquote>
+          {/* Original request */}
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <header className="flex flex-wrap items-center justify-between gap-2.5 border-b border-gray-100 bg-[#FBF9FC] px-5 py-3.5">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
+                  <MessageSquareText className="h-3.5 w-3.5" />
+                </span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7B2D8E]">
+                  Client request
+                </span>
+                {complaint.category && (
+                  <span className="inline-flex items-center rounded-full border border-[#7B2D8E]/20 bg-white px-2.5 py-0.5 text-[11px] font-medium text-[#7B2D8E]">
+                    {complaint.category}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard('message', complaint.message)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]"
+                  aria-label="Copy request message"
+                >
+                  {copied === 'message' ? (
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                      <span className="text-[#7B2D8E]">Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={scrollToComposer}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-[#7B2D8E]/10 px-2.5 py-1 text-xs font-semibold text-[#7B2D8E] transition-colors hover:bg-[#7B2D8E]/15"
+                >
+                  <CornerDownRight className="h-3.5 w-3.5" />
+                  <span>Reply</span>
+                </button>
+              </div>
+            </header>
+
+            <div className="p-5 sm:p-6 space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+                  Subject
+                </p>
+                <h2 className="mt-1 text-base sm:text-lg font-semibold text-gray-900 leading-snug break-words">
+                  {complaint.subject || (isTicket ? 'Support enquiry' : 'Customer message')}
+                </h2>
+              </div>
+
+              <div className="rounded-xl border border-[#7B2D8E]/15 border-l-[3px] border-l-[#7B2D8E] bg-[#FBF9FC] p-4 sm:p-5">
+                <p className="text-[14px] sm:text-[15px] text-gray-800 whitespace-pre-wrap leading-relaxed break-words">
+                  {complaint.message}
+                </p>
+              </div>
+
+              <footer className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                <span>
+                  Submitted by{' '}
+                  <span className="font-medium text-gray-700">{complaint.name}</span>
+                  {' · '}
+                  {submittedDate} at {submittedTime}
+                </span>
+                <span className="font-mono text-[11px] text-gray-500">
+                  {reference}
+                </span>
+              </footer>
+            </div>
           </section>
 
           {/* Conversation — two-sided thread. Staff replies sit on the
@@ -605,7 +679,10 @@ export default function ComplaintDetailPage() {
             {/* Composer — shared component with the AI improve toolbar
                 and a "send as" sender picker. Inline with the thread so
                 replies land in the same visual stream. */}
-            <section className="pt-5 mt-5 border-t border-gray-100">
+            <section
+              id="reply-composer-section"
+              className="pt-5 mt-5 border-t border-gray-100"
+            >
               <ReplyComposer
                 value={replyMessage}
                 onChange={setReplyMessage}

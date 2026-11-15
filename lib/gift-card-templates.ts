@@ -183,3 +183,217 @@ export function findGiftCardDesignById(id?: string | null): GiftCardDesign {
     INITIAL_GIFT_CARD_DESIGNS[0]
   )
 }
+
+export function findGiftCardFontById(id?: string | null): GiftCardFont {
+  const normalized = typeof id === 'string' ? id.trim().toLowerCase() : ''
+  return (
+    GIFT_CARD_FONTS.find((f) => f.id === normalized) ?? GIFT_CARD_FONTS[0]
+  )
+}
+
+export type GiftCardOccasionMotif =
+  | 'christmas'
+  | 'birthday'
+  | 'anniversary'
+  | 'thank-you'
+  | 'self-care'
+  | 'wedding'
+  | 'mothers-day'
+  | 'valentines'
+  | 'just-because'
+  | 'classic'
+
+export interface GiftCardOccasionMeta {
+  id: GiftCardOccasionMotif
+  occasion: string
+  editionLabel: string
+  tagline: string
+  suggestedDesignId: string
+}
+
+export const GIFT_CARD_OCCASION_META_LIST: GiftCardOccasionMeta[] = [
+  {
+    id: 'christmas',
+    occasion: CHRISTMAS_OCCASION,
+    editionLabel: 'Christmas Edition',
+    tagline: 'Winter Sanctuary Gift',
+    suggestedDesignId: 'christmas',
+  },
+  {
+    id: 'birthday',
+    occasion: 'Birthday',
+    editionLabel: 'Birthday Celebration',
+    tagline: 'Make a Glow Wish',
+    suggestedDesignId: 'royal',
+  },
+  {
+    id: 'anniversary',
+    occasion: 'Anniversary',
+    editionLabel: 'Anniversary Edition',
+    tagline: 'Years of Shared Calm',
+    suggestedDesignId: 'violet',
+  },
+  {
+    id: 'thank-you',
+    occasion: 'Thank You',
+    editionLabel: 'Gratitude Edition',
+    tagline: 'With Sincere Appreciation',
+    suggestedDesignId: 'plum',
+  },
+  {
+    id: 'self-care',
+    occasion: 'Self-Care',
+    editionLabel: 'Self-Care Ritual',
+    tagline: 'Rest, Restore, Glow',
+    suggestedDesignId: 'lavender',
+  },
+  {
+    id: 'wedding',
+    occasion: 'Wedding',
+    editionLabel: 'Bridal & Wedding',
+    tagline: 'Forever Radiance',
+    suggestedDesignId: 'mauve',
+  },
+  {
+    id: 'mothers-day',
+    occasion: "Mother's Day",
+    editionLabel: "Mother's Day Tribute",
+    tagline: 'Cherished Care & Bloom',
+    suggestedDesignId: 'orchid',
+  },
+  {
+    id: 'valentines',
+    occasion: "Valentine's",
+    editionLabel: "Valentine's Edition",
+    tagline: 'A Gift From the Heart',
+    suggestedDesignId: 'plum',
+  },
+  {
+    id: 'just-because',
+    occasion: 'Just Because',
+    editionLabel: 'Thoughtful Surprise',
+    tagline: 'Wrapped Just For You',
+    suggestedDesignId: 'royal',
+  },
+]
+
+const CLASSIC_OCCASION_META: GiftCardOccasionMeta = {
+  id: 'classic',
+  occasion: 'Gift Card',
+  editionLabel: 'Signature Sanctuary',
+  tagline: 'Timeless Spa Wellness',
+  suggestedDesignId: 'royal',
+}
+
+export function getGiftCardOccasionMeta(
+  occasion?: string | null,
+): GiftCardOccasionMeta {
+  const cleaned = typeof occasion === 'string' ? occasion.trim() : ''
+  if (!cleaned) return CLASSIC_OCCASION_META
+
+  const lower = cleaned.toLowerCase()
+  const exact = GIFT_CARD_OCCASION_META_LIST.find(
+    (item) => item.occasion.toLowerCase() === lower || item.id === lower,
+  )
+  if (exact) return exact
+
+  if (lower.includes('christ') || lower.includes('xmas') || lower.includes('holiday')) {
+    return GIFT_CARD_OCCASION_META_LIST[0]
+  }
+  if (lower.includes('birth')) return GIFT_CARD_OCCASION_META_LIST[1]
+  if (lower.includes('anniv')) return GIFT_CARD_OCCASION_META_LIST[2]
+  if (lower.includes('thank') || lower.includes('gratitude')) {
+    return GIFT_CARD_OCCASION_META_LIST[3]
+  }
+  if (lower.includes('self') || lower.includes('spa') || lower.includes('care')) {
+    return GIFT_CARD_OCCASION_META_LIST[4]
+  }
+  if (lower.includes('wed') || lower.includes('bridal')) {
+    return GIFT_CARD_OCCASION_META_LIST[5]
+  }
+  if (lower.includes('mother') || lower.includes('mum') || lower.includes('mom')) {
+    return GIFT_CARD_OCCASION_META_LIST[6]
+  }
+  if (lower.includes('valentin') || lower.includes('love')) {
+    return GIFT_CARD_OCCASION_META_LIST[7]
+  }
+  if (lower.includes('just because') || lower.includes('surprise')) {
+    return GIFT_CARD_OCCASION_META_LIST[8]
+  }
+
+  return {
+    ...CLASSIC_OCCASION_META,
+    occasion: cleaned,
+    editionLabel: cleaned,
+  }
+}
+
+export function resolveOccasionMotif(
+  occasion?: string | null,
+  designId?: string | null,
+): GiftCardOccasionMotif {
+  const meta = getGiftCardOccasionMeta(occasion)
+  if (meta.id !== 'classic') return meta.id
+  if (designId === CHRISTMAS_GIFT_CARD_DESIGN.id) return 'christmas'
+  return 'classic'
+}
+
+export function syncDesignForOccasion(
+  nextOccasion: string,
+  currentDesign: GiftCardDesign,
+  opts: {
+    festiveEnabled: boolean
+    userRemovedChristmas: boolean
+    preserveCustomColor?: boolean
+  },
+): GiftCardDesign {
+  const christmasAvailable = isChristmasTemplateAvailable({
+    festiveEnabled: opts.festiveEnabled,
+    userRemovedChristmas: opts.userRemovedChristmas,
+  })
+  const meta = getGiftCardOccasionMeta(nextOccasion)
+
+  if (meta.id === 'christmas' && christmasAvailable) {
+    return CHRISTMAS_GIFT_CARD_DESIGN
+  }
+
+  // Never keep the Christmas bauble template stuck on a non-Christmas occasion.
+  if (
+    currentDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id ||
+    !opts.preserveCustomColor
+  ) {
+    const targetId =
+      meta.suggestedDesignId === CHRISTMAS_GIFT_CARD_DESIGN.id &&
+      !christmasAvailable
+        ? INITIAL_GIFT_CARD_DESIGNS[0].id
+        : meta.suggestedDesignId
+    return findGiftCardDesignById(targetId)
+  }
+
+  return currentDesign
+}
+
+export function syncOccasionForDesign(
+  nextDesign: GiftCardDesign,
+  currentOccasion: string,
+  opts: {
+    festiveEnabled: boolean
+    userRemovedChristmas: boolean
+  },
+): string {
+  const christmasAvailable = isChristmasTemplateAvailable({
+    festiveEnabled: opts.festiveEnabled,
+    userRemovedChristmas: opts.userRemovedChristmas,
+  })
+
+  if (nextDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id && christmasAvailable) {
+    return CHRISTMAS_OCCASION
+  }
+
+  if (currentOccasion === CHRISTMAS_OCCASION) {
+    return INITIAL_GIFT_CARD_OCCASIONS[0]
+  }
+
+  return currentOccasion
+}
+

@@ -68,7 +68,8 @@ export async function GET(
            'DermaSpace Support'
          ) AS staff_name,
          u.avatar_url AS staff_avatar_url,
-         u.role       AS staff_role
+         u.role       AS staff_role,
+         u.gender     AS staff_gender
        FROM ticket_responses tr
        LEFT JOIN users u ON u.id = tr.user_id
        WHERE tr.ticket_id = $1

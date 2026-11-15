@@ -25,6 +25,9 @@ import {
   Copy,
   RefreshCw,
   ArrowRight,
+  Download,
+  Printer,
+  Loader2,
 } from 'lucide-react'
 import {
   Drawer,
@@ -35,6 +38,7 @@ import {
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { downloadTransactionReceiptPdf } from '@/lib/receipt-pdf'
 
 export interface TransactionDetail {
   id: number | string
@@ -62,7 +66,11 @@ export interface TransactionDetail {
     recipient_name?: string
     recipient_email?: string | null
     occasion?: string | null
+    design?: string | null
     design_name?: string | null
+    font?: string | null
+    font_name?: string | null
+    personal_message?: string | null
     delivery_method?: string | null
     delivery_date?: string | null
     status?: string | null
@@ -185,16 +193,28 @@ export function TransactionDetailSheet({
   onOpenChange,
 }: TransactionDetailSheetProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   if (!tx) return null
 
   const reference = tx.payment_reference || tx.reference || ''
   const status = STATUS_META[tx.status]
   const isIncoming = tx.type === 'credit' || tx.type === 'refund'
-  const sign = isIncoming ? '+' : '\u2212'
   const canRetry =
     tx.type === 'credit' &&
     (tx.status === 'failed' || tx.status === 'cancelled')
+
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      await downloadTransactionReceiptPdf(tx)
+    } catch {
+      // best effort
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   const copy = async (value: string, field: string) => {
     try {
@@ -248,7 +268,7 @@ export function TransactionDetailSheet({
                     : 'text-gray-900',
               )}
             >
-              {sign}
+              {isIncoming ? '+' : '\u2212'}
               {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
             </p>
 
@@ -385,15 +405,45 @@ export function TransactionDetailSheet({
               </Link>
             )}
             {tx.status === 'completed' && reference && (
-              <Link
-                href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
-                onClick={() => onOpenChange(false)}
-              >
-                <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-                  View receipt &amp; invoice
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleDownloadPdf}
+                    disabled={downloadingPdf}
+                    className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                  >
+                    {downloadingPdf ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {downloadingPdf ? 'Saving…' : 'Download PDF'}
+                  </Button>
+                  <Link
+                    href={`/dashboard/transactions/${encodeURIComponent(reference)}?print=1`}
+                    onClick={() => onOpenChange(false)}
+                  >
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2 border-[#7B2D8E]/25 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print
+                    </Button>
+                  </Link>
+                </div>
+                <Link
+                  href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
+                  onClick={() => onOpenChange(false)}
+                >
+                  <Button variant="outline" className="w-full gap-2 border-gray-200">
+                    View full receipt &amp; invoice
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </>
             )}
             {tx.status === 'completed' && (
               <Link

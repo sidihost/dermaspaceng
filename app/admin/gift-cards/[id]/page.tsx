@@ -14,10 +14,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Loader2, AlertCircle, User, Mail, Phone,
-  Calendar, Clock,
+  Calendar, Clock, Palette, Type,
 } from 'lucide-react'
-import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
-import { findGiftCardDesignById } from '@/lib/gift-card-templates'
+import {
+  GiftCardPreview,
+  getOccasionBadgeIcon,
+} from '@/components/gift-cards/gift-card-preview'
+import {
+  findGiftCardDesignById,
+  findGiftCardFontById,
+  getGiftCardOccasionMeta,
+} from '@/lib/gift-card-templates'
 
 interface GiftCardRequest {
   id: number
@@ -26,6 +33,8 @@ interface GiftCardRequest {
   design: string
   design_name: string
   occasion: string
+  font?: string | null
+  font_name?: string | null
   recipient_name: string
   recipient_email: string
   recipient_phone: string
@@ -118,6 +127,11 @@ export default function GiftCardDetailPage() {
     )
   }
 
+  const chosenDesign = findGiftCardDesignById(req.design)
+  const chosenFont = findGiftCardFontById(req.font)
+  const occasionMeta = getGiftCardOccasionMeta(req.occasion)
+  const OccasionIcon = getOccasionBadgeIcon(occasionMeta.id)
+
   return (
     <div className="space-y-4 max-w-3xl">
       <Link
@@ -127,7 +141,7 @@ export default function GiftCardDetailPage() {
         <ArrowLeft className="w-4 h-4" /> Back to gift cards
       </Link>
 
-      <Card>
+      <Card className="border-gray-200">
         <CardContent className="p-5 sm:p-6 space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -139,16 +153,82 @@ export default function GiftCardDetailPage() {
             </Badge>
           </div>
 
-          {/* Card preview */}
-          <GiftCardPreview
-            design={findGiftCardDesignById(req.design)}
-            amountText={`₦${req.amount.toLocaleString()}`}
-            recipientName={req.recipient_name}
-            senderName={req.sender_name}
-            occasion={req.occasion}
-            showStack={false}
-            className="max-w-md"
-          />
+          {/* Card preview + Chosen Style breakdown */}
+          <div className="grid md:grid-cols-12 gap-5 items-start">
+            <div className="md:col-span-7">
+              <GiftCardPreview
+                design={chosenDesign}
+                amountText={`₦${req.amount.toLocaleString()}`}
+                recipientName={req.recipient_name}
+                senderName={req.sender_name}
+                occasion={req.occasion}
+                fontClassName={chosenFont.className}
+                showStack={false}
+                className="max-w-md"
+              />
+            </div>
+
+            <div className="md:col-span-5 rounded-xl border border-gray-200 bg-[#FBF9FC] p-4 space-y-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                Chosen card style
+              </h2>
+
+              <div className="space-y-2.5 text-sm">
+                <div className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-0.5 w-5 h-5 rounded-md border border-black/10 flex-shrink-0 overflow-hidden flex"
+                  >
+                    <span className="w-3/5 h-full" style={{ backgroundColor: chosenDesign.surfaceHex }} />
+                    <span className="w-2/5 h-full" style={{ backgroundColor: chosenDesign.accentHex }} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 leading-none mb-0.5">Colour &amp; Design</p>
+                    <p className="font-semibold text-gray-900 leading-tight">
+                      {req.design_name || chosenDesign.name}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                    <OccasionIcon className="w-3 h-3" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 leading-none mb-0.5">Occasion Theme</p>
+                    <p className="font-semibold text-gray-900 leading-tight">
+                      {req.occasion || 'Standard'}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{occasionMeta.editionLabel}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                    <Type className="w-3 h-3" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 leading-none mb-0.5">Font Style</p>
+                    <p className={`font-semibold text-gray-900 leading-tight ${chosenFont.className}`}>
+                      {req.font_name || chosenFont.name} <span className="text-gray-400 font-normal">(Aa)</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5">
+                  <span className="mt-0.5 w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                    <Palette className="w-3 h-3" aria-hidden />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500 leading-none mb-0.5">Palette Hex</p>
+                    <p className="font-mono text-xs text-gray-700 leading-tight">
+                      {chosenDesign.surfaceHex}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Status control */}
           <div>

@@ -109,7 +109,8 @@ export async function listPublicConsultationReplies(
       u.first_name AS staff_first_name,
       u.last_name AS staff_last_name,
       u.avatar_url AS staff_avatar_url,
-      u.role AS staff_role
+      u.role AS staff_role,
+      u.gender AS staff_gender
     FROM admin_replies ar
     LEFT JOIN users u ON u.id::text = ar.staff_id::text
     WHERE ar.request_type = 'consultation'
@@ -127,6 +128,7 @@ export async function listPublicConsultationReplies(
     staff_last_name: string | null
     staff_avatar_url: string | null
     staff_role: string | null
+    staff_gender: string | null
   }>
 
   return rows.map((row) => {
@@ -136,7 +138,8 @@ export async function listPublicConsultationReplies(
       ? row.sender_display_name?.trim() || staffFullName || 'Dermaspace Team'
       : row.sender_display_name?.trim() || 'You'
     const senderAvatarUrl = isStaff
-      ? resolveAdminAvatar(row.staff_avatar_url, row.staff_role) ?? STAFF_DEFAULT_AVATAR
+      ? resolveAdminAvatar(row.staff_avatar_url, row.staff_role, row.staff_gender) ??
+        STAFF_DEFAULT_AVATAR
       : null
 
     let parsedAttachments: ReplyAttachment[] = []

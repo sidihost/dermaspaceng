@@ -79,14 +79,9 @@ interface SidebarProps {
    *  otherwise the role-specific default in /public/avatars. Null
    *  means we fall back to the initial letter pill. */
   userAvatar?: string | null
-  /**
-   * Per-surface permission map for this admin. The sidebar uses it to
-   * hide developer-only routes (QStash schedules, feature flags) from
-   * Itunu and Franca, and to hide the Consultations queue from anyone
-   * who isn't either Franca or the super admin. Optional so the staff
-   * variant of this sidebar can keep using the default (everything
-   * locked down) without passing a prop.
-   */
+  /** Optional gender ('male' | 'female') so the avatar picker opens on
+   *  the matching Nigerian admin pool before allowing switching. */
+  userGender?: 'male' | 'female' | null
   permissions?: AdminPermissions
 }
 
@@ -334,7 +329,7 @@ function NavCountBadge({
   )
 }
 
-export default function AdminSidebar({ userRole, userName, userAvatar, permissions }: SidebarProps) {
+export default function AdminSidebar({ userRole, userName, userAvatar, userGender = null, permissions }: SidebarProps) {
   const pathname = usePathname()
   // Filter the canonical nav list by the per-admin permission map.
   // Done at the top of the component so every render path (including
@@ -871,13 +866,9 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
         currentUrl={localAvatar}
         initials={userName.charAt(0).toUpperCase()}
         role={userRole}
-        // Gender narrows the admin pool: the super admin (Sidihost)
-        // sees the male-only portraits; everyone else (Itunu, Franca,
-        // future female admins) sees the female-only pool. Staff is
-        // always women-only regardless of this prop.
         gender={
-          userRole === 'admin' && permissions?.isSuperAdmin
-            ? 'male'
+          userRole === 'admin'
+            ? userGender ?? (permissions?.isSuperAdmin ? 'male' : 'female')
             : 'female'
         }
         onSelect={handleAvatarSelect}

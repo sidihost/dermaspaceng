@@ -32,6 +32,8 @@ export interface User {
   profile_complete?: boolean
   x_username?: string | null
   has_social_auth?: boolean
+  avatar_url?: string | null
+  gender?: 'male' | 'female' | null
   created_at: Date
 }
 
@@ -248,6 +250,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
+             avatar_url, gender,
              COALESCE(is_super_admin, FALSE) AS is_super_admin,
              COALESCE(can_manage_services, FALSE) AS can_manage_services,
              COALESCE(profile_complete, FALSE) AS profile_complete,
@@ -398,6 +401,7 @@ export async function getUserById(userId: string): Promise<User | null> {
   try {
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
+             avatar_url, gender,
              COALESCE(is_super_admin, FALSE) AS is_super_admin,
              COALESCE(can_manage_services, FALSE) AS can_manage_services,
              COALESCE(profile_complete, FALSE) AS profile_complete,

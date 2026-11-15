@@ -33,8 +33,9 @@ export default async function AdminLayout({
   // back to the branded default in /public/avatars. Initials are
   // still shown if neither is available so the sidebar never breaks.
   const userAvatar = resolveAdminAvatar(
-    (user as { avatar_url?: string | null }).avatar_url ?? null,
+    user.avatar_url ?? null,
     user.role,
+    user.gender ?? null,
   )
   // Per-surface permissions for this admin. The sidebar uses these
   // to hide platform-level routes (QStash schedules, feature flags)
@@ -56,6 +57,7 @@ export default async function AdminLayout({
         userRole="admin"
         userName={userName}
         userAvatar={userAvatar}
+        userGender={user.gender ?? null}
         permissions={permissions}
       />
       <main className="lg:pl-72 min-h-screen transition-all duration-300">

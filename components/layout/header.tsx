@@ -37,6 +37,7 @@ import { logoutAndRedirect } from '@/lib/logout'
 import { formatAccountSubtitle } from '@/lib/auth-onboarding'
 import { NotificationBell } from '@/components/shared/notification-bell'
 import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
+import { resolveAdminAvatar } from '@/lib/admin-avatars'
 
 interface UserData {
   firstName: string
@@ -47,6 +48,7 @@ interface UserData {
   emailIsPlaceholder?: boolean
   needsProfileCompletion?: boolean
   avatarUrl?: string | null
+  gender?: 'male' | 'female' | null
   /** Admin / staff / user. Admins and staff get a branded default
    *  avatar (resolved by lib/admin-avatars) instead of the stock spa
    *  cartoon, matching the institutional look of the dashboard. */
@@ -417,7 +419,7 @@ export default function Header() {
         <header className={cn(
           'sticky top-0 z-50 transition-all duration-300 lg:hidden',
           isScrolled 
-            ? 'bg-white/95 backdrop-blur-md shadow-sm' 
+            ? 'bg-white/95 backdrop-blur-md border-b border-gray-100' 
             : 'bg-white'
         )}>
           <div className="max-w-6xl mx-auto px-4">
@@ -458,20 +460,11 @@ export default function Header() {
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                     {(() => {
-                      // Resolve the avatar in priority order:
-                      //   1. User's own uploaded photo (avatarUrl)
-                      //   2. Branded admin/staff default for staff
-                      //      members who haven't uploaded one
-                      //   3. Initial letters fallback
-                      const role = user.role?.toLowerCase()
-                      const isStaff = role === 'admin' || role === 'staff'
-                      const resolved =
-                        user.avatarUrl ||
-                        (isStaff
-                          ? role === 'admin'
-                            ? '/avatars/admin-default.jpg'
-                            : '/avatars/staff-default.jpg'
-                          : null)
+                      const resolved = resolveAdminAvatar(
+                        user.avatarUrl,
+                        user.role,
+                        user.gender,
+                      )
                       if (resolved) {
                         return (
                           /* eslint-disable-next-line @next/next/no-img-element */
@@ -495,7 +488,7 @@ export default function Header() {
 
                 {/* Mobile Profile Dropdown */}
                 {showProfileDropdown && (
-                  <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-50">
+                  <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white overflow-hidden z-50">
                     {/* User Info */}
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                       <p className="text-sm font-semibold text-[#7B2D8E]">{user.firstName} {user.lastName}</p>
@@ -645,7 +638,7 @@ export default function Header() {
                             link.groups.length > 1 ? "w-[560px]" : "w-[320px]"
                           )}
                         >
-                          <div className="rounded-2xl border border-gray-200 bg-white shadow-[0_12px_40px_-12px_rgba(17,24,39,0.18)] overflow-hidden">
+                          <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
                             <div className={cn(
                               "grid p-3 gap-1",
                               link.groups.length > 1 ? "grid-cols-2" : "grid-cols-1"
@@ -791,7 +784,7 @@ export default function Header() {
                 
                 {/* Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                  <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg border border-white/15 whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                     Coming soon
                     <div className="absolute -top-1 right-4 w-2 h-2 bg-[#7B2D8E] rotate-45" />
                   </div>
@@ -816,25 +809,35 @@ export default function Header() {
                 <div className="relative" ref={profileDropdownRef}>
                   <button
                     onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
+                    className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-[#7B2D8E]/[0.06] hover:bg-[#7B2D8E]/10 border border-[#7B2D8E]/15 hover:border-[#7B2D8E]/25 transition-colors group"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 overflow-hidden">
-                      {user.avatarUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={user.avatarUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <>
-                          {user.firstName?.charAt(0)}
-                          {user.lastName?.charAt(0)}
-                        </>
-                      )}
+                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+                      {(() => {
+                        const resolved = resolveAdminAvatar(
+                          user.avatarUrl,
+                          user.role,
+                          user.gender,
+                        )
+                        if (resolved) {
+                          return (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={resolved}
+                              alt=""
+                              aria-hidden="true"
+                              className="w-full h-full object-cover"
+                            />
+                          )
+                        }
+                        return (
+                          <>
+                            {user.firstName?.charAt(0)}
+                            {user.lastName?.charAt(0)}
+                          </>
+                        )
+                      })()}
                     </div>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col text-left">
                       <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
                       <span className="text-sm font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">{user.firstName}</span>
                     </div>
@@ -846,7 +849,7 @@ export default function Header() {
 
                   {/* Profile Dropdown Menu */}
                   {showProfileDropdown && (
-                    <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-50">
+                    <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-200 bg-white overflow-hidden z-50">
                       {/* User Info */}
                       <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                         <p className="text-sm font-semibold text-[#7B2D8E]">{user.firstName} {user.lastName}</p>
@@ -941,7 +944,7 @@ export default function Header() {
                   </Link>
                   <Link
                     href="/signup"
-                    className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 text-[14px] font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors shadow-sm"
+                    className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 text-[14px] font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
                   >
                     Sign up
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -1107,20 +1110,30 @@ export default function Header() {
                     className="flex items-center justify-center gap-2 p-3 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
                   >
                     <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold overflow-hidden">
-                      {user.avatarUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={user.avatarUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <>
-                          {user.firstName?.charAt(0)}
-                          {user.lastName?.charAt(0)}
-                        </>
-                      )}
+                      {(() => {
+                        const resolved = resolveAdminAvatar(
+                          user.avatarUrl,
+                          user.role,
+                          user.gender,
+                        )
+                        if (resolved) {
+                          return (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={resolved}
+                              alt=""
+                              aria-hidden="true"
+                              className="w-full h-full object-cover"
+                            />
+                          )
+                        }
+                        return (
+                          <>
+                            {user.firstName?.charAt(0)}
+                            {user.lastName?.charAt(0)}
+                          </>
+                        )
+                      })()}
                     </div>
                     <span className="text-sm font-semibold">Dashboard</span>
                   </Link>

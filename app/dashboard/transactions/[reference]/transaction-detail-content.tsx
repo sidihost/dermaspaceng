@@ -21,6 +21,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import {
   ArrowDownLeft,
@@ -32,9 +33,11 @@ import {
   Clock,
   Copy,
   CreditCard,
+  Download,
   Gift,
   Landmark,
   LifeBuoy,
+  Loader2,
   MapPin,
   Printer,
   RefreshCw,
@@ -45,6 +48,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TransactionDetail } from '@/components/wallet/transaction-detail-sheet'
+import { downloadTransactionReceiptPdf } from '@/lib/receipt-pdf'
+import {
+  findGiftCardDesignById,
+  getGiftCardOccasionMeta,
+} from '@/lib/gift-card-templates'
 
 const BRAND = '#7B2D8E'
 
@@ -237,15 +245,32 @@ export default function TransactionDetailContent({
 }: {
   reference: string
 }) {
+  const searchParams = useSearchParams()
+  const autoPrint = searchParams.get('print') === '1'
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [shared, setShared] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
   const reconcileTried = useRef(false)
+  const autoPrintTriggered = useRef(false)
 
   const { data, error, isLoading, mutate } = useSWR(
     `/api/wallet/transactions/${encodeURIComponent(reference)}`,
     fetcher,
   )
+
+  const loadedTransactionId =
+    data && 'transaction' in data && data.transaction ? data.transaction.id : null
+
+  useEffect(() => {
+    if (autoPrint && loadedTransactionId && !autoPrintTriggered.current) {
+      autoPrintTriggered.current = true
+      const timer = setTimeout(() => {
+        window.print()
+      }, 250)
+      return () => clearTimeout(timer)
+    }
+  }, [autoPrint, loadedTransactionId])
 
   // A 404 right after checkout can be a race (row created moments ago,
   // or a webhook mid-flight). Nudge server-side reconciliation once,
@@ -398,21 +423,78 @@ export default function TransactionDetailContent({
     }
   }
 
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return
+    setDownloadingPdf(true)
+    try {
+      await downloadTransactionReceiptPdf(tx)
+    } catch {
+      // best effort
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[#F6F4F8]">
-      <main className="mx-auto w-full max-w-md px-4 pt-4 pb-32">
-        <Link
-          href="/dashboard/transactions"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Transaction Details
-        </Link>
+    <div className="min-h-screen bg-[#F6F4F8] print:bg-white">
+      <main className="mx-auto w-full max-w-md px-4 pt-4 pb-28 md:pb-32 print:max-w-xl print:py-4">
+        {/* Print-only official receipt letterhead */}
+        <header className="hidden print:flex items-start justify-between gap-4 border-b border-gray-200 pb-4 mb-5">
+          <div>
+            <p className="text-lg font-bold tracking-tight text-[#7B2D8E]">
+              Dermaspace
+            </p>
+            <p className="text-[11px] text-gray-500">
+              Esthetic &amp; Wellness Centre · Lagos, NG
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
+              Official Receipt
+            </p>
+            <p className="text-[11px] text-gray-500 tabular-nums mt-0.5">
+              {formatDateTime(tx.created_at)}
+            </p>
+          </div>
+        </header>
+
+        <div className="flex items-center justify-between gap-2 print:hidden">
+          <Link
+            href="/dashboard/transactions"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Transaction Details
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors disabled:opacity-60"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {downloadingPdf ? 'Saving…' : 'PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/25 transition-colors"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              Print
+            </button>
+          </div>
+        </div>
 
         {/* ---- Hero card ---- */}
-        <div className="relative mt-8">
+        <div className="relative mt-8 print:mt-4">
           {/* Floating type icon overlapping the card edge */}
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10">
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10 print:hidden">
             <div
               className={cn(
                 'flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#F6F4F8]',
@@ -425,7 +507,7 @@ export default function TransactionDetailContent({
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white px-5 pt-11 pb-6 text-center border border-gray-100">
+          <div className="rounded-2xl bg-white px-5 pt-11 pb-6 text-center border border-gray-100 print:pt-5 print:border-gray-200">
             <h1 className="text-[15px] font-semibold text-gray-900 text-balance leading-snug">
               {title}
             </h1>
@@ -602,7 +684,7 @@ export default function TransactionDetailContent({
 
         {/* ---- Gift Card details card (only when payment funded a gift card) ---- */}
         {tx.giftCard && (
-          <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
+          <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100 print:border-gray-200">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[15px] font-bold text-gray-900">Gift Card</h2>
               <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-[#F3E8F7] text-[#7B2D8E] capitalize">
@@ -623,12 +705,34 @@ export default function TransactionDetailContent({
               )}
               {tx.giftCard.occasion && (
                 <DetailRow label="Occasion">
-                  <span>{tx.giftCard.occasion}</span>
+                  <span>
+                    {tx.giftCard.occasion} ({getGiftCardOccasionMeta(tx.giftCard.occasion).editionLabel})
+                  </span>
                 </DetailRow>
               )}
-              {tx.giftCard.design_name && (
-                <DetailRow label="Design">
-                  <span>{tx.giftCard.design_name}</span>
+              {(tx.giftCard.design_name || tx.giftCard.design || tx.giftCard.font_name) && (
+                <DetailRow label="Card style">
+                  <span className="inline-flex items-center justify-end gap-1.5">
+                    {(() => {
+                      const designObj = findGiftCardDesignById(
+                        tx.giftCard.design || tx.giftCard.design_name,
+                      )
+                      return (
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full border border-black/15 flex-shrink-0"
+                          style={{ backgroundColor: designObj.surfaceHex }}
+                        />
+                      )
+                    })()}
+                    <span>
+                      {[
+                        tx.giftCard.design_name || tx.giftCard.design,
+                        tx.giftCard.font_name ? `${tx.giftCard.font_name} font` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
                 </DetailRow>
               )}
               {tx.giftCard.delivery_method && (
@@ -638,6 +742,13 @@ export default function TransactionDetailContent({
                     {tx.giftCard.delivery_date
                       ? ` · ${formatAppointmentDate(tx.giftCard.delivery_date)}`
                       : ''}
+                  </span>
+                </DetailRow>
+              )}
+              {tx.giftCard.personal_message && (
+                <DetailRow label="Message">
+                  <span className="italic text-gray-600">
+                    &ldquo;{tx.giftCard.personal_message}&rdquo;
                   </span>
                 </DetailRow>
               )}
@@ -737,7 +848,7 @@ export default function TransactionDetailContent({
         )}
 
         {/* ---- More Actions card ---- */}
-        <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
+        <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100 print:hidden">
           <h2 className="text-[15px] font-bold text-gray-900">More Actions</h2>
 
           <div className="mt-1">
@@ -796,40 +907,67 @@ export default function TransactionDetailContent({
             </Link>
           </div>
         </div>
+        {/* ---- Download PDF, Print & Share Receipt (in-flow on mobile, sticky on desktop) ---- */}
+        <div className="mt-4 md:mt-0 md:fixed md:inset-x-0 md:bottom-0 md:z-20 md:bg-[#F6F4F8] md:border-t md:border-gray-100 md:px-4 md:pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-3 print:hidden">
+          <div className="mx-auto w-full max-w-md flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="flex flex-1 items-center justify-center gap-2 h-12 rounded-full text-sm font-semibold text-white transition-colors disabled:opacity-60"
+              style={{ backgroundColor: BRAND }}
+              aria-label="Download PDF receipt"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {downloadingPdf ? 'Preparing PDF…' : 'Download PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center justify-center gap-1.5 h-12 px-4 rounded-full border border-[#7B2D8E]/25 bg-white text-sm font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors flex-shrink-0"
+              aria-label="Print receipt"
+            >
+              <Printer className="h-4 w-4" />
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={shareReceipt}
+              className="inline-flex items-center justify-center h-12 w-12 rounded-full border border-gray-200 bg-white text-gray-700 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/30 transition-colors flex-shrink-0"
+              aria-label={shared ? 'Receipt copied' : 'Share receipt'}
+              title={shared ? 'Copied!' : 'Share receipt'}
+            >
+              {shared ? (
+                <Check className="h-4 w-4 text-[#7B2D8E]" />
+              ) : (
+                <Share2 className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Print-only footer */}
+        <footer className="hidden print:block mt-6 pt-4 border-t border-dashed border-gray-200 text-center text-[11px] text-gray-500">
+          Dermaspace Esthetic &amp; Wellness Centre · 237B Muri Okunola St, Victoria Island · 9 Agbeke Rotinwa Cl, Ikoyi · hello@dermaspaceng.com
+        </footer>
       </main>
 
-      {/* ---- Sticky Share & Print Receipt ---- */}
-      <div className="fixed inset-x-0 bottom-0 z-20 bg-[#F6F4F8] border-t border-gray-100 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 print:hidden">
-        <div className="mx-auto w-full max-w-md flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="inline-flex items-center justify-center gap-2 h-13 px-4 rounded-full border border-[#7B2D8E]/25 bg-white text-sm font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors flex-shrink-0"
-            aria-label="Print receipt"
-          >
-            <Printer className="h-4 w-4" />
-            Print
-          </button>
-          <button
-            type="button"
-            onClick={shareReceipt}
-            className="flex flex-1 items-center justify-center gap-2 h-13 rounded-full py-3.5 text-[15px] font-semibold text-white transition-colors"
-            style={{ backgroundColor: BRAND }}
-          >
-            {shared ? (
-              <>
-                <Check className="h-4 w-4" />
-                Receipt copied
-              </>
-            ) : (
-              <>
-                <Share2 className="h-4 w-4" />
-                Share Receipt
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4;
+            margin: 14mm 12mm;
+          }
+          html,
+          body {
+            background: #fff !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

@@ -32,26 +32,16 @@ import {
   Landmark,
   Banknote,
   Receipt,
+  Download,
+  Printer,
+  Loader2,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import PageLoader from '@/components/shared/page-loader'
 import { Button } from '@/components/ui/button'
-
-interface TransactionDetail {
-  id: number
-  type: 'credit' | 'debit' | 'refund'
-  amount: number
-  currency: string
-  status: 'pending' | 'completed' | 'failed' | 'cancelled'
-  payment_method: 'wallet' | 'paystack' | 'bank_transfer' | 'cash'
-  payment_reference: string | null
-  paystack_reference: string | null
-  description: string | null
-  error_message: string | null
-  created_at: string
-  formattedAmount?: string
-}
+import type { TransactionDetail } from '@/components/wallet/transaction-detail-sheet'
+import { downloadTransactionReceiptPdf } from '@/lib/receipt-pdf'
 
 const POLL_INTERVAL_MS = 4000
 const MAX_POLLS = 8
@@ -107,6 +97,7 @@ function PaymentStatusContent() {
   const [pollCount, setPollCount] = useState(0)
   const [copied, setCopied] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   const fetchTransaction = useCallback(async () => {
     if (!reference) return null
@@ -413,45 +404,87 @@ function PaymentStatusContent() {
       )}
 
       {/* Actions */}
-      <div className="mt-7 flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+      <div className="mt-7 flex flex-col gap-2.5">
         {tx.status === 'completed' && reference && (
-          <Link
-            href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
-            className="w-full sm:w-auto"
-          >
-            <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-              <Receipt className="h-4 w-4" />
-              View Receipt
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              onClick={async () => {
+                if (downloadingPdf) return
+                setDownloadingPdf(true)
+                try {
+                  await downloadTransactionReceiptPdf(tx)
+                } catch {
+                  // best effort
+                } finally {
+                  setDownloadingPdf(false)
+                }
+              }}
+              disabled={downloadingPdf}
+              className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {downloadingPdf ? 'Saving…' : 'Download PDF'}
+            </Button>
+            <Link
+              href={`/dashboard/transactions/${encodeURIComponent(reference)}?print=1`}
+              className="w-full"
+            >
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full gap-2 border-[#7B2D8E]/25 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+              >
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+            </Link>
+          </div>
+        )}
+        <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+          {tx.status === 'completed' && reference && (
+            <Link
+              href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
+              className="w-full sm:w-auto"
+            >
+              <Button variant="outline" className="w-full gap-2 border-gray-200">
+                <Receipt className="h-4 w-4" />
+                View Receipt
+              </Button>
+            </Link>
+          )}
+          {(tx.status === 'cancelled' || tx.status === 'failed') && (
+            <Link href={`/dashboard/wallet?fund=${tx.amount}`} className="w-full sm:w-auto">
+              <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
+                <RefreshCw className="h-4 w-4" />
+                Try again
+              </Button>
+            </Link>
+          )}
+          <Link href="/dashboard/wallet" className="w-full sm:w-auto">
+            <Button
+              variant={isPending ? 'default' : 'outline'}
+              className={`w-full gap-2 ${
+                isPending
+                  ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A]'
+                  : 'border-gray-200'
+              }`}
+            >
+              <Wallet className="h-4 w-4" />
+              Back to wallet
             </Button>
           </Link>
-        )}
-        {(tx.status === 'cancelled' || tx.status === 'failed') && (
-          <Link href={`/dashboard/wallet?fund=${tx.amount}`} className="w-full sm:w-auto">
-            <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-              <RefreshCw className="h-4 w-4" />
-              Try again
+          <Link href="/dashboard/transactions" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full gap-2 border-gray-200">
+              View transactions
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
-        )}
-        <Link href="/dashboard/wallet" className="w-full sm:w-auto">
-          <Button
-            variant={isPending ? 'default' : 'outline'}
-            className={`w-full gap-2 ${
-              isPending
-                ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A]'
-                : 'border-gray-200'
-            }`}
-          >
-            <Wallet className="h-4 w-4" />
-            Back to wallet
-          </Button>
-        </Link>
-        <Link href="/dashboard/transactions" className="w-full sm:w-auto">
-          <Button variant="outline" className="w-full gap-2 border-gray-200">
-            View transactions
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Link>
+        </div>
       </div>
 
       {/* Trust note */}
@@ -472,7 +505,7 @@ function StatusShell({ children }: { children: React.ReactNode }) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="w-full max-w-md rounded-[28px] bg-white border border-gray-100 shadow-sm p-7 sm:p-10 text-center"
+          className="w-full max-w-md rounded-[28px] bg-white border border-gray-100 p-7 sm:p-10 text-center"
         >
           {children}
         </motion.div>

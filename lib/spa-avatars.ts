@@ -53,10 +53,10 @@ export const SPA_AVATARS: SpaAvatar[] = [
   { slug: 'f4',  url: '/avatars/f4.jpg',  label: 'Ngozi',   gender: 'women', tint: '#DCF0E3' }, // bantu knots + smile
   { slug: 'f5',  url: '/avatars/f5.jpg',  label: 'Tola',    gender: 'women', tint: '#DCE8F5' }, // curly puff + clear glasses
   { slug: 'f6',  url: '/avatars/f6.jpg',  label: 'Ifeoma',  gender: 'women', tint: '#F5E6DC' }, // sleek updo + headband
-  // Cultural / styled additions — gele, hijab and hoodie variants.
-  { slug: 'f7',  url: '/avatars/f7.jpg',  label: 'Adeola',  gender: 'women', tint: '#F5DEDC' }, // Yoruba — gele
+  // Stylish young-adult additions — sleek silk press, hijab and micro-twists variants.
+  { slug: 'f7',  url: '/avatars/f7.jpg',  label: 'Adeola',  gender: 'women', tint: '#F5DEDC' }, // silk-pressed bob + gold clip
   { slug: 'f8',  url: '/avatars/f8.jpg',  label: 'Hauwa',   gender: 'women', tint: '#F5EFE0' }, // Hausa — hijab
-  { slug: 'f9',  url: '/avatars/f9.jpg',  label: 'Chioma',  gender: 'women', tint: '#DCF0E3' }, // Igbo — gele
+  { slug: 'f9',  url: '/avatars/f9.jpg',  label: 'Chioma',  gender: 'women', tint: '#DCF0E3' }, // micro-twists + mint ribbed top
   { slug: 'f10', url: '/avatars/f10.jpg', label: 'Naomi',   gender: 'women', tint: '#E6E3F5' }, // hoodie
   { slug: 'f11', url: '/avatars/f11.jpg', label: 'Aisha',   gender: 'women', tint: '#F5EFE0' }, // modern hijab
 ]

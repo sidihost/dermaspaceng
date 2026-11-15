@@ -50,35 +50,35 @@ export interface TeamAvatar {
 export type TeamAvatarGender = 'male' | 'female'
 
 export const STAFF_AVATARS: TeamAvatar[] = [
-  { slug: 'staff-1', url: '/avatars/team/staff-1.jpg', label: 'Ada',     tint: '#FCE4EC' },
-  { slug: 'staff-2', url: '/avatars/team/staff-2.jpg', label: 'Tomi',    tint: '#F5EFE0' },
-  { slug: 'staff-3', url: '/avatars/team/staff-3.jpg', label: 'Bisi',    tint: '#E2EEDD' },
-  { slug: 'staff-4', url: '/avatars/team/staff-4.jpg', label: 'Hauwa',   tint: '#F8E1D5' },
-  { slug: 'staff-5', url: '/avatars/team/staff-5.jpg', label: 'Ngozi',   tint: '#E2E2F5' },
-  { slug: 'staff-6', url: '/avatars/team/staff-6.jpg', label: 'Folake',  tint: '#ECE0F5' },
+  { slug: 'staff-1', url: '/avatars/team/staff-1.jpg', label: 'Ada',     tint: '#F6F1F8' },
+  { slug: 'staff-2', url: '/avatars/team/staff-2.jpg', label: 'Tomi',    tint: '#F6F1F8' },
+  { slug: 'staff-3', url: '/avatars/team/staff-3.jpg', label: 'Bisi',    tint: '#F6F1F8' },
+  { slug: 'staff-4', url: '/avatars/team/staff-4.jpg', label: 'Hauwa',   tint: '#F6F1F8' },
+  { slug: 'staff-5', url: '/avatars/team/staff-5.jpg', label: 'Ngozi',   tint: '#F6F1F8' },
+  { slug: 'staff-6', url: '/avatars/team/staff-6.jpg', label: 'Folake',  tint: '#F6F1F8' },
 ]
 
 /** Female admin portraits — used by Itunu, Franca, and any future
- *  female admin accounts. The pool is strictly women-only; the
- *  previous slot #2 was a young male portrait that the admin
- *  flagged as out of place, so it has been removed. */
+ *  female admin accounts. Strictly women-only young-adult Nigerian
+ *  executive portraits in Dermaspace purple attire. */
 export const ADMIN_AVATARS_FEMALE: TeamAvatar[] = [
-  { slug: 'admin-1',  url: '/avatars/team/admin-1.jpg',  label: 'Director',  tint: '#FCE4EC' },
-  { slug: 'admin-3',  url: '/avatars/team/admin-3.jpg',  label: 'Manager',   tint: '#EFE9E0' },
-  { slug: 'admin-4',  url: '/avatars/team/admin-4.jpg',  label: 'Lead',      tint: '#F5E1E5' },
+  { slug: 'admin-1',  url: '/avatars/team/admin-1.jpg',  label: 'Director',  tint: '#F6F1F8' },
+  { slug: 'admin-2',  url: '/avatars/team/admin-2.jpg',  label: 'Executive', tint: '#F6F1F8' },
+  { slug: 'admin-3',  url: '/avatars/team/admin-3.jpg',  label: 'Manager',   tint: '#F6F1F8' },
+  { slug: 'admin-4',  url: '/avatars/team/admin-4.jpg',  label: 'Lead',      tint: '#F6F1F8' },
 ]
 
-/** Male admin portraits — used by the super admin (Sidihost / dev).
- *  Includes a legacy "IT" portrait so existing avatar URLs that point
- *  at `/avatars/team/admin-it.jpg` keep resolving cleanly. */
+/** Male admin portraits — used by the super admin (Sidihost / dev) or
+ *  any male administrator. Includes a legacy "IT" portrait so existing
+ *  avatar URLs pointing at `/avatars/team/admin-it.jpg` keep resolving. */
 export const ADMIN_AVATARS_MALE: TeamAvatar[] = [
-  { slug: 'admin-m1', url: '/avatars/team/admin-m1.jpg', label: 'Director',  tint: '#DDE3EE' },
-  { slug: 'admin-m2', url: '/avatars/team/admin-m2.jpg', label: 'Executive', tint: '#E8E0D4' },
-  { slug: 'admin-m3', url: '/avatars/team/admin-m3.jpg', label: 'Manager',   tint: '#EFE5DA' },
-  { slug: 'admin-m4', url: '/avatars/team/admin-m4.jpg', label: 'Chairman',  tint: '#E2DAE8' },
+  { slug: 'admin-m1', url: '/avatars/team/admin-m1.jpg', label: 'Director',  tint: '#F6F1F8' },
+  { slug: 'admin-m2', url: '/avatars/team/admin-m2.jpg', label: 'Executive', tint: '#F6F1F8' },
+  { slug: 'admin-m3', url: '/avatars/team/admin-m3.jpg', label: 'Manager',   tint: '#F6F1F8' },
+  { slug: 'admin-m4', url: '/avatars/team/admin-m4.jpg', label: 'Chairman',  tint: '#F6F1F8' },
   // Legacy entry — kept so previously-saved `admin-it.jpg` URLs still
   // render in the picker as "selected" instead of looking unset.
-  { slug: 'admin-it', url: '/avatars/team/admin-it.jpg', label: 'IT',        tint: '#D8DEEA' },
+  { slug: 'admin-it', url: '/avatars/team/admin-it.jpg', label: 'IT',        tint: '#F6F1F8' },
 ]
 
 /**

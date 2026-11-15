@@ -78,21 +78,23 @@ export function AvatarPicker({
   // on the right gendered admin pool. The super admin (male) sees the
   // male admin portraits; Itunu / Franca (female) see the female ones.
   // Staff is always women-only regardless of `gender`.
-  const teamPool: TeamAvatar[] | null = React.useMemo(
-    () => teamAvatarPoolFor(role ?? null, gender ?? null),
-    [role, gender],
-  )
-  const isTeam = teamPool !== null
   const [picked, setPicked] = React.useState<string | null>(currentUrl)
   const [saving, setSaving] = React.useState(false)
-  // Local gender mirrors the prop, but we bias it toward "whatever
-  // the viewer just picked inline" so the grid renders the instant
-  // they tap a gender card — even before the parent's async save
-  // round-trips back through the `gender` prop. When the prop later
-  // resolves to the same value (or the parent explicitly flips it),
-  // this stays in sync via the effects below.
   const [localGender, setLocalGender] = React.useState<'male' | 'female' | null>(gender)
+  const [adminTeamGender, setAdminTeamGender] = React.useState<'male' | 'female'>(
+    gender === 'male' ? 'male' : 'female',
+  )
   const [savingGender, setSavingGender] = React.useState(false)
+
+  const teamPool: TeamAvatar[] | null = React.useMemo(
+    () =>
+      teamAvatarPoolFor(
+        role ?? null,
+        role === 'admin' ? adminTeamGender : (gender ?? null),
+      ),
+    [role, adminTeamGender, gender],
+  )
+  const isTeam = teamPool !== null
 
   // Re-sync local state each time the modal opens so repeat visits
   // don't stick on a stale selection from a previous session.
@@ -102,6 +104,13 @@ export function AvatarPicker({
       setSaving(false)
       setSavingGender(false)
       setLocalGender(gender)
+      if (currentUrl && /^\/avatars\/team\/admin-(m\d+|it)\./i.test(currentUrl)) {
+        setAdminTeamGender('male')
+      } else if (currentUrl && /^\/avatars\/team\/admin-\d+\./i.test(currentUrl)) {
+        setAdminTeamGender('female')
+      } else {
+        setAdminTeamGender(gender === 'male' ? 'male' : 'female')
+      }
     }
   }, [open, currentUrl, gender])
 
@@ -184,7 +193,7 @@ export function AvatarPicker({
       onClick={() => !saving && onClose()}
     >
       <div
-        className="bg-white w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl"
+        className="bg-white w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-3xl border border-gray-200 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — back arrow, centered title, preview of the
@@ -232,6 +241,28 @@ export function AvatarPicker({
             (-> inline gender chooser). */}
         {showGrid ? (
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+            {isTeam && role === 'admin' && (
+              <div className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 mb-4">
+                {(['female', 'male'] as const).map((g) => {
+                  const isSelected = adminTeamGender === g
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setAdminTeamGender(g)}
+                      aria-pressed={isSelected}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${
+                        isSelected
+                          ? 'bg-[#7B2D8E] text-white'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
             <p className="text-xs text-gray-500 mb-4">
               Tap a portrait, then tap <span className="font-medium text-gray-700">Use Avatar</span> to save.
             </p>
@@ -239,12 +270,6 @@ export function AvatarPicker({
               {avatars.map((a) => {
                 const selected = picked === a.url
                 return (
-                  // Outer wrapper is `relative` but NOT overflow-hidden
-                  // so the selection checkmark can sit on the edge of
-                  // the avatar without being clipped by the circle.
-                  // The circular portrait itself lives on the inner
-                  // button which keeps the overflow-hidden it needs
-                  // to render the image as a circle.
                   <div key={a.slug} className="relative aspect-square">
                     <button
                       type="button"
@@ -262,24 +287,13 @@ export function AvatarPicker({
                         className="absolute inset-0 w-full h-full object-cover rounded-full transition-transform duration-200 group-active:scale-[0.96]"
                         loading="lazy"
                       />
-                      {/* Hover ring — pure in-button affordance, no
-                          need to escape the overflow-hidden. */}
                       {!selected && (
                         <span className="absolute inset-0 rounded-full pointer-events-none transition-all group-hover:ring-2 group-hover:ring-gray-300" />
                       )}
                     </button>
 
-                    {/* Selection ring — sits on the wrapper (outside
-                        the overflow-hidden) so the ring renders
-                        cleanly around the circle. Previously had a
-                        soft outer glow via box-shadow; trimmed to a
-                        single crisp brand-coloured ring per the
-                        product's "less shadow" direction. */}
                     {selected && (
-                      <span
-                        className="absolute inset-0 rounded-full pointer-events-none"
-                        style={{ boxShadow: `0 0 0 3px ${BRAND}` }}
-                      />
+                      <span className="absolute inset-0 rounded-full pointer-events-none ring-[3px] ring-[#7B2D8E]" />
                     )}
 
                     {/* Selection checkmark — sits on the wrapper so

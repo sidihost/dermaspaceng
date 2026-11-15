@@ -30,7 +30,7 @@ import {
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
 import 'leaflet/dist/leaflet.css'
 import { useAuth } from '@/hooks/use-auth'
-import { getMapTileLayerConfig } from '@/lib/map-tiles'
+import { getFallbackTileLayerConfig, type MapTileLayerConfig } from '@/lib/map-tiles'
 
 // Escape user-supplied strings before they go into the marker's innerHTML.
 function escapeHtml(value: string) {
@@ -463,14 +463,58 @@ export default function InteractiveMap({
       })
       mapRef.current = map
 
-      // CARTO Voyager tiles when NEXT_PUBLIC_CARTO_API_KEY is configured,
-      // falling back cleanly to OSM standard tiles when no key is set.
-      const tileConfig = getMapTileLayerConfig(process.env.NEXT_PUBLIC_CARTO_API_KEY)
-      L.tileLayer(tileConfig.url, {
-        ...(tileConfig.subdomains ? { subdomains: tileConfig.subdomains } : {}),
-        maxZoom: tileConfig.maxZoom,
-        attribution: tileConfig.attribution,
-      }).addTo(map)
+      // Resolve tiles via our runtime config endpoint so CARTO keys
+      // that return "API KEY REQUIRED" wm-* watermarks (or keys set
+      // only at runtime) automatically fall back to clean OSM / Esri
+      // World Street Map tiles instead of rendering watermark tiles.
+      let primaryConfig: MapTileLayerConfig = getFallbackTileLayerConfig('osm')
+      let backupConfig: MapTileLayerConfig = getFallbackTileLayerConfig('esri')
+      try {
+        const tileRes = await fetch('/api/map/tile-config', {
+          cache: 'no-store',
+          signal: AbortSignal.timeout(3000),
+        })
+        if (tileRes.ok) {
+          const data = (await tileRes.json()) as {
+            primary?: MapTileLayerConfig
+            backup?: MapTileLayerConfig
+          }
+          if (data?.primary?.url) primaryConfig = data.primary
+          if (data?.backup?.url) backupConfig = data.backup
+        }
+      } catch {
+        // Network timeout on config probe — continue with OSM + Esri backup.
+      }
+      if (cancelled || !mapRef.current) return
+
+      const createTileLayer = (cfg: MapTileLayerConfig) =>
+        L.tileLayer(cfg.url, {
+          ...(cfg.subdomains ? { subdomains: cfg.subdomains } : {}),
+          maxZoom: cfg.maxZoom,
+          attribution: cfg.attribution,
+        })
+
+      let activeLayer = createTileLayer(primaryConfig).addTo(map)
+      let tileLoadedCount = 0
+      let tileErrorCount = 0
+      let switchedToBackup = false
+
+      const attachLayerListeners = (layer: import('leaflet').TileLayer, canFallback: boolean) => {
+        layer.on('tileload', () => {
+          tileLoadedCount += 1
+        })
+        if (!canFallback) return
+        layer.on('tileerror', () => {
+          tileErrorCount += 1
+          if (!switchedToBackup && tileLoadedCount === 0 && tileErrorCount >= 2 && mapRef.current) {
+            switchedToBackup = true
+            mapRef.current.removeLayer(activeLayer)
+            activeLayer = createTileLayer(backupConfig).addTo(mapRef.current)
+            attachLayerListeners(activeLayer, false)
+          }
+        })
+      }
+      attachLayerListeners(activeLayer, primaryConfig.url !== backupConfig.url)
 
       // NOTE: we deliberately do NOT add Leaflet's default zoom control on
       // the full-page map — it's a stack of tiny square buttons that
@@ -1632,8 +1676,7 @@ export default function InteractiveMap({
           height: 22px;
           border-radius: 9999px;
           background: #ffffff;
-          /* Soft brand-purple glow behind the white ring. */
-          box-shadow: 0 2px 10px rgba(123, 45, 142, 0.35);
+          border: 2px solid rgba(123, 45, 142, 0.25);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1674,7 +1717,7 @@ export default function InteractiveMap({
           border-radius: 9999px;
           background: #ffffff;
           border: 3px solid #ffffff;
-          box-shadow: 0 3px 10px rgba(123, 45, 142, 0.45);
+          outline: 1px solid rgba(123, 45, 142, 0.35);
           overflow: hidden;
           display: flex;
           align-items: center;
@@ -1712,7 +1755,6 @@ export default function InteractiveMap({
           border-left: 7px solid transparent;
           border-right: 7px solid transparent;
           border-top: 12px solid #ffffff;
-          filter: drop-shadow(0 2px 2px rgba(123, 45, 142, 0.35));
         }
         /* Heading arrow — only shown when the Geolocation API supplies a
            compass bearing. Sits just above the white ring and rotates via
@@ -1726,7 +1768,6 @@ export default function InteractiveMap({
           height: 10px;
           transform-origin: 5px 19px; /* pivot at centre of the dot below */
           pointer-events: none;
-          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
         }
         @keyframes ds-user-pulse {
           0% {
@@ -1802,9 +1843,9 @@ export default function InteractiveMap({
           height: 36px;
           margin-left: -14px;
           background: #7b2d8e;
+          border: 2px solid #ffffff;
           border-radius: 50% 50% 50% 0;
           transform: rotate(-45deg);
-          box-shadow: 0 4px 14px rgba(123, 45, 142, 0.45);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1832,7 +1873,6 @@ export default function InteractiveMap({
           }
         }
         .ds-route-line {
-          filter: drop-shadow(0 2px 6px rgba(123, 45, 142, 0.25));
           stroke-dasharray: 2000;
           stroke-dashoffset: 2000;
           animation: ds-route-draw 1.2s ease-out forwards;
@@ -1859,8 +1899,8 @@ export default function InteractiveMap({
         }
         .leaflet-tooltip {
           border-radius: 8px;
-          border: 1px solid rgba(0, 0, 0, 0.06);
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          box-shadow: none;
           padding: 4px 8px;
           font-size: 11px;
           font-weight: 600;
@@ -1872,7 +1912,7 @@ export default function InteractiveMap({
         .leaflet-control-zoom a {
           background: #ffffff !important;
           color: #6b7280 !important;
-          border-color: rgba(0, 0, 0, 0.05) !important;
+          border-color: rgba(0, 0, 0, 0.08) !important;
           width: 32px !important;
           height: 32px !important;
           line-height: 32px !important;
@@ -1883,8 +1923,8 @@ export default function InteractiveMap({
           background: #faf5fb !important;
         }
         .leaflet-control-zoom {
-          border: none !important;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08) !important;
+          border: 1px solid rgba(0, 0, 0, 0.1) !important;
+          box-shadow: none !important;
           border-radius: 10px !important;
           overflow: hidden;
         }

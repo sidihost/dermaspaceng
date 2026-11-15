@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 -H 0.0.0.0",
-    "build": "node scripts/_runner.mjs && next build",
+    "build": "next build",
     "migrate": "RUN_MIGRATIONS=true node scripts/_runner.mjs",
     "start": "next start",
     "lint": "node -e \"process.exit(0)\""

@@ -120,15 +120,20 @@ export async function GET(
           recipient_name: string
           recipient_email: string | null
           occasion: string | null
+          design: string | null
           design_name: string | null
+          font: string | null
+          font_name: string | null
+          personal_message: string | null
           delivery_method: string | null
           delivery_date: string | null
           status: string | null
           payment_status: string | null
           invoice_number: string | null
         }>(
-          `SELECT id, recipient_name, recipient_email, occasion, design_name,
-                  delivery_method, to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date,
+          `SELECT id, recipient_name, recipient_email, occasion, design, design_name,
+                  font, font_name, personal_message, delivery_method,
+                  to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date,
                   status, payment_status, invoice_number
              FROM gift_card_requests
             WHERE payment_reference = ANY($1)
@@ -149,11 +154,17 @@ export async function GET(
             recipient_name: String(meta.itemDetails.recipientName || 'Recipient'),
             recipient_email: meta.itemDetails.recipientEmail ? String(meta.itemDetails.recipientEmail) : null,
             occasion: meta.itemDetails.occasion ? String(meta.itemDetails.occasion) : null,
+            design: meta.itemDetails.design ? String(meta.itemDetails.design) : null,
             design_name: meta.itemDetails.designName
               ? String(meta.itemDetails.designName)
               : meta.itemDetails.design
                 ? String(meta.itemDetails.design)
                 : null,
+            font: meta.itemDetails.font ? String(meta.itemDetails.font) : null,
+            font_name: meta.itemDetails.fontName ? String(meta.itemDetails.fontName) : null,
+            personal_message: meta.itemDetails.personalMessage
+              ? String(meta.itemDetails.personalMessage)
+              : null,
             delivery_method: meta.itemDetails.deliveryMethod ? String(meta.itemDetails.deliveryMethod) : null,
             delivery_date: meta.itemDetails.deliveryDate ? String(meta.itemDetails.deliveryDate) : null,
             status: tx.status === 'completed' ? 'processing' : tx.status,

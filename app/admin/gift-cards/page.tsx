@@ -6,6 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Gift, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  findGiftCardDesignById,
+  findGiftCardFontById,
+  getGiftCardOccasionMeta,
+} from '@/lib/gift-card-templates'
 
 interface GiftCardRequest {
   id: number
@@ -14,6 +19,8 @@ interface GiftCardRequest {
   design: string
   design_name: string
   occasion: string
+  font?: string | null
+  font_name?: string | null
   recipient_name: string
   recipient_email: string
   recipient_phone: string
@@ -121,7 +128,7 @@ export default function GiftCardsPage() {
           <CardTitle className="text-base">All Requests</CardTitle>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Gift className="w-4 h-4" />
-            <span>Total Value: N{totalValue.toLocaleString()}</span>
+            <span className="tabular-nums">Total Value: ₦{totalValue.toLocaleString()}</span>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -140,6 +147,7 @@ export default function GiftCardsPage() {
                 <TableRow>
                   <TableHead>Recipient</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead>Chosen Style</TableHead>
                   <TableHead>Occasion</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
@@ -147,41 +155,72 @@ export default function GiftCardsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.map((request) => (
-                  <TableRow
-                    key={request.id}
-                    onClick={() => router.push(`/admin/gift-cards/${request.id}`)}
-                    className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
-                  >
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{request.recipient_name}</p>
-                        <p className="text-sm text-gray-500">From: {request.sender_name}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold text-[#7B2D8E]">
-                        N{request.amount.toLocaleString()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-gray-600">{request.occasion}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={statusColors[request.status] || statusColors.pending}>
-                        {request.status || 'pending'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-gray-500">
-                        {new Date(request.created_at).toLocaleDateString()}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {requests.map((request) => {
+                  const chosenDesign = findGiftCardDesignById(request.design)
+                  const chosenFont = findGiftCardFontById(request.font)
+                  const occasionMeta = getGiftCardOccasionMeta(request.occasion)
+                  return (
+                    <TableRow
+                      key={request.id}
+                      onClick={() => router.push(`/admin/gift-cards/${request.id}`)}
+                      className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
+                    >
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-gray-900">{request.recipient_name}</p>
+                          <p className="text-sm text-gray-500">From: {request.sender_name}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-[#7B2D8E] tabular-nums">
+                          ₦{request.amount.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 min-w-[140px]">
+                          <span
+                            aria-hidden="true"
+                            className="w-5 h-3.5 rounded border border-black/15 flex-shrink-0 overflow-hidden flex"
+                          >
+                            <span className="w-3/5 h-full" style={{ backgroundColor: chosenDesign.surfaceHex }} />
+                            <span className="w-2/5 h-full" style={{ backgroundColor: chosenDesign.accentHex }} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-gray-900 truncate">
+                              {request.design_name || chosenDesign.name}
+                            </p>
+                            <p className="text-[11px] text-gray-500 truncate">
+                              {request.font_name || chosenFont.name} font
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">
+                            {request.occasion || 'Standard'}
+                          </p>
+                          <p className="text-[11px] text-gray-500">
+                            {occasionMeta.editionLabel}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={statusColors[request.status] || statusColors.pending}>
+                          {request.status || 'pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-gray-500">
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

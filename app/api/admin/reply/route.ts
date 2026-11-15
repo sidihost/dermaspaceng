@@ -411,11 +411,12 @@ export async function POST(request: NextRequest) {
             let responderAvatarUrl: string | null = null
             try {
               const senderRow = await sql`
-                SELECT avatar_url, role FROM users WHERE id = ${user.id} LIMIT 1
+                SELECT avatar_url, role, gender FROM users WHERE id = ${user.id} LIMIT 1
               `
               const uploaded = senderRow[0]?.avatar_url as string | null | undefined
               const role = senderRow[0]?.role as string | null | undefined
-              responderAvatarUrl = resolveAdminAvatar(uploaded, role)
+              const gender = senderRow[0]?.gender as string | null | undefined
+              responderAvatarUrl = resolveAdminAvatar(uploaded, role, gender)
             } catch (avatarErr) {
               console.error('Responder avatar lookup failed:', avatarErr)
             }
@@ -579,7 +580,8 @@ export async function GET(request: NextRequest) {
               ELSE NULL
             END AS sender_display_name,
             u.avatar_url AS author_avatar_url,
-            u.role       AS author_role
+            u.role       AS author_role,
+            u.gender     AS author_gender
           FROM ticket_responses tr
           LEFT JOIN users u ON u.id::text = tr.user_id::text
           WHERE tr.ticket_id = ${code}
@@ -599,7 +601,8 @@ export async function GET(request: NextRequest) {
             NULL::text   AS customer_last_name,
             NULL::text   AS sender_display_name,
             u.avatar_url AS author_avatar_url,
-            u.role       AS author_role
+            u.role       AS author_role,
+            u.gender     AS author_gender
           FROM admin_replies ar
           LEFT JOIN users u ON u.id::text = ar.staff_id::text
           WHERE ar.request_type = 'contact'
@@ -622,6 +625,7 @@ export async function GET(request: NextRequest) {
             ? resolveAdminAvatar(
                 row.author_avatar_url as string | null,
                 row.author_role as string | null,
+                row.author_gender as string | null,
               )
             : null,
         }
@@ -669,7 +673,8 @@ export async function GET(request: NextRequest) {
           CASE WHEN COALESCE(ar.is_staff, TRUE) = FALSE THEN ar.sender_display_name ELSE NULL END AS customer_first_name,
           NULL::text          AS customer_last_name,
           u.avatar_url        AS author_avatar_url,
-          u.role              AS author_role
+          u.role              AS author_role,
+          u.gender            AS author_gender
         FROM admin_replies ar
         LEFT JOIN users u ON u.id::text = ar.staff_id::text
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
@@ -690,7 +695,8 @@ export async function GET(request: NextRequest) {
           NULL::text          AS customer_first_name,
           NULL::text          AS customer_last_name,
           u.avatar_url        AS author_avatar_url,
-          u.role              AS author_role
+          u.role              AS author_role,
+          u.gender            AS author_gender
         FROM admin_replies ar
         LEFT JOIN users u ON u.id::text = ar.staff_id::text
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
@@ -706,6 +712,7 @@ export async function GET(request: NextRequest) {
           ? resolveAdminAvatar(
               row.author_avatar_url as string | null,
               row.author_role as string | null,
+              row.author_gender as string | null,
             )
           : null,
       }

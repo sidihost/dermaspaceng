@@ -41,6 +41,12 @@ import {
 } from "lucide-react"
 import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
+import { GiftCardPreview } from "@/components/gift-cards/gift-card-preview"
+import {
+  findGiftCardDesignById,
+  findGiftCardFontById,
+  getGiftCardOccasionMeta,
+} from "@/lib/gift-card-templates"
 
 interface GiftCardRequest {
   id: number
@@ -49,6 +55,8 @@ interface GiftCardRequest {
   design: string | null
   design_name: string | null
   occasion: string | null
+  font?: string | null
+  font_name?: string | null
   recipient_name: string
   recipient_email: string | null
   recipient_phone: string | null
@@ -315,6 +323,8 @@ export default function StaffGiftCardsPage() {
             <ul className="divide-y divide-gray-100">
               {filtered.map((r) => {
                 const cfg = statusConfig[r.status] || statusConfig.pending
+                const chosenDesign = findGiftCardDesignById(r.design)
+                const chosenFont = findGiftCardFontById(r.font)
                 return (
                   <li
                     key={r.id}
@@ -341,6 +351,14 @@ export default function StaffGiftCardsPage() {
                         </span>
                         {r.sender_name && <span>From: {r.sender_name}</span>}
                         {r.occasion && <span className="capitalize">{r.occasion}</span>}
+                        <span className="inline-flex items-center gap-1.5 text-gray-600">
+                          <span
+                            aria-hidden="true"
+                            className="inline-block w-2.5 h-2.5 rounded-full border border-black/15"
+                            style={{ backgroundColor: chosenDesign.surfaceHex }}
+                          />
+                          {r.design_name || chosenDesign.name} · {r.font_name || chosenFont.name}
+                        </span>
                       </div>
                       <p className="text-[10.5px] text-gray-400">
                         {formatDate(r.created_at)}
@@ -380,13 +398,52 @@ export default function StaffGiftCardsPage() {
 
       {/* View Dialog */}
       <Dialog open={!!selected && !actionDialogOpen} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gift card request</DialogTitle>
-            <DialogDescription>Full request details</DialogDescription>
+            <DialogDescription>Full request details and chosen card style</DialogDescription>
           </DialogHeader>
-          {selected && (
+          {selected && (() => {
+            const selectedDesign = findGiftCardDesignById(selected.design)
+            const selectedFont = findGiftCardFontById(selected.font)
+            const selectedOccasionMeta = getGiftCardOccasionMeta(selected.occasion)
+            return (
             <div className="space-y-4">
+              <GiftCardPreview
+                design={selectedDesign}
+                amountText={formatCurrency(selected.amount)}
+                recipientName={selected.recipient_name}
+                senderName={selected.sender_name}
+                occasion={selected.occasion}
+                fontClassName={selectedFont.className}
+                showStack={false}
+              />
+
+              <div className="rounded-lg border border-gray-200 bg-[#FBF9FC] p-3 grid grid-cols-3 gap-2 text-xs">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Colour</p>
+                  <p className="mt-0.5 font-semibold text-gray-900 inline-flex items-center gap-1.5">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full border border-black/15 flex-shrink-0"
+                      style={{ backgroundColor: selectedDesign.surfaceHex }}
+                    />
+                    <span className="truncate">{selected.design_name || selectedDesign.name}</span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Theme</p>
+                  <p className="mt-0.5 font-semibold text-gray-900 truncate">
+                    {selectedOccasionMeta.editionLabel}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Font</p>
+                  <p className={`mt-0.5 font-semibold text-gray-900 truncate ${selectedFont.className}`}>
+                    {selected.font_name || selectedFont.name}
+                  </p>
+                </div>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label className="text-xs text-gray-500">From (sender)</Label>
@@ -456,7 +513,8 @@ export default function StaffGiftCardsPage() {
                 </div>
               </div>
             </div>
-          )}
+            )
+          })()}
           <DialogFooter>
             {selected?.status === "pending" && (
               <Button

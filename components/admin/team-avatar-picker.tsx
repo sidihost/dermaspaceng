@@ -52,6 +52,9 @@ export function TeamAvatarPicker({
 }: Props) {
   const [picked, setPicked] = React.useState<string | null>(currentUrl)
   const [saving, setSaving] = React.useState(false)
+  const [activeGender, setActiveGender] = React.useState<TeamAvatarGender>(
+    gender === 'male' ? 'male' : 'female',
+  )
 
   // Re-sync on every open so a stale selection from a previous
   // session never sticks around.
@@ -59,8 +62,15 @@ export function TeamAvatarPicker({
     if (open) {
       setPicked(currentUrl)
       setSaving(false)
+      if (currentUrl && /^\/avatars\/team\/admin-(m\d+|it)\./i.test(currentUrl)) {
+        setActiveGender('male')
+      } else if (currentUrl && /^\/avatars\/team\/admin-\d+\./i.test(currentUrl)) {
+        setActiveGender('female')
+      } else {
+        setActiveGender(gender === 'male' ? 'male' : 'female')
+      }
     }
-  }, [open, currentUrl])
+  }, [open, currentUrl, gender])
 
   // Body scroll lock + Esc-to-close — same UX contract as the
   // customer AvatarPicker.
@@ -80,7 +90,8 @@ export function TeamAvatarPicker({
 
   if (!open) return null
 
-  const pool: TeamAvatar[] = teamAvatarPoolFor(role, gender ?? null) ?? []
+  const pool: TeamAvatar[] =
+    teamAvatarPoolFor(role, role === 'admin' ? activeGender : 'female') ?? []
   const dirty = picked !== currentUrl
   const canSave = dirty && !!picked && !saving
 
@@ -104,7 +115,7 @@ export function TeamAvatarPicker({
       onClick={() => !saving && onClose()}
     >
       <div
-        className="bg-white w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[88vh] sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl"
+        className="bg-white w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[88vh] sm:rounded-3xl border border-gray-200 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — back arrow, centered title, live preview of the
@@ -142,9 +153,32 @@ export function TeamAvatarPicker({
           </div>
         </header>
 
-        {/* Body — single grid (no gender chooser); team pools are
-            already curated. */}
+        {/* Body — Female / Male toggle for admin role so both female and
+            male branded Nigerian admin portraits are accessible; staff
+            stays women-only. */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+          {role === 'admin' && (
+            <div className="inline-flex items-center rounded-xl border border-gray-200 bg-gray-50 p-1 mb-4">
+              {(['female', 'male'] as const).map((g) => {
+                const isSelected = activeGender === g
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setActiveGender(g)}
+                    aria-pressed={isSelected}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${
+                      isSelected
+                        ? 'bg-[#7B2D8E] text-white'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <p className="text-xs text-gray-500 mb-4">
             Tap a portrait, then tap{' '}
             <span className="font-medium text-gray-700">Use Portrait</span> to save.
@@ -175,10 +209,7 @@ export function TeamAvatarPicker({
                     )}
                   </button>
                   {selected && (
-                    <span
-                      className="absolute inset-0 rounded-full pointer-events-none"
-                      style={{ boxShadow: `0 0 0 3px ${BRAND}` }}
-                    />
+                    <span className="absolute inset-0 rounded-full pointer-events-none ring-[3px] ring-[#7B2D8E]" />
                   )}
                   {selected && (
                     <span

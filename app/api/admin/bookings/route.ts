@@ -89,6 +89,7 @@ export async function GET(req: Request) {
     rows = (await sql`
       SELECT b.*,
              u.role AS user_role,
+             u.gender AS user_gender,
              u.avatar_url AS user_avatar_url,
              COALESCE(u.first_name, '') AS user_first_name,
              COALESCE(u.last_name, '')  AS user_last_name
@@ -119,6 +120,7 @@ export async function GET(req: Request) {
     rows = (await sql`
       SELECT b.*,
              u.role AS user_role,
+             u.gender AS user_gender,
              u.avatar_url AS user_avatar_url,
              COALESCE(u.first_name, '') AS user_first_name,
              COALESCE(u.last_name, '')  AS user_last_name
@@ -170,7 +172,7 @@ export async function GET(req: Request) {
     // Resolve the portrait once server-side: the customer's own
     // upload first, then a role-appropriate default, else null so the
     // client renders initials. Mirrors the booking detail page.
-    user_avatar_url: resolveAdminAvatar(r.user_avatar_url, r.user_role),
+    user_avatar_url: resolveAdminAvatar(r.user_avatar_url, r.user_role, r.user_gender),
     user_first_name: r.user_first_name,
     user_last_name: r.user_last_name,
     booking_reference: r.booking_reference,

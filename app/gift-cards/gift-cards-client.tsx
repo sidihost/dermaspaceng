@@ -5,24 +5,51 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet, Receipt, Snowflake } from 'lucide-react'
+import {
+  Gift,
+  Heart,
+  Send,
+  Download,
+  Check,
+  ChevronRight,
+  Palette,
+  User,
+  Lock,
+  Mail,
+  Phone,
+  Calendar,
+  Type,
+  ChevronLeft,
+  Wallet,
+  Receipt,
+  Snowflake,
+  Printer,
+  Loader2,
+} from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
-import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
+import { downloadGiftCardReceiptPdf } from '@/lib/receipt-pdf'
+import {
+  GiftCardPreview,
+  getOccasionBadgeIcon,
+} from '@/components/gift-cards/gift-card-preview'
 import {
   CHRISTMAS_GIFT_CARD_DESIGN,
-  CHRISTMAS_GIFT_CARD_DESIGN_ENABLED,
   CHRISTMAS_OCCASION,
   GIFT_CARD_AMOUNTS,
   GIFT_CARD_FONTS,
   INITIAL_GIFT_CARD_DESIGNS,
   INITIAL_GIFT_CARD_OCCASIONS,
   findGiftCardDesignById,
+  findGiftCardFontById,
   getDefaultGiftCardDesign,
   getDefaultGiftCardOccasion,
   getGiftCardDesigns,
+  getGiftCardOccasionMeta,
   getGiftCardOccasions,
   isChristmasTemplateAvailable,
+  syncDesignForOccasion,
+  syncOccasionForDesign,
   type GiftCardDesign,
 } from '@/lib/gift-card-templates'
 
@@ -48,6 +75,7 @@ export default function GiftCardsClient() {
   const [selectedOccasion, setSelectedOccasion] = useState<string>(() =>
     getDefaultGiftCardOccasion({ festiveEnabled: true, userRemovedChristmas: false }),
   )
+  const [hasCustomColor, setHasCustomColor] = useState(false)
   const [selectedFont, setSelectedFont] = useState(GIFT_CARD_FONTS[0])
   const [recipientName, setRecipientName] = useState('')
   const [recipientEmail, setRecipientEmail] = useState('')
@@ -60,15 +88,23 @@ export default function GiftCardsClient() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentError, setPaymentError] = useState('')
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false)
   const [completedReceiptRef, setCompletedReceiptRef] = useState('')
   const [completedInvoiceNumber, setCompletedInvoiceNumber] = useState<string | null>(null)
   const [completedPaymentMethod, setCompletedPaymentMethod] = useState<string>('')
   const [completedDetails, setCompletedDetails] = useState<{
     amount: number
     recipientName: string
+    recipientEmail?: string | null
+    senderName?: string | null
     occasion: string
     designName: string
     designId?: string
+    fontId?: string
+    fontName?: string
+    deliveryMethod?: string | null
+    deliveryDate?: string | null
+    personalMessage?: string | null
   } | null>(null)
 
   const christmasActive = isChristmasTemplateAvailable({
@@ -77,6 +113,7 @@ export default function GiftCardsClient() {
   })
   const cardDesigns = getGiftCardDesigns({ festiveEnabled, userRemovedChristmas: false })
   const occasions = getGiftCardOccasions({ festiveEnabled, userRemovedChristmas: false })
+  const occasionMeta = getGiftCardOccasionMeta(selectedOccasion)
 
   // If the admin disables /api/festive while the user had the seasonal
   // template selected, automatically revert to the initial Royal Purple state.
@@ -90,6 +127,29 @@ export default function GiftCardsClient() {
       }
     }
   }, [christmasActive, selectedDesign.id, selectedOccasion])
+
+  const handleSelectOccasion = (nextOccasion: string) => {
+    setSelectedOccasion(nextOccasion)
+    const syncedDesign = syncDesignForOccasion(nextOccasion, selectedDesign, {
+      festiveEnabled,
+      userRemovedChristmas: false,
+      preserveCustomColor: hasCustomColor,
+    })
+    setSelectedDesign(syncedDesign)
+    if (syncedDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id) {
+      setHasCustomColor(false)
+    }
+  }
+
+  const handleSelectDesign = (nextDesign: GiftCardDesign) => {
+    setSelectedDesign(nextDesign)
+    const syncedOccasion = syncOccasionForDesign(nextDesign, selectedOccasion, {
+      festiveEnabled,
+      userRemovedChristmas: false,
+    })
+    setSelectedOccasion(syncedOccasion)
+    setHasCustomColor(nextDesign.id !== CHRISTMAS_GIFT_CARD_DESIGN.id)
+  }
 
   useEffect(() => {
     checkAuth()
@@ -138,9 +198,16 @@ export default function GiftCardsClient() {
           setCompletedDetails({
             amount: Number(tx.amount) || 0,
             recipientName: String(gc?.recipient_name || metaDetails.recipientName || 'Recipient'),
+            recipientEmail: gc?.recipient_email || (metaDetails.recipientEmail ? String(metaDetails.recipientEmail) : null),
+            senderName: metaDetails.senderName ? String(metaDetails.senderName) : senderName || null,
             occasion: String(gc?.occasion || metaDetails.occasion || 'Special Occasion'),
             designName: String(gc?.design_name || metaDetails.designName || 'Custom Design'),
             designId: String(gc?.design || metaDetails.design || 'royal'),
+            fontId: String(gc?.font || metaDetails.font || 'elegant'),
+            fontName: String(gc?.font_name || metaDetails.fontName || 'Elegant'),
+            deliveryMethod: gc?.delivery_method || (metaDetails.deliveryMethod ? String(metaDetails.deliveryMethod) : null),
+            deliveryDate: gc?.delivery_date || (metaDetails.deliveryDate ? String(metaDetails.deliveryDate) : null),
+            personalMessage: gc?.personal_message || (metaDetails.personalMessage ? String(metaDetails.personalMessage) : null),
           })
           setIsSubmitted(true)
           return
@@ -237,9 +304,16 @@ export default function GiftCardsClient() {
       setCompletedDetails({
         amount: finalAmount,
         recipientName,
+        recipientEmail: recipientEmail || null,
+        senderName: senderName || null,
         occasion: selectedOccasion,
         designName: selectedDesign.name,
         designId: selectedDesign.id,
+        fontId: selectedFont.id,
+        fontName: selectedFont.name,
+        deliveryMethod,
+        deliveryDate: deliveryDate || null,
+        personalMessage: personalMessage || null,
       })
       setIsSubmitted(true)
     } catch {
@@ -278,16 +352,68 @@ export default function GiftCardsClient() {
   if (isSubmitted) {
     const summaryAmount = completedDetails?.amount ?? finalAmount
     const summaryRecipient = completedDetails?.recipientName || recipientName || 'Recipient'
+    const summaryRecipientEmail = completedDetails?.recipientEmail ?? (recipientEmail || null)
+    const summarySender = completedDetails?.senderName ?? (senderName || null)
     const summaryOccasion = completedDetails?.occasion || selectedOccasion
     const summaryDesign = completedDetails?.designName || selectedDesign.name
     const summaryDesignObj = findGiftCardDesignById(completedDetails?.designId || selectedDesign.id)
+    const summaryFontObj = findGiftCardFontById(completedDetails?.fontId || selectedFont.id)
+    const summaryOccasionMeta = getGiftCardOccasionMeta(summaryOccasion)
+    const summaryDeliveryMethod = completedDetails?.deliveryMethod ?? deliveryMethod
+    const summaryDeliveryDate = completedDetails?.deliveryDate ?? (deliveryDate || null)
+    const summaryMessage = completedDetails?.personalMessage ?? (personalMessage || null)
+
+    const handleDownloadGiftCardReceipt = async () => {
+      if (downloadingReceipt) return
+      setDownloadingReceipt(true)
+      try {
+        await downloadGiftCardReceiptPdf({
+          amount: summaryAmount,
+          amountFormatted: formatPrice(summaryAmount),
+          recipientName: summaryRecipient,
+          recipientEmail: summaryRecipientEmail,
+          senderName: summarySender,
+          occasion: summaryOccasion,
+          designName: summaryDesign,
+          fontName: completedDetails?.fontName || summaryFontObj.name,
+          deliveryMethod: summaryDeliveryMethod,
+          deliveryDate: summaryDeliveryDate,
+          personalMessage: summaryMessage,
+          paymentMethod: completedPaymentMethod || 'Wallet / Paystack',
+          invoiceNumber: completedInvoiceNumber,
+          receiptRef: completedReceiptRef,
+        })
+      } catch {
+        // best effort
+      } finally {
+        setDownloadingReceipt(false)
+      }
+    }
 
     return (
       <>
-        <Header />
-        <main className="min-h-screen bg-[#7B2D8E] flex items-center justify-center px-4 pt-24 pb-12">
-          <div className="max-w-md w-full bg-white rounded-2xl p-6 sm:p-8 text-center border border-white/20">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+        <div className="print:hidden">
+          <Header />
+        </div>
+        <main className="min-h-screen bg-[#7B2D8E] flex items-center justify-center px-4 pt-24 pb-12 print:min-h-0 print:bg-white print:p-0 print:block">
+          <div className="max-w-md w-full bg-white rounded-2xl p-6 sm:p-8 text-center border border-white/20 print:max-w-xl print:mx-auto print:border-0 print:rounded-none print:p-2">
+            {/* Print-only official receipt letterhead */}
+            <header className="hidden print:flex items-start justify-between gap-4 border-b border-gray-200 pb-4 mb-5 text-left">
+              <div>
+                <p className="text-lg font-bold tracking-tight text-[#7B2D8E]">Dermaspace</p>
+                <p className="text-[11px] text-gray-500">Esthetic &amp; Wellness Centre · Lagos, NG</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
+                  Gift Card Receipt
+                </p>
+                {completedReceiptRef && (
+                  <p className="text-[11px] font-mono text-gray-600 mt-0.5">{completedReceiptRef}</p>
+                )}
+              </div>
+            </header>
+
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center print:hidden">
               <Check className="w-7 h-7 text-[#7B2D8E]" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Gift Card Order Confirmed!</h2>
@@ -298,13 +424,13 @@ export default function GiftCardsClient() {
               design={summaryDesignObj}
               amountText={formatPrice(summaryAmount)}
               recipientName={summaryRecipient}
-              senderName={senderName}
+              senderName={summarySender || senderName}
               occasion={summaryOccasion}
-              fontClassName={selectedFont.className}
+              fontClassName={summaryFontObj.className}
               showStack={false}
               className="mb-5 text-left"
             />
-            <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm border border-[#7B2D8E]/10">
+            <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm border border-[#7B2D8E]/10 print:bg-white print:border-gray-200">
               <div className="space-y-2">
                 {summaryAmount > 0 && (
                   <div className="flex justify-between gap-3">
@@ -318,11 +444,19 @@ export default function GiftCardsClient() {
                 </div>
                 <div className="flex justify-between gap-3">
                   <span className="text-gray-500">Occasion</span>
-                  <span className="text-gray-900 text-right">{summaryOccasion}</span>
+                  <span className="text-gray-900 text-right">
+                    {summaryOccasion} ({summaryOccasionMeta.editionLabel})
+                  </span>
                 </div>
                 <div className="flex justify-between gap-3">
-                  <span className="text-gray-500">Design</span>
-                  <span className="text-gray-900 text-right">{summaryDesign}</span>
+                  <span className="text-gray-500">Card Style</span>
+                  <span className="inline-flex items-center gap-1.5 text-gray-900 text-right">
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full border border-black/15"
+                      style={{ backgroundColor: summaryDesignObj.surfaceHex }}
+                    />
+                    {summaryDesign} · {completedDetails?.fontName || summaryFontObj.name}
+                  </span>
                 </div>
                 {completedPaymentMethod && (
                   <div className="flex justify-between gap-3">
@@ -342,16 +476,44 @@ export default function GiftCardsClient() {
                     <span className="font-mono text-xs text-gray-900 text-right truncate max-w-[180px]">{completedReceiptRef}</span>
                   </div>
                 )}
+                {summaryMessage && (
+                  <div className="pt-2 mt-2 border-t border-[#7B2D8E]/10 text-xs text-gray-600 italic">
+                    &ldquo;{summaryMessage}&rdquo;
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2.5 print:hidden">
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleDownloadGiftCardReceipt}
+                  disabled={downloadingReceipt}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors text-sm disabled:opacity-60"
+                >
+                  {downloadingReceipt ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  {downloadingReceipt ? 'Saving…' : 'Download PDF'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-[#7B2D8E]/25 text-[#7B2D8E] font-semibold rounded-xl hover:bg-[#7B2D8E]/5 transition-colors text-sm"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print Receipt
+                </button>
+              </div>
               {completedReceiptRef && (
                 <Link
                   href={`/dashboard/transactions/${encodeURIComponent(completedReceiptRef)}`}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors text-sm"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
                 >
                   <Receipt className="w-4 h-4" />
-                  View Receipt
+                  Full Receipt &amp; Invoice
                 </Link>
               )}
               <div className="grid grid-cols-2 gap-2.5">
@@ -370,9 +532,27 @@ export default function GiftCardsClient() {
                 </Link>
               </div>
             </div>
+
+            <footer className="hidden print:block mt-6 pt-4 border-t border-dashed border-gray-200 text-center text-[11px] text-gray-500">
+              Dermaspace Esthetic &amp; Wellness Centre · 237B Muri Okunola St, Victoria Island · 9 Agbeke Rotinwa Cl, Ikoyi · hello@dermaspaceng.com
+            </footer>
           </div>
         </main>
-        <Footer />
+        <div className="print:hidden">
+          <Footer />
+        </div>
+        <style jsx global>{`
+          @media print {
+            @page {
+              size: A4;
+              margin: 14mm 12mm;
+            }
+            html,
+            body {
+              background: #fff !important;
+            }
+          }
+        `}</style>
       </>
     )
   }
@@ -443,7 +623,7 @@ export default function GiftCardsClient() {
         )}
 
         {/* Main Content */}
-        <section className={`pt-5 pb-12 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
+        <section className="pt-5 pb-12 px-4">
           <div className="max-w-5xl mx-auto">
             <div className="grid lg:grid-cols-5 gap-6 items-start">
 
@@ -458,11 +638,29 @@ export default function GiftCardsClient() {
                     occasion={selectedOccasion}
                     fontClassName={selectedFont.className}
                   />
+                  {/* Active Style Summary */}
+                  <div className="mt-5 rounded-xl bg-white/10 border border-white/15 px-3.5 py-2.5 text-white">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-white truncate">
+                        {occasionMeta.editionLabel}
+                      </span>
+                      <span className="text-white/75 flex-shrink-0">{selectedFont.name}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-white/80">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full border border-white/40 flex-shrink-0"
+                        style={{ backgroundColor: selectedDesign.surfaceHex }}
+                      />
+                      <span className="truncate">
+                        {selectedDesign.name} · {occasionMeta.tagline}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Message preview */}
                 {personalMessage && (
-                  <div className="mt-4 bg-white/10 rounded-lg p-3 border border-white/20 max-w-xs mx-auto lg:mx-0">
+                  <div className="mt-3 bg-white/10 rounded-lg p-3 border border-white/20 max-w-xs mx-auto lg:mx-0">
                     <p className={`text-white/90 text-xs italic ${selectedFont.className}`}>&ldquo;{personalMessage}&rdquo;</p>
                     {senderName && <p className="text-white/60 mt-1.5 text-xs">— {senderName}</p>}
                   </div>
@@ -514,25 +712,68 @@ export default function GiftCardsClient() {
                   </div>
                 </div>
 
-                {/* Design Selection */}
+                {/* Occasion Selection (drives card illustration theme) */}
+                <div className="bg-white rounded-xl p-4 border border-gray-200 relative overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                      <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                        <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                      </span>
+                      Occasion &amp; Card Theme
+                    </h3>
+                    <span className="text-[11px] font-medium text-[#7B2D8E]">
+                      {occasionMeta.editionLabel}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {occasions.map((occasion) => {
+                      const meta = getGiftCardOccasionMeta(occasion)
+                      const Icon = getOccasionBadgeIcon(meta.id)
+                      const isSelected = selectedOccasion === occasion
+                      return (
+                        <button
+                          key={occasion}
+                          type="button"
+                          onClick={() => handleSelectOccasion(occasion)}
+                          aria-pressed={isSelected}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                            isSelected
+                              ? 'bg-[#7B2D8E] text-white'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          <Icon className="w-3 h-3" aria-hidden />
+                          {occasion}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Design Color Selection */}
                 <div className="bg-white rounded-xl p-4 border border-gray-200 relative overflow-hidden">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
                       <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                         <Palette className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
                       </span>
-                      Choose Design
+                      Choose Card Colour
                     </h3>
+                    <span className="text-[11px] text-gray-500">
+                      {selectedDesign.name}
+                    </span>
                   </div>
                   <div className={`grid gap-2 ${cardDesigns.length === 7 ? 'grid-cols-4 sm:grid-cols-7' : 'grid-cols-3 sm:grid-cols-6'}`}>
                     {cardDesigns.map((design) => {
                       const isChristmasTile = design.id === CHRISTMAS_GIFT_CARD_DESIGN.id
                       const isSelected = selectedDesign.id === design.id
+                      const ActiveOccasionIcon = getOccasionBadgeIcon(occasionMeta.id)
                       return (
                         <button
                           key={design.id}
                           type="button"
-                          onClick={() => setSelectedDesign(design)}
+                          onClick={() => handleSelectDesign(design)}
+                          aria-pressed={isSelected}
                           className={`relative p-1 rounded-lg transition-colors ${
                             isSelected
                               ? 'ring-2 ring-[#7B2D8E] ring-offset-1 bg-[#7B2D8E]/[0.04]'
@@ -548,7 +789,7 @@ export default function GiftCardsClient() {
                               className="absolute top-0 right-0 bottom-0 w-2/5 rounded-l-[18px] opacity-40"
                               style={{ backgroundColor: design.accentHex }}
                             />
-                            {isChristmasTile && (
+                            {isChristmasTile ? (
                               <div className="relative flex items-center justify-center w-full h-full">
                                 <span
                                   aria-hidden="true"
@@ -556,7 +797,12 @@ export default function GiftCardsClient() {
                                 />
                                 <Snowflake className="relative w-3.5 h-3.5 text-[#F8F0FC]" aria-hidden />
                               </div>
-                            )}
+                            ) : isSelected ? (
+                              <ActiveOccasionIcon
+                                className="relative w-3.5 h-3.5 text-[#E5C896]"
+                                aria-hidden
+                              />
+                            ) : null}
                           </div>
                           <p className="text-[10px] leading-tight text-gray-700 font-medium mt-1 text-center">
                             {isChristmasTile ? 'Christmas' : design.name}
@@ -564,35 +810,6 @@ export default function GiftCardsClient() {
                         </button>
                       )
                     })}
-                  </div>
-                </div>
-
-                {/* Occasion */}
-                <div className="bg-white rounded-xl p-4 border border-gray-200 relative overflow-hidden">
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                    <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
-                    </span>
-                    Occasion
-                  </h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {occasions.map((occasion) => (
-                      <button
-                        key={occasion}
-                        type="button"
-                        onClick={() => setSelectedOccasion(occasion)}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                          selectedOccasion === occasion
-                            ? 'bg-[#7B2D8E] text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {occasion === CHRISTMAS_OCCASION && (
-                          <Snowflake className="w-3 h-3" aria-hidden />
-                        )}
-                        {occasion}
-                      </button>
-                    ))}
                   </div>
                 </div>
 
@@ -610,6 +827,7 @@ export default function GiftCardsClient() {
                         key={font.id}
                         type="button"
                         onClick={() => setSelectedFont(font)}
+                        aria-pressed={selectedFont.id === font.id}
                         className={`py-2.5 rounded-lg text-xs font-medium transition-colors ${font.className} ${
                           selectedFont.id === font.id
                             ? 'bg-[#7B2D8E] text-white'
@@ -621,6 +839,9 @@ export default function GiftCardsClient() {
                     ))}
                   </div>
                 </div>
+
+                {/* Checkout / Recipient section (requires sign-in) */}
+                <div className={`space-y-4 ${!isLoggedIn ? 'opacity-60 pointer-events-none' : ''}`}>
 
                 {/* Recipient Details */}
                 <div className="bg-white rounded-xl p-4 border border-gray-200 relative overflow-hidden">
@@ -766,6 +987,7 @@ export default function GiftCardsClient() {
                     </>
                   )}
                 </button>
+                </div>
               </div>
             </div>
           </div>
