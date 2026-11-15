@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import { sql } from '@/lib/db'
 import { getOrCreateWalletSettings, updateWalletSettings } from '@/lib/wallet'
 
 // GET /api/wallet/settings - Get wallet settings
@@ -103,6 +104,36 @@ export async function PUT(request: NextRequest) {
         { error: 'Failed to update settings' },
         { status: 500 }
       )
+    }
+
+    // Best-effort sync to notification_preferences if present so push &
+    // email dispatchers stay consistent with the dashboard toggles.
+    if (updates.push_notifications !== undefined || updates.email_notifications !== undefined) {
+      try {
+        await sql`
+          CREATE TABLE IF NOT EXISTS notification_preferences (
+            user_id TEXT PRIMARY KEY,
+            push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          )
+        `
+        await sql`
+          INSERT INTO notification_preferences (user_id, push_enabled, email_enabled, updated_at)
+          VALUES (
+            ${user.id},
+            ${updatedSettings.push_notifications ?? true},
+            ${updatedSettings.email_notifications ?? true},
+            NOW()
+          )
+          ON CONFLICT (user_id) DO UPDATE SET
+            push_enabled = EXCLUDED.push_enabled,
+            email_enabled = EXCLUDED.email_enabled,
+            updated_at = NOW()
+        `
+      } catch {
+        // Non-fatal: wallet_settings remains primary store
+      }
     }
     
     return NextResponse.json({

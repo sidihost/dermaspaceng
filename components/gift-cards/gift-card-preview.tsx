@@ -15,59 +15,12 @@ interface GiftCardPreviewProps {
   className?: string
 }
 
-function FlatSnowflakeMark({
-  className = 'w-5 h-5',
-  stroke = 'currentColor',
-  strokeWidth = 1.5,
-}: {
-  className?: string
-  stroke?: string
-  strokeWidth?: number
-}) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      fill="none"
-      className={className}
-      aria-hidden="true"
-    >
-      {[0, 60, 120].map((angle) => (
-        <g key={angle} transform={`rotate(${angle} 16 16)`}>
-          <line
-            x1="16"
-            y1="3"
-            x2="16"
-            y2="29"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-          />
-          <polyline
-            points="12.5,7 16,10.2 19.5,7"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <polyline
-            points="12.5,25 16,21.8 19.5,25"
-            stroke={stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </g>
-      ))}
-      <circle cx="16" cy="16" r="2" fill={stroke} />
-    </svg>
-  )
-}
 
 /**
- * Bespoke, modular flat Christmas artwork layer rendered strictly for the
- * `christmas` template. Uses Dermaspace's sanctuary plum/violet geometry paired
- * with refined evergreen holly sprigs and crimson berries — zero gradients,
- * zero drop shadows, zero Sparkles/Zap icons.
+ * Bespoke flat-vector Christmas artwork for the `christmas` template.
+ * Built strictly with flat brand-cohesive fills and crisp hairline strokes
+ * (sanctuary plum, deep violet, champagne gold, evergreen pine, crimson holly) —
+ * zero CSS gradients, zero drop shadows, zero Sparkles/Zap icons.
  */
 function ChristmasCardArtwork() {
   return (
@@ -75,101 +28,250 @@ function ChristmasCardArtwork() {
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 overflow-hidden select-none"
     >
-      {/* Flat architectural sanctuary accent panel on the right */}
-      <div className="absolute top-0 right-0 bottom-0 w-[42%] rounded-l-[56px] bg-[#7B2D8E]/55" />
-
-      {/* Crisp hairline holiday frame inset */}
-      <div className="absolute inset-2.5 rounded-lg border border-[#E9D5FF]/25" />
-
-      {/* Delicate ornament medallion & evergreen holly sprig in open right zone */}
+      {/* Full-bleed flat vector scene calibrated to card aspect */}
       <svg
-        viewBox="0 0 110 110"
+        viewBox="0 0 360 225"
         fill="none"
-        className="absolute top-11 right-2.5 w-24 h-24"
+        preserveAspectRatio="xMidYMid slice"
+        className="absolute inset-0 w-full h-full"
       >
-        {/* Subtle framing arch */}
+        {/* Architectural right sanctuary arch */}
         <path
-          d="M24 102 C24 52, 54 18, 102 18"
-          stroke="#D8B4FE"
-          strokeOpacity="0.2"
-          strokeWidth="1.1"
+          d="M214 0 H360 V225 H214 C194 176, 194 49, 214 0 Z"
+          fill="#6E2682"
+        />
+        <path
+          d="M238 0 H360 V225 H238 C222 175, 222 50, 238 0 Z"
+          fill="#7B2D8E"
+          fillOpacity="0.55"
         />
 
-        {/* Hanging cord from upper frame line */}
-        <line
-          x1="74"
-          y1="4"
-          x2="74"
-          y2="24"
-          stroke="#F5ECF8"
-          strokeOpacity="0.45"
+        {/* Delicate outer & inner flat editorial border lines */}
+        <rect
+          x="9"
+          y="9"
+          width="342"
+          height="207"
+          rx="11"
+          stroke="#E9D5FF"
+          strokeOpacity="0.26"
           strokeWidth="1"
         />
-        {/* Crown cap & satin bow */}
         <rect
-          x="69.5"
-          y="23.5"
-          width="9"
-          height="4"
-          rx="1.5"
-          fill="#F5ECF8"
-          fillOpacity="0.82"
-        />
-        <path
-          d="M74 23.5 C68.5 18.5, 63 21, 69 24.5 Z"
-          fill="#D8B4FE"
-          fillOpacity="0.85"
-        />
-        <path
-          d="M74 23.5 C79.5 18.5, 85 21, 79 24.5 Z"
-          fill="#D8B4FE"
-          fillOpacity="0.85"
+          x="13"
+          y="13"
+          width="334"
+          height="199"
+          rx="8"
+          stroke="#E5C896"
+          strokeOpacity="0.22"
+          strokeWidth="0.75"
         />
 
-        {/* Bauble body */}
-        <circle
-          cx="74"
-          cy="45"
-          r="16.5"
-          fill="#5A1D6A"
-          stroke="#E9D5FF"
-          strokeOpacity="0.65"
-          strokeWidth="1.2"
+        {/* Subtle flat gift ribbon framing the right third */}
+        <rect
+          x="291"
+          y="9"
+          width="10"
+          height="207"
+          fill="#8E3BA3"
+          fillOpacity="0.45"
         />
-        <circle
-          cx="74"
-          cy="45"
-          r="12"
-          stroke="#D8B4FE"
-          strokeOpacity="0.32"
-          strokeWidth="0.9"
+        <line
+          x1="291"
+          y1="9"
+          x2="291"
+          y2="216"
+          stroke="#E5C896"
+          strokeOpacity="0.38"
+          strokeWidth="0.85"
         />
-        {/* Snowflake filigree inside bauble */}
-        <g stroke="#F5ECF8" strokeOpacity="0.88" strokeWidth="1.15" strokeLinecap="round">
-          <line x1="74" y1="36.5" x2="74" y2="53.5" />
-          <line x1="66.6" y1="40.8" x2="81.4" y2="49.2" />
-          <line x1="81.4" y1="40.8" x2="66.6" y2="49.2" />
-          <circle cx="74" cy="45" r="2" fill="#5A1D6A" stroke="#F5ECF8" strokeWidth="1.1" />
+        <line
+          x1="301"
+          y1="9"
+          x2="301"
+          y2="216"
+          stroke="#E5C896"
+          strokeOpacity="0.38"
+          strokeWidth="0.85"
+        />
+
+        {/* Evergreen pine & holly garland sweep across top-right corner */}
+        <g>
+          {/* Pine needles */}
+          <path
+            d="M210 10 C248 22, 294 34, 350 28"
+            stroke="#1B4332"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M226 15 L218 28 M236 18 L230 32 M248 21 L243 36 M260 23 L256 38 M273 25 L270 40 M286 27 L284 42 M300 28 L300 43 M314 29 L316 44 M328 29 L332 43 M340 28 L346 41"
+            stroke="#2D6A4F"
+            strokeWidth="2.1"
+            strokeLinecap="round"
+          />
+          <path
+            d="M232 16 L241 10 M252 21 L262 14 M272 25 L283 17 M294 27 L305 18 M316 28 L328 19 M336 28 L346 20"
+            stroke="#40916C"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
+          {/* Sculpted holly leaves */}
+          <path
+            d="M276 26 C264 20, 256 26, 255 34 C264 38, 273 35, 278 29 Z"
+            fill="#2D6A4F"
+          />
+          <path
+            d="M298 29 C305 20, 316 20, 321 28 C316 35, 305 36, 297 31 Z"
+            fill="#1B4332"
+          />
+          <path
+            d="M286 30 C282 40, 288 49, 296 51 C301 43, 298 34, 290 29 Z"
+            fill="#40916C"
+          />
+          {/* Holly berries */}
+          <circle cx="284" cy="27" r="3.4" fill="#C63D3D" />
+          <circle cx="291" cy="26" r="3.1" fill="#D94E4E" />
+          <circle cx="288" cy="32.5" r="2.9" fill="#B22D2D" />
+          <circle cx="283" cy="26" r="0.9" fill="#FDE2E2" />
         </g>
 
-        {/* Evergreen holly sprig tucked below bauble */}
-        <path
-          d="M79 68 C71 66, 68 71, 70 76 C76 77, 81 74, 83 69 Z"
-          fill="#2E7D32"
-        />
-        <path
-          d="M84 67 C85 73, 90 76, 95 74 C95 69, 91 65, 85 65.5 Z"
-          fill="#1B5E20"
-        />
-        <circle cx="81" cy="69" r="2.1" fill="#C5221F" />
-        <circle cx="85" cy="67" r="1.9" fill="#E53935" />
-        <circle cx="84" cy="71.5" r="1.7" fill="#D32F2F" />
-      </svg>
+        {/* Left hanging ornament — large champagne & plum filigree bauble */}
+        <g>
+          <line
+            x1="262"
+            y1="24"
+            x2="262"
+            y2="68"
+            stroke="#E5C896"
+            strokeOpacity="0.85"
+            strokeWidth="1.2"
+          />
+          {/* Crown cap & tidy flat bow */}
+          <rect
+            x="256"
+            y="67"
+            width="12"
+            height="5"
+            rx="1.5"
+            fill="#E5C896"
+          />
+          <path
+            d="M262 67 C254 60, 246 64, 255 69 Z"
+            fill="#E5C896"
+          />
+          <path
+            d="M262 67 C270 60, 278 64, 269 69 Z"
+            fill="#E5C896"
+          />
+          {/* Bauble shell */}
+          <circle
+            cx="262"
+            cy="98"
+            r="26"
+            fill="#4A1558"
+            stroke="#E5C896"
+            strokeWidth="1.6"
+          />
+          <circle
+            cx="262"
+            cy="98"
+            r="21"
+            stroke="#F3E8FF"
+            strokeOpacity="0.35"
+            strokeWidth="0.9"
+          />
+          {/* Geometric snowflake filigree inside bauble */}
+          <g stroke="#F8F0FC" strokeWidth="1.35" strokeLinecap="round">
+            <line x1="262" y1="82" x2="262" y2="114" />
+            <line x1="248.1" y1="90" x2="275.9" y2="106" />
+            <line x1="275.9" y1="90" x2="248.1" y2="106" />
+            <polyline points="258.5,86 262,89.5 265.5,86" fill="none" />
+            <polyline points="258.5,110 262,106.5 265.5,110" fill="none" />
+            <polyline points="250.5,94.5 254.8,93.8 253.8,89.5" fill="none" />
+            <polyline points="273.5,101.5 269.2,102.2 270.2,106.5" fill="none" />
+            <polyline points="270.2,89.5 269.2,93.8 273.5,94.5" fill="none" />
+            <polyline points="253.8,106.5 254.8,102.2 250.5,101.5" fill="none" />
+          </g>
+          <circle cx="262" cy="98" r="3" fill="#E5C896" />
+        </g>
 
-      {/* Delicate corner snowflake watermark */}
-      <div className="absolute bottom-3 left-3 text-white/15">
-        <FlatSnowflakeMark className="w-6 h-6" strokeWidth={1.3} />
-      </div>
+        {/* Right hanging ornament — crimson & champagne jewel teardrop/round */}
+        <g>
+          <line
+            x1="319"
+            y1="29"
+            x2="319"
+            y2="92"
+            stroke="#E5C896"
+            strokeOpacity="0.8"
+            strokeWidth="1.15"
+          />
+          <rect
+            x="314"
+            y="91"
+            width="10"
+            height="4.5"
+            rx="1.5"
+            fill="#E5C896"
+          />
+          <circle
+            cx="319"
+            cy="115"
+            r="19.5"
+            fill="#B8333A"
+            stroke="#E5C896"
+            strokeWidth="1.5"
+          />
+          {/* Crisp geometric band across crimson bauble */}
+          <path
+            d="M300.5 111 H337.5 M300.5 119 H337.5"
+            stroke="#E5C896"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M304 115 L311.5 111 L319 115 L326.5 111 L334 115 L326.5 119 L319 115 L311.5 119 Z"
+            fill="#F6E9D7"
+            fillOpacity="0.9"
+          />
+          <circle cx="319" cy="105" r="1.5" fill="#F6E9D7" fillOpacity="0.8" />
+          <circle cx="319" cy="125" r="1.5" fill="#F6E9D7" fillOpacity="0.8" />
+        </g>
+
+        {/* Crisp flat snowflakes — placed strictly in the right artwork zone */}
+        <g stroke="#F3E8FF" strokeOpacity="0.55" strokeWidth="1.15" strokeLinecap="round">
+          <g transform="translate(226, 62)">
+            <line x1="0" y1="-7" x2="0" y2="7" />
+            <line x1="-6.1" y1="-3.5" x2="6.1" y2="3.5" />
+            <line x1="6.1" y1="-3.5" x2="-6.1" y2="3.5" />
+            <circle cx="0" cy="0" r="1.4" fill="#E5C896" stroke="none" />
+          </g>
+          <g transform="translate(242, 140)">
+            <line x1="0" y1="-8.5" x2="0" y2="8.5" />
+            <line x1="-7.4" y1="-4.25" x2="7.4" y2="4.25" />
+            <line x1="7.4" y1="-4.25" x2="-7.4" y2="4.25" />
+            <circle cx="0" cy="0" r="1.6" fill="#F3E8FF" stroke="none" />
+          </g>
+          <g transform="translate(337, 68)">
+            <line x1="0" y1="-5.5" x2="0" y2="5.5" />
+            <line x1="-4.8" y1="-2.75" x2="4.8" y2="2.75" />
+            <line x1="4.8" y1="-2.75" x2="-4.8" y2="2.75" />
+          </g>
+          <g transform="translate(319, 152)">
+            <line x1="0" y1="-6" x2="0" y2="6" />
+            <line x1="-5.2" y1="-3" x2="5.2" y2="3" />
+            <line x1="5.2" y1="-3" x2="-5.2" y2="3" />
+            <circle cx="0" cy="0" r="1.3" fill="#E5C896" stroke="none" />
+          </g>
+        </g>
+
+        {/* Soft snow-dot accents in upper/mid right half */}
+        <circle cx="215" cy="118" r="1.4" fill="#E9D5FF" fillOpacity="0.45" />
+        <circle cx="282" cy="144" r="1.6" fill="#E5C896" fillOpacity="0.65" />
+        <circle cx="342" cy="138" r="1.3" fill="#E9D5FF" fillOpacity="0.4" />
+        <circle cx="268" cy="154" r="1.3" fill="#E9D5FF" fillOpacity="0.4" />
+      </svg>
     </div>
   )
 }
@@ -232,16 +334,14 @@ export function GiftCardPreview({
             />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 rounded-full border border-white/25">
-            {isChristmas ? (
-              <Snowflake className="w-3 h-3 text-white" aria-hidden="true" />
-            ) : (
+          {!isChristmas && (
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/15 rounded-full border border-white/25">
               <Gift className="w-3 h-3 text-white" aria-hidden="true" />
-            )}
-            <span className="text-[10px] font-bold text-white uppercase tracking-wider whitespace-nowrap">
-              {isChristmas ? design.badgeLabel || 'Holiday Edition' : 'Gift Card'}
-            </span>
-          </div>
+              <span className="text-[10px] font-bold text-white uppercase tracking-wider whitespace-nowrap">
+                Gift Card
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Recipient */}
@@ -267,16 +367,19 @@ export function GiftCardPreview({
         {/* Bottom Row */}
         <div className="relative flex items-center justify-between gap-2">
           {occasion ? (
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
-              {occasion === 'Christmas' || isChristmas ? (
-                <Snowflake className="w-2.5 h-2.5 text-white" aria-hidden="true" />
-              ) : (
-                <Heart className="w-2.5 h-2.5 text-white" aria-hidden="true" />
-              )}
-              <span className="text-[10px] font-medium text-white whitespace-nowrap">
-                {occasion}
+            isChristmas ? (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/90">
+                <Snowflake className="w-3 h-3 text-[#E5C896]" aria-hidden="true" />
+                <span className="whitespace-nowrap">{occasion}</span>
               </span>
-            </div>
+            ) : (
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/15 rounded-full border border-white/20">
+                <Heart className="w-2.5 h-2.5 text-white" aria-hidden="true" />
+                <span className="text-[10px] font-medium text-white whitespace-nowrap">
+                  {occasion}
+                </span>
+              </div>
+            )
           ) : (
             <span />
           )}

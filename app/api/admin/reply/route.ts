@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
@@ -319,11 +320,13 @@ export async function POST(request: NextRequest) {
                   : '/dashboard/notifications'
 
             await ensureNotificationsSchema()
+            const notifId = randomUUID()
             await sql`
               INSERT INTO user_notifications (
-                user_id, title, message, type, reference_type, reference_id, action_url
+                id, user_id, title, message, type, reference_type, reference_id, action_url, audience
               )
               VALUES (
+                ${notifId},
                 ${userResult[0].id},
                 ${`New reply on your ${
                   requestType === 'complaint' ? 'complaint'
@@ -335,7 +338,8 @@ export async function POST(request: NextRequest) {
                 'reply',
                 ${requestType},
                 ${requestId.toString()},
-                ${actionUrl}
+                ${actionUrl},
+                'customer'
               )
             `
           } catch (notifErr) {

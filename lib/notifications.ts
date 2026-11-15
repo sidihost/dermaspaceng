@@ -88,11 +88,32 @@ export async function notifyUser(opts: NotifyOpts) {
     try {
       const pushOn = await isFeatureEnabled('push_notifs')
       if (!pushOn) return
-      // Respect per-user preference if present.
-      const pref = (await sql`
-        SELECT push_enabled FROM notification_preferences WHERE user_id = ${userId}
-      `) as unknown as { push_enabled: boolean }[]
-      if (pref.length && !pref[0].push_enabled) return
+
+      // Respect per-user preference if present (fail-soft if legacy table missing).
+      let allowPush = true
+      try {
+        const pref = (await sql`
+          SELECT push_enabled FROM notification_preferences WHERE user_id = ${userId}
+        `) as unknown as { push_enabled: boolean }[]
+        if (pref.length > 0) {
+          allowPush = Boolean(pref[0].push_enabled)
+        }
+      } catch {
+        // notification_preferences table may not exist on all setups; fall back to wallet_settings
+      }
+      if (allowPush) {
+        try {
+          const ws = (await sql`
+            SELECT push_notifications FROM wallet_settings WHERE user_id = ${userId}
+          `) as unknown as { push_notifications: boolean }[]
+          if (ws.length > 0 && ws[0].push_notifications === false) {
+            allowPush = false
+          }
+        } catch {
+          // wallet_settings optional
+        }
+      }
+      if (!allowPush) return
 
       const payload: PushPayload = {
         title,
@@ -359,6 +380,7 @@ export async function getUnreadCount(
   // works on every shipped schema variant. Errors degrade silently to
   // 0 instead of bubbling up and crashing the dashboard.
   try {
+    await ensureNotificationsSchema()
     const col = await resolveReadColumn()
     const { rows } = await query<{ count: number }>(
       `SELECT COUNT(*)::int AS count

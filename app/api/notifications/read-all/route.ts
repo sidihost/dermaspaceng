@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { query } from '@/lib/db'
-import { resolveReadColumn } from '@/lib/notifications-column'
+import { ensureNotificationsSchema, resolveReadColumn } from '@/lib/notifications-column'
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser()
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
   const audience: 'admin' | 'customer' =
     requested === 'admin' && isOperator ? 'admin' : 'customer'
   try {
+    await ensureNotificationsSchema()
     const col = await resolveReadColumn()
     await query(
       `UPDATE user_notifications SET "${col}" = TRUE

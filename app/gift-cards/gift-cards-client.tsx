@@ -5,7 +5,7 @@ import Link from 'next/link'
 import useSWR from 'swr'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet, Receipt, Snowflake, RotateCcw, X } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, ChevronLeft, Wallet, Receipt, Snowflake } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
 import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
@@ -40,7 +40,6 @@ export default function GiftCardsClient() {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [userRemovedChristmas, setUserRemovedChristmas] = useState(false)
   const [selectedAmount, setSelectedAmount] = useState<number>(25000)
   const [customAmount, setCustomAmount] = useState('')
   const [selectedDesign, setSelectedDesign] = useState<GiftCardDesign>(() =>
@@ -74,10 +73,10 @@ export default function GiftCardsClient() {
 
   const christmasActive = isChristmasTemplateAvailable({
     festiveEnabled,
-    userRemovedChristmas,
+    userRemovedChristmas: false,
   })
-  const cardDesigns = getGiftCardDesigns({ festiveEnabled, userRemovedChristmas })
-  const occasions = getGiftCardOccasions({ festiveEnabled, userRemovedChristmas })
+  const cardDesigns = getGiftCardDesigns({ festiveEnabled, userRemovedChristmas: false })
+  const occasions = getGiftCardOccasions({ festiveEnabled, userRemovedChristmas: false })
 
   // If the admin disables /api/festive while the user had the seasonal
   // template selected, automatically revert to the initial Royal Purple state.
@@ -91,22 +90,6 @@ export default function GiftCardsClient() {
       }
     }
   }, [christmasActive, selectedDesign.id, selectedOccasion])
-
-  const handleRemoveChristmasTemplate = () => {
-    setUserRemovedChristmas(true)
-    if (selectedDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id) {
-      setSelectedDesign(INITIAL_GIFT_CARD_DESIGNS[0])
-    }
-    if (selectedOccasion === CHRISTMAS_OCCASION) {
-      setSelectedOccasion(INITIAL_GIFT_CARD_OCCASIONS[0])
-    }
-  }
-
-  const handleRestoreChristmasTemplate = () => {
-    setUserRemovedChristmas(false)
-    setSelectedDesign(CHRISTMAS_GIFT_CARD_DESIGN)
-    setSelectedOccasion(CHRISTMAS_OCCASION)
-  }
 
   useEffect(() => {
     checkAuth()
@@ -540,27 +523,6 @@ export default function GiftCardsClient() {
                       </span>
                       Choose Design
                     </h3>
-                    {CHRISTMAS_GIFT_CARD_DESIGN_ENABLED && festiveEnabled && (
-                      christmasActive ? (
-                        <button
-                          type="button"
-                          onClick={handleRemoveChristmasTemplate}
-                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
-                        >
-                          <X className="w-3 h-3" aria-hidden />
-                          Remove Christmas template
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleRestoreChristmasTemplate}
-                          className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/25 bg-[#7B2D8E]/[0.06] px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
-                        >
-                          <RotateCcw className="w-3 h-3" aria-hidden />
-                          Use Christmas template
-                        </button>
-                      )
-                    )}
                   </div>
                   <div className={`grid gap-2 ${cardDesigns.length === 7 ? 'grid-cols-4 sm:grid-cols-7' : 'grid-cols-3 sm:grid-cols-6'}`}>
                     {cardDesigns.map((design) => {
@@ -587,7 +549,13 @@ export default function GiftCardsClient() {
                               style={{ backgroundColor: design.accentHex }}
                             />
                             {isChristmasTile && (
-                              <Snowflake className="relative w-3.5 h-3.5 text-white" aria-hidden />
+                              <div className="relative flex items-center justify-center w-full h-full">
+                                <span
+                                  aria-hidden="true"
+                                  className="absolute inset-1 rounded-[3px] border border-[#E5C896]/45"
+                                />
+                                <Snowflake className="relative w-3.5 h-3.5 text-[#F8F0FC]" aria-hidden />
+                              </div>
                             )}
                           </div>
                           <p className="text-[10px] leading-tight text-gray-700 font-medium mt-1 text-center">

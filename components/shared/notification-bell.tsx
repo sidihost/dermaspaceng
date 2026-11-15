@@ -192,6 +192,19 @@ export function NotificationBell({
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
+  function broadcastRefresh() {
+    try {
+      window.dispatchEvent(new Event('notifications:refresh'))
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('notifications')
+        bc.postMessage('refresh')
+        bc.close()
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function markOne(id: string) {
     // Optimistic — flip the local copy first so the badge moves
     // immediately, then PATCH on the server. We swallow errors:
@@ -215,6 +228,7 @@ export function NotificationBell({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_read: true }),
       })
+      broadcastRefresh()
     } catch { /* ignore */ }
   }
 
@@ -229,6 +243,7 @@ export function NotificationBell({
     )
     try {
       await fetch(`/api/notifications/read-all?audience=${audience}`, { method: 'POST' })
+      broadcastRefresh()
     } catch { /* ignore */ }
   }
 
@@ -271,7 +286,7 @@ export function NotificationBell({
           // of 8px keep us off the screen edges) and revert to the
           // standard absolute dropdown on tablets / desktop where the
           // bell has more breathing room.
-          className="fixed left-2 right-2 top-[64px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[360px] rounded-2xl bg-white border border-gray-200 shadow-xl overflow-hidden z-50"
+          className="fixed left-2 right-2 top-[64px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[360px] rounded-2xl bg-white border border-gray-200 overflow-hidden z-50"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">Notifications</p>

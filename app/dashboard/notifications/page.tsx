@@ -100,6 +100,42 @@ export default function NotificationsPage() {
     refreshInterval: 60_000,
   })
 
+  React.useEffect(() => {
+    const onRefresh = () => { void mutate() }
+    window.addEventListener('notifications:refresh', onRefresh)
+    let bc: BroadcastChannel | null = null
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('notifications')
+        bc.addEventListener('message', onRefresh)
+      }
+    } catch {
+      /* ignore */
+    }
+    return () => {
+      window.removeEventListener('notifications:refresh', onRefresh)
+      try {
+        bc?.removeEventListener('message', onRefresh)
+        bc?.close()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [mutate])
+
+  function broadcastRefresh() {
+    try {
+      window.dispatchEvent(new Event('notifications:refresh'))
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('notifications')
+        bc.postMessage('refresh')
+        bc.close()
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   const all = data?.notifications ?? []
   const unread = data?.unread ?? 0
   const visible = filter === 'unread' ? all.filter((n) => !n.is_read) : all
@@ -121,6 +157,7 @@ export default function NotificationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_read: isRead }),
       })
+      broadcastRefresh()
     } catch { /* let SWR reconcile */ }
   }
 
@@ -136,6 +173,7 @@ export default function NotificationsPage() {
     )
     try {
       await fetch(`/api/notifications/${id}`, { method: 'DELETE' })
+      broadcastRefresh()
     } catch { /* ignore */ }
   }
 
@@ -150,6 +188,7 @@ export default function NotificationsPage() {
     )
     try {
       await fetch('/api/notifications/read-all', { method: 'POST' })
+      broadcastRefresh()
     } catch { /* ignore */ }
   }
 

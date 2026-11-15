@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 
 interface SnowflakeParticle {
@@ -42,15 +43,24 @@ const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
 export default function ChristmasAnimation() {
-  const { data } = useSWR<{ enabled: boolean; intensity?: string }>('/api/festive', fetcher, {
-    revalidateOnFocus: true,
-    revalidateOnMount: true,
-    dedupingInterval: 2_000,
-    refreshInterval: 30_000,
-  })
+  const pathname = usePathname()
+  const isSystemStatusRoute =
+    Boolean(pathname?.startsWith('/offline')) ||
+    Boolean(pathname?.startsWith('/maintenance'))
+
+  const { data } = useSWR<{ enabled: boolean; intensity?: string }>(
+    isSystemStatusRoute ? null : '/api/festive',
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnMount: true,
+      dedupingInterval: 2_000,
+      refreshInterval: 30_000,
+    },
+  )
 
   // Respect admin switch. If data isn't loaded yet, default to true.
-  const isEnabled = data ? data.enabled !== false : true
+  const isEnabled = !isSystemStatusRoute && (data ? data.enabled !== false : true)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 

@@ -17,7 +17,7 @@
 
 import { sql } from './db'
 import {
-  filterCanonicalPushSubscriptions,
+  filterValidPushSubscriptions,
   isPreviewDeploymentEnv,
   sanitizePushActionUrl,
   sanitizeVapidSubject,
@@ -34,13 +34,27 @@ export type PushPayload = {
 }
 
 let warnedMissing = false
-let ensuredOriginColumn = false
+let ensuredSchema = false
 
-async function ensurePushOriginColumn() {
-  if (ensuredOriginColumn) return
+export async function ensurePushSchema() {
+  if (ensuredSchema) return
   try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        user_id TEXT NOT NULL,
+        endpoint TEXT UNIQUE NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        origin TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `
     await sql`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS origin TEXT`
-    ensuredOriginColumn = true
+    await sql`ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+    ensuredSchema = true
   } catch {
     // Non-fatal: continue with best-effort query
   }
@@ -49,7 +63,7 @@ async function ensurePushOriginColumn() {
 function subscriptionFilterOptions() {
   return {
     configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
-    allowLocalhost: process.env.NODE_ENV !== 'production',
+    allowLocalhost: !isPreviewDeploymentEnv(),
   }
 }
 
@@ -150,13 +164,13 @@ async function loadWebPush() {
  * notifications showing a preview origin.
  */
 export async function purgeNonCanonicalPushSubscriptions(): Promise<number> {
-  await ensurePushOriginColumn()
+  await ensurePushSchema()
   const subs = (await sql`
     SELECT id, origin
     FROM push_subscriptions
   `) as unknown as Array<{ id: string; origin: string | null }>
 
-  const { stale } = filterCanonicalPushSubscriptions(subs, subscriptionFilterOptions())
+  const { stale } = filterValidPushSubscriptions(subs, subscriptionFilterOptions())
   for (const sub of stale) {
     await deleteSubscriptionById(sub.id)
   }
@@ -169,14 +183,14 @@ export async function sendPushToUser(userId: string, payload: PushPayload) {
   const webpush = await loadWebPush()
   if (!webpush) return { sent: 0, removed: 0 }
 
-  await ensurePushOriginColumn()
+  await ensurePushSchema()
   const subs = (await sql`
     SELECT id, endpoint, p256dh, auth, user_id, origin
     FROM push_subscriptions
     WHERE user_id = ${userId}
   `) as unknown as Subscription[]
 
-  const { valid, stale } = filterCanonicalPushSubscriptions(
+  const { valid, stale } = filterValidPushSubscriptions(
     subs,
     subscriptionFilterOptions(),
   )
@@ -205,13 +219,13 @@ export async function sendPushToAll(payload: PushPayload) {
   const webpush = await loadWebPush()
   if (!webpush) return { sent: 0, removed: 0, total: 0 }
 
-  await ensurePushOriginColumn()
+  await ensurePushSchema()
   const subs = (await sql`
     SELECT id, endpoint, p256dh, auth, user_id, origin
     FROM push_subscriptions
   `) as unknown as Subscription[]
 
-  const { valid, stale } = filterCanonicalPushSubscriptions(
+  const { valid, stale } = filterValidPushSubscriptions(
     subs,
     subscriptionFilterOptions(),
   )

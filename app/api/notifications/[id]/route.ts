@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { query } from '@/lib/db'
-import { resolveReadColumn } from '@/lib/notifications-column'
+import { ensureNotificationsSchema, resolveReadColumn } from '@/lib/notifications-column'
 
 // The physical "read" column on `user_notifications` may be named
 // either `read` (canonical, scripts 350 + full-migration) or `is_read`
@@ -29,6 +29,7 @@ export async function PATCH(
   }
 
   try {
+    await ensureNotificationsSchema()
     const col = await resolveReadColumn()
     await query(
       `UPDATE user_notifications SET "${col}" = $1

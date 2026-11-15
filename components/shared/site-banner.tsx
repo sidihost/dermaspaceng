@@ -46,7 +46,16 @@ type Banner = {
   dismissible: boolean
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = async (url: string): Promise<{ banners: Banner[] }> => {
+  try {
+    const r = await fetch(url)
+    if (!r.ok) return { banners: [] }
+    const json = await r.json()
+    return json && Array.isArray(json.banners) ? json : { banners: [] }
+  } catch {
+    return { banners: [] }
+  }
+}
 const STORAGE_KEY = 'dermaspace-dismissed-banners'
 
 function loadDismissed(): Set<string> {

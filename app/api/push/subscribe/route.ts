@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { ensurePushSchema } from '@/lib/push'
 import {
-  isCanonicalPushOrigin,
   isPreviewDeploymentEnv,
   isPreviewRequestHost,
+  isServiceWorkerAllowedOrigin,
 } from '@/lib/push-origin'
 
 /**
- * Canonical origins we accept push subscriptions from.
+ * Origins we accept push subscriptions from.
  *
  * Browser notifications carry the SW's origin in the OS notification
  * UI ("from dermaspaceng.com"). Reject preview / `.vercel.app` origins
@@ -26,29 +27,31 @@ export async function POST(request: NextRequest) {
 
   const canonicalOptions = {
     configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
-    allowLocalhost: process.env.NODE_ENV !== 'production',
+    allowLocalhost: !isPreviewDeploymentEnv(),
   }
 
   const isPreview =
     isPreviewDeploymentEnv() ||
     isPreviewRequestHost({ origin, referer, host, forwardedHost })
-  const originValid = isCanonicalPushOrigin(origin, canonicalOptions)
+  const originValid =
+    !origin || isServiceWorkerAllowedOrigin(origin, canonicalOptions)
   const hostValid =
-    !effectiveHost || isCanonicalPushOrigin(effectiveHost, canonicalOptions)
+    !effectiveHost || isServiceWorkerAllowedOrigin(effectiveHost, canonicalOptions)
 
   if (isPreview || !originValid || !hostValid) {
-    console.warn('[push/subscribe] rejecting non-canonical origin/host', {
+    console.warn('[push/subscribe] rejecting preview/invalid origin', {
       origin,
       effectiveHost,
       isPreview,
     })
     return NextResponse.json(
-      { error: 'Push notifications are only available on dermaspaceng.com' },
+      { error: 'Push notifications are not available on preview deployments' },
       { status: 403 },
     )
   }
 
   try {
+    await ensurePushSchema()
     const body = await request.json()
     const sub = body.subscription || body
     const endpoint: string | undefined = sub?.endpoint
@@ -58,10 +61,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 })
     }
     const ua = request.headers.get('user-agent') || null
+    const storedOrigin = origin || (effectiveHost ? `https://${effectiveHost}` : null)
 
     await sql`
       INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, origin)
-      VALUES (${user.id}, ${endpoint}, ${p256dh}, ${auth}, ${ua}, ${origin})
+      VALUES (${user.id}, ${endpoint}, ${p256dh}, ${auth}, ${ua}, ${storedOrigin})
       ON CONFLICT (endpoint) DO UPDATE SET
         user_id      = EXCLUDED.user_id,
         p256dh       = EXCLUDED.p256dh,

@@ -445,12 +445,7 @@ function NotifyCard({
         // Pointer events on — the viewport itself is pointer-events:
         // none so clicks pass through between toasts.
         'pointer-events-auto w-full max-w-sm sm:w-[22rem] relative overflow-hidden',
-        'rounded-2xl bg-white ring-1 ring-black/5 border border-gray-100',
-        // Intentionally restrained elevation. The user asked us to
-        // pull back on shadows generally; a notification still needs
-        // *some* separation from the page, so a soft single-layer
-        // shadow is all we use.
-        'shadow-[0_10px_30px_-12px_rgba(17,24,39,0.15)]',
+        'rounded-2xl bg-white border border-gray-200',
         // Enter/exit animation using CSS — keeps the component
         // dependency-free. Translate + fade in from the top, slide
         // right + fade out.

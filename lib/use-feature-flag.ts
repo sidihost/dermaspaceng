@@ -24,7 +24,18 @@ import useSWR from 'swr'
 
 type FlagsResponse = { flags: Record<string, boolean> }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const fetcher = async (url: string): Promise<FlagsResponse> => {
+  try {
+    const r = await fetch(url)
+    if (!r.ok) return { flags: {} }
+    const json = await r.json()
+    return json && typeof json.flags === 'object' && json.flags !== null
+      ? (json as FlagsResponse)
+      : { flags: {} }
+  } catch {
+    return { flags: {} }
+  }
+}
 
 export function useFeatureFlag(key: string): boolean {
   const { data } = useSWR<FlagsResponse>(
@@ -38,9 +49,10 @@ export function useFeatureFlag(key: string): boolean {
       refreshInterval: 2 * 60_000,
     },
   )
-  if (!data) return true
-  if (!(key in data.flags)) return true
-  return data.flags[key]
+  const flags = data?.flags
+  if (!flags || typeof flags !== 'object') return true
+  if (!(key in flags)) return true
+  return flags[key]
 }
 
 /**

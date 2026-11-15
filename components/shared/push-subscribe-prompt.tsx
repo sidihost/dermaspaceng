@@ -22,7 +22,10 @@
 
 import * as React from 'react'
 import { Bell, X } from 'lucide-react'
-import { isCanonicalPushOrigin } from '@/lib/push-origin'
+import {
+  isPreviewOrVercelDeploymentHost,
+  isServiceWorkerAllowedOrigin,
+} from '@/lib/push-origin'
 
 const DISMISS_KEY = 'dermaspace-push-prompt-dismissed'
 
@@ -44,14 +47,14 @@ export function PushSubscribePrompt({ enabled }: { enabled: boolean }) {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
 
-    const isCanonicalOrigin = isCanonicalPushOrigin(window.location.origin, {
+    const isAllowedOrigin = isServiceWorkerAllowedOrigin(window.location.origin, {
       configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
-      allowLocalhost: process.env.NODE_ENV === 'development',
+      allowLocalhost: true,
     })
 
-    // On Vercel preview or any non-canonical host, never prompt and proactively
-    // remove any prior push subscription bound to this origin.
-    if (!isCanonicalOrigin) {
+    // On Vercel preview or ephemeral preview hosts, never prompt and
+    // proactively remove any prior push subscription bound to that preview origin.
+    if (!isAllowedOrigin || isPreviewOrVercelDeploymentHost(window.location.origin)) {
       navigator.serviceWorker
         .getRegistrations?.()
         .then(async (regs) => {
@@ -141,7 +144,7 @@ export function PushSubscribePrompt({ enabled }: { enabled: boolean }) {
       aria-label="Enable notifications"
       className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-[360px] z-[85] animate-in slide-in-from-bottom duration-300"
     >
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="bg-[#7B2D8E] px-5 py-4 relative">
           <button
             onClick={handleDismiss}

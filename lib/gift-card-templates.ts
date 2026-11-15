@@ -5,9 +5,6 @@
  *   - Flip `CHRISTMAS_GIFT_CARD_DESIGN_ENABLED` to `false` or disable the
  *     `festive` flag in /admin/features to revert cleanly to the original
  *     initial gift card templates everywhere.
- *   - End users can also remove the Christmas template on `/gift-cards`,
- *     which immediately restores the initial default (`Royal Purple` / `Birthday`)
- *     while keeping all initial templates selectable at all times.
  */
 
 export const CHRISTMAS_GIFT_CARD_DESIGN_ENABLED = true
@@ -38,7 +35,6 @@ export const CHRISTMAS_GIFT_CARD_DESIGN: GiftCardDesign = {
   accentHex: '#7B2D8E',
   gradient: 'from-[#5A1D6A] to-[#7B2D8E]',
   isSeasonal: true,
-  badgeLabel: 'Holiday Edition',
 }
 
 export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [

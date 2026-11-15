@@ -16,6 +16,7 @@ import {
 
 test('Christmas template is enabled by default while preserving all initial templates', () => {
   assert.equal(CHRISTMAS_GIFT_CARD_DESIGN_ENABLED, true)
+  assert.equal(CHRISTMAS_GIFT_CARD_DESIGN.badgeLabel, undefined)
   const opts = { festiveEnabled: true, userRemovedChristmas: false }
 
   assert.equal(isChristmasTemplateAvailable(opts), true)

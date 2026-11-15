@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPublicVapidKey, isPushConfigured } from '@/lib/push'
 import {
-  isCanonicalPushOrigin,
   isPreviewDeploymentEnv,
   isPreviewRequestHost,
+  isServiceWorkerAllowedOrigin,
 } from '@/lib/push-origin'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const forwardedHost = request.headers.get('x-forwarded-host')
   const effectiveHost = forwardedHost?.split(',')[0]?.trim() || host
 
-  const allowLocalhost = process.env.NODE_ENV !== 'production'
+  const allowLocalhost = !isPreviewDeploymentEnv()
   const canonicalOptions = {
     configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
     allowLocalhost,
@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
     forwardedHost,
   })
   const blockedByNonCanonicalHost =
-    Boolean(effectiveHost) && !isCanonicalPushOrigin(effectiveHost, canonicalOptions)
+    Boolean(effectiveHost) &&
+    !isServiceWorkerAllowedOrigin(effectiveHost, canonicalOptions)
 
   if (blockedByEnv || blockedByPreviewHost || blockedByNonCanonicalHost) {
     return NextResponse.json({

@@ -23,7 +23,6 @@ export const DEFAULT_VAPID_SUBJECT = 'mailto:info@dermaspaceng.com'
 const PREVIEW_HOST_SUFFIXES = [
   '.vercel.app',
   '.vercel.dev',
-  '.run.app',
   '.netlify.app',
   '.pages.dev',
   '.ngrok-free.app',
@@ -126,6 +125,38 @@ export function isCanonicalPushOrigin(
   }
 
   return false
+}
+
+/**
+ * Returns true when the current origin is eligible to register the offline
+ * Service Worker. Blocks Vercel/ephemeral preview deployments while allowing
+ * canonical production domains, localhost (including `next start`), and
+ * hosted HTTPS app origins.
+ */
+export function isServiceWorkerAllowedOrigin(
+  originOrUrl: string | null | undefined,
+  options?: CanonicalOriginOptions,
+): boolean {
+  const allowLocalhost = options?.allowLocalhost ?? true
+  if (isCanonicalPushOrigin(originOrUrl, { ...options, allowLocalhost })) {
+    return true
+  }
+  if (!originOrUrl || typeof originOrUrl !== 'string') return false
+  const trimmed = originOrUrl.trim()
+  if (!trimmed) return false
+
+  let parsed: URL
+  try {
+    parsed = trimmed.includes('://') ? new URL(trimmed) : new URL(`https://${trimmed}`)
+  } catch {
+    return false
+  }
+
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '')
+  if (!host || isPreviewOrVercelDeploymentHost(host)) return false
+  if (isLocalhostHost(host)) return Boolean(allowLocalhost)
+  return parsed.protocol === 'https:'
 }
 
 /**
@@ -281,6 +312,28 @@ export function filterCanonicalPushSubscriptions<
   const stale: T[] = []
   for (const sub of subs) {
     if (isCanonicalPushOrigin(sub.origin, options)) {
+      valid.push(sub)
+    } else {
+      stale.push(sub)
+    }
+  }
+  return { valid, stale }
+}
+
+/**
+ * Partition stored push subscriptions into valid non-preview subscriptions vs
+ * legacy/preview/`NULL`-origin subscriptions that must be removed.
+ */
+export function filterValidPushSubscriptions<
+  T extends { origin?: string | null },
+>(
+  subs: T[],
+  options?: CanonicalOriginOptions,
+): { valid: T[]; stale: T[] } {
+  const valid: T[] = []
+  const stale: T[] = []
+  for (const sub of subs) {
+    if (isServiceWorkerAllowedOrigin(sub.origin, options)) {
       valid.push(sub)
     } else {
       stale.push(sub)

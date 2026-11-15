@@ -123,7 +123,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v16';
+const VERSION = 'v18';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -141,15 +141,12 @@ const PRECACHE = [
 // the user has manually visited them. These are precached separately into
 // PAGES_CACHE (with the same `sw-cached-at` stamp the navigation handler
 // writes) so the existing offline lookup path serves them transparently.
-// Keep this list to entry points that make sense as a "I'm offline, drop
-// me somewhere I can keep using the site" landing — the homepage is the
-// only universally-correct answer here.
 const PRECACHE_PAGES = [
   '/',
-  // The desktop install centre is a top-tier landing page now —
-  // visitors arriving on `/desktop` (or anyone who hits the "install
-  // app" button while their network drops) should always get a
-  // working page, even from a cold install.
+  '/offline',
+  '/services',
+  '/gift-cards',
+  '/contact',
   '/desktop',
 ];
 
@@ -179,8 +176,7 @@ const NAV_NETWORK_TIMEOUT_MS = 4000;
 // cache, an external stylesheet, or the network. It must render on a
 // device that has literally just installed the SW for the first time.
 //
-// Brand colour (#7B2D8E) and base styles are kept tight on purpose —
-// every byte ships with the service worker on every install.
+// Brand colour (#7B2D8E) and flat border styles match SystemStatusCard.
 // ---------------------------------------------------------------------------
 const OFFLINE_HTML = `<!doctype html>
 <html lang="en">
@@ -191,73 +187,129 @@ const OFFLINE_HTML = `<!doctype html>
   <title>You're offline · Dermaspace</title>
   <style>
     *,*::before,*::after{box-sizing:border-box}
-    html,body{margin:0;padding:0;height:100%;background:#faf7fb;color:#1a0d1f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-    body{display:flex;align-items:center;justify-content:center;padding:20px;min-height:100svh}
-    .card{width:100%;max-width:360px;background:#fff;border-radius:20px;border:1px solid rgba(0,0,0,.05);box-shadow:0 10px 30px -12px rgba(123,45,142,.18);overflow:hidden;text-align:center}
+    html,body{margin:0;padding:0;background:#FAF6FB;color:#1A0D1F;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+    .wrap{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .card{width:100%;max-width:520px;background:#fff;border-radius:16px;border:1px solid #E5E0EA;overflow:hidden}
     .strip{height:3px;background:#7B2D8E}
-    .body{padding:24px 22px 22px}
-    .icon{width:44px;height:44px;border-radius:12px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
-    .icon svg{width:22px;height:22px}
-    h1{font-size:18px;line-height:1.25;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;color:#1a0d1f}
-    p{margin:0;color:#5a4a60;font-size:13.5px;line-height:1.55}
-    .actions{display:grid;gap:8px;margin-top:18px}
-    .btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:13.5px;padding:10px 16px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
-    .btn-primary{background:#7B2D8E;color:#fff}
-    .btn-primary:hover{background:#6B2D7E}
-    .btn-secondary{background:#fff;color:#1a0d1f;border:1px solid #e8e4ec}
-    .btn-secondary:hover{border-color:rgba(123,45,142,.25);color:#7B2D8E}
-    .meta{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;font-size:11.5px;color:#8a7a90}
-    .dot{width:6px;height:6px;border-radius:50%;background:#c0392b;display:inline-block}
-    .dot.online{background:#27ae60}
-    .help{margin-top:14px;padding-top:14px;border-top:1px solid #f1ecf3;font-size:11.5px;color:#8a7a90}
-    .help a{color:#7B2D8E;font-weight:600;text-decoration:none}
-    .help a:hover{text-decoration:underline}
+    .body{padding:24px 20px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid #F3F4F6}
+    .brand{display:inline-flex;align-items:center;gap:10px;min-width:0}
+    .brand-mark{width:32px;height:32px;border-radius:8px;background:rgba(123,45,142,.1);color:#7B2D8E;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+    .brand-name{font-size:14px;font-weight:600;color:#111827;letter-spacing:-.01em}
+    .tag{font-size:12px;font-weight:500;color:#6B7280;white-space:nowrap}
+    .hero{padding-top:24px;text-align:center}
+    .icon{width:48px;height:48px;border-radius:16px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto}
+    .icon svg{width:24px;height:24px}
+    h1{font-size:20px;line-height:1.25;margin:16px 0 0;font-weight:600;letter-spacing:-.01em;color:#111827}
+    p{margin:8px auto 0;max-width:420px;color:#4B5563;font-size:14px;line-height:1.6}
+    .status{margin:12px 0 0;font-size:12px;font-weight:500;color:#6B7280}
+    .status.online{color:#047857}
+    .actions{margin-top:24px;display:grid;grid-template-columns:1fr;gap:12px}
+    .btn{appearance:none;width:100%;min-height:44px;border:1px solid transparent;cursor:pointer;font:inherit;font-weight:600;font-size:14px;padding:10px 20px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+    .btn-primary{background:#7B2D8E;border-color:#7B2D8E;color:#fff}
+    .btn-primary:hover{background:#5A1D6A;border-color:#5A1D6A}
+    .btn-secondary{background:#fff;color:#1F2937;border-color:#E5E0EA}
+    .btn-secondary:hover{border-color:rgba(123,45,142,.4);color:#7B2D8E}
+    .quick{margin-top:20px;text-align:center;font-size:12px;color:#6B7280;line-height:1.6}
+    .quick a{color:#7B2D8E;font-weight:500;text-decoration:none}
+    .quick a:hover{text-decoration:underline}
+    .sep{margin:0 6px;color:#9CA3AF}
+    .foot{margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6}
+    .foot-title{margin:0 0 12px;font-size:12px;font-weight:600;color:#111827;text-align:center}
+    .branches{display:grid;grid-template-columns:1fr;gap:14px;text-align:left}
+    .branch-name{margin:0;font-size:12px;font-weight:600;color:#111827}
+    .branch-addr{margin:2px 0 0;font-size:12px;line-height:1.4;color:#6B7280}
+    .link{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;font-weight:600;color:#7B2D8E;text-decoration:none;word-break:break-word}
+    .link:hover{text-decoration:underline}
+    .email-row{margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6;display:flex;justify-content:center}
+    .email{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#4B5563;text-decoration:none;word-break:break-all}
+    .email:hover{color:#7B2D8E;text-decoration:underline}
+    @media (min-width:520px){
+      .wrap{padding:48px 24px}
+      .body{padding:32px}
+      h1{font-size:24px}
+      p{font-size:15px}
+      .actions{grid-template-columns:1fr 1fr}
+      .foot-title{text-align:left}
+      .branches{grid-template-columns:1fr 1fr}
+      .email-row{justify-content:flex-start}
+    }
   </style>
 </head>
 <body>
-  <main class="card" role="main">
-    <div class="strip" aria-hidden="true"></div>
-    <div class="body">
-      <div class="icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><line x1="12" y1="20" x2="12.01" y2="20"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
-      </div>
-      <h1>You&apos;re offline</h1>
-      <p id="msg">Some access might be limited until you&apos;re reconnected. Pages you&apos;ve already visited will keep working.</p>
-      <div class="actions">
-        <button class="btn btn-primary" id="retry" type="button">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-          Try again
-        </button>
-        <a class="btn btn-secondary" href="/">Continue to homepage</a>
-      </div>
-      <div class="meta" aria-live="polite">
-        <span class="dot" id="dot"></span>
-        <span id="status">Waiting for connection&hellip;</span>
-      </div>
-      <div class="help">
-        Need us urgently? <a href="tel:+2349061836625">+234 906 183 6625</a> &middot; <a href="tel:+2349013134945">+234 901 313 4945</a>
+  <main class="wrap" role="main">
+    <div class="card">
+      <div class="strip" aria-hidden="true"></div>
+      <div class="body">
+        <div class="top">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 10.5C9.5 6 4 4.5 2.5 8c-1.2 2.8.8 6.5 4.5 7.5-2.5 1.2-3.5 4-2 6 1.5 2 4.5 1.2 6-1.5.5-.9.8-2 1-3 .2 1 .5 2.1 1 3 1.5 2.7 4.5 3.5 6 1.5 1.5-2 .5-4.8-2-6 3.7-1 5.7-4.7 4.5-7.5C20 4.5 14.5 6 12 10.5z"/></svg>
+            </span>
+            <span class="brand-name">Dermaspace</span>
+          </div>
+          <span class="tag">Connection lost</span>
+        </div>
+
+        <div class="hero">
+          <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><line x1="12" y1="20" x2="12.01" y2="20"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+          </div>
+          <h1>You&apos;re offline</h1>
+          <p id="msg">We can&apos;t reach Dermaspace right now because your connection dropped. Pages you&apos;ve already visited will keep working.</p>
+          <p class="status" id="status" role="status" aria-live="polite">Waiting for internet connection&hellip;</p>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="retry" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Try again
+          </button>
+          <a class="btn btn-secondary" href="/">Back to Home</a>
+        </div>
+
+        <div class="quick">
+          <span>Available offline: </span>
+          <a href="/services">Services</a><span class="sep" aria-hidden="true">&middot;</span><a href="/gift-cards">Gift Cards</a><span class="sep" aria-hidden="true">&middot;</span><a href="/contact">Contact</a>
+        </div>
+
+        <div class="foot">
+          <p class="foot-title">Need help? Reach either branch</p>
+          <div class="branches">
+            <div>
+              <p class="branch-name">Victoria Island</p>
+              <p class="branch-addr">237B Muri Okunola St, VI</p>
+              <a class="link" href="tel:+2349061836625">+234 906 183 6625</a>
+            </div>
+            <div>
+              <p class="branch-name">Ikoyi</p>
+              <p class="branch-addr">9 Agbeke Rotinwa Cl, Dolphin Estate</p>
+              <a class="link" href="tel:+2349013134945">+234 901 313 4945</a>
+            </div>
+          </div>
+          <div class="email-row">
+            <a class="email" href="mailto:info@dermaspaceng.com">info@dermaspaceng.com</a>
+          </div>
+        </div>
       </div>
     </div>
   </main>
   <script>
     (function(){
-      var dot = document.getElementById('dot');
       var status = document.getElementById('status');
       var retry = document.getElementById('retry');
       function paint(online){
         if (online) {
-          dot.classList.add('online');
-          status.textContent = 'Back online — tap Try again';
+          status.classList.add('online');
+          status.textContent = 'Connection restored — reloading…';
         } else {
-          dot.classList.remove('online');
-          status.textContent = 'Waiting for connection…';
+          status.classList.remove('online');
+          status.textContent = 'Waiting for internet connection…';
         }
       }
       paint(navigator.onLine);
       window.addEventListener('online', function(){
         paint(true);
-        // Auto-reload as soon as we're back, but only if the user
-        // hasn't already navigated elsewhere.
         setTimeout(function(){ location.reload(); }, 600);
       });
       window.addEventListener('offline', function(){ paint(false); });
@@ -265,9 +317,7 @@ const OFFLINE_HTML = `<!doctype html>
         if (navigator.onLine) {
           location.reload();
         } else {
-          // Provide a tiny bit of feedback so users on flaky 4G don't
-          // think the button is dead.
-          status.textContent = 'Still offline — we\\'ll retry as soon as you\\'re back';
+          status.textContent = 'Still offline — we\\'ll reload automatically once you reconnect.';
         }
       });
     })();
@@ -790,6 +840,15 @@ self.addEventListener('message', (event) => {
     event.waitUntil(
       caches.open(PAGES_CACHE).then((cache) =>
         cache.delete(new Request(resolved.toString())).catch(() => {}),
+      ),
+    );
+    return;
+  }
+
+  if (data.type === 'ds.clearCache') {
+    event.waitUntil(
+      caches.keys().then((names) =>
+        Promise.all(names.map((n) => caches.delete(n).catch(() => {}))),
       ),
     );
     return;

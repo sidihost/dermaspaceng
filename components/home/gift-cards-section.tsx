@@ -74,7 +74,7 @@ export default function GiftCardsSection() {
             </ul>
 
             <Link
-              href="/contact"
+              href="/gift-cards"
               className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
             >
               Purchase Gift Card

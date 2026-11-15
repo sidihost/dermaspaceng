@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { sql, query } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
+import { ensureNotificationsSchema, resolveReadColumn } from "@/lib/notifications-column"
 
 export async function GET() {
   try {
@@ -127,21 +128,24 @@ export async function GET() {
     const complaints = complaintsRes.rows
     const consultations = consultationsRes.rows
 
-    // Get user's notifications. The column is `read` (not `is_read`)
-    // — alias it so the client can keep using `is_read` everywhere.
-    const notifications = await sql`
-      SELECT id, title, message, type, read AS is_read, link, created_at
-      FROM user_notifications
-      WHERE user_id = ${user.id}
-      ORDER BY created_at DESC
-      LIMIT 20
-    `
+    await ensureNotificationsSchema()
+    const readCol = await resolveReadColumn()
 
-    // Count unread notifications
-    const unreadCount = await sql`
-      SELECT COUNT(*) as count FROM user_notifications
-      WHERE user_id = ${user.id} AND read = false
-    `
+    const [notifRes, unreadRes] = await Promise.all([
+      query(
+        `SELECT id, title, message, type, "${readCol}" AS is_read, action_url AS link, created_at
+         FROM user_notifications
+         WHERE user_id = $1 AND COALESCE(audience, 'customer') = 'customer'
+         ORDER BY created_at DESC
+         LIMIT 20`,
+        [user.id],
+      ),
+      query<{ count: number }>(
+        `SELECT COUNT(*)::int AS count FROM user_notifications
+         WHERE user_id = $1 AND "${readCol}" = false AND COALESCE(audience, 'customer') = 'customer'`,
+        [user.id],
+      ),
+    ])
 
     return NextResponse.json({
       success: true,
@@ -150,8 +154,8 @@ export async function GET() {
         complaints,
         consultations,
       },
-      notifications,
-      unreadCount: parseInt(unreadCount[0]?.count || "0"),
+      notifications: notifRes.rows,
+      unreadCount: unreadRes.rows[0]?.count ?? 0,
     })
   } catch (error) {
     console.error("User activity error:", error)
@@ -170,29 +174,34 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
+    await ensureNotificationsSchema()
+    const readCol = await resolveReadColumn()
     const { notificationIds, referenceType, referenceId } = await request.json()
 
     if (notificationIds && notificationIds.length > 0) {
-      await sql`
-        UPDATE user_notifications 
-        SET read = true 
-        WHERE user_id = ${user.id} AND id::text = ANY(${notificationIds.map(String)}::text[])
-      `
+      await query(
+        `UPDATE user_notifications
+         SET "${readCol}" = true
+         WHERE user_id = $1 AND id::text = ANY($2::text[])`,
+        [user.id, notificationIds.map(String)],
+      )
     } else if (referenceType && referenceId !== undefined && referenceId !== null) {
-      await sql`
-        UPDATE user_notifications
-        SET read = true
-        WHERE user_id = ${user.id}
-          AND reference_type = ${String(referenceType)}
-          AND reference_id::text = ${String(referenceId)}
-      `
+      await query(
+        `UPDATE user_notifications
+         SET "${readCol}" = true
+         WHERE user_id = $1
+           AND reference_type = $2
+           AND reference_id::text = $3`,
+        [user.id, String(referenceType), String(referenceId)],
+      )
     } else {
       // Mark all as read
-      await sql`
-        UPDATE user_notifications 
-        SET read = true 
-        WHERE user_id = ${user.id}
-      `
+      await query(
+        `UPDATE user_notifications
+         SET "${readCol}" = true
+         WHERE user_id = $1 AND COALESCE(audience, 'customer') = 'customer'`,
+        [user.id],
+      )
     }
 
     return NextResponse.json({ success: true })

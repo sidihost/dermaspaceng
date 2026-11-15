@@ -112,201 +112,131 @@ export default function GlobalError({
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
-        <title>{isOffline ? "You're offline" : "Something went wrong"}</title>
+        <title>
+          {isOffline
+            ? "You're offline · Dermaspace"
+            : "Something went wrong · Dermaspace"}
+        </title>
         <meta name="theme-color" content={BRAND} />
-      </head>
-      <body
-        style={{
-          margin: 0,
-          padding: 0,
-          background: "#F7F5F9",
-          color: "#0F172A",
-          fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <main
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            maxWidth: 480,
-            margin: "0 auto",
-            padding: "0 20px",
-            width: "100%",
-            boxSizing: "border-box",
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
+              *,*::before,*::after{box-sizing:border-box}
+              html,body{margin:0;padding:0;background:#FAF6FB;color:#1A0D1F;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+              .ds-wrap{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+              .ds-card{width:100%;max-width:520px;background:#fff;border:1px solid #E5E0EA;border-radius:16px;overflow:hidden}
+              .ds-strip{height:3px;background:${BRAND}}
+              .ds-body{padding:24px 20px}
+              .ds-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid #F3F4F6}
+              .ds-brand{display:inline-flex;align-items:center;gap:10px;min-width:0}
+              .ds-brand-mark{width:32px;height:32px;border-radius:8px;background:rgba(123,45,142,.1);color:${BRAND};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+              .ds-brand-name{font-size:14px;font-weight:600;color:#111827;letter-spacing:-.01em}
+              .ds-tag{font-size:12px;font-weight:500;color:#6B7280;white-space:nowrap}
+              .ds-hero{padding-top:24px;text-align:center}
+              .ds-icon{width:48px;height:48px;margin:0 auto;border-radius:16px;background:rgba(123,45,142,.1);color:${BRAND};display:flex;align-items:center;justify-content:center}
+              .ds-h1{margin:16px 0 0;font-size:20px;line-height:1.25;font-weight:600;color:#111827;letter-spacing:-.01em}
+              .ds-p{margin:8px auto 0;max-width:420px;font-size:14px;line-height:1.6;color:#4B5563}
+              .ds-actions{margin-top:24px;display:grid;grid-template-columns:1fr;gap:12px}
+              .ds-btn{appearance:none;width:100%;min-height:44px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;padding:10px 20px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+              .ds-btn-primary{background:${BRAND};color:#fff;border:1px solid ${BRAND}}
+              .ds-btn-primary:hover{background:${BRAND_DARK};border-color:${BRAND_DARK}}
+              .ds-btn-secondary{background:#fff;color:#1F2937;border:1px solid #E5E0EA}
+              .ds-btn-secondary:hover{border-color:rgba(123,45,142,.4);color:${BRAND}}
+              .ds-foot{margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6}
+              .ds-foot-title{margin:0 0 12px;font-size:12px;font-weight:600;color:#111827;text-align:center}
+              .ds-branches{display:grid;grid-template-columns:1fr;gap:14px;text-align:left}
+              .ds-branch-name{margin:0;font-size:12px;font-weight:600;color:#111827}
+              .ds-branch-addr{margin:2px 0 0;font-size:12px;line-height:1.4;color:#6B7280}
+              .ds-link{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;font-weight:600;color:${BRAND};text-decoration:none;word-break:break-word}
+              .ds-link:hover{text-decoration:underline}
+              .ds-email-row{margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6;display:flex;justify-content:center}
+              .ds-email{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#4B5563;text-decoration:none;word-break:break-all}
+              .ds-email:hover{color:${BRAND};text-decoration:underline}
+              @media (min-width:520px){
+                .ds-wrap{padding:48px 24px}
+                .ds-body{padding:32px}
+                .ds-h1{font-size:24px}
+                .ds-p{font-size:15px}
+                .ds-actions{grid-template-columns:1fr 1fr}
+                .ds-foot-title{text-align:left}
+                .ds-branches{grid-template-columns:1fr 1fr}
+                .ds-email-row{justify-content:flex-start}
+              }
+            `,
           }}
-        >
-          <div style={{ paddingTop: 64, textAlign: "center" }}>
-            <div
-              aria-hidden
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 64,
-                height: 64,
-                borderRadius: 16,
-                background: "rgba(123, 45, 142, 0.1)",
-                color: BRAND,
-                marginBottom: 24,
-              }}
-            >
-              {isOffline ? <OfflineGlyph /> : <SpaceGlyph />}
-            </div>
+        />
+      </head>
+      <body>
+        <main className="ds-wrap">
+          <div className="ds-card">
+            <div aria-hidden className="ds-strip" />
+            <div className="ds-body">
+              <div className="ds-top">
+                <div className="ds-brand">
+                  <span className="ds-brand-mark" aria-hidden>
+                    <ButterflyGlyph />
+                  </span>
+                  <span className="ds-brand-name">Dermaspace</span>
+                </div>
+                <span className="ds-tag">
+                  {isOffline ? "Connection lost" : "Service notice"}
+                </span>
+              </div>
 
-            <h1
-              style={{
-                fontSize: 24,
-                fontWeight: 700,
-                margin: "0 0 8px 0",
-                color: "#0F172A",
-              }}
-            >
-              {isOffline ? "You\u2019re offline" : "Something went sideways"}
-            </h1>
-            <p
-              style={{
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: "#475569",
-                margin: "0 0 24px 0",
-              }}
-            >
-              {isOffline
-                ? "We can\u2019t reach Dermaspace right now because your device has lost its internet connection. Check your Wi-Fi or mobile data and we\u2019ll be right back."
-                : "We hit an unexpected hiccup loading the page. It\u2019s on us, not you. Give it another go \u2014 most issues clear up with a quick retry."}
-            </p>
+              <div className="ds-hero">
+                <div className="ds-icon" aria-hidden>
+                  {isOffline ? <OfflineGlyph /> : <AlertCircleGlyph />}
+                </div>
+                <h1 className="ds-h1">
+                  {isOffline ? "You\u2019re offline" : "Something went wrong"}
+                </h1>
+                <p className="ds-p">
+                  {isOffline
+                    ? "We can\u2019t reach Dermaspace right now because your connection dropped. Pages you\u2019ve already visited will keep working."
+                    : "We hit an unexpected snag loading this page. It\u2019s on us, not you \u2014 a quick retry usually clears it right up."}
+                </p>
+              </div>
 
-            <div
-              style={{
-                background: isOffline ? "rgba(123, 45, 142, 0.05)" : "#ffffff",
-                border: isOffline
-                  ? "1px solid rgba(123, 45, 142, 0.1)"
-                  : "1px solid #F1F5F9",
-                borderRadius: 16,
-                padding: 16,
-                textAlign: "left",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  margin: "0 0 8px 0",
-                  color: "#0F172A",
-                }}
-              >
-                {isOffline ? "Need to reach us?" : "Need help? Contact us directly"}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <a
-                  href="tel:+2349061836625"
-                  style={{
-                    display: "block",
-                    fontSize: 14,
-                    color: BRAND,
-                    fontWeight: 500,
-                    textDecoration: "none",
-                  }}
+              <div className="ds-actions">
+                <button
+                  type="button"
+                  onClick={tryAgain}
+                  className="ds-btn ds-btn-primary"
                 >
-                  +234 906 183 6625 (Victoria Island)
-                </a>
-                <a
-                  href="tel:+2349013134945"
-                  style={{
-                    display: "block",
-                    fontSize: 14,
-                    color: BRAND,
-                    fontWeight: 500,
-                    textDecoration: "none",
-                  }}
-                >
-                  +234 901 313 4945 (Ikoyi)
-                </a>
-                <a
-                  href="mailto:info@dermaspaceng.com"
-                  style={{
-                    display: "block",
-                    fontSize: 14,
-                    color: BRAND,
-                    fontWeight: 500,
-                    textDecoration: "none",
-                  }}
-                >
-                  info@dermaspaceng.com
+                  Try again
+                </button>
+                <a href="/" className="ds-btn ds-btn-secondary">
+                  Back to Home
                 </a>
               </div>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: "#64748B",
-                  margin: "10px 0 0 0",
-                  lineHeight: 1.5,
-                }}
-              >
-                Victoria Island: 237B Muri Okunola St
-                <br />
-                Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Estate
-              </p>
-            </div>
-          </div>
 
-          <div
-            style={{
-              padding: "24px 0 calc(env(safe-area-inset-bottom) + 16px) 0",
-            }}
-          >
-            <button
-              type="button"
-              onClick={tryAgain}
-              style={{
-                display: "block",
-                width: "100%",
-                height: 48,
-                borderRadius: 16,
-                background: BRAND,
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 600,
-                border: "none",
-                cursor: "pointer",
-                marginBottom: 8,
-              }}
-              onMouseDown={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background =
-                  BRAND_DARK
-              }}
-              onMouseUp={(e) => {
-                ;(e.currentTarget as HTMLButtonElement).style.background =
-                  BRAND
-              }}
-            >
-              Try again
-            </button>
-            <a
-              href="/"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-                height: 48,
-                borderRadius: 16,
-                background: "#F1F5F9",
-                color: "#1E293B",
-                fontSize: 14,
-                fontWeight: 600,
-                textDecoration: "none",
-                boxSizing: "border-box",
-              }}
-            >
-              Back to Home
-            </a>
+              <div className="ds-foot">
+                <p className="ds-foot-title">Need help? Reach either branch</p>
+                <div className="ds-branches">
+                  <div>
+                    <p className="ds-branch-name">Victoria Island</p>
+                    <p className="ds-branch-addr">237B Muri Okunola St, VI</p>
+                    <a href="tel:+2349061836625" className="ds-link">
+                      +234 906 183 6625
+                    </a>
+                  </div>
+                  <div>
+                    <p className="ds-branch-name">Ikoyi</p>
+                    <p className="ds-branch-addr">
+                      9 Agbeke Rotinwa Cl, Dolphin Estate
+                    </p>
+                    <a href="tel:+2349013134945" className="ds-link">
+                      +234 901 313 4945
+                    </a>
+                  </div>
+                </div>
+                <div className="ds-email-row">
+                  <a href="mailto:info@dermaspaceng.com" className="ds-email">
+                    info@dermaspaceng.com
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </main>
       </body>
@@ -314,13 +244,19 @@ export default function GlobalError({
   )
 }
 
-// Tiny inline SVG glyphs — no lucide dep so this still renders if every
-// chunk failed to load.
+function ButterflyGlyph() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12 10.5C9.5 6 4 4.5 2.5 8c-1.2 2.8.8 6.5 4.5 7.5-2.5 1.2-3.5 4-2 6 1.5 2 4.5 1.2 6-1.5.5-.9.8-2 1-3 .2 1 .5 2.1 1 3 1.5 2.7 4.5 3.5 6 1.5 1.5-2 .5-4.8-2-6 3.7-1 5.7-4.7 4.5-7.5C20 4.5 14.5 6 12 10.5z" />
+    </svg>
+  )
+}
+
 function OfflineGlyph() {
   return (
-    <svg width={32} height={32} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width={24} height={24} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0M2 2l20 20"
+        d="M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0M12 20h.01M2 2l20 20"
         stroke="currentColor"
         strokeWidth={2}
         strokeLinecap="round"
@@ -330,11 +266,12 @@ function OfflineGlyph() {
   )
 }
 
-function SpaceGlyph() {
+function AlertCircleGlyph() {
   return (
-    <svg width={32} height={32} viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width={24} height={24} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={2} />
       <path
-        d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+        d="M12 8v4M12 16h.01"
         stroke="currentColor"
         strokeWidth={2}
         strokeLinecap="round"

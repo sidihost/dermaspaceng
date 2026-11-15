@@ -18,6 +18,7 @@ import { startRegistration } from '@simplewebauthn/browser'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useNotify } from '@/components/shared/notify'
+import { isSoundMuted, setSoundMuted } from '@/lib/notification-sound'
 import PageLoader from '@/components/shared/page-loader'
 import {
   formatAccountSubtitle,
@@ -234,6 +235,11 @@ function SettingsPageContent() {
   })
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+
+  useEffect(() => {
+    setSoundEnabled(!isSoundMuted() && notify.isSoundEnabled())
+  }, [notify])
 
   // Quiet auto-dismiss for wallet/notification settings saves so the
   // banner doesn't stick around covering the toggle row. (This effect
@@ -2421,6 +2427,7 @@ function SettingsPageContent() {
                   <div className="space-y-2.5 sm:space-y-3">
                     {[
                       { key: 'email_notifications', label: 'Email Notifications', description: 'Receive notifications via email' },
+                      { key: 'push_notifications', label: 'Push Notifications', description: 'Receive real-time device & browser push alerts' },
                       { key: 'transaction_alerts', label: 'Transaction Alerts', description: 'Get notified for all wallet transactions' },
                       { key: 'budget_alerts', label: 'Budget Alerts', description: 'Receive alerts when approaching budget limits' },
                       { key: 'promotional_emails', label: 'Promotional Emails', description: 'Receive offers and promotional content' },
@@ -2431,6 +2438,7 @@ function SettingsPageContent() {
                           <p className="text-xs text-gray-500 leading-snug">{item.description}</p>
                         </div>
                         <button
+                          type="button"
                           onClick={() => setWalletSettings(prev => ({ 
                             ...prev, 
                             [item.key]: !prev[item.key as keyof WalletSettings] 
@@ -2444,7 +2452,7 @@ function SettingsPageContent() {
                           aria-label={item.label}
                         >
                           <span 
-                            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full border border-gray-200 transition-transform ${
                               walletSettings[item.key as keyof WalletSettings] 
                                 ? 'translate-x-5' 
                                 : 'translate-x-0'
@@ -2453,6 +2461,33 @@ function SettingsPageContent() {
                         </button>
                       </div>
                     ))}
+
+                    <div className="flex items-center justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-xl">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900">Notification Sounds</p>
+                        <p className="text-xs text-gray-500 leading-snug">Play a subtle chime when new notifications arrive</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = !soundEnabled
+                          setSoundEnabled(next)
+                          setSoundMuted(!next)
+                          notify.setSoundEnabled(next)
+                        }}
+                        className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                          soundEnabled ? 'bg-[#7B2D8E]' : 'bg-gray-200'
+                        }`}
+                        aria-pressed={soundEnabled}
+                        aria-label="Notification Sounds"
+                      >
+                        <span
+                          className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full border border-gray-200 transition-transform ${
+                            soundEnabled ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
 
                     <button
                       onClick={handleWalletSettingsSave}

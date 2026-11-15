@@ -14,6 +14,7 @@
  * being sent.
  */
 
+import { randomUUID } from 'crypto'
 import { sql } from './db'
 import {
   sendPushToAll,
@@ -22,6 +23,7 @@ import {
   type PushPayload,
 } from './push'
 import { getCanonicalAppOrigin } from './push-origin'
+import { ensureNotificationsSchema } from './notifications-column'
 
 export type BroadcastRow = {
   id: string
@@ -100,14 +102,16 @@ export async function dispatchBroadcast(broadcastId: string): Promise<DispatchRe
 
     // 1. In-app notifications
     if (b.inapp_enabled && userIds.length) {
+      await ensureNotificationsSchema()
       for (const uid of userIds) {
         try {
+          const notifId = randomUUID()
           await sql`
             INSERT INTO user_notifications (
-              user_id, title, message, type, action_url, priority, broadcast_id
+              id, user_id, title, message, type, action_url, priority, broadcast_id, audience
             ) VALUES (
-              ${uid}, ${b.title}, ${b.message}, 'announcement',
-              ${b.action_url}, ${b.priority}, ${b.id}
+              ${notifId}, ${uid}, ${b.title}, ${b.message}, 'announcement',
+              ${b.action_url}, ${b.priority}, ${b.id}, 'customer'
             )
           `
         } catch (err) {

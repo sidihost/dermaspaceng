@@ -1,0 +1,1136 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { notFound, useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import {
+  Calendar,
+  MapPin,
+  Clock,
+  Award,
+  Globe,
+  Instagram,
+  Facebook,
+  Linkedin,
+  Youtube,
+  UserPlus,
+  UserCheck,
+  Camera,
+  Share2,
+  Lock,
+  Pencil,
+  Heart,
+  BadgeCheck,
+  Loader2,
+  ImageIcon,
+  PenLine,
+  ArrowUpRight,
+  AlertCircle,
+} from 'lucide-react'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
+import { useFollow } from '@/hooks/use-follow'
+import { useNotify } from '@/components/shared/notify'
+import { AvatarPicker } from '@/components/profile/avatar-picker'
+import { CoverPicker } from '@/components/profile/cover-picker'
+import { ShareSheet } from '@/components/profile/share-sheet'
+import { FollowListSheet } from '@/components/profile/follow-list-sheet'
+import { ProfileCover } from '@/lib/profile-covers'
+import { isSpaAvatarUrl } from '@/lib/spa-avatars'
+import { classifyProfileSegment } from '@/lib/profile-route-guard'
+
+interface UserProfile {
+  id: string
+  firstName: string
+  lastName: string
+  username: string | null
+  avatarUrl?: string
+  /** Chosen cover preset slug (e.g. 'aurora'). Null means the viewer
+   *  hasn't picked one yet — the UI renders a deterministic preset
+   *  derived from the user's id so every profile still looks finished. */
+  coverStyle?: string | null
+  bio?: string
+  preferredLocation?: string
+  memberSince: string
+  totalBookings?: number
+  favoriteServices?: string[]
+  // When the owner is viewing their own private profile, the API
+  // still returns the full payload but flips `isPublic` to `false`
+  // so we can show an "only you can see this" notice at the top of
+  // the page. For public profiles (and all viewers of them) this
+  // stays `true`.
+  isPublic?: boolean
+  socials?: {
+    website?: string | null
+    instagram?: string | null
+    twitter?: string | null
+    tiktok?: string | null
+    facebook?: string | null
+    linkedin?: string | null
+    youtube?: string | null
+  }
+  /** Total number of published articles authored by this user.
+   *  Drives the "Author" chip in the hero, and the "Articles by …"
+   *  section header. Zero for everyone who hasn't written for the
+   *  Dermaspace journal — that section just doesn't render. */
+  articleCount?: number
+  recentArticles?: Array<{
+    id: string
+    slug: string
+    title: string
+    excerpt: string | null
+    coverImageUrl: string | null
+    publishedAt: string | null
+    readingMinutes: number
+    categoryName: string | null
+    categorySlug: string | null
+    categoryAccent: string | null
+  }>
+}
+
+// TikTok doesn't ship in lucide-react, so we draw a lightweight inline
+// glyph that matches the stroke weight of the other lucide icons.
+function TikTokGlyph({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M19.6 6.5a5.6 5.6 0 0 1-3.3-1.1 5.6 5.6 0 0 1-2.1-3.3V2h-3.3v13.4a2.6 2.6 0 1 1-1.9-2.5v-3.4a6 6 0 1 0 5.2 5.9V9a8.9 8.9 0 0 0 5.4 1.8V6.5z" />
+    </svg>
+  )
+}
+
+// X (formerly Twitter) — lucide-react still ships the old bird mark
+// which is visually dated and doesn't match X's current brand. Draw
+// the canonical X wordmark path so social pills read correctly.
+function XGlyph({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M17.53 3h3.07l-6.71 7.66L22 21h-6.18l-4.85-6.33L5.42 21H2.34l7.17-8.2L2 3h6.34l4.38 5.79L17.53 3Zm-1.08 16.2h1.7L7.62 4.7H5.79l10.66 14.5Z" />
+    </svg>
+  )
+}
+
+interface ViewerState {
+  id: string | null
+  username: string | null
+  // Viewer's gender — drives which avatars show up in the picker
+  // when they open it on their own profile. Null for legacy rows.
+  gender: 'male' | 'female' | null
+  loaded: boolean
+}
+
+export default function PublicProfilePage() {
+  const params = useParams()
+  const router = useRouter()
+  const username = params.username as string
+
+  const segmentDecision = classifyProfileSegment(username)
+
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(segmentDecision.kind === 'lookup')
+  const [notFoundError, setNotFoundError] = useState(false)
+  // Separate "server error" state so a 500 on the API doesn't get
+  // silently rendered as a misleading 404.
+  const [serverError, setServerError] = useState(false)
+
+  // Who's looking? We need this to decide whether to show the follow
+  // button (never on your own profile) and to unlock the avatar picker
+  // + "edit profile" shortcut for the owner. Loaded in parallel with
+  // the profile fetch to keep first paint fast.
+  const [viewer, setViewer] = useState<ViewerState>({
+    id: null,
+    username: null,
+    gender: null,
+    loaded: false,
+  })
+
+  // Owner-only state for the spa avatar picker. Saving goes straight
+  // through PUT /api/auth/profile so the change lands in the DB and
+  // mirrors back into this page immediately — no reload required.
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [showCoverPicker, setShowCoverPicker] = useState(false)
+  // The rich in-app share sheet is the single source of truth for
+  // sharing on BOTH mobile and desktop. It still forwards to the
+  // platform's native share dialog (iOS / Android) as one of its
+  // options, but we no longer dive straight into navigator.share on
+  // first tap — users liked being able to see a preview of what
+  // they were about to send before committing.
+  const [showShareSheet, setShowShareSheet] = useState(false)
+  // Followers / following list sheet. `null` = closed; otherwise it holds
+  // which tab to open on.
+  const [followListTab, setFollowListTab] = useState<
+    'followers' | 'following' | null
+  >(null)
+
+  // Follow state lives in SWR so the counts stay in sync across any
+  // other follow buttons that mount on the same username later. We
+  // fetch for owners too (so they can see their own follower count)
+  // — the follow button itself is just hidden in that case.
+  const isOwner = viewer.loaded && viewer.id && profile?.id === viewer.id
+  const follow = useFollow(username)
+  const notify = useNotify()
+
+  useEffect(() => {
+    if (!username) return
+    if (segmentDecision.kind === 'redirect') {
+      router.replace(segmentDecision.to)
+      return
+    }
+    if (segmentDecision.kind === 'not_found') {
+      setNotFoundError(true)
+      setLoading(false)
+    }
+  }, [username, segmentDecision.kind, segmentDecision.kind === 'redirect' ? segmentDecision.to : '', router])
+
+  useEffect(() => {
+    if (!username || segmentDecision.kind !== 'lookup') return
+
+    async function fetchProfile() {
+      try {
+        const res = await fetch(`/api/user/profile/${encodeURIComponent(username)}`)
+        if (res.status === 404) {
+          setNotFoundError(true)
+          return
+        }
+        if (!res.ok) {
+          console.error(
+            `/api/user/profile/${username} returned ${res.status}`,
+          )
+          setServerError(true)
+          return
+        }
+        const data = await res.json()
+        setProfile(data)
+      } catch (error) {
+        console.error('Error fetching profile:', error)
+        setServerError(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    async function fetchViewer() {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          setViewer({
+            id: data.user?.id ?? null,
+            username: data.user?.username ?? null,
+            gender:
+              data.user?.gender === 'male' || data.user?.gender === 'female'
+                ? data.user.gender
+                : null,
+            loaded: true,
+          })
+        } else {
+          setViewer({ id: null, username: null, gender: null, loaded: true })
+        }
+      } catch {
+        setViewer({ id: null, username: null, gender: null, loaded: true })
+      }
+    }
+
+    fetchProfile()
+    fetchViewer()
+  }, [username, segmentDecision.kind])
+
+  const handleFollow = async () => {
+    if (!viewer.loaded) return
+    if (!viewer.id) {
+      // Bounce unauthenticated visitors to sign in and bring them
+      // right back to this profile so the follow action stays in
+      // the flow of intent.
+      router.push(`/signin?next=${encodeURIComponent(`/${username}`)}`)
+      return
+    }
+    await follow.toggle()
+  }
+
+  const handleShare = () => {
+    // Opens the rich share sheet. All platform routing lives inside
+    // the sheet component so the button here just needs to toggle
+    // visibility.
+    setShowShareSheet(true)
+  }
+
+  // Save a new avatar (spa preset or uploaded photo) for the owner
+  // directly from this page. We reuse /api/auth/profile, echoing the
+  // current name fields because the endpoint's validator requires
+  // them, then patch local state so the hero avatar updates with no
+  // round-trip delay. Feedback is delivered via the brand
+  // notification system instead of silently succeeding (previous
+  // UX gave no confirmation at all, which users noticed).
+  const saveOwnerAvatar = async (url: string) => {
+    if (!profile) return
+    const previous = profile.avatarUrl
+    setProfile({ ...profile, avatarUrl: url })
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          avatarUrl: url,
+        }),
+      })
+      if (!res.ok) throw new Error('save failed')
+      // Broadcast the change so the header (and any other mounted
+      // consumers) re-fetch the current user record without a reload.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('user-updated'))
+      }
+      notify.success('Avatar updated', 'Your new look is now live on your profile.')
+    } catch {
+      // Revert on failure so the visible avatar always matches what's
+      // actually stored.
+      setProfile({ ...profile, avatarUrl: previous })
+      notify.error(
+        'Could not update avatar',
+        'Something went wrong on our end. Please try again.',
+      )
+    }
+  }
+
+  // Save a new cover preset slug for the owner directly from the
+  // profile page. Same shape as saveOwnerAvatar — optimistic local
+  // update, revert on failure, brand notification on both outcomes.
+  const saveOwnerCover = async (slug: string) => {
+    if (!profile) return
+    const previous = profile.coverStyle ?? null
+    setProfile({ ...profile, coverStyle: slug })
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          coverStyle: slug,
+        }),
+      })
+      if (!res.ok) throw new Error('save failed')
+      notify.success('Cover updated', 'Your new profile cover is saved.')
+    } catch {
+      setProfile({ ...profile, coverStyle: previous })
+      notify.error(
+        'Could not update cover',
+        'Something went wrong on our end. Please try again.',
+      )
+    }
+  }
+
+  if (loading) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-white">
+          <div className="py-6 md:py-8 px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+                <div className="h-40 md:h-56 bg-gray-100" />
+                <div className="px-6 pb-8 -mt-14 md:-mt-16">
+                  <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-gray-200 border-4 border-white" />
+                  <div className="h-6 w-48 bg-gray-200 rounded mt-4" />
+                  <div className="h-4 w-28 bg-gray-200 rounded mt-2" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
+
+  if (serverError) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-[calc(100svh-80px)] bg-[#FAF6FB] flex items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
+          <div className="w-full max-w-[520px] bg-white rounded-2xl border border-[#E5E0EA] overflow-hidden">
+            <div aria-hidden="true" className="h-[3px] bg-[#7B2D8E]" />
+            <div className="px-5 py-7 sm:px-8 sm:py-9 text-center">
+              <div className="w-12 h-12 mx-auto bg-[#7B2D8E]/10 rounded-2xl flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-[#7B2D8E]" aria-hidden="true" />
+              </div>
+              <h1 className="mt-4 text-xl sm:text-2xl font-semibold tracking-tight text-gray-900">
+                Something went wrong
+              </h1>
+              <p className="mt-2 text-sm sm:text-[15px] leading-relaxed text-gray-600 max-w-md mx-auto">
+                We couldn&apos;t load{' '}
+                <span className="font-medium text-gray-800 break-words">@{username}</span>&apos;s
+                profile right now. This is usually a temporary issue — please
+                try again in a moment.
+              </p>
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors cursor-pointer"
+                >
+                  Try again
+                </button>
+                <Link
+                  href="/"
+                  className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-[#E5E0EA] text-gray-800 text-sm font-semibold rounded-full hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+                >
+                  Back to Home
+                </Link>
+              </div>
+              <p className="mt-6 pt-5 border-t border-gray-100 text-xs text-gray-500 leading-relaxed break-words">
+                Need help? Call{' '}
+                <a href="tel:+2349061836625" className="text-[#7B2D8E] font-medium hover:underline whitespace-nowrap">
+                  +234 906 183 6625
+                </a>{' '}
+                or{' '}
+                <a href="tel:+2349013134945" className="text-[#7B2D8E] font-medium hover:underline whitespace-nowrap">
+                  +234 901 313 4945
+                </a>
+                , or email{' '}
+                <a href="mailto:info@dermaspaceng.com" className="text-[#7B2D8E] font-medium hover:underline break-all">
+                  info@dermaspaceng.com
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
+
+  if (segmentDecision.kind === 'not_found' || notFoundError || !profile) {
+    notFound()
+  }
+
+  const initials = `${profile.firstName?.charAt(0) || ''}${
+    profile.lastName?.charAt(0) || ''
+  }`.toUpperCase()
+
+  // Build the list of social links to render — only networks with a
+  // resolved URL are shown.
+  const socialLinks: {
+    key: keyof NonNullable<UserProfile['socials']>
+    label: string
+    href: string
+    icon: React.ReactNode
+  }[] = []
+  const s = profile.socials || {}
+  const maybePush = (
+    key: keyof NonNullable<UserProfile['socials']>,
+    label: string,
+    icon: React.ReactNode,
+  ) => {
+    const href = s[key]
+    if (typeof href === 'string' && href) {
+      socialLinks.push({ key, label, href, icon })
+    }
+  }
+  maybePush('website', 'Website', <Globe className="w-4 h-4" />)
+  maybePush('instagram', 'Instagram', <Instagram className="w-4 h-4" />)
+  maybePush('twitter', 'X', <XGlyph className="w-4 h-4" />)
+  maybePush('tiktok', 'TikTok', <TikTokGlyph className="w-4 h-4" />)
+  maybePush('facebook', 'Facebook', <Facebook className="w-4 h-4" />)
+  maybePush('linkedin', 'LinkedIn', <Linkedin className="w-4 h-4" />)
+  maybePush('youtube', 'YouTube', <Youtube className="w-4 h-4" />)
+
+  const memberYear = new Date(profile.memberSince).getFullYear()
+  // Friendly member-since string — "joined April 2026".
+  const memberSinceLabel = new Date(profile.memberSince).toLocaleDateString(
+    undefined,
+    { month: 'long', year: 'numeric' },
+  )
+
+  return (
+    <>
+      <Header />
+      <main className="min-h-screen bg-white">
+        {/* Tightened outer rhythm — `py-3 md:py-5` (was 4/6) and
+            `space-y-3 md:space-y-5` (was 4/6) so the profile stops
+            feeling airy/oversized on phones. The profile has fewer
+            blocks than /dashboard, and the dominant element is the
+            hero card; reducing the top padding pulls it closer to
+            the global header so the page reads as one continuous
+            surface instead of three loosely-stacked sections. */}
+        <div className="py-3 md:py-5 px-4">
+          <div className="max-w-6xl mx-auto space-y-3 md:space-y-5">
+            {/* "Only you" banner — owner-only notice when the profile
+                is private. Everyone else gets a 404 upstream. */}
+            {profile.isPublic === false && isOwner && (
+              <div className="rounded-2xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 p-3 sm:p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">
+                    Your profile is private
+                  </p>
+                  <p className="text-xs text-gray-600 leading-snug mt-0.5">
+                    Only you can see this page.{' '}
+                    <Link
+                      href="/dashboard/settings"
+                      className="text-[#7B2D8E] font-medium hover:underline"
+                    >
+                      Make it public
+                    </Link>{' '}
+                    so others can follow and book with you.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Profile hero + sidebar layout — mirrors the dashboard's
+                main/sidebar split so the two pages feel cohesive. The
+                inter-column gap was trimmed from 6 → 4 on mobile and
+                stays at 5 on desktop so the cards no longer drift
+                apart from each other. */}
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
+              {/* Main column */}
+              <div className="flex-1 min-w-0 space-y-4">
+                {/* Hero card */}
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                  {/* Cover band — renders one of the curated brand
+                      designs (aurora / mesh / waves / …). A NULL slug
+                      on the profile falls back to a deterministic
+                      preset picked from the user id, so every profile
+                      always has a lovely cover.
+                      Heights trimmed from 128/192 → 112/160 so the
+                      cover still reads as a hero strip but doesn't
+                      dominate the viewport on mobile or crowd the
+                      content below on desktop. */}
+                  <div className="relative h-28 md:h-40">
+                    <ProfileCover
+                      slug={profile.coverStyle}
+                      userId={profile.id}
+                      className="absolute inset-0"
+                    />
+                    {/* Owner actions — floated top-right of the cover
+                        band so they're discoverable without crowding
+                        the name/handle row below. Tap targets size up
+                        on mobile by collapsing their labels. */}
+                    {isOwner && (
+                      <div className="absolute top-3 right-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowCoverPicker(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-xs font-medium text-gray-900 hover:bg-white transition-colors shadow-sm"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Edit cover</span>
+                          <span className="sm:hidden">Cover</span>
+                        </button>
+                        <Link
+                          href="/dashboard/settings"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-xs font-medium text-gray-900 hover:bg-white transition-colors shadow-sm"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Edit profile</span>
+                          <span className="sm:hidden">Edit</span>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pull-up trimmed to match the smaller avatar so
+                      the portrait still straddles the cover/card
+                      seam without leaving a dead gap below it. */}
+                  <div className="px-4 sm:px-6 pb-5 md:pb-6 -mt-12 md:-mt-14">
+                    {/* Avatar + primary actions row. On mobile the
+                        actions stack underneath; on md+ they sit on
+                        the right, vertically centered with the name
+                        block. */}
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                      <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-5 min-w-0">
+                        {/* Avatar tile — the whole tile is clickable
+                            for the owner, opening the spa avatar
+                            picker. For visitors it's a static image.
+                            Scaled from 112/144 → 96/120 with a 4px
+                            (was 5px) white ring. The drop shadow was
+                            pulled because the brand direction is
+                            "less shadow"; the white ring alone still
+                            separates the portrait from the cover. */}
+                        <div className="relative flex-shrink-0">
+                          {isOwner ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowAvatarPicker(true)}
+                              className="group relative block w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
+                              aria-label="Change avatar"
+                            >
+                              {profile.avatarUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={profile.avatarUrl}
+                                  alt={`${profile.firstName}'s avatar`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="w-full h-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold">
+                                  {initials}
+                                </span>
+                              )}
+                              {/* Hover change pill — uses a camera
+                                  glyph instead of the old Sparkles
+                                  icon per product feedback. */}
+                              <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-semibold text-[#7B2D8E]">
+                                  <Camera className="w-3.5 h-3.5" />
+                                  Change
+                                </span>
+                              </span>
+                            </button>
+                          ) : (
+                            <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white bg-[#7B2D8E]">
+                              {profile.avatarUrl ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={profile.avatarUrl}
+                                  alt={`${profile.firstName}'s avatar`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="w-full h-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold">
+                                  {initials}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {/* Owner-only "edit" pip on mobile — a small
+                              brand-coloured camera chip tucked to the
+                              bottom-right of the avatar, gives a
+                              clear affordance that the avatar is
+                              tappable even without a hover state.
+                              Trimmed to 32px/2px ring so it reads as
+                              a secondary cue, not another big button. */}
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAvatarPicker(true)}
+                              aria-label="Change avatar"
+                              className="absolute -bottom-0.5 -right-0.5 md:hidden w-8 h-8 rounded-full bg-[#7B2D8E] text-white border-2 border-white flex items-center justify-center"
+                            >
+                              <Camera className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 md:pb-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* Headline size scaled down a step
+                                (was text-2xl/3xl). Long names like
+                                "Abdulakeem Olakareem" wrapped into
+                                two oversized lines on phones; xl→2xl
+                                still reads as the dominant element
+                                of the card without monopolising the
+                                viewport. */}
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight tracking-tight text-balance">
+                              {profile.firstName} {profile.lastName}
+                            </h1>
+                            {/* Tiny verified-style checkmark for public
+                                profiles — purely decorative, matches
+                                the "member" vibe. */}
+                            {profile.isPublic !== false && (
+                              <BadgeCheck
+                                className="w-5 h-5 text-[#7B2D8E] fill-[#7B2D8E]/10"
+                                aria-label="Public profile"
+                              />
+                            )}
+                            {/* "Author" chip — nudges readers to the
+                                articles section below when this user
+                                writes for the journal. Only renders
+                                when the user has at least one
+                                published post. */}
+                            {typeof profile.articleCount === 'number' && profile.articleCount > 0 && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[10.5px] font-bold uppercase tracking-wider"
+                                title={`${profile.articleCount} published ${profile.articleCount === 1 ? 'article' : 'articles'}`}
+                              >
+                                <PenLine className="w-2.5 h-2.5" aria-hidden />
+                                Author
+                              </span>
+                            )}
+                          </div>
+                          {profile.username && (
+                            <p className="text-sm text-[#7B2D8E] font-medium">
+                              @{profile.username}
+                            </p>
+                          )}
+                          {/* Counts row — follows / followers sit right
+                              under the handle. Both are tappable and open
+                              the connections sheet on the matching tab. */}
+                          <div className="flex items-center gap-4 mt-2 text-sm">
+                            <button
+                              type="button"
+                              onClick={() => setFollowListTab('followers')}
+                              className="flex items-center gap-1 rounded-md -mx-1 px-1 py-0.5 hover:bg-gray-50 transition-colors"
+                            >
+                              <span className="font-semibold text-gray-900">
+                                {follow.followerCount}
+                              </span>
+                              <span className="text-gray-500">
+                                {follow.followerCount === 1
+                                  ? 'follower'
+                                  : 'followers'}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFollowListTab('following')}
+                              className="flex items-center gap-1 rounded-md -mx-1 px-1 py-0.5 hover:bg-gray-50 transition-colors"
+                            >
+                              <span className="font-semibold text-gray-900">
+                                {follow.followingCount}
+                              </span>
+                              <span className="text-gray-500">following</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action buttons — Follow (visitors) and Share
+                          (everyone). On mobile the row stretches full
+                          width so buttons are easy to tap; on md+ they
+                          sit inline next to the name block. */}
+                      <div className="flex items-center gap-2 w-full md:w-auto">
+                        {!isOwner && viewer.loaded && (
+                          <button
+                            type="button"
+                            onClick={handleFollow}
+                            disabled={follow.isPending}
+                            className={`inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none min-w-[120px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 ${
+                              follow.isFollowing
+                                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15 border border-[#7B2D8E]/20'
+                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
+                            }`}
+                            aria-pressed={follow.isFollowing}
+                            aria-busy={follow.isPending}
+                          >
+                            {follow.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>
+                                  {follow.isFollowing ? 'Unfollowing' : 'Following'}
+                                </span>
+                              </>
+                            ) : follow.isFollowing ? (
+                              <>
+                                <UserCheck className="w-4 h-4" />
+                                Following
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="w-4 h-4" />
+                                Follow
+                              </>
+                            )}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleShare}
+                          className="inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors active:scale-[0.98]"
+                          aria-label="Share profile"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          Share
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    {profile.bio && (
+                      <p className="mt-4 text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line max-w-2xl text-pretty">
+                        {profile.bio}
+                      </p>
+                    )}
+
+                    {/* Social pills — only networks the user has set
+                        up. A small "Connect with" label gives the row
+                        context (people landing on a profile shouldn't
+                        have to guess what the row of icons means), and
+                        each pill tints to the brand colour so the
+                        socials feel part of Dermaspace's palette
+                        instead of a generic toolbar. Each link opens
+                        in a new tab with rel="me" for verified-author
+                        signalling. */}
+                    {socialLinks.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                          {isOwner
+                            ? 'Connect with me'
+                            : `Connect with ${profile.firstName}`}
+                        </p>
+                        {/* Social pills scaled from 40px → 36px so
+                            the row feels proportional to the now-
+                            smaller hero card above it. */}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {socialLinks.map((link) => (
+                            <a
+                              key={link.key}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer me"
+                              title={link.label}
+                              aria-label={link.label}
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#7B2D8E]/25 text-[#7B2D8E] bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E] transition-colors"
+                            >
+                              {link.icon}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Meta row — member since + preferred location */}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs md:text-sm text-gray-500">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" />
+                        <span>Member since {memberSinceLabel}</span>
+                      </div>
+                      {profile.preferredLocation && (
+                        <div className="flex items-center gap-1.5">
+                          <MapPin className="w-4 h-4" />
+                          <span>Prefers {profile.preferredLocation}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Articles authored — only renders for users who
+                    have published at least one post on the journal.
+                    Lists up to six recent posts; tapping any card
+                    deep-links into the public blog. We don't paginate
+                    here — readers who want the full archive can hit
+                    the "All articles" link in the section header. */}
+                {profile.recentArticles && profile.recentArticles.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                    <div className="flex items-baseline justify-between mb-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0"
+                          aria-hidden
+                        >
+                          <PenLine className="w-3.5 h-3.5" />
+                        </span>
+                        <h2 className="font-semibold text-gray-900 truncate">
+                          Articles by {profile.firstName}
+                        </h2>
+                        {typeof profile.articleCount === 'number' && profile.articleCount > 0 && (
+                          <span className="text-[12px] text-gray-500 tabular-nums flex-shrink-0">
+                            · {profile.articleCount}
+                          </span>
+                        )}
+                      </div>
+                      <Link
+                        href={`/blog?author=${profile.username ?? ''}`}
+                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:underline flex-shrink-0"
+                      >
+                        All
+                        <ArrowUpRight className="w-3 h-3" aria-hidden />
+                      </Link>
+                    </div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {profile.recentArticles.map((a) => (
+                        <li key={a.id}>
+                          <Link
+                            href={`/blog/${a.slug}`}
+                            className="group block rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all overflow-hidden bg-white"
+                          >
+                            {a.coverImageUrl ? (
+                              <div className="relative aspect-[16/9] bg-[#7B2D8E]/5 overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={a.coverImageUrl}
+                                  alt=""
+                                  aria-hidden="true"
+                                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ) : (
+                              <div className="aspect-[16/9] bg-gradient-to-br from-[#7B2D8E]/[0.08] to-[#7B2D8E]/[0.02]" />
+                            )}
+                            <div className="p-3">
+                              {a.categoryName && (
+                                <p
+                                  className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1.5 truncate"
+                                  style={{ color: a.categoryAccent || '#7B2D8E' }}
+                                >
+                                  {a.categoryName}
+                                </p>
+                              )}
+                              <h3 className="text-[13.5px] font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-[#7B2D8E] transition-colors text-pretty">
+                                {a.title}
+                              </h3>
+                              <p className="mt-1.5 text-[11px] text-gray-500 flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" aria-hidden />
+                                {a.readingMinutes} min read
+                              </p>
+                            </div>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Favorite services card */}
+                {profile.favoriteServices &&
+                  profile.favoriteServices.length > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Heart className="w-4 h-4 text-[#7B2D8E]" />
+                        <h2 className="font-semibold text-gray-900">
+                          Favorite Services
+                        </h2>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.favoriteServices.map((service, index) => (
+                          <span
+                            key={index}
+                            className="px-3 py-1.5 bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full text-sm font-medium"
+                          >
+                            {service}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* CTA card — always present, invites the viewer to
+                    book. On the owner's own profile it still makes
+                    sense ("book your next appointment"). */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-5 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                      <Calendar className="w-5 h-5 text-[#7B2D8E]" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-sm md:text-base">
+                        {isOwner
+                          ? 'Ready for your next treatment?'
+                          : `Book a session at Dermaspace`}
+                      </h3>
+                      <p className="text-xs md:text-sm text-gray-500 mt-0.5">
+                        Reserve a slot with our expert therapists.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Book appointment
+                  </Link>
+                </div>
+              </div>
+
+              {/* Sidebar — stats + quick links. Mirrors the dashboard
+                  sidebar width (lg:w-72) so users can tell at a glance
+                  the two pages were designed together. The vertical
+                  rhythm (`space-y-3`) was tightened from `space-y-6`
+                  so the sidebar reads as one cohesive panel rather
+                  than two loosely-floating cards. */}
+              <aside className="lg:w-72 flex-shrink-0 space-y-3">
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 lg:sticky lg:top-24">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                    At a glance
+                  </h2>
+                  {/* Compact stat rows — Product feedback was that
+                      these stats felt oversized in the sidebar (a
+                      48px icon tile + 18px number on every row).
+                      Switched to a 3-col grid on phones (where the
+                      sidebar drops below the main content and stats
+                      can sit side-by-side) and a tighter rows layout
+                      on desktop (`grid-cols-1 lg:gap-2`). Icon tiles
+                      are now 32px, numbers `text-base`, paddings 2.5
+                      — half the visual weight of before but still
+                      scannable. */}
+                  <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:gap-2">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2.5 p-2.5 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold text-gray-900 leading-tight">
+                          {profile.totalBookings || 0}
+                        </p>
+                        <p className="text-[11px] text-gray-500 leading-tight">
+                          {profile.totalBookings === 1 ? 'Booking' : 'Bookings'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2.5 p-2.5 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <Award className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold text-gray-900 leading-tight">
+                          Member
+                        </p>
+                        <p className="text-[11px] text-gray-500 leading-tight">
+                          Status
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2.5 p-2.5 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-bold text-gray-900 leading-tight">
+                          {memberYear}
+                        </p>
+                        <p className="text-[11px] text-gray-500 leading-tight">
+                          Since
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Owner-only shortcut — a compact edit link that
+                      mirrors the one in the cover band. Hidden on
+                      non-owner views to avoid suggesting visitors
+                      can edit this page. Top divider trimmed from
+                      `mt-5 pt-5` to `mt-3 pt-3` to match the new,
+                      tighter card rhythm. */}
+                  {isOwner && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        Go to dashboard
+                        <span aria-hidden="true" className="text-gray-400">→</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/settings"
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        Edit bio &amp; socials
+                        <span aria-hidden="true" className="text-gray-400">→</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {/* Small "Powered by" note — keeps branding consistent
+                    with the old design but in a more tasteful spot. */}
+                <div className="text-center text-xs text-gray-400">
+                  <Link
+                    href="/"
+                    className="hover:text-[#7B2D8E] transition-colors"
+                  >
+                    Powered by{' '}
+                    <span className="font-semibold">Dermaspace</span>
+                  </Link>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </div>
+
+        {/* Owner-only avatar picker — mounted here so the sidebar /
+            picker never competes for the same z-index as the header. */}
+          {isOwner && (
+            <>
+              <AvatarPicker
+                open={showAvatarPicker}
+                onClose={() => setShowAvatarPicker(false)}
+                currentUrl={profile.avatarUrl || null}
+                initials={initials}
+                gender={viewer.gender}
+                onSelect={async (url) => {
+                  await saveOwnerAvatar(url)
+                  setShowAvatarPicker(false)
+                }}
+                onGenderSelect={async (g) => {
+                  // Persist the inline gender choice so the filtered
+                  // avatar grid the user is about to see is saved on
+                  // their record and they never have to pick it again.
+                  try {
+                    const res = await fetch('/api/auth/profile', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        firstName: profile.firstName,
+                        lastName: profile.lastName,
+                        gender: g,
+                      }),
+                    })
+                    if (!res.ok) throw new Error('gender save failed')
+                    setViewer((prev) => ({ ...prev, gender: g }))
+                  } catch {
+                    notify.error(
+                      "Couldn't save that",
+                      'We could not update your gender. Please try again.',
+                    )
+                    throw new Error('gender save failed')
+                  }
+                }}
+              />
+              <CoverPicker
+                open={showCoverPicker}
+                onClose={() => setShowCoverPicker(false)}
+                currentSlug={profile.coverStyle ?? null}
+                userId={profile.id}
+                onSelect={async (slug) => {
+                  await saveOwnerCover(slug)
+                  setShowCoverPicker(false)
+                }}
+              />
+            </>
+          )}
+
+        {/* Rich share sheet — mounted for EVERY viewer (not just the
+            owner). Visitors can also share a profile. Lives at main's
+            level so its fixed overlay doesn't have to fight with any
+            ancestor stacking contexts. */}
+        <ShareSheet
+          open={showShareSheet}
+          onClose={() => setShowShareSheet(false)}
+          url={typeof window !== 'undefined' ? window.location.href : `/${profile.username ?? ''}`}
+          shareText={
+            profile.username
+              ? `Check out @${profile.username} on Dermaspace`
+              : `${profile.firstName} ${profile.lastName} on Dermaspace`
+          }
+          profile={{
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            username: profile.username,
+            avatarUrl: profile.avatarUrl,
+            bio: profile.bio,
+          }}
+        />
+
+        {/* Followers / following list. Signed-in visitors get inline
+            Follow buttons; owners and guests can still browse the lists. */}
+        <FollowListSheet
+          open={followListTab !== null}
+          onClose={() => setFollowListTab(null)}
+          username={profile.username || profile.id}
+          initialTab={followListTab ?? 'followers'}
+          followerCount={follow.followerCount}
+          followingCount={follow.followingCount}
+          canFollow={Boolean(viewer.loaded && viewer.id)}
+        />
+      </main>
+      <Footer />
+    </>
+  )
+}

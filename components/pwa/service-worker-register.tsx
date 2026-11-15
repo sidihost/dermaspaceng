@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { X, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import Image from 'next/image'
-import { isCanonicalPushOrigin } from '@/lib/push-origin'
+import { isServiceWorkerAllowedOrigin } from '@/lib/push-origin'
 
 export function ServiceWorkerRegister() {
   // `usePathname()` can return `null` during certain app-shell
@@ -16,11 +16,16 @@ export function ServiceWorkerRegister() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
+  const [showOnlineBanner, setShowOnlineBanner] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
+  const wasOfflineRef = useRef(false)
+  const onlineBannerTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     // Check initial online status
-    setIsOffline(!navigator.onLine)
+    const initialOffline = !navigator.onLine
+    setIsOffline(initialOffline)
+    wasOfflineRef.current = initialOffline
 
     // -----------------------------------------------------------------
     // Stale-bundle self-heal.
@@ -114,19 +119,28 @@ export function ServiceWorkerRegister() {
     window.addEventListener('error', onError)
     window.addEventListener('unhandledrejection', onUnhandledRejection)
 
-    // Register service worker ONLY on canonical production domains (never
-    // on *.vercel.app or other preview deployments, even when NEXT_PUBLIC_APP_URL
-    // is unset).
-    const isProductionDomain = isCanonicalPushOrigin(window.location.origin, {
+    // Register service worker on canonical, localhost, and hosted app origins
+    // (never on *.vercel.app or other ephemeral preview deployments).
+    const canRegisterSw = isServiceWorkerAllowedOrigin(window.location.origin, {
       configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
-      allowLocalhost: process.env.NODE_ENV === 'development',
+      allowLocalhost: true,
     })
 
-    if ('serviceWorker' in navigator && isProductionDomain) {
+    if ('serviceWorker' in navigator && canRegisterSw) {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
           console.log('SW registered:', registration.scope)
+
+          // Warm core offline landing pages once SW is ready
+          navigator.serviceWorker.ready
+            .then((readyReg) => {
+              readyReg.active?.postMessage({
+                type: 'CACHE_URLS',
+                urls: ['/offline', '/services', '/gift-cards', '/contact'],
+              })
+            })
+            .catch(() => {})
 
           // Check for updates periodically
           setInterval(() => {
@@ -153,8 +167,8 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload()
       })
-    } else if ('serviceWorker' in navigator && !isProductionDomain) {
-      console.log('[SW] Cleaning up SW and push subscriptions on non-canonical domain')
+    } else if ('serviceWorker' in navigator && !canRegisterSw) {
+      console.log('[SW] Cleaning up SW and push subscriptions on preview domain')
       navigator.serviceWorker
         .getRegistrations?.()
         .then(async (regs) => {
@@ -188,14 +202,33 @@ export function ServiceWorkerRegister() {
     }
 
     // Handle online/offline status
-    const handleOnline = () => setIsOffline(false)
-    const handleOffline = () => setIsOffline(true)
+    const handleOnline = () => {
+      setIsOffline(false)
+      if (wasOfflineRef.current) {
+        wasOfflineRef.current = false
+        setShowOnlineBanner(true)
+        if (onlineBannerTimerRef.current) {
+          window.clearTimeout(onlineBannerTimerRef.current)
+        }
+        onlineBannerTimerRef.current = window.setTimeout(() => {
+          setShowOnlineBanner(false)
+        }, 3500)
+      }
+    }
+    const handleOffline = () => {
+      wasOfflineRef.current = true
+      setShowOnlineBanner(false)
+      setIsOffline(true)
+    }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
     return () => {
+      if (onlineBannerTimerRef.current) {
+        window.clearTimeout(onlineBannerTimerRef.current)
+      }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
@@ -231,9 +264,9 @@ export function ServiceWorkerRegister() {
     if (typeof window === 'undefined') return
     if (!('serviceWorker' in navigator)) return
     if (
-      !isCanonicalPushOrigin(window.location.origin, {
+      !isServiceWorkerAllowedOrigin(window.location.origin, {
         configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
-        allowLocalhost: process.env.NODE_ENV === 'development',
+        allowLocalhost: true,
       })
     ) {
       return
@@ -342,20 +375,22 @@ export function ServiceWorkerRegister() {
       {/* Online Restored Banner — kept in-flow for the same
           reason; the previous `fixed top-0` would re-cover the
           header for the brief moment we flip it on. */}
-      {!isOffline && (
+      {!isOffline && showOnlineBanner && (
         <div
           id="online-banner"
-          className="hidden relative z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium"
+          className="relative z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2"
+          role="status"
+          aria-live="polite"
         >
-          <Wifi className="w-4 h-4 inline mr-2" />
-          Back online!
+          <Wifi className="w-4 h-4" aria-hidden />
+          <span>Back online!</span>
         </div>
       )}
 
       {/* Install Prompt */}
       {showInstallPrompt && (
         <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
             {/* Header — flat brand purple, no gradient */}
             <div className="bg-[#7B2D8E] px-5 py-4 relative">
               <button
@@ -366,7 +401,7 @@ export function ServiceWorkerRegister() {
                 <X className="w-4 h-4 text-white/80" />
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg p-1.5">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/30 p-1.5">
                   <Image
                     src="/icons/icon-512x512.webp"
                     alt="Dermaspace"
@@ -411,7 +446,7 @@ export function ServiceWorkerRegister() {
       {/* Update Prompt */}
       {showUpdatePrompt && (
         <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-5">
+          <div className="bg-white rounded-2xl border border-gray-200 p-5">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center flex-shrink-0">
                 <RefreshCw className="w-6 h-6 text-[#7B2D8E]" />

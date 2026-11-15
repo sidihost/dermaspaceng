@@ -2,22 +2,32 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
 export default function Preloader() {
-  const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname()
+  const isSystemStatusRoute =
+    Boolean(pathname?.startsWith('/offline')) ||
+    Boolean(pathname?.startsWith('/maintenance'))
+
+  const [isLoading, setIsLoading] = useState(!isSystemStatusRoute)
   const [fadeOut, setFadeOut] = useState(false)
 
   useEffect(() => {
+    if (isSystemStatusRoute) {
+      setIsLoading(false)
+      return
+    }
     const fade = window.setTimeout(() => setFadeOut(true), 1700)
     const hide = window.setTimeout(() => setIsLoading(false), 2200)
     return () => {
       window.clearTimeout(fade)
       window.clearTimeout(hide)
     }
-  }, [])
+  }, [isSystemStatusRoute])
 
-  if (!isLoading) return null
+  if (!isLoading || isSystemStatusRoute) return null
 
   return (
     <div

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Cookie } from 'lucide-react'
 
 /**
@@ -19,9 +20,7 @@ import { Cookie } from 'lucide-react'
  * Visibility rules:
  *   - Only mounts on the client (SSR returns null) so there's no
  *     hydration mismatch when the flag is missing on the server.
- *   - Hidden on `/admin` and `/staff` consoles — those are
- *     authenticated team surfaces, the banner would only get in
- *     the way.
+ *   - Hidden on `/admin`, `/staff`, `/offline`, and `/maintenance`.
  *   - 600ms entrance delay so the banner doesn't fight the
  *     preloader / hero paint on first visit.
  *
@@ -32,13 +31,18 @@ import { Cookie } from 'lucide-react'
 const STORAGE_KEY = 'ds.cookies.consent'
 
 export function CookieBanner() {
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
 
+  const isSuppressed =
+    Boolean(pathname?.startsWith('/admin')) ||
+    Boolean(pathname?.startsWith('/staff')) ||
+    Boolean(pathname?.startsWith('/offline')) ||
+    Boolean(pathname?.startsWith('/maintenance'))
+
   useEffect(() => {
-    // SSR safety + suppression on admin/staff surfaces.
-    if (typeof window === 'undefined') return
-    const path = window.location.pathname
-    if (path.startsWith('/admin') || path.startsWith('/staff')) return
+    // SSR safety + suppression on admin/staff/system status surfaces.
+    if (typeof window === 'undefined' || isSuppressed) return
 
     let stored: string | null = null
     try {
@@ -53,7 +57,7 @@ export function CookieBanner() {
     // Small delay so the banner doesn't pop in over the preloader.
     const timer = window.setTimeout(() => setVisible(true), 600)
     return () => window.clearTimeout(timer)
-  }, [])
+  }, [isSuppressed])
 
   const persist = (value: 'accepted' | 'dismissed') => {
     try {
@@ -64,7 +68,7 @@ export function CookieBanner() {
     setVisible(false)
   }
 
-  if (!visible) return null
+  if (!visible || isSuppressed) return null
 
   return (
     <div
