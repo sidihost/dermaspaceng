@@ -38,6 +38,10 @@ export async function GET() {
         'gift_card' as type,
         gcr.amount,
         gcr.recipient_name,
+        gcr.occasion,
+        gcr.design,
+        gcr.design_name,
+        gcr.font_name,
         gcr.status,
         gcr.created_at,
         COALESCE(

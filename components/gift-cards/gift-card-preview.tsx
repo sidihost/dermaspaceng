@@ -12,6 +12,7 @@ import {
   Snowflake,
 } from 'lucide-react'
 import {
+  getDesignMedallionHex,
   getGiftCardOccasionMeta,
   resolveOccasionMotif,
   type GiftCardDesign,
@@ -66,7 +67,13 @@ function EditorialFrame({ accentHex }: { accentHex: string }) {
   )
 }
 
-function ChristmasCardArtwork() {
+function ChristmasCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -78,41 +85,13 @@ function ChristmasCardArtwork() {
         preserveAspectRatio="xMidYMid slice"
         className="absolute inset-0 w-full h-full"
       >
-        <path
-          d="M214 0 H360 V225 H214 C194 176, 194 49, 214 0 Z"
-          fill="#6E2682"
-        />
-        <path
-          d="M238 0 H360 V225 H238 C222 175, 222 50, 238 0 Z"
-          fill="#7B2D8E"
-          fillOpacity="0.55"
-        />
-        <rect
-          x="9"
-          y="9"
-          width="342"
-          height="207"
-          rx="11"
-          stroke="#E9D5FF"
-          strokeOpacity="0.26"
-          strokeWidth="1"
-        />
-        <rect
-          x="13"
-          y="13"
-          width="334"
-          height="199"
-          rx="8"
-          stroke="#E5C896"
-          strokeOpacity="0.22"
-          strokeWidth="0.75"
-        />
+        <EditorialFrame accentHex={accentHex} />
         <rect
           x="291"
           y="9"
           width="10"
           height="207"
-          fill="#8E3BA3"
+          fill={accentHex}
           fillOpacity="0.45"
         />
         <line
@@ -133,7 +112,7 @@ function ChristmasCardArtwork() {
           strokeOpacity="0.38"
           strokeWidth="0.85"
         />
-        <g>
+        <g transform="translate(0, 18)">
           <path
             d="M210 10 C248 22, 294 34, 350 28"
             stroke="#1B4332"
@@ -172,7 +151,7 @@ function ChristmasCardArtwork() {
         <g>
           <line
             x1="262"
-            y1="24"
+            y1="42"
             x2="262"
             y2="68"
             stroke="#E5C896"
@@ -186,7 +165,7 @@ function ChristmasCardArtwork() {
             cx="262"
             cy="98"
             r="26"
-            fill="#4A1558"
+            fill={medallionHex}
             stroke="#E5C896"
             strokeWidth="1.6"
           />
@@ -214,7 +193,7 @@ function ChristmasCardArtwork() {
         <g>
           <line
             x1="319"
-            y1="29"
+            y1="47"
             x2="319"
             y2="92"
             stroke="#E5C896"
@@ -277,7 +256,13 @@ function ChristmasCardArtwork() {
   )
 }
 
-function BirthdayCardArtwork({ accentHex }: { accentHex: string }) {
+function BirthdayCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -291,26 +276,28 @@ function BirthdayCardArtwork({ accentHex }: { accentHex: string }) {
       >
         <EditorialFrame accentHex={accentHex} />
 
-        {/* Celebratory pennant banner along top-right */}
-        <path
-          d="M206 16 Q275 44 348 24"
-          stroke="#E5C896"
-          strokeOpacity="0.7"
-          strokeWidth="1.2"
-        />
-        <polygon points="222,22 232,25 224,35" fill="#F9D5E5" />
-        <polygon points="244,28 255,30 248,41" fill="#E5C896" />
-        <polygon points="268,31 279,32 273,43" fill="#F8F0FC" />
-        <polygon points="292,31 303,31 298,42" fill="#F4A6B8" />
-        <polygon points="316,29 327,27 323,39" fill="#E5C896" />
+        {/* Celebratory pennant banner positioned below the top header strip */}
+        <g transform="translate(0, 20)" opacity="0.88">
+          <path
+            d="M206 16 Q275 40 348 22"
+            stroke="#E5C896"
+            strokeOpacity="0.7"
+            strokeWidth="1.2"
+          />
+          <polygon points="222,21 232,24 224,33" fill="#F9D5E5" />
+          <polygon points="244,26 255,28 248,38" fill="#E5C896" />
+          <polygon points="268,29 279,30 273,40" fill="#F8F0FC" />
+          <polygon points="292,29 303,29 298,39" fill="#F4A6B8" />
+          <polygon points="316,27 327,25 323,36" fill="#E5C896" />
+        </g>
 
         {/* Circular medallion backing behind celebration cake */}
         <circle
           cx="286"
           cy="118"
           r="50"
-          fill="#4A1558"
-          fillOpacity="0.45"
+          fill={medallionHex}
+          fillOpacity="0.55"
           stroke="#E5C896"
           strokeOpacity="0.45"
           strokeWidth="1.2"
@@ -397,7 +384,13 @@ function BirthdayCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function AnniversaryCardArtwork({ accentHex }: { accentHex: string }) {
+function AnniversaryCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -419,8 +412,8 @@ function AnniversaryCardArtwork({ accentHex }: { accentHex: string }) {
           cx="286"
           cy="112"
           r="46"
-          fill="#4A1558"
-          fillOpacity="0.45"
+          fill={medallionHex}
+          fillOpacity="0.55"
           stroke="#E5C896"
           strokeOpacity="0.5"
           strokeWidth="1.2"
@@ -464,7 +457,13 @@ function AnniversaryCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function ThankYouCardArtwork({ accentHex }: { accentHex: string }) {
+function ThankYouCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -485,8 +484,8 @@ function ThankYouCardArtwork({ accentHex }: { accentHex: string }) {
           width="92"
           height="132"
           rx="14"
-          fill="#4A1558"
-          fillOpacity="0.4"
+          fill={medallionHex}
+          fillOpacity="0.5"
           stroke="#E5C896"
           strokeOpacity="0.45"
           strokeWidth="1.1"
@@ -560,7 +559,13 @@ function ThankYouCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function SelfCareCardArtwork({ accentHex }: { accentHex: string }) {
+function SelfCareCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -598,8 +603,8 @@ function SelfCareCardArtwork({ accentHex }: { accentHex: string }) {
           cy="144"
           rx="25"
           ry="6.5"
-          fill="#4A1558"
-          fillOpacity="0.4"
+          fill={medallionHex}
+          fillOpacity="0.5"
           stroke="#F8F0FC"
           strokeOpacity="0.45"
           strokeWidth="1"
@@ -631,7 +636,7 @@ function SelfCareCardArtwork({ accentHex }: { accentHex: string }) {
         <circle cx="286" cy="96" r="4" fill="#E5C896" />
 
         {/* Balanced smooth spa stones below ripple */}
-        <ellipse cx="286" cy="164" rx="22" ry="7.5" fill="#4A1558" stroke="#E5C896" strokeWidth="1.1" />
+        <ellipse cx="286" cy="164" rx="22" ry="7.5" fill={medallionHex} stroke="#E5C896" strokeWidth="1.1" />
         <ellipse cx="286" cy="153" rx="14" ry="5.5" fill="#A7D7C5" stroke="#F8F0FC" strokeWidth="1" />
 
         {/* Subtle botanical dew drops */}
@@ -643,7 +648,13 @@ function SelfCareCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function WeddingCardArtwork({ accentHex }: { accentHex: string }) {
+function WeddingCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -660,8 +671,8 @@ function WeddingCardArtwork({ accentHex }: { accentHex: string }) {
         {/* Cathedral bridal floral arch */}
         <path
           d="M242 174 V96 C242 64, 330 64, 330 96 V174"
-          fill="#4A1558"
-          fillOpacity="0.42"
+          fill={medallionHex}
+          fillOpacity="0.52"
           stroke="#F8F0FC"
           strokeOpacity="0.55"
           strokeWidth="1.4"
@@ -692,13 +703,19 @@ function WeddingCardArtwork({ accentHex }: { accentHex: string }) {
           fill="#E5C896"
           fillOpacity="0.9"
         />
-        <line x1="268" y1="164" x2="304" y2="164" stroke="#4A1558" strokeOpacity="0.45" strokeWidth="1" />
+        <line x1="268" y1="164" x2="304" y2="164" stroke={medallionHex} strokeOpacity="0.55" strokeWidth="1" />
       </svg>
     </div>
   )
 }
 
-function MothersDayCardArtwork({ accentHex }: { accentHex: string }) {
+function MothersDayCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -717,8 +734,8 @@ function MothersDayCardArtwork({ accentHex }: { accentHex: string }) {
           cx="286"
           cy="108"
           r="46"
-          fill="#4A1558"
-          fillOpacity="0.4"
+          fill={medallionHex}
+          fillOpacity="0.5"
           stroke="#E5C896"
           strokeOpacity="0.45"
           strokeWidth="1.2"
@@ -777,7 +794,13 @@ function MothersDayCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function ValentinesCardArtwork({ accentHex }: { accentHex: string }) {
+function ValentinesCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -799,8 +822,8 @@ function ValentinesCardArtwork({ accentHex }: { accentHex: string }) {
           cx="286"
           cy="112"
           r="46"
-          fill="#4A1558"
-          fillOpacity="0.46"
+          fill={medallionHex}
+          fillOpacity="0.55"
           stroke="#E5C896"
           strokeOpacity="0.5"
           strokeWidth="1.2"
@@ -833,7 +856,13 @@ function ValentinesCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function JustBecauseCardArtwork({ accentHex }: { accentHex: string }) {
+function JustBecauseCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -852,8 +881,8 @@ function JustBecauseCardArtwork({ accentHex }: { accentHex: string }) {
           cx="286"
           cy="116"
           r="46"
-          fill="#4A1558"
-          fillOpacity="0.45"
+          fill={medallionHex}
+          fillOpacity="0.55"
           stroke="#E5C896"
           strokeOpacity="0.45"
           strokeWidth="1.2"
@@ -883,7 +912,7 @@ function JustBecauseCardArtwork({ accentHex }: { accentHex: string }) {
         />
         {/* Vertical & horizontal satin ribbons */}
         <rect x="281" y="94" width="10" height="58" fill="#E5C896" />
-        <rect x="256" y="124" width="60" height="7" fill="#7B2D8E" fillOpacity="0.75" />
+        <rect x="256" y="124" width="60" height="7" fill={accentHex} fillOpacity="0.85" />
 
         {/* Sculpted ribbon bow */}
         <path
@@ -898,7 +927,7 @@ function JustBecauseCardArtwork({ accentHex }: { accentHex: string }) {
           stroke="#FFF4D2"
           strokeWidth="1"
         />
-        <circle cx="286" cy="93" r="4.5" fill="#7B2D8E" stroke="#FFF4D2" strokeWidth="1" />
+        <circle cx="286" cy="93" r="4.5" fill={medallionHex} stroke="#FFF4D2" strokeWidth="1" />
 
         {/* Playful botanical & confetti dots */}
         <circle cx="236" cy="80" r="2.8" fill="#E5C896" />
@@ -910,7 +939,13 @@ function JustBecauseCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function ClassicCardArtwork({ accentHex }: { accentHex: string }) {
+function ClassicCardArtwork({
+  accentHex,
+  medallionHex,
+}: {
+  accentHex: string
+  medallionHex: string
+}) {
   return (
     <div
       aria-hidden="true"
@@ -927,8 +962,8 @@ function ClassicCardArtwork({ accentHex }: { accentHex: string }) {
           cx="286"
           cy="112"
           r="38"
-          fill="#4A1558"
-          fillOpacity="0.35"
+          fill={medallionHex}
+          fillOpacity="0.45"
           stroke="#E5C896"
           strokeOpacity="0.4"
           strokeWidth="1.1"
@@ -956,29 +991,33 @@ function ClassicCardArtwork({ accentHex }: { accentHex: string }) {
   )
 }
 
-function renderMotifArtwork(motif: GiftCardOccasionMotif, accentHex: string) {
+function renderMotifArtwork(
+  motif: GiftCardOccasionMotif,
+  accentHex: string,
+  medallionHex: string,
+) {
   switch (motif) {
     case 'christmas':
-      return <ChristmasCardArtwork />
+      return <ChristmasCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'birthday':
-      return <BirthdayCardArtwork accentHex={accentHex} />
+      return <BirthdayCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'anniversary':
-      return <AnniversaryCardArtwork accentHex={accentHex} />
+      return <AnniversaryCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'thank-you':
-      return <ThankYouCardArtwork accentHex={accentHex} />
+      return <ThankYouCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'self-care':
-      return <SelfCareCardArtwork accentHex={accentHex} />
+      return <SelfCareCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'wedding':
-      return <WeddingCardArtwork accentHex={accentHex} />
+      return <WeddingCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'mothers-day':
-      return <MothersDayCardArtwork accentHex={accentHex} />
+      return <MothersDayCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'valentines':
-      return <ValentinesCardArtwork accentHex={accentHex} />
+      return <ValentinesCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'just-because':
-      return <JustBecauseCardArtwork accentHex={accentHex} />
+      return <JustBecauseCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
     case 'classic':
     default:
-      return <ClassicCardArtwork accentHex={accentHex} />
+      return <ClassicCardArtwork accentHex={accentHex} medallionHex={medallionHex} />
   }
 }
 
@@ -1020,8 +1059,7 @@ export function GiftCardPreview({
 }: GiftCardPreviewProps) {
   const motif = resolveOccasionMotif(occasion, design.id)
   const occasionMeta = getGiftCardOccasionMeta(occasion)
-  const isChristmas = motif === 'christmas'
-  const OccasionIcon = getOccasionBadgeIcon(motif)
+  const medallionHex = getDesignMedallionHex(design)
 
   return (
     <div className={`relative ${className}`}>
@@ -1047,9 +1085,9 @@ export function GiftCardPreview({
         className="relative rounded-2xl p-5 overflow-hidden border border-white/25"
         style={{ backgroundColor: design.surfaceHex }}
       >
-        {renderMotifArtwork(motif, design.accentHex)}
+        {renderMotifArtwork(motif, design.accentHex, medallionHex)}
 
-        {/* Top Row */}
+        {/* Top Row — clean editorial mark, zero badges */}
         <div className="relative flex items-center justify-between gap-2 mb-6">
           <div className="relative inline-flex items-center gap-2">
             <Image
@@ -1061,15 +1099,9 @@ export function GiftCardPreview({
               className="h-6 w-auto object-contain brightness-0 invert"
             />
           </div>
-
-          {!isChristmas && (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#4A1558]/55 rounded-full border border-[#E5C896]/40">
-              <OccasionIcon className="w-3 h-3 text-[#E5C896]" aria-hidden="true" />
-              <span className="text-[10px] font-bold text-white uppercase tracking-wider whitespace-nowrap">
-                {occasion ? occasionMeta.occasion : 'Gift Card'}
-              </span>
-            </div>
-          )}
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/75 whitespace-nowrap">
+            Gift Card
+          </span>
         </div>
 
         {/* Recipient */}
@@ -1092,27 +1124,11 @@ export function GiftCardPreview({
           </p>
         </div>
 
-        {/* Bottom Row */}
+        {/* Bottom Row — plain typography, zero badges */}
         <div className="relative flex items-center justify-between gap-2">
-          {occasion ? (
-            isChristmas ? (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-white/95">
-                <Snowflake className="w-3 h-3 text-[#E5C896]" aria-hidden="true" />
-                <span className="whitespace-nowrap">{occasionMeta.editionLabel}</span>
-              </span>
-            ) : (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#4A1558]/45 rounded-full border border-white/25">
-                <OccasionIcon className="w-2.5 h-2.5 text-[#E5C896]" aria-hidden="true" />
-                <span className="text-[10px] font-medium text-white whitespace-nowrap">
-                  {occasionMeta.editionLabel}
-                </span>
-              </div>
-            )
-          ) : (
-            <span className="text-[10px] font-medium text-white/75 tracking-wide">
-              Signature Gift Card
-            </span>
-          )}
+          <span className="text-[11px] font-medium text-white/90 tracking-wide whitespace-nowrap">
+            {occasion ? occasionMeta.editionLabel : 'Signature Gift Card'}
+          </span>
           <p className="text-white/85 text-xs truncate">
             From:{' '}
             <span className="text-white font-medium">

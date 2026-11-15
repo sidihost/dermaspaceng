@@ -16,6 +16,8 @@ export interface GiftCardDesign {
   surfaceHex: string
   /** Complementary flat accent hex for secondary layers / borders. */
   accentHex: string
+  /** Deeper flat hex for SVG medallion / ornament fills. */
+  medallionHex?: string
   /** Legacy Tailwind gradient string kept strictly for persisted DB metadata compatibility. */
   gradient: string
   isSeasonal?: boolean
@@ -33,6 +35,7 @@ export const CHRISTMAS_GIFT_CARD_DESIGN: GiftCardDesign = {
   name: 'Christmas Edition',
   surfaceHex: '#5A1D6A',
   accentHex: '#7B2D8E',
+  medallionHex: '#3D1048',
   gradient: 'from-[#5A1D6A] to-[#7B2D8E]',
   isSeasonal: true,
 }
@@ -43,20 +46,66 @@ export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
     name: 'Royal Purple',
     surfaceHex: '#7B2D8E',
     accentHex: '#9B4DB0',
+    medallionHex: '#4A1558',
     gradient: 'from-[#7B2D8E] to-[#9B4DB0]',
   },
   {
     id: 'violet',
-    name: 'Deep Violet',
-    surfaceHex: '#5A1D6A',
-    accentHex: '#7B2D8E',
-    gradient: 'from-[#5A1D6A] to-[#7B2D8E]',
+    name: 'Deep Velvet',
+    surfaceHex: '#4A1558',
+    accentHex: '#6E2682',
+    medallionHex: '#2E0B38',
+    gradient: 'from-[#4A1558] to-[#6E2682]',
   },
+  {
+    id: 'emerald',
+    name: 'Sanctuary Emerald',
+    surfaceHex: '#184E3F',
+    accentHex: '#2A6F5B',
+    medallionHex: '#0E3127',
+    gradient: 'from-[#184E3F] to-[#2A6F5B]',
+  },
+  {
+    id: 'sapphire',
+    name: 'Midnight Sapphire',
+    surfaceHex: '#1D335B',
+    accentHex: '#314F85',
+    medallionHex: '#101F3A',
+    gradient: 'from-[#1D335B] to-[#314F85]',
+  },
+  {
+    id: 'burgundy',
+    name: 'Velvet Rose',
+    surfaceHex: '#7D2248',
+    accentHex: '#A13662',
+    medallionHex: '#4B1029',
+    gradient: 'from-[#7D2248] to-[#A13662]',
+  },
+  {
+    id: 'espresso',
+    name: 'Champagne Bronze',
+    surfaceHex: '#6B4C2B',
+    accentHex: '#8C653E',
+    medallionHex: '#422D17',
+    gradient: 'from-[#6B4C2B] to-[#8C653E]',
+  },
+  {
+    id: 'onyx',
+    name: 'Charcoal Onyx',
+    surfaceHex: '#242029',
+    accentHex: '#3D3744',
+    medallionHex: '#141118',
+    gradient: 'from-[#242029] to-[#3D3744]',
+  },
+]
+
+const LEGACY_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
   {
     id: 'lavender',
     name: 'Lavender',
     surfaceHex: '#8E44AD',
     accentHex: '#A569BD',
+    medallionHex: '#5B2673',
     gradient: 'from-[#9B4DB0] to-[#B76CC8]',
   },
   {
@@ -64,6 +113,7 @@ export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
     name: 'Plum',
     surfaceHex: '#6B2D7B',
     accentHex: '#8B4DA0',
+    medallionHex: '#42194D',
     gradient: 'from-[#6B2D7B] to-[#8B4DA0]',
   },
   {
@@ -71,6 +121,7 @@ export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
     name: 'Mauve',
     surfaceHex: '#7D4E88',
     accentHex: '#9B6AA6',
+    medallionHex: '#4D2C55',
     gradient: 'from-[#8B5A96] to-[#A87BB0]',
   },
   {
@@ -78,9 +129,14 @@ export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
     name: 'Orchid',
     surfaceHex: '#8630A8',
     accentHex: '#A34EC4',
+    medallionHex: '#521A68',
     gradient: 'from-[#9932CC] to-[#BA55D3]',
   },
 ]
+
+export function getDesignMedallionHex(design: GiftCardDesign): string {
+  return design.medallionHex || design.surfaceHex
+}
 
 export const CHRISTMAS_OCCASION = 'Christmas'
 
@@ -124,16 +180,10 @@ export function isChristmasTemplateAvailable({
   )
 }
 
-export function getGiftCardDesigns({
-  festiveEnabled,
-  userRemovedChristmas,
-}: {
-  festiveEnabled: boolean
-  userRemovedChristmas: boolean
+export function getGiftCardDesigns(_opts?: {
+  festiveEnabled?: boolean
+  userRemovedChristmas?: boolean
 }): GiftCardDesign[] {
-  if (isChristmasTemplateAvailable({ festiveEnabled, userRemovedChristmas })) {
-    return [CHRISTMAS_GIFT_CARD_DESIGN, ...INITIAL_GIFT_CARD_DESIGNS]
-  }
   return [...INITIAL_GIFT_CARD_DESIGNS]
 }
 
@@ -150,16 +200,11 @@ export function getGiftCardOccasions({
   return [...INITIAL_GIFT_CARD_OCCASIONS]
 }
 
-export function getDefaultGiftCardDesign({
-  festiveEnabled,
-  userRemovedChristmas,
-}: {
-  festiveEnabled: boolean
-  userRemovedChristmas: boolean
+export function getDefaultGiftCardDesign(_opts?: {
+  festiveEnabled?: boolean
+  userRemovedChristmas?: boolean
 }): GiftCardDesign {
-  return isChristmasTemplateAvailable({ festiveEnabled, userRemovedChristmas })
-    ? CHRISTMAS_GIFT_CARD_DESIGN
-    : INITIAL_GIFT_CARD_DESIGNS[0]
+  return INITIAL_GIFT_CARD_DESIGNS[0]
 }
 
 export function getDefaultGiftCardOccasion({
@@ -175,12 +220,21 @@ export function getDefaultGiftCardOccasion({
 }
 
 export function findGiftCardDesignById(id?: string | null): GiftCardDesign {
-  if (id === CHRISTMAS_GIFT_CARD_DESIGN.id) {
+  const normalized = typeof id === 'string' ? id.trim().toLowerCase() : ''
+  if (!normalized) return INITIAL_GIFT_CARD_DESIGNS[0]
+  if (
+    normalized === CHRISTMAS_GIFT_CARD_DESIGN.id ||
+    normalized === CHRISTMAS_GIFT_CARD_DESIGN.name.toLowerCase()
+  ) {
     return CHRISTMAS_GIFT_CARD_DESIGN
   }
+  const all = [...INITIAL_GIFT_CARD_DESIGNS, ...LEGACY_GIFT_CARD_DESIGNS]
   return (
-    INITIAL_GIFT_CARD_DESIGNS.find((d) => d.id === id) ??
-    INITIAL_GIFT_CARD_DESIGNS[0]
+    all.find(
+      (d) =>
+        d.id.toLowerCase() === normalized ||
+        d.name.toLowerCase() === normalized,
+    ) ?? INITIAL_GIFT_CARD_DESIGNS[0]
   )
 }
 
@@ -217,7 +271,7 @@ export const GIFT_CARD_OCCASION_META_LIST: GiftCardOccasionMeta[] = [
     occasion: CHRISTMAS_OCCASION,
     editionLabel: 'Christmas Edition',
     tagline: 'Winter Sanctuary Gift',
-    suggestedDesignId: 'christmas',
+    suggestedDesignId: 'emerald',
   },
   {
     id: 'birthday',
@@ -231,49 +285,49 @@ export const GIFT_CARD_OCCASION_META_LIST: GiftCardOccasionMeta[] = [
     occasion: 'Anniversary',
     editionLabel: 'Anniversary Edition',
     tagline: 'Years of Shared Calm',
-    suggestedDesignId: 'violet',
+    suggestedDesignId: 'sapphire',
   },
   {
     id: 'thank-you',
     occasion: 'Thank You',
     editionLabel: 'Gratitude Edition',
     tagline: 'With Sincere Appreciation',
-    suggestedDesignId: 'plum',
+    suggestedDesignId: 'espresso',
   },
   {
     id: 'self-care',
     occasion: 'Self-Care',
     editionLabel: 'Self-Care Ritual',
     tagline: 'Rest, Restore, Glow',
-    suggestedDesignId: 'lavender',
+    suggestedDesignId: 'emerald',
   },
   {
     id: 'wedding',
     occasion: 'Wedding',
     editionLabel: 'Bridal & Wedding',
     tagline: 'Forever Radiance',
-    suggestedDesignId: 'mauve',
+    suggestedDesignId: 'burgundy',
   },
   {
     id: 'mothers-day',
     occasion: "Mother's Day",
     editionLabel: "Mother's Day Tribute",
     tagline: 'Cherished Care & Bloom',
-    suggestedDesignId: 'orchid',
+    suggestedDesignId: 'burgundy',
   },
   {
     id: 'valentines',
     occasion: "Valentine's",
     editionLabel: "Valentine's Edition",
     tagline: 'A Gift From the Heart',
-    suggestedDesignId: 'plum',
+    suggestedDesignId: 'burgundy',
   },
   {
     id: 'just-because',
     occasion: 'Just Because',
     editionLabel: 'Thoughtful Surprise',
     tagline: 'Wrapped Just For You',
-    suggestedDesignId: 'royal',
+    suggestedDesignId: 'violet',
   },
 ]
 
@@ -347,53 +401,24 @@ export function syncDesignForOccasion(
     preserveCustomColor?: boolean
   },
 ): GiftCardDesign {
-  const christmasAvailable = isChristmasTemplateAvailable({
-    festiveEnabled: opts.festiveEnabled,
-    userRemovedChristmas: opts.userRemovedChristmas,
-  })
   const meta = getGiftCardOccasionMeta(nextOccasion)
-
-  if (meta.id === 'christmas' && christmasAvailable) {
-    return CHRISTMAS_GIFT_CARD_DESIGN
-  }
-
-  // Never keep the Christmas bauble template stuck on a non-Christmas occasion.
   if (
     currentDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id ||
     !opts.preserveCustomColor
   ) {
-    const targetId =
-      meta.suggestedDesignId === CHRISTMAS_GIFT_CARD_DESIGN.id &&
-      !christmasAvailable
-        ? INITIAL_GIFT_CARD_DESIGNS[0].id
-        : meta.suggestedDesignId
-    return findGiftCardDesignById(targetId)
+    return findGiftCardDesignById(meta.suggestedDesignId)
   }
-
   return currentDesign
 }
 
 export function syncOccasionForDesign(
-  nextDesign: GiftCardDesign,
+  _nextDesign: GiftCardDesign,
   currentOccasion: string,
-  opts: {
+  _opts?: {
     festiveEnabled: boolean
     userRemovedChristmas: boolean
   },
 ): string {
-  const christmasAvailable = isChristmasTemplateAvailable({
-    festiveEnabled: opts.festiveEnabled,
-    userRemovedChristmas: opts.userRemovedChristmas,
-  })
-
-  if (nextDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id && christmasAvailable) {
-    return CHRISTMAS_OCCASION
-  }
-
-  if (currentOccasion === CHRISTMAS_OCCASION) {
-    return INITIAL_GIFT_CARD_OCCASIONS[0]
-  }
-
   return currentOccasion
 }
 

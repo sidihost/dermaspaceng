@@ -65,6 +65,7 @@ export interface TransactionDetail {
   giftCard?: {
     recipient_name?: string
     recipient_email?: string | null
+    sender_name?: string | null
     occasion?: string | null
     design?: string | null
     design_name?: string | null
@@ -76,6 +77,7 @@ export interface TransactionDetail {
     status?: string | null
     payment_status?: string | null
     invoice_number?: string | null
+    recipient_notified_at?: string | null
   } | null
   /** Present when this payment funded an appointment (matched by
    *  the shared DS_ payment reference). Lets receipt surfaces show

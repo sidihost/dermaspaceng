@@ -1,4 +1,8 @@
 import { sendMailWithRetry } from './smtp-transport'
+import {
+  findGiftCardDesignById,
+  getGiftCardOccasionMeta,
+} from './gift-card-templates'
 
 const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
 const FROM_EMAIL = 'hello@dermaspaceng.com'
@@ -210,7 +214,7 @@ function getEmailTemplate(
       .ds-header  { padding: 16px 16px !important; }
       .ds-footer  { padding: 18px 16px !important; }
       .ds-footer-cell { display: block !important; width: 100% !important; padding: 0 0 8px !important; }
-      .ds-h1 { font-size: 20px !important; line-height: 1.3 !important; }
+      .ds-h1 { font-size: 18px !important; line-height: 1.3 !important; }
       .ds-body { font-size: 15px !important; line-height: 1.6 !important; }
     }
   </style>
@@ -706,16 +710,16 @@ export async function sendConsultationConfirmation(data: {
     : ''
 
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Consultation Requested</h2>
+    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">Consultation Requested</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.firstName},<br><br>
       Thank you for requesting a consultation with Dermaspace. Our team will review your request and confirm your appointment within 24 hours.
     </p>
     ${ctaBlock}
     
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; padding: 20px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
       <tr>
-        <td style="padding: 20px;">
+        <td style="padding: 18px 20px;">
           <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Appointment Details</h3>
           <table role="presentation" cellspacing="0" cellpadding="0">
             <tr>
@@ -814,7 +818,7 @@ export async function sendConsultationStatusEmail(data: {
     <div style="margin: 0 0 14px;">
       <span style="display: inline-block; padding: 4px 12px; border-radius: 999px; background-color: ${badgeBg}; color: ${badgeColor}; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;">${escapeHtml(data.status)}</span>
     </div>
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">${headingMap[data.status] || 'Consultation Update'}</h2>
+    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">${headingMap[data.status] || 'Consultation Update'}</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${escapeHtml(data.firstName || 'there')},<br><br>
       ${copyMap[data.status] || 'Your consultation details have been updated.'}
@@ -1240,7 +1244,7 @@ export async function sendConsultationReminder(data: {
   time: string
 }): Promise<boolean> {
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Your consultation starts soon</h2>
+    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">Your consultation starts soon</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.firstName},<br><br>
       Your skincare consultation with Dermaspace is in about an hour. Here are the details so you have everything in one place:
@@ -2099,7 +2103,7 @@ export async function sendReplyNotification(data: {
     : data.requestTitle
 
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a; line-height: 1.3;">You&rsquo;ve got a response</h2>
+    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">You&rsquo;ve got a response</h2>
     <p style="margin: 0 0 28px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.firstName}, ${data.responderName} from the Dermaspace team has
       replied to your ${typeLabels[data.requestType].toLowerCase()}.
@@ -2299,7 +2303,7 @@ export async function sendConsultationCustomerReplyAlert(data: {
   const safeMessage = escapeHtml(data.replyMessage)
 
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Consultation Reply</h2>
+    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">New Consultation Reply</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       <strong>${safeName}</strong>${data.isAnonymous ? ' (via tracking link)' : ''} sent a follow-up message on their consultation${safeLocation ? ` (${safeLocation})` : ''}.
     </p>
@@ -3908,6 +3912,169 @@ export async function sendBookingCompletedEmail(data: {
     html: getEmailTemplate(content, {
       preheader: `Your booking ${data.bookingReference} is complete. We hope you loved your visit.`,
       eyebrow: 'Visit completed',
+    }),
+  })
+}
+
+// Gift card delivery directly to the recipient (uses untouched getEmailTemplate shell)
+export async function sendGiftCardToRecipient(data: {
+  recipientEmail: string
+  recipientName: string
+  senderName: string
+  amount: number
+  occasion?: string | null
+  designId?: string | null
+  designName?: string | null
+  fontName?: string | null
+  personalMessage?: string | null
+  giftCardRef?: string | null
+}): Promise<boolean> {
+  if (!data.recipientEmail || !data.recipientEmail.includes('@')) {
+    return false
+  }
+
+  const design = findGiftCardDesignById(data.designId || data.designName)
+  const occasionMeta = getGiftCardOccasionMeta(data.occasion)
+  const safeRecipient = escapeHtml(data.recipientName || 'Valued Guest')
+  const safeSender = escapeHtml(data.senderName || 'Someone Special')
+  const safeEdition = escapeHtml(occasionMeta.editionLabel)
+  const safeOccasion = escapeHtml(data.occasion || 'Special Occasion')
+  const safeDesignName = escapeHtml(data.designName || design.name)
+  const safeFontName = escapeHtml(data.fontName || 'Elegant')
+  const safeRef = data.giftCardRef ? escapeHtml(data.giftCardRef) : ''
+  const safeMessage = data.personalMessage ? escapeHtml(data.personalMessage) : ''
+  const formattedAmount = `N${Math.round(Number(data.amount) || 0).toLocaleString('en-NG')}`
+  const bookUrl = `${PUBLIC_ORIGIN}/book`
+
+  const fontStack =
+    safeFontName.toLowerCase().includes('modern')
+      ? "'Helvetica Neue', Arial, sans-serif"
+      : safeFontName.toLowerCase().includes('playful')
+        ? "'Courier New', Courier, monospace"
+        : "Georgia, 'Times New Roman', serif"
+
+  const content = `
+    <h2 style="margin: 0 0 12px; font-size: 24px; font-weight: 700; color: #1a1a1a; line-height: 1.25;">
+      You&rsquo;ve received a Dermaspace Gift Card
+    </h2>
+    <p style="margin: 0 0 22px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${safeRecipient},<br><br>
+      <strong style="color: #1a1a1a;">${safeSender}</strong> sent you a Dermaspace Esthetic &amp; Wellness gift card${data.occasion ? ` for <strong style="color: #1a1a1a;">${safeOccasion}</strong>` : ''}.
+    </p>
+
+    <!-- Recipient Gift Card Visual in Sender's Chosen Colour -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 22px;">
+      <tr>
+        <td style="padding: 18px; background-color: ${design.surfaceHex}; border-radius: 16px; border: 1px solid #E5C896;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid rgba(229, 200, 150, 0.45); border-radius: 12px;">
+            <tr>
+              <td style="padding: 20px 22px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="font-size: 12px; font-weight: 700; letter-spacing: 1.8px; text-transform: uppercase; color: #ffffff;">
+                      Dermaspace
+                    </td>
+                    <td align="right" style="font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #E5C896;">
+                      Gift Card
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin: 22px 0 4px; font-family: ${fontStack}; font-size: 12px; color: rgba(255,255,255,0.82);">
+                  For: <strong style="color: #ffffff;">${safeRecipient}</strong>
+                </p>
+                <p style="margin: 10px 0 2px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: #E5C896;">
+                  Gift Value
+                </p>
+                <p style="margin: 0 0 22px; font-family: ${fontStack}; font-size: 32px; font-weight: 700; color: #ffffff; line-height: 1.1;">
+                  ${formattedAmount}
+                </p>
+
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="font-size: 12px; color: rgba(255,255,255,0.92); font-weight: 500;">
+                      ${safeEdition}
+                    </td>
+                    <td align="right" style="font-size: 12px; color: rgba(255,255,255,0.85);">
+                      From: <strong style="color: #ffffff;">${safeSender}</strong>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${safeMessage ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 22px; background-color: #faf7fc; border-radius: 12px; border-left: 3px solid ${BRAND_COLOR};">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: ${BRAND_COLOR};">Personal Message</p>
+          <p style="margin: 0; font-family: Georgia, serif; font-size: 15px; color: #374151; font-style: italic; line-height: 1.55;">&ldquo;${safeMessage}&rdquo;</p>
+        </td>
+      </tr>
+    </table>
+    ` : ''}
+
+    <!-- Card Details -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 22px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 18px 20px;">
+          <h3 style="margin: 0 0 12px; font-size: 12px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Gift Card Details</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #666; width: 130px;">Value:</td>
+              <td style="padding: 6px 0; font-size: 14px; color: ${BRAND_COLOR}; font-weight: 700;">${formattedAmount}</td>
+            </tr>
+            ${safeRef ? `<tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #666;">Gift Reference:</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #1a1a1a; font-family: monospace; font-weight: 600;">${safeRef}</td>
+            </tr>` : ''}
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #666;">Occasion:</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #1a1a1a;">${safeOccasion} (${safeEdition})</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #666;">Card Style:</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #1a1a1a;">${safeDesignName} &middot; ${safeFontName} font</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #666;">Validity:</td>
+              <td style="padding: 6px 0; font-size: 13px; color: #1a1a1a;">Both Lagos branches &middot; Never expires</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <h3 style="margin: 0 0 10px; font-size: 15px; font-weight: 600; color: #1a1a1a;">How to Redeem</h3>
+    <p style="margin: 0 0 18px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      Book your preferred facial, massage, or wellness ritual online or visit us at Victoria Island (237B Muri Okunola St) or Ikoyi (9 Agbeke Rotinwa Cl) and present your gift reference${safeRef ? ` (<strong style="font-family: monospace;">${safeRef}</strong>)` : ''}.
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${bookUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Book Your Treatment
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Questions? Reply to this email or call 09013134945 / 09061836625.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: `${data.senderName || 'Someone special'} sent you a Dermaspace Gift Card`,
+    html: getEmailTemplate(content, {
+      preheader: `${data.senderName || 'Someone special'} gifted you ${formattedAmount} to enjoy at Dermaspace.`,
+      eyebrow: 'Your gift card',
     }),
   })
 }

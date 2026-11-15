@@ -22,7 +22,6 @@ import {
   ChevronLeft,
   Wallet,
   Receipt,
-  Snowflake,
   Printer,
   Loader2,
 } from 'lucide-react'
@@ -136,9 +135,6 @@ export default function GiftCardsClient() {
       preserveCustomColor: hasCustomColor,
     })
     setSelectedDesign(syncedDesign)
-    if (syncedDesign.id === CHRISTMAS_GIFT_CARD_DESIGN.id) {
-      setHasCustomColor(false)
-    }
   }
 
   const handleSelectDesign = (nextDesign: GiftCardDesign) => {
@@ -148,7 +144,7 @@ export default function GiftCardsClient() {
       userRemovedChristmas: false,
     })
     setSelectedOccasion(syncedOccasion)
-    setHasCustomColor(nextDesign.id !== CHRISTMAS_GIFT_CARD_DESIGN.id)
+    setHasCustomColor(true)
   }
 
   useEffect(() => {
@@ -199,7 +195,7 @@ export default function GiftCardsClient() {
             amount: Number(tx.amount) || 0,
             recipientName: String(gc?.recipient_name || metaDetails.recipientName || 'Recipient'),
             recipientEmail: gc?.recipient_email || (metaDetails.recipientEmail ? String(metaDetails.recipientEmail) : null),
-            senderName: metaDetails.senderName ? String(metaDetails.senderName) : senderName || null,
+            senderName: gc?.sender_name || (metaDetails.senderName ? String(metaDetails.senderName) : senderName || null),
             occasion: String(gc?.occasion || metaDetails.occasion || 'Special Occasion'),
             designName: String(gc?.design_name || metaDetails.designName || 'Custom Design'),
             designId: String(gc?.design || metaDetails.design || 'royal'),
@@ -374,6 +370,7 @@ export default function GiftCardsClient() {
           recipientEmail: summaryRecipientEmail,
           senderName: summarySender,
           occasion: summaryOccasion,
+          designId: summaryDesignObj.id,
           designName: summaryDesign,
           fontName: completedDetails?.fontName || summaryFontObj.name,
           deliveryMethod: summaryDeliveryMethod,
@@ -763,49 +760,38 @@ export default function GiftCardsClient() {
                       {selectedDesign.name}
                     </span>
                   </div>
-                  <div className={`grid gap-2 ${cardDesigns.length === 7 ? 'grid-cols-4 sm:grid-cols-7' : 'grid-cols-3 sm:grid-cols-6'}`}>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     {cardDesigns.map((design) => {
-                      const isChristmasTile = design.id === CHRISTMAS_GIFT_CARD_DESIGN.id
                       const isSelected = selectedDesign.id === design.id
-                      const ActiveOccasionIcon = getOccasionBadgeIcon(occasionMeta.id)
                       return (
                         <button
                           key={design.id}
                           type="button"
                           onClick={() => handleSelectDesign(design)}
                           aria-pressed={isSelected}
-                          className={`relative p-1 rounded-lg transition-colors ${
+                          className={`relative p-2 rounded-lg transition-colors text-center ${
                             isSelected
-                              ? 'ring-2 ring-[#7B2D8E] ring-offset-1 bg-[#7B2D8E]/[0.04]'
-                              : 'hover:bg-gray-50'
+                              ? 'ring-2 ring-[#7B2D8E] ring-offset-1 bg-[#7B2D8E]/[0.05]'
+                              : 'hover:bg-gray-50 border border-gray-100'
                           }`}
                         >
                           <div
-                            className="relative aspect-[1.6/1] rounded overflow-hidden flex items-center justify-center border border-black/10"
+                            className="relative aspect-[1.7/1] rounded-md overflow-hidden flex items-center justify-center border border-black/10"
                             style={{ backgroundColor: design.surfaceHex }}
                           >
                             <div
                               aria-hidden="true"
-                              className="absolute top-0 right-0 bottom-0 w-2/5 rounded-l-[18px] opacity-40"
+                              className="absolute top-0 right-0 bottom-0 w-2/5 rounded-l-[18px] opacity-65"
                               style={{ backgroundColor: design.accentHex }}
                             />
-                            {isChristmasTile ? (
-                              <div className="relative flex items-center justify-center w-full h-full">
-                                <span
-                                  aria-hidden="true"
-                                  className="absolute inset-1 rounded-[3px] border border-[#E5C896]/45"
-                                />
-                                <Snowflake className="relative w-3.5 h-3.5 text-[#F8F0FC]" aria-hidden />
-                              </div>
-                            ) : isSelected ? (
-                              <ActiveOccasionIcon
-                                className="relative w-3.5 h-3.5 text-[#E5C896]"
-                                aria-hidden
-                              />
-                            ) : null}
+                            {isSelected && (
+                              <span className="relative w-5 h-5 rounded-full bg-white/20 border border-white/50 flex items-center justify-center">
+                                <Check className="w-3 h-3 text-white" strokeWidth={2.75} aria-hidden />
+                              </span>
+                            )}
                           </div>
-                          <p className="text-[10px] leading-tight text-gray-700 font-medium mt-1 text-center">
-                            {isChristmasTile ? 'Christmas' : design.name}
+                          <p className="text-[11px] leading-tight text-gray-800 font-medium mt-1.5 text-center">
+                            {design.name}
                           </p>
                         </button>
                       )

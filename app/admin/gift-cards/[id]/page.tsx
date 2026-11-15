@@ -14,7 +14,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Loader2, AlertCircle, User, Mail, Phone,
-  Calendar, Clock, Palette, Type,
+  Calendar, Clock, Palette, Type, Send, CheckCircle2,
 } from 'lucide-react'
 import {
   GiftCardPreview,
@@ -52,6 +52,7 @@ interface GiftCardRequest {
   payment_method?: string | null
   payment_status?: string | null
   invoice_number?: string | null
+  recipient_notified_at?: string | null
   created_at: string
 }
 
@@ -63,6 +64,8 @@ export default function GiftCardDetailPage() {
   const [req, setReq] = useState<GiftCardRequest | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -85,15 +88,62 @@ export default function GiftCardDetailPage() {
   const changeStatus = async (status: string) => {
     if (!req) return
     setUpdating(true)
+    setActionMessage(null)
     try {
       const res = await fetch('/api/admin/gift-cards', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestId: req.id, action: 'update_status', value: status }),
       })
-      if (res.ok) setReq({ ...req, status })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setReq(data.request ?? { ...req, status })
+        setActionMessage({
+          type: 'success',
+          text: data.recipientEmailSent
+            ? `Status updated to ${status} and gift card sent to ${req.recipient_email}.`
+            : `Status updated to ${status}.`,
+        })
+      } else {
+        setActionMessage({
+          type: 'error',
+          text: data.error || 'Could not update status.',
+        })
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'Network error while updating status.' })
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const sendToRecipient = async () => {
+    if (!req || !req.recipient_email) return
+    setSendingEmail(true)
+    setActionMessage(null)
+    try {
+      const res = await fetch('/api/admin/gift-cards', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: req.id, action: 'send_to_recipient' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        if (data.request) setReq(data.request)
+        setActionMessage({
+          type: 'success',
+          text: `Gift card email delivered to ${req.recipient_email}.`,
+        })
+      } else {
+        setActionMessage({
+          type: 'error',
+          text: data.error || 'Could not send gift card to recipient.',
+        })
+      }
+    } catch {
+      setActionMessage({ type: 'error', text: 'Network error while sending email.' })
+    } finally {
+      setSendingEmail(false)
     }
   }
 
@@ -127,7 +177,7 @@ export default function GiftCardDetailPage() {
     )
   }
 
-  const chosenDesign = findGiftCardDesignById(req.design)
+  const chosenDesign = findGiftCardDesignById(req.design || req.design_name)
   const chosenFont = findGiftCardFontById(req.font)
   const occasionMeta = getGiftCardOccasionMeta(req.occasion)
   const OccasionIcon = getOccasionBadgeIcon(occasionMeta.id)
@@ -230,6 +280,24 @@ export default function GiftCardDetailPage() {
             </div>
           </div>
 
+          {/* Action feedback */}
+          {actionMessage && (
+            <div
+              className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${
+                actionMessage.type === 'success'
+                  ? 'border-[#7B2D8E]/25 bg-[#7B2D8E]/5 text-[#4A1558]'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {actionMessage.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+              )}
+              <span>{actionMessage.text}</span>
+            </div>
+          )}
+
           {/* Status control */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Update status</label>
@@ -266,19 +334,48 @@ export default function GiftCardDetailPage() {
             </div>
           </div>
 
-          {/* Delivery */}
-          <div className="space-y-2">
-            <h2 className="font-medium text-gray-900 text-sm">Delivery</h2>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-gray-400" />
-                <span className="capitalize">{req.delivery_method}</span>
-              </div>
-              {req.delivery_date && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <span>{new Date(req.delivery_date).toLocaleDateString()}</span>
+          {/* Delivery & Recipient Dispatch */}
+          <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-medium text-gray-900 text-sm">Delivery &amp; Recipient Email</h2>
+                <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <span className="capitalize">{req.delivery_method || 'email'}</span>
+                  </div>
+                  {req.delivery_date && (
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span>{new Date(req.delivery_date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  <span className="text-xs font-medium text-[#7B2D8E]">
+                    {req.recipient_notified_at
+                      ? `Sent on ${new Date(req.recipient_notified_at).toLocaleString()}`
+                      : 'Not sent to recipient yet'}
+                  </span>
                 </div>
+              </div>
+
+              {req.recipient_email && (
+                <button
+                  type="button"
+                  onClick={sendToRecipient}
+                  disabled={sendingEmail}
+                  className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
+                >
+                  {sendingEmail ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Send className="w-3.5 h-3.5" />
+                  )}
+                  {sendingEmail
+                    ? 'Sending…'
+                    : req.recipient_notified_at
+                      ? 'Resend to Recipient'
+                      : 'Send to Recipient'}
+                </button>
               )}
             </div>
           </div>

@@ -41,9 +41,9 @@ export function ConsultationResponsesSummary({
   return (
     <section
       aria-label="Clinical responses summary"
-      className="rounded-2xl border border-gray-200 bg-white p-5"
+      className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
             <MailOpen className="h-4 w-4" aria-hidden="true" />
@@ -59,7 +59,7 @@ export function ConsultationResponsesSummary({
                 </span>
               )}
             </div>
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="mt-1 text-xs leading-relaxed text-gray-500 text-pretty">
               {teamReplyCount > 0
                 ? 'Read clinical guidance and follow up with our team on the dedicated responses page.'
                 : 'View clinical team responses or send a follow-up note on the dedicated responses page.'}
@@ -69,7 +69,7 @@ export function ConsultationResponsesSummary({
 
         <Link
           href={href}
-          className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#7B2D8E] px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#5A1D6A]"
+          className="inline-flex w-full sm:w-auto flex-shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#7B2D8E] px-4 py-2.5 sm:py-2 text-xs font-semibold text-white transition-colors hover:bg-[#5A1D6A]"
         >
           <MailOpen className="h-3.5 w-3.5" aria-hidden="true" />
           {ctaLabel}

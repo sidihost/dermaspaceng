@@ -68,17 +68,13 @@ export const ADMIN_AVATARS_FEMALE: TeamAvatar[] = [
   { slug: 'admin-4',  url: '/avatars/team/admin-4.jpg',  label: 'Lead',      tint: '#F6F1F8' },
 ]
 
-/** Male admin portraits — used by the super admin (Sidihost / dev) or
- *  any male administrator. Includes a legacy "IT" portrait so existing
- *  avatar URLs pointing at `/avatars/team/admin-it.jpg` keep resolving. */
+/** Male admin portraits — curated around the founder/super-admin
+ *  look in varied Dermaspace styles. */
 export const ADMIN_AVATARS_MALE: TeamAvatar[] = [
-  { slug: 'admin-m1', url: '/avatars/team/admin-m1.jpg', label: 'Director',  tint: '#F6F1F8' },
-  { slug: 'admin-m2', url: '/avatars/team/admin-m2.jpg', label: 'Executive', tint: '#F6F1F8' },
-  { slug: 'admin-m3', url: '/avatars/team/admin-m3.jpg', label: 'Manager',   tint: '#F6F1F8' },
-  { slug: 'admin-m4', url: '/avatars/team/admin-m4.jpg', label: 'Chairman',  tint: '#F6F1F8' },
-  // Legacy entry — kept so previously-saved `admin-it.jpg` URLs still
-  // render in the picker as "selected" instead of looking unset.
-  { slug: 'admin-it', url: '/avatars/team/admin-it.jpg', label: 'IT',        tint: '#F6F1F8' },
+  { slug: 'admin-it', url: '/avatars/team/admin-it.jpg', label: 'Signature', tint: '#F6F1F8' },
+  { slug: 'admin-m5', url: '/avatars/team/admin-m5.jpg', label: 'Sweater',   tint: '#F6F1F8' },
+  { slug: 'admin-m6', url: '/avatars/team/admin-m6.jpg', label: 'Blazer',    tint: '#F6F1F8' },
+  { slug: 'admin-m7', url: '/avatars/team/admin-m7.jpg', label: 'Polo',      tint: '#F6F1F8' },
 ]
 
 /**

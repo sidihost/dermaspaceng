@@ -19,7 +19,7 @@ import {
   syncOccasionForDesign,
 } from './gift-card-templates'
 
-test('Christmas template is enabled by default while preserving all initial templates', () => {
+test('color themes never include Christmas Edition while seasonal Christmas occasion toggles cleanly', () => {
   assert.equal(CHRISTMAS_GIFT_CARD_DESIGN_ENABLED, true)
   assert.equal(CHRISTMAS_GIFT_CARD_DESIGN.badgeLabel, undefined)
   const opts = { festiveEnabled: true, userRemovedChristmas: false }
@@ -27,13 +27,21 @@ test('Christmas template is enabled by default while preserving all initial temp
   assert.equal(isChristmasTemplateAvailable(opts), true)
 
   const designs = getGiftCardDesigns(opts)
-  assert.equal(designs[0].id, CHRISTMAS_GIFT_CARD_DESIGN.id)
-  assert.equal(designs.length, INITIAL_GIFT_CARD_DESIGNS.length + 1)
+  assert.equal(designs.length, INITIAL_GIFT_CARD_DESIGNS.length)
+  assert.equal(designs.some((d) => d.id === 'christmas'), false)
   for (const initial of INITIAL_GIFT_CARD_DESIGNS) {
     assert.ok(designs.some((d) => d.id === initial.id))
+    assert.ok(initial.surfaceHex.startsWith('#'))
+    assert.ok(initial.accentHex.startsWith('#'))
+    assert.ok(initial.medallionHex?.startsWith('#'))
   }
 
-  assert.equal(getDefaultGiftCardDesign(opts).id, 'christmas')
+  // Distinct surface hexes across every selectable color theme
+  const uniqueSurfaces = new Set(designs.map((d) => d.surfaceHex.toLowerCase()))
+  assert.equal(uniqueSurfaces.size, designs.length)
+
+  // Default color is always a real color theme (Royal Purple), while occasion defaults to Christmas when festive
+  assert.equal(getDefaultGiftCardDesign(opts).id, 'royal')
   assert.equal(getDefaultGiftCardOccasion(opts), CHRISTMAS_OCCASION)
 
   const occasions = getGiftCardOccasions(opts)
@@ -43,7 +51,7 @@ test('Christmas template is enabled by default while preserving all initial temp
   }
 })
 
-test('removing Christmas template cleanly reverts to initial designs and default Royal Purple', () => {
+test('disabling festive flag removes Christmas occasion while keeping all color themes intact', () => {
   const removedByUser = { festiveEnabled: true, userRemovedChristmas: true }
   assert.equal(isChristmasTemplateAvailable(removedByUser), false)
 
@@ -59,8 +67,10 @@ test('removing Christmas template cleanly reverts to initial designs and default
   assert.equal(getDefaultGiftCardDesign(disabledByAdmin).id, 'royal')
 })
 
-test('findGiftCardDesignById resolves both Christmas and initial templates cleanly', () => {
+test('findGiftCardDesignById resolves current, legacy, and named templates cleanly', () => {
   assert.equal(findGiftCardDesignById('christmas').name, 'Christmas Edition')
+  assert.equal(findGiftCardDesignById('emerald').name, 'Sanctuary Emerald')
+  assert.equal(findGiftCardDesignById('Sanctuary Emerald').id, 'emerald')
   assert.equal(findGiftCardDesignById('plum').name, 'Plum')
   assert.equal(findGiftCardDesignById('unknown-id').id, 'royal')
 })
@@ -77,6 +87,7 @@ test('every gift card occasion resolves bespoke motif, edition label, and font l
   assert.equal(getGiftCardOccasionMeta('Just Because').id, 'just-because')
 
   assert.equal(resolveOccasionMotif('Birthday', 'christmas'), 'birthday')
+  assert.equal(resolveOccasionMotif('Christmas', 'emerald'), 'christmas')
   assert.equal(resolveOccasionMotif(undefined, 'christmas'), 'christmas')
   assert.equal(resolveOccasionMotif('', 'royal'), 'classic')
 
@@ -85,38 +96,38 @@ test('every gift card occasion resolves bespoke motif, edition label, and font l
   assert.equal(findGiftCardFontById(null).id, 'elegant')
 })
 
-test('occasion and design color selections stay harmonized without trapping non-Christmas occasions on Christmas art', () => {
+test('users can pair any color theme with any occasion including Christmas without forced overrides', () => {
   const opts = { festiveEnabled: true, userRemovedChristmas: false }
+  const emerald = findGiftCardDesignById('emerald')
+  const sapphire = findGiftCardDesignById('sapphire')
 
-  // Switching from Christmas to Birthday replaces the seasonal design with Birthday's palette
-  const birthdayDesign = syncDesignForOccasion('Birthday', CHRISTMAS_GIFT_CARD_DESIGN, {
-    ...opts,
-    preserveCustomColor: true,
-  })
-  assert.equal(birthdayDesign.id, 'royal')
+  // Switching occasion preserves user-selected color
+  assert.equal(
+    syncDesignForOccasion('Birthday', emerald, { ...opts, preserveCustomColor: true }).id,
+    'emerald',
+  )
+  assert.equal(
+    syncDesignForOccasion('Christmas', sapphire, { ...opts, preserveCustomColor: true }).id,
+    'sapphire',
+  )
 
-  // Switching between non-Christmas occasions automatically applies suggested palette unless user locked a custom color
-  const selfCareAuto = syncDesignForOccasion('Self-Care', birthdayDesign, {
-    ...opts,
-    preserveCustomColor: false,
-  })
-  assert.equal(selfCareAuto.id, 'lavender')
+  // Auto-suggestion when user has not locked a custom color picks a real color theme
+  assert.equal(
+    syncDesignForOccasion('Christmas', findGiftCardDesignById('royal'), {
+      ...opts,
+      preserveCustomColor: false,
+    }).id,
+    'emerald',
+  )
+  assert.equal(
+    syncDesignForOccasion('Self-Care', findGiftCardDesignById('royal'), {
+      ...opts,
+      preserveCustomColor: false,
+    }).id,
+    'emerald',
+  )
 
-  const customPlum = findGiftCardDesignById('plum')
-  const weddingLocked = syncDesignForOccasion('Wedding', customPlum, {
-    ...opts,
-    preserveCustomColor: true,
-  })
-  assert.equal(weddingLocked.id, 'plum')
-
-  // Selecting Christmas occasion brings back Christmas Edition when active
-  const backToChristmas = syncDesignForOccasion('Christmas', customPlum, {
-    ...opts,
-    preserveCustomColor: true,
-  })
-  assert.equal(backToChristmas.id, 'christmas')
-
-  // Selecting a non-Christmas color swatch moves Christmas occasion to Birthday
-  assert.equal(syncOccasionForDesign(customPlum, 'Christmas', opts), 'Birthday')
-  assert.equal(syncOccasionForDesign(CHRISTMAS_GIFT_CARD_DESIGN, 'Birthday', opts), 'Christmas')
+  // Picking any color swatch never overwrites Christmas occasion
+  assert.equal(syncOccasionForDesign(sapphire, 'Christmas', opts), 'Christmas')
+  assert.equal(syncOccasionForDesign(emerald, 'Wedding', opts), 'Wedding')
 })

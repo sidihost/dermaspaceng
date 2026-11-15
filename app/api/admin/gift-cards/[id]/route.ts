@@ -19,6 +19,10 @@ export async function GET(
     await requireAdminOrStaff()
     await ensureGiftCardSchema()
     const { id } = await params
+    if (!/^\d+$/.test(id)) {
+      return NextResponse.json({ error: 'Invalid gift card ID' }, { status: 400 })
+    }
+    const numericId = Number(id)
     const rows = await sql`
       SELECT
         gcr.*,
@@ -26,7 +30,7 @@ export async function GET(
         u.last_name AS assigned_last_name
       FROM gift_card_requests gcr
       LEFT JOIN users u ON u.id = gcr.assigned_to
-      WHERE gcr.id = ${id}
+      WHERE gcr.id = ${numericId}
       LIMIT 1
     `
     if (rows.length === 0) {
@@ -36,6 +40,12 @@ export async function GET(
   } catch (error) {
     console.error('Get gift-card detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch gift card'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const lower = message.toLowerCase()
+    const status = lower.includes('forbidden') || lower.includes('admin')
+      ? 403
+      : lower.includes('unauthorized')
+        ? 401
+        : 500
+    return NextResponse.json({ error: message }, { status })
   }
 }

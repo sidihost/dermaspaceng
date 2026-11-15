@@ -15,6 +15,7 @@ import {
   X,
   XCircle
 } from "lucide-react"
+import { findGiftCardDesignById } from "@/lib/gift-card-templates"
 
 interface Reply {
   id: string
@@ -32,6 +33,10 @@ interface ActivityItem {
   // Gift card specific
   amount?: number
   recipient_name?: string
+  occasion?: string | null
+  design?: string | null
+  design_name?: string | null
+  font_name?: string | null
   // Complaint specific
   subject?: string
   message?: string
@@ -371,7 +376,9 @@ export default function ActivityFeed() {
               </div>
 
               {/* Details based on type */}
-              {selectedItem.type === "gift_card" && (
+              {selectedItem.type === "gift_card" && (() => {
+                const designObj = findGiftCardDesignById(selectedItem.design || selectedItem.design_name)
+                return (
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-500">Amount</span>
@@ -383,8 +390,31 @@ export default function ActivityFeed() {
                     <span className="text-sm text-gray-500">Recipient</span>
                     <span className="text-sm text-gray-900">{selectedItem.recipient_name}</span>
                   </div>
+                  {selectedItem.occasion && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-500">Occasion</span>
+                      <span className="text-sm text-gray-900">{selectedItem.occasion}</span>
+                    </div>
+                  )}
+                  {(selectedItem.design_name || selectedItem.design) && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">Card Style</span>
+                      <span className="text-sm text-gray-900 inline-flex items-center gap-1.5">
+                        <span
+                          aria-hidden="true"
+                          className="w-3.5 h-2.5 rounded border border-black/15 overflow-hidden inline-flex"
+                        >
+                          <span className="w-3/5 h-full" style={{ backgroundColor: designObj.surfaceHex }} />
+                          <span className="w-2/5 h-full" style={{ backgroundColor: designObj.accentHex }} />
+                        </span>
+                        {selectedItem.design_name || designObj.name}
+                        {selectedItem.font_name ? ` · ${selectedItem.font_name}` : ""}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
+                )
+              })()}
 
               {selectedItem.type === "complaint" && (
                 <div className="bg-gray-50 rounded-xl p-4">

@@ -68,6 +68,11 @@ interface GiftCardRequest {
   status: string
   assigned_to: string | null
   notes: string | null
+  payment_reference?: string | null
+  payment_method?: string | null
+  payment_status?: string | null
+  invoice_number?: string | null
+  recipient_notified_at?: string | null
   created_at: string
 }
 
@@ -133,6 +138,14 @@ export default function StaffGiftCardsPage() {
   const [newStatus, setNewStatus] = useState("")
   const [adminNote, setAdminNote] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [sendingRecipient, setSendingRecipient] = useState(false)
+
+  const openActionDialog = (r: GiftCardRequest) => {
+    setSelected(r)
+    setNewStatus(r.status || "processing")
+    setAdminNote(r.notes || "")
+    setActionDialogOpen(true)
+  }
 
   const fetchRequests = useCallback(async () => {
     setLoading(true)
@@ -179,23 +192,28 @@ export default function StaffGiftCardsPage() {
           value: newStatus,
         }),
       })
+      const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        notify.error("Update failed", j.error || `HTTP ${res.status}`)
+        notify.error("Update failed", json.error || `HTTP ${res.status}`)
         return
       }
-      if (adminNote.trim()) {
+      if (adminNote.trim() !== (selected.notes || "").trim()) {
         await fetch("/api/admin/gift-cards", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             requestId: selected.id,
             action: "add_notes",
-            notes: adminNote.trim(),
+            notes: adminNote.trim() || null,
           }),
         })
       }
-      notify.success("Updated", `Marked as ${newStatus}.`)
+      notify.success(
+        "Updated",
+        json.recipientEmailSent
+          ? `Marked as ${newStatus} and emailed recipient.`
+          : `Marked as ${newStatus}.`,
+      )
       setActionDialogOpen(false)
       setSelected(null)
       setNewStatus("")
@@ -206,6 +224,39 @@ export default function StaffGiftCardsPage() {
       notify.error("Network error", "Could not update the request.")
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleSendToRecipient = async (req: GiftCardRequest) => {
+    if (!req.recipient_email) {
+      notify.error("Missing email", "Recipient does not have an email address.")
+      return
+    }
+    setSendingRecipient(true)
+    try {
+      const res = await fetch("/api/admin/gift-cards", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: req.id,
+          action: "send_to_recipient",
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        notify.error("Email failed", json.error || `HTTP ${res.status}`)
+        return
+      }
+      if (json.request) {
+        setSelected(json.request)
+      }
+      notify.success("Gift card sent", `Delivered to ${req.recipient_email}.`)
+      fetchRequests()
+    } catch (err) {
+      console.error("Send gift card to recipient failed:", err)
+      notify.error("Network error", "Could not deliver the gift card email.")
+    } finally {
+      setSendingRecipient(false)
     }
   }
 
@@ -323,7 +374,7 @@ export default function StaffGiftCardsPage() {
             <ul className="divide-y divide-gray-100">
               {filtered.map((r) => {
                 const cfg = statusConfig[r.status] || statusConfig.pending
-                const chosenDesign = findGiftCardDesignById(r.design)
+                const chosenDesign = findGiftCardDesignById(r.design || r.design_name)
                 const chosenFont = findGiftCardFontById(r.font)
                 return (
                   <li
@@ -344,6 +395,11 @@ export default function StaffGiftCardsPage() {
                           <cfg.Icon className="h-2.5 w-2.5" />
                           {cfg.label}
                         </span>
+                        {r.payment_status && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                            · {r.payment_status}
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-gray-500">
                         <span className="font-bold text-[#7B2D8E]">
@@ -354,14 +410,17 @@ export default function StaffGiftCardsPage() {
                         <span className="inline-flex items-center gap-1.5 text-gray-600">
                           <span
                             aria-hidden="true"
-                            className="inline-block w-2.5 h-2.5 rounded-full border border-black/15"
-                            style={{ backgroundColor: chosenDesign.surfaceHex }}
-                          />
+                            className="w-4 h-2.5 rounded border border-black/15 overflow-hidden inline-flex flex-shrink-0"
+                          >
+                            <span className="w-3/5 h-full" style={{ backgroundColor: chosenDesign.surfaceHex }} />
+                            <span className="w-2/5 h-full" style={{ backgroundColor: chosenDesign.accentHex }} />
+                          </span>
                           {r.design_name || chosenDesign.name} · {r.font_name || chosenFont.name}
                         </span>
                       </div>
                       <p className="text-[10.5px] text-gray-400">
                         {formatDate(r.created_at)}
+                        {r.recipient_notified_at ? " · Recipient emailed" : ""}
                       </p>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
@@ -374,19 +433,14 @@ export default function StaffGiftCardsPage() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Button>
-                      {r.status === "pending" && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setSelected(r)
-                            setActionDialogOpen(true)
-                          }}
-                          className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Action
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        onClick={() => openActionDialog(r)}
+                        className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Update
+                      </Button>
                     </div>
                   </li>
                 )
@@ -404,7 +458,7 @@ export default function StaffGiftCardsPage() {
             <DialogDescription>Full request details and chosen card style</DialogDescription>
           </DialogHeader>
           {selected && (() => {
-            const selectedDesign = findGiftCardDesignById(selected.design)
+            const selectedDesign = findGiftCardDesignById(selected.design || selected.design_name)
             const selectedFont = findGiftCardFontById(selected.font)
             const selectedOccasionMeta = getGiftCardOccasionMeta(selected.occasion)
             return (
@@ -424,17 +478,21 @@ export default function StaffGiftCardsPage() {
                   <p className="text-[10px] uppercase tracking-wider text-gray-500">Colour</p>
                   <p className="mt-0.5 font-semibold text-gray-900 inline-flex items-center gap-1.5">
                     <span
-                      className="w-2.5 h-2.5 rounded-full border border-black/15 flex-shrink-0"
-                      style={{ backgroundColor: selectedDesign.surfaceHex }}
-                    />
+                      className="w-4 h-2.5 rounded border border-black/15 flex-shrink-0 overflow-hidden inline-flex"
+                    >
+                      <span className="w-3/5 h-full" style={{ backgroundColor: selectedDesign.surfaceHex }} />
+                      <span className="w-2/5 h-full" style={{ backgroundColor: selectedDesign.accentHex }} />
+                    </span>
                     <span className="truncate">{selected.design_name || selectedDesign.name}</span>
                   </p>
+                  <p className="mt-0.5 font-mono text-[10px] text-gray-500">{selectedDesign.surfaceHex}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-gray-500">Theme</p>
                   <p className="mt-0.5 font-semibold text-gray-900 truncate">
                     {selectedOccasionMeta.editionLabel}
                   </p>
+                  <p className="mt-0.5 text-[10px] text-gray-500 truncate">{selected.occasion || "Standard"}</p>
                 </div>
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-gray-500">Font</p>
@@ -475,15 +533,44 @@ export default function StaffGiftCardsPage() {
                   )}
                 </div>
               </div>
-              {selected.delivery_date && (
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50/70 p-3 grid gap-2 sm:grid-cols-2 text-xs">
                 <div>
-                  <Label className="text-xs text-gray-500">Delivery</Label>
-                  <p className="text-sm inline-flex items-center gap-1">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Delivery</p>
+                  <p className="mt-0.5 text-gray-900 inline-flex items-center gap-1 capitalize">
                     <CalendarIcon className="h-3 w-3 text-[#7B2D8E]" />
-                    {new Date(selected.delivery_date).toLocaleDateString("en-NG")} via {selected.delivery_method || "email"}
+                    {selected.delivery_method || "email"}
+                    {selected.delivery_date ? ` · ${new Date(selected.delivery_date).toLocaleDateString("en-NG")}` : ""}
                   </p>
                 </div>
-              )}
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">Recipient Email</p>
+                  <p className="mt-0.5 font-medium text-[#7B2D8E]">
+                    {selected.recipient_notified_at
+                      ? `Sent ${formatDate(selected.recipient_notified_at)}`
+                      : "Not sent yet"}
+                  </p>
+                </div>
+                {(selected.payment_status || selected.payment_method) && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500">Payment</p>
+                    <p className="mt-0.5 text-gray-900 capitalize">
+                      {[selected.payment_status, selected.payment_method?.replace("_", " ")].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
+                )}
+                {(selected.invoice_number || selected.payment_reference) && (
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-gray-500">
+                      {selected.invoice_number ? "Invoice / Ref" : "Reference"}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[11px] text-gray-800 truncate">
+                      {selected.invoice_number || selected.payment_reference}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {selected.personal_message && (
                 <div>
                   <Label className="text-xs text-gray-500">Personal message</Label>
@@ -515,13 +602,33 @@ export default function StaffGiftCardsPage() {
             </div>
             )
           })()}
-          <DialogFooter>
-            {selected?.status === "pending" && (
+          <DialogFooter className="gap-2 sm:gap-2">
+            {selected?.recipient_email && (
               <Button
-                onClick={() => setActionDialogOpen(true)}
+                type="button"
+                variant="outline"
+                disabled={sendingRecipient}
+                onClick={() => handleSendToRecipient(selected)}
+                className="gap-1.5 border-[#7B2D8E]/30 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+              >
+                {sendingRecipient ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                {sendingRecipient
+                  ? "Sending…"
+                  : selected.recipient_notified_at
+                    ? "Resend to Recipient"
+                    : "Send to Recipient"}
+              </Button>
+            )}
+            {selected && (
+              <Button
+                onClick={() => openActionDialog(selected)}
                 className="bg-[#7B2D8E] hover:bg-[#5A1D6A]"
               >
-                Take action
+                Update status
               </Button>
             )}
           </DialogFooter>
@@ -534,7 +641,7 @@ export default function StaffGiftCardsPage() {
           <DialogHeader>
             <DialogTitle>Update gift card request</DialogTitle>
             <DialogDescription>
-              Mark as approved, processing, completed or rejected.
+              Mark as pending, processing, approved, completed or rejected.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -545,10 +652,11 @@ export default function StaffGiftCardsPage() {
                   <SelectValue placeholder="Choose status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="approved">Approve</SelectItem>
-                  <SelectItem value="processing">Mark as processing</SelectItem>
-                  <SelectItem value="completed">Mark as completed</SelectItem>
-                  <SelectItem value="rejected">Reject</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>

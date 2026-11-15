@@ -119,6 +119,7 @@ export async function GET(
           id: number
           recipient_name: string
           recipient_email: string | null
+          sender_name: string | null
           occasion: string | null
           design: string | null
           design_name: string | null
@@ -130,11 +131,12 @@ export async function GET(
           status: string | null
           payment_status: string | null
           invoice_number: string | null
+          recipient_notified_at: string | null
         }>(
-          `SELECT id, recipient_name, recipient_email, occasion, design, design_name,
+          `SELECT id, recipient_name, recipient_email, sender_name, occasion, design, design_name,
                   font, font_name, personal_message, delivery_method,
                   to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date,
-                  status, payment_status, invoice_number
+                  status, payment_status, invoice_number, recipient_notified_at
              FROM gift_card_requests
             WHERE payment_reference = ANY($1)
             LIMIT 1`,
@@ -153,6 +155,7 @@ export async function GET(
           giftCard = {
             recipient_name: String(meta.itemDetails.recipientName || 'Recipient'),
             recipient_email: meta.itemDetails.recipientEmail ? String(meta.itemDetails.recipientEmail) : null,
+            sender_name: meta.itemDetails.senderName ? String(meta.itemDetails.senderName) : null,
             occasion: meta.itemDetails.occasion ? String(meta.itemDetails.occasion) : null,
             design: meta.itemDetails.design ? String(meta.itemDetails.design) : null,
             design_name: meta.itemDetails.designName
@@ -170,6 +173,7 @@ export async function GET(
             status: tx.status === 'completed' ? 'processing' : tx.status,
             payment_status: tx.status === 'completed' ? 'paid' : 'unpaid',
             invoice_number: invoice?.invoice_number ?? null,
+            recipient_notified_at: null,
           }
         }
       }

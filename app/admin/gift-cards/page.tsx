@@ -34,6 +34,8 @@ interface GiftCardRequest {
   assigned_first_name: string | null
   assigned_last_name: string | null
   notes: string | null
+  payment_status?: string | null
+  recipient_notified_at?: string | null
   created_at: string
 }
 
@@ -156,9 +158,10 @@ export default function GiftCardsPage() {
               </TableHeader>
               <TableBody>
                 {requests.map((request) => {
-                  const chosenDesign = findGiftCardDesignById(request.design)
+                  const chosenDesign = findGiftCardDesignById(request.design || request.design_name)
                   const chosenFont = findGiftCardFontById(request.font)
                   const occasionMeta = getGiftCardOccasionMeta(request.occasion)
+                  const isDownload = (request.delivery_method || '').toLowerCase() === 'download'
                   return (
                     <TableRow
                       key={request.id}
@@ -175,6 +178,11 @@ export default function GiftCardsPage() {
                         <span className="font-semibold text-[#7B2D8E] tabular-nums">
                           ₦{request.amount.toLocaleString()}
                         </span>
+                        {request.payment_status && (
+                          <p className="text-[11px] text-gray-500 capitalize mt-0.5">
+                            {request.payment_status}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 min-w-[140px]">
@@ -206,9 +214,18 @@ export default function GiftCardsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={statusColors[request.status] || statusColors.pending}>
-                          {request.status || 'pending'}
-                        </Badge>
+                        <div className="space-y-0.5">
+                          <Badge variant="outline" className={statusColors[request.status] || statusColors.pending}>
+                            {request.status || 'pending'}
+                          </Badge>
+                          <p className="text-[11px] text-gray-500">
+                            {request.recipient_notified_at
+                              ? 'Recipient emailed'
+                              : isDownload
+                                ? 'Digital download'
+                                : 'Pending email'}
+                          </p>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-gray-500">

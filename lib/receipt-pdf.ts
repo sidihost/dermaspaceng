@@ -1,4 +1,8 @@
-import { getGiftCardOccasionMeta } from './gift-card-templates'
+import {
+  findGiftCardDesignById,
+  getDesignMedallionHex,
+  getGiftCardOccasionMeta,
+} from './gift-card-templates'
 
 const LOCAL_BRAND_LOGO = '/images/dermaspace-header-logo.png'
 const REMOTE_BRAND_LOGO =
@@ -15,6 +19,20 @@ export interface ReceiptLineItem {
   amount: string
 }
 
+export interface ReceiptGiftCardVisual {
+  recipientName: string
+  senderName?: string | null
+  amountFormatted: string
+  occasion: string
+  editionLabel: string
+  designName: string
+  fontName?: string | null
+  surfaceHex: string
+  accentHex: string
+  medallionHex: string
+  deliveryMethod?: string | null
+}
+
 export interface ReceiptDocumentData {
   documentTitle: string
   statusLabel: string
@@ -27,6 +45,7 @@ export interface ReceiptDocumentData {
   paymentMethodLabel?: string
   summaryRows: ReceiptDetailRow[]
   lineItems?: ReceiptLineItem[]
+  giftCardVisual?: ReceiptGiftCardVisual | null
   note?: string | null
   filename: string
 }
@@ -44,15 +63,18 @@ export interface TransactionReceiptInput {
   description?: string | null
   created_at: string
   formattedAmount?: string
+  metadata?: Record<string, unknown> | null
   invoice?: {
     invoice_number?: string | null
   } | null
   giftCard?: {
     recipient_name?: string | null
     recipient_email?: string | null
+    sender_name?: string | null
     occasion?: string | null
     design?: string | null
     design_name?: string | null
+    font?: string | null
     font_name?: string | null
     delivery_method?: string | null
     delivery_date?: string | null
@@ -76,6 +98,7 @@ export interface GiftCardReceiptInput {
   recipientEmail?: string | null
   senderName?: string | null
   occasion: string
+  designId?: string | null
   designName: string
   fontName?: string | null
   deliveryMethod?: string | null
@@ -96,13 +119,38 @@ export function sanitizeReceiptFilename(rawRef?: string | null): string {
   return `Dermaspace-Receipt-${cleaned || 'Order'}.pdf`
 }
 
+export function hexToRgb(
+  hex?: string | null,
+  fallback: [number, number, number] = [123, 45, 142],
+): [number, number, number] {
+  if (!hex || typeof hex !== 'string') return fallback
+  const cleaned = hex.trim().replace(/^#/, '')
+  if (/^[0-9a-fA-F]{6}$/.test(cleaned)) {
+    return [
+      parseInt(cleaned.slice(0, 2), 16),
+      parseInt(cleaned.slice(2, 4), 16),
+      parseInt(cleaned.slice(4, 6), 16),
+    ]
+  }
+  if (/^[0-9a-fA-F]{3}$/.test(cleaned)) {
+    return [
+      parseInt(cleaned[0] + cleaned[0], 16),
+      parseInt(cleaned[1] + cleaned[1], 16),
+      parseInt(cleaned[2] + cleaned[2], 16),
+    ]
+  }
+  return fallback
+}
+
 function formatNairaPlain(amount: number, currency = 'NGN'): string {
   try {
     const formatted = new Intl.NumberFormat('en-NG', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.round(amount || 0))
-    return currency.toUpperCase() === 'NGN' ? `NGN ${formatted}` : `${currency.toUpperCase()} ${formatted}`
+    return currency.toUpperCase() === 'NGN'
+      ? `NGN ${formatted}`
+      : `${currency.toUpperCase()} ${formatted}`
   } catch {
     return `NGN ${Math.round(amount || 0)}`
   }
@@ -126,7 +174,9 @@ function formatReceiptDate(iso?: string | null): string {
   })
 }
 
-function paymentMethodDisplay(method: TransactionReceiptInput['payment_method']): string {
+function paymentMethodDisplay(
+  method: TransactionReceiptInput['payment_method'],
+): string {
   switch (method) {
     case 'paystack':
       return 'Card / Paystack'
@@ -203,10 +253,20 @@ export function buildTransactionReceiptData(
   }
 
   let lineItems: ReceiptLineItem[] | undefined
+  let giftCardVisual: ReceiptGiftCardVisual | null = null
   let note: string | null = null
 
   if (tx.giftCard) {
     const occasionMeta = getGiftCardOccasionMeta(tx.giftCard.occasion)
+    const resolvedDesign = findGiftCardDesignById(
+      tx.giftCard.design || tx.giftCard.design_name,
+    )
+    const metaDetails = (tx.metadata as { itemDetails?: Record<string, unknown> } | null)?.itemDetails
+    const senderName =
+      tx.giftCard.sender_name ||
+      (metaDetails?.senderName ? String(metaDetails.senderName) : null)
+    const resolvedDesignName = tx.giftCard.design_name || resolvedDesign.name
+
     summaryRows.push({
       label: 'Recipient',
       value: tx.giftCard.recipient_name || 'Recipient',
@@ -217,16 +277,25 @@ export function buildTransactionReceiptData(
         value: tx.giftCard.recipient_email,
       })
     }
+    if (senderName) {
+      summaryRows.push({
+        label: 'From',
+        value: senderName,
+      })
+    }
     if (tx.giftCard.occasion) {
       summaryRows.push({
         label: 'Occasion & Theme',
         value: `${tx.giftCard.occasion} (${occasionMeta.editionLabel})`,
       })
     }
-    if (tx.giftCard.design_name || tx.giftCard.font_name) {
+    if (resolvedDesignName || tx.giftCard.font_name) {
       summaryRows.push({
         label: 'Card Style',
-        value: [tx.giftCard.design_name, tx.giftCard.font_name ? `${tx.giftCard.font_name} font` : null]
+        value: [
+          resolvedDesignName,
+          tx.giftCard.font_name ? `${tx.giftCard.font_name} font` : null,
+        ]
           .filter(Boolean)
           .join(' · '),
       })
@@ -242,10 +311,23 @@ export function buildTransactionReceiptData(
     lineItems = [
       {
         title: `Dermaspace Gift Card — ${occasionMeta.editionLabel}`,
-        subtitle: `For ${tx.giftCard.recipient_name || 'Recipient'}${tx.giftCard.design_name ? ` · ${tx.giftCard.design_name}` : ''}`,
+        subtitle: `For ${tx.giftCard.recipient_name || 'Recipient'} · ${resolvedDesignName}`,
         amount: amountFormatted,
       },
     ]
+    giftCardVisual = {
+      recipientName: tx.giftCard.recipient_name || 'Recipient',
+      senderName,
+      amountFormatted,
+      occasion: tx.giftCard.occasion || 'Gift Card',
+      editionLabel: occasionMeta.editionLabel,
+      designName: resolvedDesignName,
+      fontName: tx.giftCard.font_name || 'Elegant',
+      surfaceHex: resolvedDesign.surfaceHex,
+      accentHex: resolvedDesign.accentHex,
+      medallionHex: getDesignMedallionHex(resolvedDesign),
+      deliveryMethod: tx.giftCard.delivery_method || 'Email',
+    }
     note = tx.giftCard.personal_message || null
   } else if (tx.booking) {
     summaryRows.push({
@@ -294,6 +376,7 @@ export function buildTransactionReceiptData(
     paymentMethodLabel: paymentMethodDisplay(tx.payment_method),
     summaryRows,
     lineItems,
+    giftCardVisual,
     note,
     filename: sanitizeReceiptFilename(ref),
   }
@@ -303,6 +386,10 @@ export function buildGiftCardReceiptData(
   input: GiftCardReceiptInput,
 ): ReceiptDocumentData {
   const occasionMeta = getGiftCardOccasionMeta(input.occasion)
+  const resolvedDesign = findGiftCardDesignById(
+    input.designId || input.designName,
+  )
+  const resolvedDesignName = input.designName || resolvedDesign.name
   const ref = input.receiptRef || input.invoiceNumber || `GC-${Date.now()}`
   const amountText = formatNairaPlain(input.amount, 'NGN')
 
@@ -319,7 +406,7 @@ export function buildGiftCardReceiptData(
     {
       label: 'Card Style',
       value: [
-        input.designName,
+        resolvedDesignName,
         input.fontName ? `${input.fontName} font` : null,
       ]
         .filter(Boolean)
@@ -358,10 +445,23 @@ export function buildGiftCardReceiptData(
     lineItems: [
       {
         title: `Dermaspace Gift Card — ${occasionMeta.editionLabel}`,
-        subtitle: `${input.designName}${input.fontName ? ` · ${input.fontName} font` : ''}`,
+        subtitle: `${resolvedDesignName}${input.fontName ? ` · ${input.fontName} font` : ''}`,
         amount: amountText,
       },
     ],
+    giftCardVisual: {
+      recipientName: input.recipientName || 'Recipient',
+      senderName: input.senderName,
+      amountFormatted: amountText,
+      occasion: input.occasion,
+      editionLabel: occasionMeta.editionLabel,
+      designName: resolvedDesignName,
+      fontName: input.fontName || 'Elegant',
+      surfaceHex: resolvedDesign.surfaceHex,
+      accentHex: resolvedDesign.accentHex,
+      medallionHex: getDesignMedallionHex(resolvedDesign),
+      deliveryMethod: input.deliveryMethod || 'Email',
+    },
     note: input.personalMessage || null,
     filename: sanitizeReceiptFilename(ref),
   }
@@ -416,6 +516,13 @@ async function loadLogoPngDataUrl(): Promise<{
   return { dataUrl: logoDataUrl, aspect: logoAspect }
 }
 
+function pdfFontFamilyForGiftCard(fontName?: string | null): 'times' | 'helvetica' | 'courier' {
+  const lower = (fontName || '').toLowerCase()
+  if (lower.includes('modern') || lower.includes('sans')) return 'helvetica'
+  if (lower.includes('playful') || lower.includes('mono')) return 'courier'
+  return 'times'
+}
+
 export async function downloadReceiptPdf(
   data: ReceiptDocumentData,
 ): Promise<string> {
@@ -426,100 +533,146 @@ export async function downloadReceiptPdf(
   const margin = 40
   const contentW = pageWidth - margin * 2
 
+  const brandDeep: [number, number, number] = [74, 21, 88]
   const brandPurple: [number, number, number] = [123, 45, 142]
-  const brandPurpleSoft: [number, number, number] = [246, 241, 248]
+  const brandSoft: [number, number, number] = [249, 246, 251]
+  const champagneGold: [number, number, number] = [212, 175, 106]
+  const goldLight: [number, number, number] = [229, 200, 150]
   const textDark: [number, number, number] = [24, 24, 27]
   const textGray: [number, number, number] = [55, 65, 81]
   const mutedGray: [number, number, number] = [113, 113, 122]
   const lineGray: [number, number, number] = [228, 228, 231]
-  const stripeGray: [number, number, number] = [251, 249, 252]
+  const lavenderBorder: [number, number, number] = [234, 224, 240]
+
+  const ensureSpace = (neededHeight: number, currentY: number): number => {
+    if (currentY + neededHeight > pageHeight - 84) {
+      doc.addPage()
+      doc.setFillColor(...brandDeep)
+      doc.rect(0, 0, pageWidth, 4, 'F')
+      doc.setFillColor(...champagneGold)
+      doc.rect(0, 4, pageWidth, 1.5, 'F')
+      return 36
+    }
+    return currentY
+  }
 
   const { dataUrl: logoDataUrl, aspect: logoAspect } = await loadLogoPngDataUrl()
 
-  // Flat hero band (zero gradients)
-  const heroH = 104
-  doc.setFillColor(...brandPurpleSoft)
-  doc.rect(0, 0, pageWidth, heroH, 'F')
+  // Top luxury accent stripes (flat solid colors, zero gradients)
+  doc.setFillColor(...brandDeep)
+  doc.rect(0, 0, pageWidth, 5, 'F')
+  doc.setFillColor(...champagneGold)
+  doc.rect(0, 5, pageWidth, 1.5, 'F')
+
+  // Editorial Masthead Band
+  const heroTop = 6.5
+  const heroH = 92
+  doc.setFillColor(...brandSoft)
+  doc.rect(0, heroTop, pageWidth, heroH, 'F')
+  doc.setDrawColor(...lavenderBorder)
+  doc.setLineWidth(0.75)
+  doc.line(0, heroTop + heroH, pageWidth, heroTop + heroH)
 
   if (logoDataUrl) {
-    const logoH = 42
-    const logoW = Math.min(logoH * logoAspect, contentW * 0.52)
+    const logoH = 38
+    const logoW = Math.min(logoH * logoAspect, contentW * 0.46)
     doc.addImage(
       logoDataUrl,
       'PNG',
       margin,
-      (heroH - logoH) / 2,
+      heroTop + 20,
       logoW,
       logoH,
       undefined,
       'FAST',
     )
-  } else {
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(22)
-    doc.setTextColor(...brandPurple)
-    doc.text('Dermaspace', margin, 56)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
+    doc.setFontSize(7)
     doc.setTextColor(...mutedGray)
-    doc.text('Esthetic & Wellness Centre', margin, 72)
+    doc.text('ESTHETIC & WELLNESS CENTRE  ·  LAGOS', margin, heroTop + 72)
+  } else {
+    doc.setFont('times', 'bold')
+    doc.setFontSize(23)
+    doc.setTextColor(...brandPurple)
+    doc.text('Dermaspace', margin, heroTop + 46)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...mutedGray)
+    doc.text('ESTHETIC & WELLNESS CENTRE  ·  LAGOS', margin, heroTop + 64)
   }
 
-  const pillW = 112
-  const pillH = 24
-  const pillX = pageWidth - margin - pillW
-  const pillY = 34
-  doc.setFillColor(...brandPurple)
-  doc.roundedRect(pillX, pillY, pillW, pillH, 12, 12, 'F')
+  // Right masthead block
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
-  doc.setTextColor(255, 255, 255)
-  doc.text('OFFICIAL RECEIPT', pillX + pillW / 2, pillY + 15.5, {
-    align: 'center',
+  doc.setFontSize(7.5)
+  doc.setTextColor(...brandPurple)
+  doc.text('OFFICIAL RECEIPT', pageWidth - margin, heroTop + 31, {
+    align: 'right',
+  })
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12.5)
+  doc.setTextColor(...textDark)
+  doc.text(data.documentTitle, pageWidth - margin, heroTop + 49, {
+    align: 'right',
   })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...mutedGray)
-  doc.text(`Issued ${data.issueDate}`, pageWidth - margin, pillY + pillH + 14, {
+  doc.text(`Issued ${data.issueDate}`, pageWidth - margin, heroTop + 66, {
     align: 'right',
   })
 
-  let y = heroH + 26
+  let y = heroTop + heroH + 22
 
-  // Reference & status row
+  // Reference / Invoice / Status Bar
+  const metaBarH = 44
+  doc.setFillColor(255, 255, 255)
+  doc.setDrawColor(...lineGray)
+  doc.setLineWidth(0.75)
+  doc.roundedRect(margin, y, contentW, metaBarH, 8, 8, 'FD')
+
+  const col1X = margin + 14
+  const col2X = margin + contentW * 0.44
+  const col3X = pageWidth - margin - 14
+
+  doc.setDrawColor(...lineGray)
+  doc.line(col2X - 14, y + 9, col2X - 14, y + metaBarH - 9)
+  doc.line(margin + contentW * 0.76, y + 9, margin + contentW * 0.76, y + metaBarH - 9)
+
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
+  doc.setFontSize(7)
   doc.setTextColor(...mutedGray)
-  doc.text('REFERENCE', margin, y)
-  doc.text('STATUS', pageWidth - margin, y, { align: 'right' })
-  y += 14
+  doc.text('REFERENCE', col1X, y + 15)
+  doc.text(data.invoiceNumber ? 'INVOICE NO.' : 'PAYMENT METHOD', col2X, y + 15)
+  doc.text('STATUS', col3X, y + 15, { align: 'right' })
 
   doc.setFont('courier', 'bold')
-  doc.setFontSize(12.5)
-  doc.setTextColor(...brandPurple)
-  doc.text(data.reference, margin, y, { maxWidth: contentW * 0.65 })
+  doc.setFontSize(10.5)
+  doc.setTextColor(...brandDeep)
+  doc.text(data.reference, col1X, y + 31, { maxWidth: contentW * 0.38 })
+
+  doc.setFont(data.invoiceNumber ? 'courier' : 'helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.setTextColor(...textDark)
+  doc.text(
+    data.invoiceNumber || data.paymentMethodLabel || 'Online',
+    col2X,
+    y + 31,
+    { maxWidth: contentW * 0.28 },
+  )
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
-  const statusW = doc.getTextWidth(data.statusLabel) + 18
-  doc.setFillColor(...brandPurpleSoft)
-  doc.roundedRect(pageWidth - margin - statusW, y - 11, statusW, 17, 8.5, 8.5, 'F')
+  doc.setFontSize(10)
   doc.setTextColor(...brandPurple)
-  doc.text(data.statusLabel, pageWidth - margin - 9, y + 0.5, { align: 'right' })
+  const statusTextW = doc.getTextWidth(data.statusLabel)
+  doc.setFillColor(...brandPurple)
+  doc.circle(col3X - statusTextW - 8, y + 27.5, 2.8, 'F')
+  doc.text(data.statusLabel, col3X, y + 31, { align: 'right' })
 
-  y += 20
-  doc.setDrawColor(...lineGray)
-  doc.line(margin, y, pageWidth - margin, y)
-  y += 20
+  y += metaBarH + 18
 
   // Headline
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(...brandPurple)
-  doc.text(data.documentTitle, margin, y)
-  y += 16
-
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(15)
   doc.setTextColor(...textDark)
@@ -527,146 +680,327 @@ export async function downloadReceiptPdf(
   doc.text(headlineLines, margin, y)
   y += headlineLines.length * 18 + 10
 
-  // 2-column summary grid
+  // Gift Card Specimen Visual + Style Spec Box (for Gift Card receipts)
+  if (data.giftCardVisual) {
+    const gc = data.giftCardVisual
+    const visualH = 156
+    y = ensureSpace(visualH + 22, y)
+
+    const cardW = 266
+    const cardH = visualH
+    const specX = margin + cardW + 14
+    const specW = contentW - cardW - 14
+
+    const surfaceRgb = hexToRgb(gc.surfaceHex, brandPurple)
+    const accentRgb = hexToRgb(gc.accentHex, brandPurple)
+    const medallionRgb = hexToRgb(gc.medallionHex, brandDeep)
+    const gcFont = pdfFontFamilyForGiftCard(gc.fontName)
+
+    // Card surface
+    doc.setFillColor(...surfaceRgb)
+    doc.roundedRect(margin, y, cardW, cardH, 11, 11, 'F')
+
+    // Subtle right accent panel inset
+    doc.setFillColor(...accentRgb)
+    doc.roundedRect(margin + cardW * 0.58, y + 10, cardW * 0.38, cardH - 20, 9, 9, 'F')
+
+    // Inner double luxury border frame
+    doc.setDrawColor(233, 213, 255)
+    doc.setLineWidth(0.7)
+    doc.roundedRect(margin + 6, y + 6, cardW - 12, cardH - 12, 8, 8, 'S')
+    doc.setDrawColor(...goldLight)
+    doc.setLineWidth(0.55)
+    doc.roundedRect(margin + 9, y + 9, cardW - 18, cardH - 18, 6, 6, 'S')
+
+    // Right-side bespoke medallion motif
+    const medX = margin + cardW - 52
+    const medY = y + cardH / 2 + 2
+    doc.setFillColor(...medallionRgb)
+    doc.setDrawColor(...goldLight)
+    doc.setLineWidth(1)
+    doc.circle(medX, medY, 27, 'FD')
+    doc.setDrawColor(248, 240, 252)
+    doc.setLineWidth(0.55)
+    doc.circle(medX, medY, 20, 'S')
+
+    // 4-point botanical star inside medallion
+    doc.setFillColor(...goldLight)
+    doc.triangle(medX, medY - 13, medX - 4, medY, medX + 4, medY, 'F')
+    doc.triangle(medX, medY + 13, medX - 4, medY, medX + 4, medY, 'F')
+    doc.setFillColor(248, 240, 252)
+    doc.triangle(medX - 13, medY, medX, medY - 3.5, medX, medY + 3.5, 'F')
+    doc.triangle(medX + 13, medY, medX, medY - 3.5, medX, medY + 3.5, 'F')
+    doc.setFillColor(...goldLight)
+    doc.circle(medX, medY, 2.3, 'F')
+
+    // Card header text (zero badges)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    doc.setTextColor(255, 255, 255)
+    doc.text('DERMASPACE', margin + 18, y + 26)
+    doc.setFontSize(6.8)
+    doc.setTextColor(...goldLight)
+    doc.text('GIFT CARD', margin + cardW - 18, y + 25, { align: 'right' })
+
+    // Recipient
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(235, 228, 242)
+    doc.text('FOR', margin + 18, y + 52)
+    doc.setFont(gcFont, 'bold')
+    doc.setFontSize(11.5)
+    doc.setTextColor(255, 255, 255)
+    doc.text(gc.recipientName, margin + 18, y + 66, { maxWidth: 146 })
+
+    // Amount
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.8)
+    doc.setTextColor(...goldLight)
+    doc.text('VALUE', margin + 18, y + 88)
+    doc.setFont(gcFont, 'bold')
+    doc.setFontSize(18)
+    doc.setTextColor(255, 255, 255)
+    doc.text(gc.amountFormatted, margin + 18, y + 106, { maxWidth: 150 })
+
+    // Card bottom row (plain text, zero badges)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.8)
+    doc.setTextColor(245, 238, 250)
+    doc.text(gc.editionLabel, margin + 18, y + cardH - 18, { maxWidth: 120 })
+    if (gc.senderName) {
+      doc.setFontSize(7.5)
+      doc.setTextColor(235, 228, 242)
+      doc.text(`From: ${gc.senderName}`, margin + cardW - 18, y + cardH - 18, {
+        align: 'right',
+        maxWidth: 108,
+      })
+    }
+
+    // Right-hand Card Customisation Spec Panel
+    doc.setFillColor(...brandSoft)
+    doc.setDrawColor(...lavenderBorder)
+    doc.setLineWidth(0.75)
+    doc.roundedRect(specX, y, specW, cardH, 10, 10, 'FD')
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...brandPurple)
+    doc.text('CARD CUSTOMISATION', specX + 14, y + 20)
+    doc.setDrawColor(...lavenderBorder)
+    doc.line(specX + 14, y + 26, specX + specW - 14, y + 26)
+
+    // Color swatch + design name
+    doc.setFillColor(...surfaceRgb)
+    doc.rect(specX + 14, y + 36, 12, 12, 'F')
+    doc.setFillColor(...accentRgb)
+    doc.rect(specX + 26, y + 36, 7, 12, 'F')
+    doc.setDrawColor(200, 200, 210)
+    doc.rect(specX + 14, y + 36, 19, 12, 'S')
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6.8)
+    doc.setTextColor(...mutedGray)
+    doc.text('COLOUR THEME', specX + 40, y + 41)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...textDark)
+    doc.text(gc.designName, specX + 40, y + 51, { maxWidth: specW - 54 })
+
+    const specItems: Array<[string, string]> = [
+      ['OCCASION EDITION', gc.editionLabel],
+      ['TYPOGRAPHY', `${gc.fontName || 'Elegant'} Font`],
+      ['VALIDITY', 'VI & Ikoyi · Never Expires'],
+    ]
+    let sy = y + 73
+    for (const [lbl, val] of specItems) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(6.8)
+      doc.setTextColor(...mutedGray)
+      doc.text(lbl, specX + 14, sy)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(...textDark)
+      doc.text(val, specX + 14, sy + 11, { maxWidth: specW - 28 })
+      sy += 27
+    }
+
+    y += visualH + 18
+  }
+
+  // Two-column metadata summary grid
   const rowCount = Math.ceil(data.summaryRows.length / 2)
-  const gridH = rowCount * 38 + 16
+  const rowHeight = 36
+  const gridH = rowCount * rowHeight + 14
+  y = ensureSpace(gridH + 20, y)
+
   doc.setDrawColor(...lineGray)
   doc.setFillColor(255, 255, 255)
-  doc.roundedRect(margin, y, contentW, gridH, 10, 10, 'FD')
+  doc.setLineWidth(0.75)
+  doc.roundedRect(margin, y, contentW, gridH, 9, 9, 'FD')
 
   const colW = contentW / 2
+  doc.setDrawColor(...lineGray)
+  doc.line(margin + colW, y + 10, margin + colW, y + gridH - 10)
+
   let gy = y + 18
   for (let i = 0; i < data.summaryRows.length; i += 2) {
     const left = data.summaryRows[i]
     const right = data.summaryRows[i + 1]
 
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
+    if (i > 0) {
+      doc.setDrawColor(244, 244, 245)
+      doc.line(margin + 12, gy - 11, pageWidth - margin - 12, gy - 11)
+    }
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.8)
     doc.setTextColor(...mutedGray)
     doc.text(left.label.toUpperCase(), margin + 14, gy)
     if (right) {
-      doc.text(right.label.toUpperCase(), margin + colW + 8, gy)
+      doc.text(right.label.toUpperCase(), margin + colW + 14, gy)
     }
 
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
+    doc.setFontSize(9.5)
     doc.setTextColor(...textDark)
-    doc.text(left.value, margin + 14, gy + 14, { maxWidth: colW - 24 })
+    doc.text(left.value, margin + 14, gy + 13, { maxWidth: colW - 26 })
     if (right) {
-      doc.text(right.value, margin + colW + 8, gy + 14, { maxWidth: colW - 24 })
+      doc.text(right.value, margin + colW + 14, gy + 13, { maxWidth: colW - 26 })
     }
-    gy += 38
+    gy += rowHeight
   }
-  y += gridH + 20
+  y += gridH + 18
 
-  // Line items if present
+  // Itemized Summary Table
   if (data.lineItems && data.lineItems.length > 0) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(...brandPurple)
-    doc.text('SUMMARY', margin, y)
-    y += 10
-    doc.setDrawColor(...lineGray)
-    doc.line(margin, y, pageWidth - margin, y)
-    y += 6
+    y = ensureSpace(68, y)
 
-    const rowH = 36
-    data.lineItems.forEach((item, idx) => {
-      if (y > pageHeight - 170) {
-        doc.addPage()
-        y = margin
-      }
-      if (idx % 2 === 1) {
-        doc.setFillColor(...stripeGray)
-        doc.rect(margin, y, contentW, rowH, 'F')
-      }
+    doc.setFillColor(...brandSoft)
+    doc.setDrawColor(...lavenderBorder)
+    doc.setLineWidth(0.6)
+    doc.roundedRect(margin, y, contentW, 22, 5, 5, 'FD')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...brandPurple)
+    doc.text('ITEM DESCRIPTION', margin + 12, y + 14)
+    doc.text('AMOUNT', pageWidth - margin - 12, y + 14, { align: 'right' })
+    y += 26
+
+    const rowH = 38
+    data.lineItems.forEach((item) => {
+      y = ensureSpace(rowH + 12, y)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10.5)
+      doc.setFontSize(10)
       doc.setTextColor(...textDark)
-      doc.text(item.title, margin + 8, y + 15, { maxWidth: contentW * 0.68 })
+      doc.text(item.title, margin + 12, y + 14, { maxWidth: contentW * 0.68 })
       if (item.amount) {
-        doc.text(item.amount, pageWidth - margin - 8, y + 15, { align: 'right' })
+        doc.text(item.amount, pageWidth - margin - 12, y + 14, { align: 'right' })
       }
       if (item.subtitle) {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8.5)
         doc.setTextColor(...mutedGray)
-        doc.text(item.subtitle, margin + 8, y + 28, { maxWidth: contentW * 0.85 })
+        doc.text(item.subtitle, margin + 12, y + 27, { maxWidth: contentW * 0.84 })
       }
+      doc.setDrawColor(...lineGray)
+      doc.line(margin, y + rowH - 2, pageWidth - margin, y + rowH - 2)
       y += rowH
     })
-    y += 14
+    y += 12
   }
 
-  // Total box (flat purple)
+  // Executive Total Paid Banner
   const totalCardH = 62
-  doc.setFillColor(...brandPurple)
-  doc.roundedRect(margin, y, contentW, totalCardH, 12, 12, 'F')
-  doc.setTextColor(255, 255, 255)
+  y = ensureSpace(totalCardH + 22, y)
+
+  doc.setFillColor(...brandDeep)
+  doc.roundedRect(margin, y, contentW, totalCardH, 10, 10, 'F')
+  // Left champagne gold accent stripe
+  doc.setFillColor(...champagneGold)
+  doc.roundedRect(margin, y, 6, totalCardH, 3, 3, 'F')
+  doc.rect(margin + 3, y, 3, totalCardH, 'F')
+
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
-  doc.text(data.amountLabel, margin + 18, y + 21)
+  doc.setFontSize(7.8)
+  doc.setTextColor(...goldLight)
+  doc.text(data.amountLabel, margin + 20, y + 21)
+
+  doc.setFont('helvetica', 'bold')
   doc.setFontSize(21)
-  doc.text(data.amountFormatted, margin + 18, y + 46)
+  doc.setTextColor(255, 255, 255)
+  doc.text(data.amountFormatted, margin + 20, y + 46)
 
   if (data.paymentMethodLabel) {
-    doc.setFontSize(9)
-    doc.text(data.paymentMethodLabel, pageWidth - margin - 18, y + 24, {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    doc.setTextColor(255, 255, 255)
+    doc.text(data.paymentMethodLabel, pageWidth - margin - 18, y + 25, {
       align: 'right',
     })
   }
   if (data.invoiceNumber) {
     doc.setFont('courier', 'normal')
     doc.setFontSize(8.5)
+    doc.setTextColor(...goldLight)
     doc.text(data.invoiceNumber, pageWidth - margin - 18, y + 43, {
       align: 'right',
     })
   }
-  y += totalCardH + 20
+  y += totalCardH + 18
 
-  // Personal message if present
+  // Personal Message Quote Card
   if (data.note) {
+    const noteLines = doc.splitTextToSize(`"${data.note}"`, contentW - 32)
+    const noteBoxH = noteLines.length * 13 + 32
+    y = ensureSpace(noteBoxH + 16, y)
+
+    doc.setFillColor(...brandSoft)
+    doc.setDrawColor(...lavenderBorder)
+    doc.setLineWidth(0.75)
+    doc.roundedRect(margin, y, contentW, noteBoxH, 8, 8, 'FD')
+    doc.setFillColor(...brandPurple)
+    doc.rect(margin, y + 6, 3.5, noteBoxH - 12, 'F')
+
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
+    doc.setFontSize(7.2)
     doc.setTextColor(...brandPurple)
-    doc.text('PERSONAL MESSAGE', margin, y)
-    y += 13
-    doc.setFont('helvetica', 'italic')
-    doc.setFontSize(10)
+    doc.text('PERSONAL MESSAGE', margin + 14, y + 17)
+
+    doc.setFont('times', 'italic')
+    doc.setFontSize(10.5)
     doc.setTextColor(...textGray)
-    const noteLines = doc.splitTextToSize(`"${data.note}"`, contentW)
-    doc.text(noteLines, margin, y)
-    y += noteLines.length * 13 + 16
+    doc.text(noteLines, margin + 14, y + 32)
+    y += noteBoxH + 16
   }
 
-  // Clinic closing stamp
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  doc.setTextColor(...brandPurple)
-  doc.text('Crafted with care at Dermaspace', pageWidth / 2, y + 10, {
-    align: 'center',
-  })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.setTextColor(...mutedGray)
-  doc.text(
-    '237B Muri Okunola St, Victoria Island  |  9 Agbeke Rotinwa Cl, Ikoyi',
-    pageWidth / 2,
-    y + 25,
-    { align: 'center' },
-  )
-
-  const footerY = Math.max(y + 46, pageHeight - 56)
+  // Closing Stamp + Footer
+  y = ensureSpace(68, y)
+  const footerY = Math.max(y + 18, pageHeight - 74)
   doc.setDrawColor(...lineGray)
   doc.setLineDashPattern([3, 3], 0)
   doc.line(margin, footerY, pageWidth - margin, footerY)
   doc.setLineDashPattern([], 0)
-  doc.setFontSize(8.5)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  doc.setTextColor(...brandPurple)
+  doc.text('Crafted with care at Dermaspace', pageWidth / 2, footerY + 18, {
+    align: 'center',
+  })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
   doc.setTextColor(...mutedGray)
   doc.text(
-    'Dermaspace Esthetic & Wellness Centre  |  hello@dermaspaceng.com',
+    '237B Muri Okunola St, Victoria Island  ·  9 Agbeke Rotinwa Cl, Ikoyi',
     pageWidth / 2,
-    footerY + 18,
+    footerY + 32,
+    { align: 'center' },
+  )
+  doc.text(
+    'dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625',
+    pageWidth / 2,
+    footerY + 44,
     { align: 'center' },
   )
 

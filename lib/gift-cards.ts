@@ -8,6 +8,7 @@ import {
 import {
   sendGiftCardPaymentReceipt,
   sendGiftCardRequestToAdmin,
+  sendGiftCardToRecipient,
 } from './email'
 import { sendInvoiceEmail } from './wallet-emails'
 
@@ -52,6 +53,7 @@ export interface GiftCardRequestRecord {
   payment_method: string | null
   payment_status: string | null
   invoice_number: string | null
+  recipient_notified_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -103,6 +105,7 @@ export async function ensureGiftCardSchema(): Promise<void> {
       await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)`)
       await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unpaid'`)
       await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100)`)
+      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS recipient_notified_at TIMESTAMP`)
       await query(`
         CREATE UNIQUE INDEX IF NOT EXISTS idx_gift_card_requests_payment_ref
         ON gift_card_requests(payment_reference)
@@ -121,6 +124,99 @@ export function normalizeDeliveryDate(value?: string | null): string | null {
   if (!value || typeof value !== 'string') return null
   const trimmed = value.trim()
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null
+}
+
+export function isImmediateEmailDelivery(
+  deliveryMethod?: string | null,
+  deliveryDate?: string | null,
+): boolean {
+  if ((deliveryMethod || '').trim().toLowerCase() === 'download') {
+    return false
+  }
+  const normalized = normalizeDeliveryDate(deliveryDate)
+  if (!normalized) return true
+  const today = new Date().toISOString().slice(0, 10)
+  return normalized <= today
+}
+
+export async function deliverGiftCardToRecipient(
+  requestId: number,
+  opts: { force?: boolean } = {},
+): Promise<{ sent: boolean; record: GiftCardRequestRecord | null }> {
+  await ensureGiftCardSchema()
+
+  let row: GiftCardRequestRecord | null = null
+  const wasClaimed = !opts.force
+
+  if (opts.force) {
+    const res = await query<GiftCardRequestRecord>(
+      `SELECT * FROM gift_card_requests WHERE id = $1 LIMIT 1`,
+      [requestId],
+    )
+    row = res.rows[0] ?? null
+  } else {
+    const claim = await query<GiftCardRequestRecord>(
+      `UPDATE gift_card_requests
+          SET recipient_notified_at = NOW(),
+              updated_at = NOW()
+        WHERE id = $1
+          AND recipient_notified_at IS NULL
+          AND recipient_email IS NOT NULL
+          AND TRIM(recipient_email) <> ''
+        RETURNING *`,
+      [requestId],
+    )
+    row = claim.rows[0] ?? null
+  }
+
+  if (!row || !row.recipient_email || !row.recipient_email.includes('@')) {
+    return { sent: false, record: row }
+  }
+
+  let sent = false
+  try {
+    sent = await sendGiftCardToRecipient({
+      recipientEmail: row.recipient_email,
+      recipientName: row.recipient_name,
+      senderName: row.sender_name || 'Someone Special',
+      amount: Number(row.amount) || 0,
+      occasion: row.occasion,
+      designId: row.design,
+      designName: row.design_name,
+      fontName: row.font_name || row.font,
+      personalMessage: row.personal_message,
+      giftCardRef: row.payment_reference || row.invoice_number || `GC-${row.id}`,
+    })
+  } catch (err) {
+    console.error('[deliverGiftCardToRecipient] send error:', err)
+    sent = false
+  }
+
+  if (sent) {
+    if (opts.force) {
+      const updated = await query<GiftCardRequestRecord>(
+        `UPDATE gift_card_requests
+            SET recipient_notified_at = NOW(),
+                updated_at = NOW()
+          WHERE id = $1
+          RETURNING *`,
+        [requestId],
+      )
+      row = updated.rows[0] ?? row
+    }
+    return { sent: true, record: row }
+  }
+
+  if (wasClaimed) {
+    await query(
+      `UPDATE gift_card_requests
+          SET recipient_notified_at = NULL
+        WHERE id = $1`,
+      [requestId],
+    ).catch(() => {})
+  }
+
+  return { sent: false, record: row }
 }
 
 export async function upsertGiftCardRequest(opts: {
@@ -429,6 +525,19 @@ export async function finalizeGiftCardPaystackPayment({
       paymentMethod: channelLabel,
       paymentReference,
     })
+
+    if (
+      giftCardRequest?.id &&
+      isImmediateEmailDelivery(
+        giftCardRequest.delivery_method,
+        giftCardRequest.delivery_date,
+      )
+    ) {
+      const delivery = await deliverGiftCardToRecipient(giftCardRequest.id)
+      if (delivery.record) {
+        giftCardRequest = delivery.record
+      }
+    }
   } catch (err) {
     console.error('[finalizeGiftCardPaystackPayment] emails failed:', err)
   }
@@ -553,6 +662,13 @@ export async function recordWalletPaidGiftCard({
         paymentMethod: 'Wallet',
         paymentReference,
       })
+
+      if (
+        request?.id &&
+        isImmediateEmailDelivery(request.delivery_method, request.delivery_date)
+      ) {
+        await deliverGiftCardToRecipient(request.id)
+      }
     } catch (err) {
       console.error('[recordWalletPaidGiftCard] email failed:', err)
     }
