@@ -11,7 +11,7 @@ import {
   ArrowUpRight, ArrowDownRight, UserCog,
   ChevronRight, Activity, Inbox, LayoutGrid,
   TrendingUp, Clock, CheckCircle2, Bell,
-  Wallet,
+  Wallet, Mail,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
@@ -29,6 +29,22 @@ interface Stats {
   giftCards: { total: number; pending: number; totalValue: number }
   surveys: { total: number; avgRating: number; thisWeek: number }
   staff: { total: number }
+  bookings?: { pending: number; upcoming: number }
+  newsletter?: {
+    total: number
+    active: number
+    thisWeek: number
+    todayNew: number
+    recentSubscribers?: Array<{
+      id: string
+      email: string
+      firstName: string | null
+      lastName: string | null
+      source: string
+      status: string
+      createdAt: string | null
+    }>
+  }
 }
 
 interface RevenueSummary {
@@ -144,11 +160,25 @@ export default function AdminDashboard() {
       href: '/admin/surveys',
     },
     {
+      label: 'Bookings',
+      value: stats?.bookings?.pending ?? 0,
+      sublabel: `${stats?.bookings?.upcoming ?? 0} upcoming confirmed`,
+      icon: Calendar,
+      href: '/admin/bookings',
+    },
+    {
       label: 'Staff members',
       value: stats?.staff.total ?? 0,
       sublabel: 'Active on the platform',
       icon: UserCog,
       href: '/admin/staff',
+    },
+    {
+      label: 'Newsletter',
+      value: stats?.newsletter?.active ?? 0,
+      sublabel: `${stats?.newsletter?.thisWeek ?? 0} new this week · ${stats?.newsletter?.total ?? 0} total`,
+      icon: Mail,
+      href: '/admin/newsletter',
     },
   ]
 
@@ -412,7 +442,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {statCards.map((stat) => (
             <Link
               key={stat.label}
@@ -752,6 +782,105 @@ export default function AdminDashboard() {
           </h2>
         </div>
         <OperationsPanel />
+      </section>
+
+      {/* Newsletter Subscribers — surfaces recent mailing list signups
+          right on the main admin dashboard so admins see new
+          subscribers immediately alongside users and bookings. */}
+      <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-b border-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <Mail className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900 truncate">
+                Newsletter subscribers
+              </h2>
+              <p className="text-xs text-gray-500">
+                <span className="tabular-nums font-medium text-gray-700">
+                  {(stats?.newsletter?.active ?? 0).toLocaleString()}
+                </span>{' '}
+                active
+                <span aria-hidden="true"> · </span>
+                <span className="tabular-nums">
+                  {(stats?.newsletter?.thisWeek ?? 0).toLocaleString()}
+                </span>{' '}
+                new this week
+                {(stats?.newsletter?.todayNew ?? 0) > 0 && (
+                  <>
+                    <span aria-hidden="true"> · </span>
+                    <span className="tabular-nums font-medium text-[#7B2D8E]">
+                      {stats?.newsletter?.todayNew} today
+                    </span>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/newsletter"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:underline whitespace-nowrap"
+          >
+            Manage subscribers
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {(() => {
+          const recent = stats?.newsletter?.recentSubscribers ?? []
+          if (recent.length === 0) {
+            return (
+              <div className="px-4 py-8 text-center">
+                <p className="text-sm font-medium text-gray-900">
+                  No newsletter subscribers yet
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  People who subscribe on the site or newsletter popup will appear here.
+                </p>
+              </div>
+            )
+          }
+          return (
+            <ul className="divide-y divide-gray-100">
+              {recent.map((sub) => {
+                const fullName = [sub.firstName, sub.lastName]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim()
+                const dateLabel = sub.createdAt
+                  ? new Date(sub.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  : '—'
+                return (
+                  <li
+                    key={sub.id}
+                    className="flex items-center justify-between gap-3 px-4 py-2.5 text-xs"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 truncate">
+                        {sub.email}
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                        {fullName ? `${fullName} · ` : ''}
+                        Source: {sub.source}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-[11px] font-medium text-[#7B2D8E] capitalize">
+                        {sub.status}
+                      </span>
+                      <p className="text-[11px] text-gray-400 tabular-nums mt-0.5">
+                        {dateLabel}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )
+        })()}
       </section>
 
       {/* Quick Actions */}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sendNewsletterWelcome } from '@/lib/email'
 import { sql } from '@/lib/db'
+import { invalidateAdminStats } from '@/lib/stats-cache'
 import { v4 as uuidv4 } from 'uuid'
 import {
   honeypotResponse,
@@ -11,7 +12,10 @@ import {
 
 interface NewsletterBody {
   email?: string
+  source?: string
 }
+
+const ALLOWED_SOURCES = new Set(['homepage', 'popup', 'footer'])
 
 export async function POST(request: Request) {
   try {
@@ -39,7 +43,11 @@ export async function POST(request: Request) {
     const trap = honeypotResponse(parsed.data as Record<string, unknown>)
     if (trap) return trap
 
-    const { email } = parsed.data
+    const { email, source } = parsed.data
+    const safeSource =
+      typeof source === 'string' && ALLOWED_SOURCES.has(source.trim().toLowerCase())
+        ? source.trim().toLowerCase()
+        : 'homepage'
     console.log('Newsletter subscription request for:', email)
 
     if (!email || typeof email !== 'string' || !email.includes('@') || email.length > 254) {
@@ -66,10 +74,20 @@ export async function POST(request: Request) {
     // Add to subscribers list with UUID
     const id = uuidv4()
     console.log('Adding new subscriber with id:', id)
-    await sql`
-      INSERT INTO newsletter_subscribers (id, email) VALUES (${id}, ${email.toLowerCase()})
-    `
+    try {
+      await sql`
+        INSERT INTO newsletter_subscribers (id, email, source, status)
+        VALUES (${id}, ${email.toLowerCase()}, ${safeSource}, 'active')
+      `
+    } catch {
+      await sql`
+        INSERT INTO newsletter_subscribers (id, email)
+        VALUES (${id}, ${email.toLowerCase()})
+      `
+    }
     console.log('Subscriber added successfully')
+
+    await invalidateAdminStats().catch(() => {})
     
     // Send welcome email
     const emailSent = await sendNewsletterWelcome(email)

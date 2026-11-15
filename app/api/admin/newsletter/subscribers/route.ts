@@ -45,6 +45,10 @@ export async function GET(request: Request) {
         COUNT(*) FILTER (WHERE status = 'active' OR status IS NULL) AS active_count,
         COUNT(*) FILTER (WHERE status = 'unsubscribed') AS unsubscribed_count,
         COUNT(*) FILTER (WHERE status = 'bounced') AS bounced_count,
+        COUNT(*) FILTER (
+          WHERE COALESCE(status, 'active') = 'active'
+            AND created_at >= DATE_TRUNC('day', NOW())
+        ) AS today_new,
         COUNT(*) AS total_count
       FROM newsletter_subscribers
     `
@@ -129,6 +133,7 @@ export async function GET(request: Request) {
         active: Number(counts[0]?.active_count ?? 0),
         unsubscribed: Number(counts[0]?.unsubscribed_count ?? 0),
         bounced: Number(counts[0]?.bounced_count ?? 0),
+        todayNew: Number(counts[0]?.today_new ?? 0),
       },
       subscribers: rows.map(r => ({
         id: r.id,

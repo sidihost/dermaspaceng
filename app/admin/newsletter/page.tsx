@@ -51,6 +51,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
 import { RichTextEditor } from '@/components/admin/rich-text-editor'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,6 +74,7 @@ interface SubscriberCounts {
   active: number
   unsubscribed: number
   bounced: number
+  todayNew?: number
 }
 
 interface CampaignSummary {
@@ -201,6 +203,12 @@ function SubscribersTab({ notify }: { notify: ReturnType<typeof useNotify> }) {
 
   const counts = data?.counts
   const subscribers = data?.subscribers ?? []
+
+  useEffect(() => {
+    if (typeof counts?.todayNew === 'number') {
+      markSurfaceSeen('newsletter', counts.todayNew)
+    }
+  }, [counts?.todayNew])
 
   const updateStatus = useCallback(
     async (id: number, next: Subscriber['status']) => {

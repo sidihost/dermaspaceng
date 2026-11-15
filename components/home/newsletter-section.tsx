@@ -44,11 +44,16 @@ export default function NewsletterSection() {
       const response = await fetch('/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, source: 'homepage' })
       })
       
       if (response.ok) {
         const data = await response.json()
+        try {
+          window.localStorage.setItem('ds.newsletter.subscribed', '1')
+        } catch {
+          // ignore private browsing storage restriction
+        }
         setAlreadySubscribed(data.alreadySubscribed || false)
         setIsSubmitted(true)
       }
@@ -97,7 +102,7 @@ export default function NewsletterSection() {
                 alt="Spa treatment"
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-[#7B2D8E]/60 to-transparent md:bg-gradient-to-t" />
+              <div className="absolute inset-0 bg-[#7B2D8E]/25" />
               <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6">
                 <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5">
                   <Mail className="w-4 h-4 text-white" />

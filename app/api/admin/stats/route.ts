@@ -195,6 +195,96 @@ async function computeAdminStats() {
       /* table missing — keep zeroes */
     }
 
+    // Newsletter subscribers — powers both the admin dashboard
+    // Newsletter overview card / recent subscribers feed and the
+    // sidebar badge when new visitors subscribe today.
+    let newsletterTotal = 0
+    let newsletterActive = 0
+    let newsletterThisWeek = 0
+    let newsletterTodayNew = 0
+    let recentNewsletterSubscribers: Array<{
+      id: string
+      email: string
+      firstName: string | null
+      lastName: string | null
+      source: string
+      status: string
+      createdAt: string | null
+    }> = []
+    try {
+      const nlCounts = await sql`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE COALESCE(status, 'active') = 'active')::int AS active,
+          COUNT(*) FILTER (
+            WHERE COALESCE(status, 'active') = 'active'
+              AND created_at >= NOW() - INTERVAL '7 days'
+          )::int AS this_week,
+          COUNT(*) FILTER (
+            WHERE COALESCE(status, 'active') = 'active'
+              AND created_at >= DATE_TRUNC('day', NOW())
+          )::int AS today_new
+        FROM newsletter_subscribers
+      `
+      newsletterTotal = Number(nlCounts[0]?.total) || 0
+      newsletterActive = Number(nlCounts[0]?.active) || 0
+      newsletterThisWeek = Number(nlCounts[0]?.this_week) || 0
+      newsletterTodayNew = Number(nlCounts[0]?.today_new) || 0
+
+      const nlRecent = await sql`
+        SELECT id, email, first_name, last_name, source, status, created_at
+        FROM newsletter_subscribers
+        WHERE COALESCE(status, 'active') = 'active'
+        ORDER BY created_at DESC
+        LIMIT 6
+      `
+      recentNewsletterSubscribers = nlRecent.map((r) => ({
+        id: String(r.id),
+        email: String(r.email),
+        firstName: r.first_name ? String(r.first_name) : null,
+        lastName: r.last_name ? String(r.last_name) : null,
+        source: r.source ? String(r.source) : 'homepage',
+        status: r.status ? String(r.status) : 'active',
+        createdAt: r.created_at
+          ? new Date(r.created_at as string).toISOString()
+          : null,
+      }))
+    } catch {
+      try {
+        const nlFallback = await sql`
+          SELECT
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS this_week,
+            COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('day', NOW()))::int AS today_new
+          FROM newsletter_subscribers
+        `
+        newsletterTotal = Number(nlFallback[0]?.total) || 0
+        newsletterActive = newsletterTotal
+        newsletterThisWeek = Number(nlFallback[0]?.this_week) || 0
+        newsletterTodayNew = Number(nlFallback[0]?.today_new) || 0
+
+        const nlRecentFallback = await sql`
+          SELECT id, email, created_at
+          FROM newsletter_subscribers
+          ORDER BY created_at DESC
+          LIMIT 6
+        `
+        recentNewsletterSubscribers = nlRecentFallback.map((r) => ({
+          id: String(r.id),
+          email: String(r.email),
+          firstName: null,
+          lastName: null,
+          source: 'homepage',
+          status: 'active',
+          createdAt: r.created_at
+            ? new Date(r.created_at as string).toISOString()
+            : null,
+        }))
+      } catch {
+        /* table missing — keep zeroes */
+      }
+    }
+
     // ── Sales aggregate ─────────────────────────────────────────
     // Drives the new Sales chart on the admin dashboard. We bucket
     // by calendar month over the last 12 months and only count
@@ -329,6 +419,13 @@ async function computeAdminStats() {
         feedback: {
           new: feedbackNew,
           unactioned: feedbackUnactioned,
+        },
+        newsletter: {
+          total: newsletterTotal,
+          active: newsletterActive,
+          thisWeek: newsletterThisWeek,
+          todayNew: newsletterTodayNew,
+          recentSubscribers: recentNewsletterSubscribers,
         },
       },
       revenue: salesSummary,

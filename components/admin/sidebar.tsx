@@ -191,6 +191,8 @@ const adminStatsFetcher = (url: string) =>
         // the Feedback row chip the same way pendingBookings drives
         // Bookings.
         feedback?: { new: number; unactioned: number }
+        // Newsletter badge — daily new active subscribers.
+        newsletter?: { todayNew: number; active: number }
       }
     }>
   })
@@ -218,7 +220,7 @@ const BASELINE_PREFIX = 'admin:badgeBaseline:'
 // day it was written (`YYYY-MM-DD:count`). On read, a baseline from an
 // earlier day is treated as 0 — otherwise yesterday's "seen 5 signups"
 // baseline would suppress today's genuinely-new signup (max(0, 1-5) = 0).
-const DATED_SURFACES = new Set(['users'])
+const DATED_SURFACES = new Set(['users', 'newsletter'])
 
 function todayStamp(): string {
   return new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
@@ -410,6 +412,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
   // (older stats endpoint) cleanly read as 0 with no badge.
   const openTickets = statsData?.stats.tickets?.open ?? 0
   const newFeedback = statsData?.stats.feedback?.new ?? 0
+  const newNewsletterToday = statsData?.stats.newsletter?.todayNew ?? 0
 
   // Tick — bumped whenever the admin visits a surface so the Google /
   // Vercel-style "seen" baselines re-read from localStorage. Without
@@ -455,6 +458,8 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
       return Math.max(0, pendingBookings - readBaseline('bookings'))
     if (href === '/admin/feedback')
       return Math.max(0, newFeedback - readBaseline('feedback'))
+    if (href === '/admin/newsletter')
+      return Math.max(0, newNewsletterToday - readBaseline('newsletter'))
     return 0
   }
 
@@ -462,7 +467,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
   // hamburger so admins on phones (where the rail is hidden) still
   // see an at-a-glance "you have 3 things to look at" cue.
   const totalAttentionCount =
-    openComplaints + pendingConsultations + waitingLiveChats + newUsersToday
+    openComplaints + pendingConsultations + waitingLiveChats + newUsersToday + newNewsletterToday
 
   // Close the mobile menu whenever the route changes. The previous
   // implementation relied on an onClick on every Link — fine, but fragile.

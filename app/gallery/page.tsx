@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import useSWR from 'swr'
@@ -12,9 +12,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Expand,
+  Eye,
+  EyeOff,
   Heart,
   MapPin,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 
 type LocationKey = 'Victoria Island' | 'Ikoyi'
@@ -185,6 +192,23 @@ export default function GalleryPage() {
   const [hasAppliedPref, setHasAppliedPref] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
+  // Immersive viewer controls
+  const [fitMode, setFitMode] = useState<'contain' | 'cover'>('contain')
+  const [zoom, setZoom] = useState<number>(1)
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [hudVisible, setHudVisible] = useState(true)
+
+  const filmstripRef = useRef<HTMLDivElement>(null)
+  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const dragStartRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+    moved: boolean
+  } | null>(null)
+
   useEffect(() => {
     if (hasAppliedPref || !preferredCategory) return
     setCategory(preferredCategory)
@@ -205,28 +229,97 @@ export default function GalleryPage() {
     [],
   )
 
+  const resetView = useCallback(() => {
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
+  const openLightbox = useCallback((index: number) => {
+    setLightboxIndex(index)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+    setHudVisible(true)
+  }, [])
+
+  const closeLightbox = useCallback(() => {
+    setLightboxIndex(null)
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
+  }, [])
+
   const nextRoom = useCallback(() => {
     setLightboxIndex((prev) =>
       prev === null ? null : (prev + 1) % filteredRooms.length,
     )
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
   }, [filteredRooms.length])
 
   const prevRoom = useCallback(() => {
     setLightboxIndex((prev) =>
       prev === null ? null : (prev - 1 + filteredRooms.length) % filteredRooms.length,
     )
+    setZoom(1)
+    setPan({ x: 0, y: 0 })
   }, [filteredRooms.length])
 
+  const cycleZoom = useCallback(() => {
+    setZoom((prev) => {
+      const next = prev < 1.5 ? 1.85 : prev < 2.3 ? 2.6 : 1
+      if (next === 1) setPan({ x: 0, y: 0 })
+      return next
+    })
+  }, [])
+
+  const zoomOut = useCallback(() => {
+    setZoom((prev) => {
+      const next = prev > 2 ? 1.85 : 1
+      if (next === 1) setPan({ x: 0, y: 0 })
+      return next
+    })
+  }, [])
+
+  // Lock page scroll while immersive viewer is open
+  useEffect(() => {
+    if (lightboxIndex === null || typeof document === 'undefined') return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [lightboxIndex])
+
+  // Keyboard shortcuts for desktop immersion
   useEffect(() => {
     if (lightboxIndex === null) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightboxIndex(null)
+      if (e.key === 'Escape') closeLightbox()
       else if (e.key === 'ArrowRight') nextRoom()
       else if (e.key === 'ArrowLeft') prevRoom()
+      else if (e.key === '+' || e.key === '=') cycleZoom()
+      else if (e.key === '-') zoomOut()
+      else if (e.key === 'f' || e.key === 'F') {
+        setFitMode((m) => (m === 'contain' ? 'cover' : 'contain'))
+        resetView()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, nextRoom, prevRoom])
+  }, [lightboxIndex, closeLightbox, nextRoom, prevRoom, cycleZoom, zoomOut, resetView])
+
+  // Keep active thumbnail centered in the filmstrip
+  useEffect(() => {
+    if (lightboxIndex === null || !filmstripRef.current) return
+    const container = filmstripRef.current
+    const activeThumb = container.children[lightboxIndex] as HTMLElement | undefined
+    if (activeThumb) {
+      activeThumb.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'nearest',
+      })
+    }
+  }, [lightboxIndex])
 
   const activeLightboxRoom =
     lightboxIndex !== null ? filteredRooms[lightboxIndex] ?? null : null
@@ -236,6 +329,67 @@ export default function GalleryPage() {
       ? category
       : activeLightboxRoom?.category ?? 'Victoria Island'
 
+  const handleStagePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (zoom > 1) {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      dragStartRef.current = {
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        originX: pan.x,
+        originY: pan.y,
+        moved: false,
+      }
+      return
+    }
+    swipeStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now(),
+    }
+  }
+
+  const handleStagePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragStartRef.current
+    if (!drag || drag.pointerId !== e.pointerId || zoom <= 1) return
+    const dx = e.clientX - drag.startX
+    const dy = e.clientY - drag.startY
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      drag.moved = true
+    }
+    const maxOffset = (zoom - 1) * 260
+    setPan({
+      x: Math.max(-maxOffset, Math.min(maxOffset, drag.originX + dx)),
+      y: Math.max(-maxOffset, Math.min(maxOffset, drag.originY + dy)),
+    })
+  }
+
+  const handleStagePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragStartRef.current
+    if (drag && drag.pointerId === e.pointerId) {
+      const moved = drag.moved
+      dragStartRef.current = null
+      if (!moved) {
+        setHudVisible((v) => !v)
+      }
+      return
+    }
+
+    const swipe = swipeStartRef.current
+    swipeStartRef.current = null
+    if (!swipe) return
+    const dx = e.clientX - swipe.x
+    const dy = e.clientY - swipe.y
+    const elapsed = Date.now() - swipe.time
+
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.25 && elapsed < 700) {
+      if (dx < 0) nextRoom()
+      else prevRoom()
+    } else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+      setHudVisible((v) => !v)
+    }
+  }
+
   return (
     <>
       <Header />
@@ -243,22 +397,22 @@ export default function GalleryPage() {
         {/* Compact Flat Brand Hero */}
         <section className="bg-[#7B2D8E] py-12 md:py-16">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <MapPin className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-medium text-white uppercase tracking-widest">
+            <p className="inline-flex items-center gap-2 text-xs font-medium text-white/85 uppercase tracking-widest mb-3">
+              <MapPin className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+              <span>
                 {me?.firstName ? `Welcome, ${me.firstName}` : 'Our Spaces'}
               </span>
-            </div>
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+            </p>
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 text-balance">
               Step Inside Dermaspace
             </h1>
             <p className="text-sm md:text-base text-white/85 max-w-lg mx-auto">
-              Browse our reception lounges, private facial rooms, and massage suites in Victoria Island and Ikoyi.
+              Browse our reception lounges, private facial rooms, and massage suites in Victoria Island and Ikoyi. Tap any room to step inside full-screen.
             </p>
           </div>
         </section>
 
-        {/* Clean Filter Bar */}
+        {/* Filter & Tour Bar */}
         <section className="border-b border-gray-100 bg-white">
           <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -274,10 +428,10 @@ export default function GalleryPage() {
                       setLightboxIndex(null)
                     }}
                     aria-pressed={active}
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                    className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                       active
                         ? 'bg-[#7B2D8E] text-white'
-                        : 'bg-white text-gray-600 border border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
+                        : 'bg-gray-50 text-gray-700 border border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
                     }`}
                   >
                     {isPreferred && (
@@ -289,8 +443,8 @@ export default function GalleryPage() {
                     )}
                     <span>{c}</span>
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                        active ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                      className={`text-[11px] tabular-nums ${
+                        active ? 'text-white/80' : 'text-gray-400'
                       }`}
                     >
                       {counts[c]}
@@ -300,26 +454,38 @@ export default function GalleryPage() {
               })}
             </div>
 
-            <Link
-              href={`/booking?location=${encodeURIComponent(bookLocation)}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-4 py-1.5 text-xs font-semibold text-white transition-colors"
-            >
-              <CalendarPlus className="w-3.5 h-3.5" />
-              Book {category !== 'All' ? category : 'a Visit'}
-            </Link>
+            <div className="flex items-center gap-2">
+              {filteredRooms.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => openLightbox(0)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white hover:border-[#7B2D8E] hover:text-[#7B2D8E] px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  <Expand className="w-3.5 h-3.5" />
+                  <span>Full-screen tour</span>
+                </button>
+              )}
+              <Link
+                href={`/booking?location=${encodeURIComponent(bookLocation)}`}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] px-4 py-2 text-xs font-semibold text-white transition-colors whitespace-nowrap"
+              >
+                <CalendarPlus className="w-3.5 h-3.5" />
+                Book {category !== 'All' ? category : 'a Visit'}
+              </Link>
+            </div>
           </div>
         </section>
 
-        {/* Proportional 3-Column Room Grid */}
-        <section className="py-10 md:py-12 bg-white">
+        {/* Media-First Room Grid */}
+        <section className="py-8 md:py-12 bg-white">
           <div className="max-w-6xl mx-auto px-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredRooms.map((room, i) => (
                 <button
                   key={room.src}
                   type="button"
-                  onClick={() => setLightboxIndex(i)}
-                  className="group flex flex-col text-left rounded-xl overflow-hidden bg-white border border-gray-200 hover:border-[#7B2D8E]/45 transition-colors cursor-pointer"
+                  onClick={() => openLightbox(i)}
+                  className="group flex flex-col text-left rounded-2xl overflow-hidden bg-white border border-gray-200 hover:border-[#7B2D8E]/50 transition-colors cursor-pointer"
                 >
                   <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100">
                     <Image
@@ -331,17 +497,19 @@ export default function GalleryPage() {
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
-                    <span className="absolute top-2.5 right-2.5 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#7B2D8E] border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Expand className="w-3.5 h-3.5" />
+                    <span className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm text-white border border-white/20 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Expand className="w-4 h-4" />
                     </span>
                   </div>
 
                   <div className="flex flex-1 flex-col justify-between p-4 border-t border-gray-100 bg-white">
                     <div>
                       <div className="flex items-center justify-between gap-2">
-                        <h2 className="text-sm font-bold text-gray-900 truncate">{room.alt}</h2>
-                        <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[10px] font-semibold text-[#7B2D8E]">
-                          <MapPin className="w-2.5 h-2.5" />
+                        <h2 className="text-sm font-bold text-gray-900 truncate">
+                          {room.alt}
+                        </h2>
+                        <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-[#7B2D8E]">
+                          <MapPin className="w-3 h-3" aria-hidden="true" />
                           {room.category}
                         </span>
                       </div>
@@ -364,7 +532,7 @@ export default function GalleryPage() {
               </div>
               <Link
                 href="/booking"
-                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+                className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] px-5 py-2.5 text-sm font-semibold text-white transition-colors"
               >
                 Book Appointment
                 <ArrowRight className="w-4 h-4" />
@@ -373,81 +541,267 @@ export default function GalleryPage() {
           </div>
         </section>
 
-        {/* Clean Flat Lightbox Modal */}
+        {/* Full-Viewport Immersive Spatial Lightbox */}
         {activeLightboxRoom && lightboxIndex !== null && (
           <div
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
-            onClick={() => setLightboxIndex(null)}
+            className="fixed inset-0 z-[100] bg-[#07030A] select-none overflow-hidden"
             role="dialog"
             aria-modal="true"
-            aria-label={activeLightboxRoom.alt}
+            aria-label={`${activeLightboxRoom.alt} — ${activeLightboxRoom.category}`}
           >
+            {/* Ambient room backdrop echo — wraps the whole screen in the room's own tone & lighting */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+              <Image
+                src={activeLightboxRoom.src}
+                alt=""
+                fill
+                referrerPolicy="no-referrer"
+                sizes="100vw"
+                className="object-cover scale-110 blur-2xl opacity-45"
+              />
+              <div className="absolute inset-0 bg-black/30" />
+            </div>
+
+            {/* Full-Viewport Interactive Photo Stage */}
             <div
-              className="relative w-full max-w-4xl rounded-2xl overflow-hidden bg-white border border-gray-200"
-              onClick={(e) => e.stopPropagation()}
+              className={`relative w-full h-full flex items-center justify-center touch-none ${
+                zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+              }`}
+              onPointerDown={handleStagePointerDown}
+              onPointerMove={handleStagePointerMove}
+              onPointerUp={handleStagePointerUp}
+              onDoubleClick={cycleZoom}
             >
-              <div className="relative w-full aspect-[16/10] max-h-[70vh] bg-gray-950">
+              <div
+                className="relative w-full h-full transition-transform duration-200 ease-out"
+                style={{
+                  transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+                }}
+              >
                 <Image
                   src={activeLightboxRoom.src}
                   alt={activeLightboxRoom.alt}
                   fill
                   priority
                   referrerPolicy="no-referrer"
-                  sizes="(max-width: 768px) 100vw, 896px"
-                  className="object-contain"
+                  sizes="100vw"
+                  className={
+                    fitMode === 'cover'
+                      ? 'object-cover'
+                      : 'object-contain'
+                  }
                 />
+              </div>
+            </div>
+
+            {/* Minimal restore HUD pill when user hid chrome for 100% unobstructed view */}
+            {!hudVisible && (
+              <div className="fixed top-4 right-4 z-20 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setLightboxIndex(null)}
-                  aria-label="Close fullscreen"
-                  className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-800 border border-gray-200 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors cursor-pointer"
+                  onClick={() => setHudVisible(true)}
+                  aria-label="Show gallery controls"
+                  className="inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full bg-black/65 backdrop-blur-md border border-white/20 text-white text-xs font-medium hover:bg-[#7B2D8E] hover:border-[#7B2D8E] transition-colors cursor-pointer"
                 >
-                  <X className="h-4 w-4" />
+                  <Eye className="w-4 h-4" />
+                  <span>Show info</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={closeLightbox}
+                  aria-label="Close fullscreen"
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-black/65 backdrop-blur-md border border-white/20 text-white hover:bg-[#7B2D8E] hover:border-[#7B2D8E] transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Top Floating Control Bar */}
+            {hudVisible && (
+              <div className="fixed top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-3 sm:px-6 pt-3 sm:pt-5 pointer-events-none">
+                <div className="pointer-events-auto inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-black/60 backdrop-blur-md border border-white/15 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs text-white min-w-0">
+                  <span className="font-semibold tabular-nums whitespace-nowrap shrink-0">
+                    {lightboxIndex + 1} / {filteredRooms.length}
+                  </span>
+                  <span className="text-white/40 shrink-0" aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1 text-white/90 whitespace-nowrap truncate">
+                    <MapPin className="w-3 h-3 text-[#D69CE3] shrink-0" aria-hidden="true" />
+                    <span>{activeLightboxRoom.category}</span>
+                  </span>
+                  {zoom > 1 && (
+                    <>
+                      <span className="text-white/40 shrink-0" aria-hidden="true">·</span>
+                      <span className="font-semibold tabular-nums text-[#D69CE3] whitespace-nowrap shrink-0">
+                        {zoom.toFixed(1)}×
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFitMode((m) => (m === 'contain' ? 'cover' : 'contain'))
+                      resetView()
+                    }}
+                    aria-label={fitMode === 'cover' ? 'Show full uncropped frame' : 'Fill entire screen'}
+                    title={fitMode === 'cover' ? 'Full frame' : 'Fill screen'}
+                    className={`inline-flex items-center justify-center gap-1.5 h-9 w-9 sm:w-auto sm:h-10 sm:px-3 rounded-full backdrop-blur-md border text-xs font-medium transition-colors cursor-pointer ${
+                      fitMode === 'cover'
+                        ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+                        : 'bg-black/60 border-white/15 text-white hover:bg-black/80'
+                    }`}
+                  >
+                    {fitMode === 'cover' ? (
+                      <Minimize2 className="w-4 h-4" />
+                    ) : (
+                      <Maximize2 className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {fitMode === 'cover' ? 'Full frame' : 'Fill screen'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={zoom > 1 ? zoomOut : cycleZoom}
+                    aria-label={zoom > 1 ? 'Zoom out' : 'Zoom in'}
+                    title={zoom > 1 ? 'Zoom out' : 'Zoom in'}
+                    className={`inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full backdrop-blur-md border text-white transition-colors cursor-pointer ${
+                      zoom > 1
+                        ? 'bg-[#7B2D8E] border-[#7B2D8E]'
+                        : 'bg-black/60 border-white/15 hover:bg-black/80'
+                    }`}
+                  >
+                    {zoom > 1 ? <ZoomOut className="w-4 h-4" /> : <ZoomIn className="w-4 h-4" />}
+                  </button>
+
+                  {zoom > 1 && (
+                    <button
+                      type="button"
+                      onClick={resetView}
+                      aria-label="Reset zoom"
+                      title="Reset zoom"
+                      className="inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white hover:bg-black/80 transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setHudVisible(false)}
+                    aria-label="Hide gallery controls"
+                    title="Hide controls"
+                    className="inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white hover:bg-black/80 transition-colors cursor-pointer"
+                  >
+                    <EyeOff className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={closeLightbox}
+                    aria-label="Close fullscreen"
+                    className="inline-flex items-center justify-center h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-white hover:bg-[#7B2D8E] hover:border-[#7B2D8E] transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Floating Left / Right Navigation */}
+            {hudVisible && filteredRooms.length > 1 && (
+              <>
                 <button
                   type="button"
                   onClick={prevRoom}
                   aria-label="Previous room"
-                  className="absolute left-3 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#7B2D8E] border border-gray-200 hover:bg-[#7B2D8E] hover:text-white transition-colors cursor-pointer"
+                  className="fixed left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full bg-black/55 backdrop-blur-md border border-white/15 text-white hover:bg-[#7B2D8E] hover:border-[#7B2D8E] transition-colors cursor-pointer"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft className="h-5 w-5" />
                 </button>
                 <button
                   type="button"
                   onClick={nextRoom}
                   aria-label="Next room"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#7B2D8E] border border-gray-200 hover:bg-[#7B2D8E] hover:text-white transition-colors cursor-pointer"
+                  className="fixed right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full bg-black/55 backdrop-blur-md border border-white/15 text-white hover:bg-[#7B2D8E] hover:border-[#7B2D8E] transition-colors cursor-pointer"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-5 w-5" />
                 </button>
-              </div>
+              </>
+            )}
 
-              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-white border-t border-gray-100">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-gray-900">{activeLightboxRoom.alt}</h3>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-2.5 py-0.5 text-[11px] font-semibold text-[#7B2D8E]">
-                      <MapPin className="w-3 h-3" />
-                      {activeLightboxRoom.category}
-                    </span>
+            {/* Bottom Floating Caption + Filmstrip */}
+            {hudVisible && (
+              <div className="fixed bottom-0 inset-x-0 z-20 bg-black/65 backdrop-blur-md border-t border-white/10 px-3 sm:px-6 pt-3 pb-3 sm:pb-4">
+                <div className="max-w-6xl mx-auto">
+                  <div className="flex items-start sm:items-center justify-between gap-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm sm:text-base font-bold text-white truncate">
+                          {activeLightboxRoom.alt}
+                        </h3>
+                        <span className="hidden sm:inline text-white/40 text-xs" aria-hidden="true">·</span>
+                        <span className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-[#D69CE3] shrink-0">
+                          <MapPin className="w-3 h-3" aria-hidden="true" />
+                          {activeLightboxRoom.category}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/80 mt-0.5 line-clamp-2">
+                        {activeLightboxRoom.caption}
+                      </p>
+                    </div>
+
+                    <Link
+                      href={`/booking?location=${encodeURIComponent(activeLightboxRoom.category)}`}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-3.5 sm:px-4 py-2 text-xs font-semibold text-white transition-colors"
+                    >
+                      <CalendarPlus className="w-3.5 h-3.5" />
+                      <span>Book {activeLightboxRoom.category}</span>
+                    </Link>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{activeLightboxRoom.caption}</p>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-gray-500 tabular-nums">
-                    {lightboxIndex + 1} / {filteredRooms.length}
-                  </span>
-                  <Link
-                    href={`/booking?location=${encodeURIComponent(activeLightboxRoom.category)}`}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-4 py-2 text-xs font-semibold text-white transition-colors"
-                  >
-                    <CalendarPlus className="w-3.5 h-3.5" />
-                    Book {activeLightboxRoom.category}
-                  </Link>
+                  {/* Interactive Thumbnail Filmstrip */}
+                  {filteredRooms.length > 1 && (
+                    <div
+                      ref={filmstripRef}
+                      className="mt-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide pt-0.5"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    >
+                      {filteredRooms.map((room, idx) => {
+                        const isActive = idx === lightboxIndex
+                        return (
+                          <button
+                            key={room.src}
+                            type="button"
+                            onClick={() => openLightbox(idx)}
+                            aria-label={`View ${room.alt}`}
+                            aria-current={isActive ? 'true' : undefined}
+                            className={`relative shrink-0 w-11 h-11 sm:w-14 sm:h-14 rounded-lg overflow-hidden transition-all cursor-pointer ${
+                              isActive
+                                ? 'ring-2 ring-white border border-[#7B2D8E] opacity-100'
+                                : 'opacity-50 hover:opacity-85 border border-white/15'
+                            }`}
+                          >
+                            <Image
+                              src={room.src}
+                              alt={room.alt}
+                              fill
+                              referrerPolicy="no-referrer"
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </main>
