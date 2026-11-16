@@ -10,6 +10,14 @@ import {
   sanitizeReceiptFilename,
   sanitizeReceiptImageFilename,
 } from './receipt-pdf'
+import {
+  classifyStatusTone,
+  measureLineItems,
+  measureSummaryPairs,
+  needsPageBreak,
+  resolveLineItemColumnMode,
+  wrapTextLines,
+} from './receipt-layout'
 
 test('sanitizeReceiptFilename and sanitizeReceiptImageFilename produce safe filenames', () => {
   assert.equal(
@@ -222,3 +230,124 @@ test('buildMembershipReceiptData maps both site-wide tiers and Platinum wallet c
   assert.equal(platinum.lineItems?.[2]?.title, 'Credited to Wallet')
   assert.equal(platinum.amountFormatted, 'NGN 500,000')
 })
+
+test('resolveLineItemColumnMode chooses duration for booking transactions and hides empty columns', () => {
+  const bookingTx = buildTransactionReceiptData({
+    id: 88,
+    type: 'debit',
+    amount: 35000,
+    status: 'completed',
+    payment_method: 'paystack',
+    created_at: '2026-11-15T12:00:00Z',
+    booking: {
+      booking_reference: 'DS-BK-992',
+      location_name: 'Ikoyi',
+      appointment_date: '2026-12-03',
+      appointment_time: '11:00',
+      total_duration: 90,
+      services: [
+        { treatment_name: 'HydraFacial Signature', duration: 60 },
+        { treatment_name: 'LED Light Therapy', duration: 30 },
+      ],
+    },
+  })
+
+  assert.equal(resolveLineItemColumnMode(bookingTx.lineItems ?? []), 'duration')
+  assert.equal(
+    resolveLineItemColumnMode([
+      { title: 'Facial', amount: 'NGN 25,000' },
+      { title: 'Mask', amount: 'NGN 10,000' },
+    ]),
+    'amount',
+  )
+  assert.equal(
+    resolveLineItemColumnMode([{ title: 'Note item', amount: '' }]),
+    'none',
+  )
+})
+
+test('classifyStatusTone categorizes receipt statuses accurately', () => {
+  assert.equal(classifyStatusTone('Successful'), 'positive')
+  assert.equal(classifyStatusTone('Confirmed'), 'positive')
+  assert.equal(classifyStatusTone('Paid'), 'positive')
+  assert.equal(classifyStatusTone('Awaiting Payment'), 'pending')
+  assert.equal(classifyStatusTone('Pending'), 'pending')
+  assert.equal(classifyStatusTone('Cancelled · Refunded'), 'muted')
+  assert.equal(classifyStatusTone('Failed'), 'muted')
+})
+
+test('wrapTextLines wraps long unbroken tokens and multi-word text cleanly', () => {
+  const monoMeasure = (t: string) => t.length * 8
+  const longEmailLines = wrapTextLines(
+    'chidinma.okonkwo.lagos.wellness@executive-domain.example.com',
+    monoMeasure,
+    180,
+  )
+  assert.ok(longEmailLines.length >= 2)
+  assert.ok(longEmailLines.every((line) => monoMeasure(line) <= 180))
+
+  const phraseLines = wrapTextLines(
+    'Deep Cleansing Facial with Hyaluronic Boost',
+    monoMeasure,
+    140,
+  )
+  assert.ok(phraseLines.length >= 2)
+  assert.equal(
+    phraseLines.join(' '),
+    'Deep Cleansing Facial with Hyaluronic Boost',
+  )
+})
+
+test('measureSummaryPairs and measureLineItems expand row heights dynamically on wrapped content', () => {
+  const monoMeasure = (t: string) => t.length * 7
+  const summary = measureSummaryPairs(
+    [
+      { label: 'Branch', value: 'Ikoyi' },
+      {
+        label: 'Email',
+        value: 'very.long.vip.client.address@dermaspaceng-enterprise.example.com',
+      },
+    ],
+    monoMeasure,
+    {
+      colWidth: 160,
+      labelOffset: 22,
+      lineHeight: 16,
+      bottomPadding: 10,
+      minRowHeight: 46,
+    },
+  )
+
+  assert.equal(summary.pairs.length, 1)
+  assert.ok(summary.pairs[0].right!.lines.length >= 2)
+  assert.ok(summary.pairs[0].height > 46)
+
+  const items = measureLineItems(
+    [
+      {
+        title: 'Signature Hydra-Dermabrasion + Calming Peptide Ampoule Ritual',
+        subtitle: 'Advanced Facial Esthetics & Barrier Recovery · 90 min',
+        amount: 'NGN 85,000',
+      },
+    ],
+    monoMeasure,
+    monoMeasure,
+    {
+      titleMaxWidth: 200,
+      subtitleMaxWidth: 320,
+      topPadding: 12,
+      titleLineHeight: 16,
+      subtitleGap: 4,
+      subtitleLineHeight: 14,
+      bottomPadding: 10,
+      minRowHeight: 44,
+    },
+  )
+
+  assert.equal(items.rows.length, 1)
+  assert.ok(items.rows[0].titleLines.length >= 2)
+  assert.ok(items.rows[0].height > 44)
+  assert.equal(needsPageBreak(720, 60, 841.89, 82), true)
+  assert.equal(needsPageBreak(500, 60, 841.89, 82), false)
+})
+

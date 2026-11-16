@@ -3,6 +3,16 @@ import {
   getDesignMedallionHex,
   getGiftCardOccasionMeta,
 } from './gift-card-templates'
+import {
+  classifyStatusTone,
+  measureLineItems,
+  measureSummaryPairs,
+  needsPageBreak,
+  resolveLineItemColumnMode,
+  wrapTextLines,
+  type LineItemColumnMode,
+  type ReceiptStatusTone,
+} from './receipt-layout'
 
 const LOCAL_BRAND_LOGO = '/images/dermaspace-header-logo.png'
 const REMOTE_BRAND_LOGO =
@@ -436,8 +446,8 @@ export function buildTransactionReceiptData(
     if (tx.booking.services && tx.booking.services.length > 0) {
       lineItems = tx.booking.services.map((s) => ({
         title: s.treatment_name,
-        subtitle: `${s.duration} min`,
-        amount: '',
+        subtitle: 'Scheduled spa treatment',
+        amount: `${s.duration} min`,
       }))
     }
   } else {
@@ -754,20 +764,23 @@ async function fetchImageBlobWithTimeout(
   }
 }
 
-async function loadLogoPngDataUrl(): Promise<{
+async function loadLogoAssets(): Promise<{
   dataUrl: string | null
+  bitmap: ImageBitmap | null
   aspect: number
 }> {
   let logoDataUrl: string | null = null
-  let logoAspect = 130 / 32
+  let bitmap: ImageBitmap | null = null
+  let aspect = 1024 / 209
   try {
     const blob =
       (await fetchImageBlobWithTimeout(LOCAL_BRAND_LOGO, 1500)) ??
       (await fetchImageBlobWithTimeout(REMOTE_BRAND_LOGO, 1800))
     if (blob && typeof createImageBitmap === 'function') {
-      const bitmap = await createImageBitmap(blob)
+      bitmap = await createImageBitmap(blob)
+      aspect = bitmap.width / bitmap.height
       const canvas = document.createElement('canvas')
-      const targetW = Math.min(bitmap.width, 600)
+      const targetW = Math.min(bitmap.width, 900)
       const targetH = Math.round((bitmap.height / bitmap.width) * targetW)
       canvas.width = targetW
       canvas.height = targetH
@@ -775,13 +788,12 @@ async function loadLogoPngDataUrl(): Promise<{
       if (ctx) {
         ctx.drawImage(bitmap, 0, 0, targetW, targetH)
         logoDataUrl = canvas.toDataURL('image/png')
-        logoAspect = bitmap.width / bitmap.height
       }
     }
   } catch {
     // Graceful fallback to typeset wordmark
   }
-  return { dataUrl: logoDataUrl, aspect: logoAspect }
+  return { dataUrl: logoDataUrl, bitmap, aspect }
 }
 
 function pdfFontFamilyForGiftCard(
@@ -793,37 +805,145 @@ function pdfFontFamilyForGiftCard(
   return 'times'
 }
 
-/**
- * Draws the repeating geometric diamond trellis band in jsPDF (single brand color).
- */
-function drawPdfCrownPattern(
+function canvasFontFamilyForGiftCard(fontName?: string | null): string {
+  const lower = (fontName || '').toLowerCase()
+  if (lower.includes('modern') || lower.includes('sans')) {
+    return "'Lexend Deca', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif"
+  }
+  if (lower.includes('playful') || lower.includes('mono')) {
+    return "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace"
+  }
+  return "'Playfair Display', Georgia, serif"
+}
+
+function columnHeaderLabel(mode: LineItemColumnMode): string {
+  if (mode === 'duration') return 'DURATION'
+  if (mode === 'amount') return 'AMOUNT'
+  return ''
+}
+
+function drawPdfTopAccentRule(
   doc: import('jspdf').jsPDF,
   pageWidth: number,
 ): void {
-  const { brandRgb, brandTintRgb, brandBorderRgb } = RECEIPT_PALETTE
-  // Solid top rule + patterned guilloché band
-  doc.setFillColor(...brandRgb)
-  doc.rect(0, 0, pageWidth, 4, 'F')
-
-  doc.setFillColor(...brandTintRgb)
-  doc.rect(0, 4, pageWidth, 12, 'F')
-
-  doc.setDrawColor(...brandBorderRgb)
-  doc.setLineWidth(0.55)
-  const step = 12
-  for (let x = 0; x <= pageWidth + step; x += step) {
-    const cx = x
-    const cy = 10
-    doc.line(cx - 4, cy, cx, cy - 3.5)
-    doc.line(cx, cy - 3.5, cx + 4, cy)
-    doc.line(cx + 4, cy, cx, cy + 3.5)
-    doc.line(cx, cy + 3.5, cx - 4, cy)
-  }
-
-  doc.setFillColor(...brandRgb)
-  doc.rect(0, 16, pageWidth, 1.5, 'F')
+  doc.setFillColor(...RECEIPT_PALETTE.brandRgb)
+  doc.rect(0, 0, pageWidth, 4.5, 'F')
 }
 
+function drawPdfStatusPill(
+  doc: import('jspdf').jsPDF,
+  label: string,
+  tone: ReceiptStatusTone,
+  rightX: number,
+  topY: number,
+): number {
+  const {
+    brandRgb,
+    brandTintRgb,
+    brandBorderRgb,
+    textBodyRgb,
+    mutedRgb,
+    lineRgb,
+    stripeRgb,
+  } = RECEIPT_PALETTE
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  const textW = doc.getTextWidth(label.toUpperCase())
+  const iconSpace = tone === 'muted' ? 0 : 11
+  const pillW = textW + iconSpace + 16
+  const pillH = 18
+  const pillX = rightX - pillW
+
+  if (tone === 'positive') {
+    doc.setFillColor(...brandTintRgb)
+    doc.setDrawColor(...brandBorderRgb)
+  } else if (tone === 'pending') {
+    doc.setFillColor(...stripeRgb)
+    doc.setDrawColor(...lineRgb)
+  } else {
+    doc.setFillColor(244, 244, 245)
+    doc.setDrawColor(...lineRgb)
+  }
+  doc.setLineWidth(0.75)
+  doc.roundedRect(pillX, topY, pillW, pillH, 4, 4, 'FD')
+
+  const textColor =
+    tone === 'positive' ? brandRgb : tone === 'pending' ? textBodyRgb : mutedRgb
+
+  if (tone === 'positive') {
+    const cx = pillX + 10
+    const cy = topY + pillH / 2 + 0.5
+    doc.setDrawColor(...brandRgb)
+    doc.setLineWidth(1.25)
+    doc.line(cx - 2.6, cy, cx - 0.6, cy + 2.2)
+    doc.line(cx - 0.6, cy + 2.2, cx + 3.1, cy - 2.3)
+  } else if (tone === 'pending') {
+    doc.setFillColor(...mutedRgb)
+    doc.circle(pillX + 10, topY + pillH / 2, 2.2, 'F')
+  }
+
+  doc.setTextColor(...textColor)
+  doc.text(label.toUpperCase(), rightX - 8, topY + 11.7, { align: 'right' })
+
+  return pillH
+}
+
+function drawPdfFooterAllPages(
+  doc: import('jspdf').jsPDF,
+  footerNote?: string | null,
+): void {
+  const pageCount = doc.getNumberOfPages()
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 44
+  const { brandRgb, mutedRgb, lineRgb } = RECEIPT_PALETTE
+
+  for (let p = 1; p <= pageCount; p += 1) {
+    doc.setPage(p)
+    const ruleY = pageHeight - 58
+
+    doc.setDrawColor(...lineRgb)
+    doc.setLineWidth(0.75)
+    doc.line(margin, ruleY, pageWidth - margin, ruleY)
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.2)
+    doc.setTextColor(...brandRgb)
+    doc.text('Dermaspace Esthetic & Wellness Centre', margin, ruleY + 14)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.4)
+    doc.setTextColor(...mutedRgb)
+    doc.text(
+      footerNote ||
+        '237B Muri Okunola St, Victoria Island  ·  9 Agbeke Rotinwa Cl, Ikoyi',
+      margin,
+      ruleY + 25,
+    )
+    doc.text(
+      'dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625',
+      margin,
+      ruleY + 35,
+    )
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.4)
+    doc.setTextColor(...mutedRgb)
+    doc.text(
+      `Verified Electronic Receipt  ·  Page ${p} of ${pageCount}`,
+      pageWidth - margin,
+      ruleY + 14,
+      { align: 'right' },
+    )
+  }
+}
+
+/**
+ * Renders and downloads an executive A4 vector PDF receipt anchored in the
+ * Dermaspace palette (#7B2D8E + white/plum-gray neutrals). Zero shadows,
+ * zero gradients, zero sparkle or zap symbols.
+ */
 export async function downloadReceiptPdf(
   data: ReceiptDocumentData,
 ): Promise<string> {
@@ -831,201 +951,235 @@ export async function downloadReceiptPdf(
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 42
+  const margin = 44
   const contentW = pageWidth - margin * 2
+  const footerReserve = 70
 
   const {
     brandRgb: brandPurple,
     brandTintRgb: brandSoft,
-    brandPatternRgb,
     brandBorderRgb: lavenderBorder,
     textDarkRgb: textDark,
-    textBodyRgb: textGray,
+    textBodyRgb: textBody,
     mutedRgb: mutedGray,
     lineRgb: lineGray,
     stripeRgb,
   } = RECEIPT_PALETTE
 
   const ensureSpace = (neededHeight: number, currentY: number): number => {
-    if (currentY + neededHeight > pageHeight - 78) {
+    if (needsPageBreak(currentY, neededHeight, pageHeight, footerReserve)) {
       doc.addPage()
-      drawPdfCrownPattern(doc, pageWidth)
-      return 36
+      drawPdfTopAccentRule(doc, pageWidth)
+      return 30
     }
     return currentY
   }
 
-  const { dataUrl: logoDataUrl, aspect: logoAspect } = await loadLogoPngDataUrl()
+  const { dataUrl: logoDataUrl, aspect: logoAspect } = await loadLogoAssets()
 
-  drawPdfCrownPattern(doc, pageWidth)
+  drawPdfTopAccentRule(doc, pageWidth)
 
-  // Editorial Masthead Band with subtle micro-dot pattern (zero gradients, single color)
-  const heroTop = 17.5
-  const heroH = 82
-  doc.setFillColor(...brandSoft)
-  doc.rect(0, heroTop, pageWidth, heroH, 'F')
-
-  doc.setFillColor(...brandPatternRgb)
-  for (let px = 14; px < pageWidth - 10; px += 14) {
-    for (let py = heroTop + 10; py < heroTop + heroH - 6; py += 14) {
-      doc.circle(px, py, 0.75, 'F')
-    }
-  }
-
-  doc.setDrawColor(...lavenderBorder)
-  doc.setLineWidth(0.75)
-  doc.line(0, heroTop + heroH, pageWidth, heroTop + heroH)
-
+  // 1. Clean White Editorial Letterhead
+  const headerTop = 24
   if (logoDataUrl) {
-    const logoH = 34
+    const logoH = 28
     const logoW = Math.min(logoH * logoAspect, contentW * 0.44)
     doc.addImage(
       logoDataUrl,
       'PNG',
       margin,
-      heroTop + 18,
+      headerTop,
       logoW,
       logoH,
       undefined,
       'FAST',
     )
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.8)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.8)
     doc.setTextColor(...mutedGray)
-    doc.text('ESTHETIC & WELLNESS CENTRE  ·  LAGOS', margin, heroTop + 65)
+    doc.text(
+      'Victoria Island & Ikoyi, Lagos  ·  dermaspaceng.com',
+      margin,
+      headerTop + 42,
+    )
   } else {
     doc.setFont('times', 'bold')
-    doc.setFontSize(22)
+    doc.setFontSize(21)
     doc.setTextColor(...brandPurple)
-    doc.text('Dermaspace', margin, heroTop + 42)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7)
+    doc.text('Dermaspace', margin, headerTop + 20)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.8)
     doc.setTextColor(...mutedGray)
-    doc.text('ESTHETIC & WELLNESS CENTRE  ·  LAGOS', margin, heroTop + 58)
+    doc.text(
+      'Esthetic & Wellness Centre  ·  Victoria Island & Ikoyi, Lagos',
+      margin,
+      headerTop + 36,
+    )
   }
 
-  // Right masthead block
+  // Right Letterhead Metadata + Status Tag
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...brandPurple)
-  doc.text('OFFICIAL RECEIPT', pageWidth - margin, heroTop + 28, {
+  doc.text('OFFICIAL RECEIPT', pageWidth - margin, headerTop + 6, {
     align: 'right',
   })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(12)
   doc.setTextColor(...textDark)
-  doc.text(data.documentTitle, pageWidth - margin, heroTop + 45, {
+  doc.text(data.documentTitle, pageWidth - margin, headerTop + 21, {
     align: 'right',
   })
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.2)
+  doc.setFontSize(8)
   doc.setTextColor(...mutedGray)
-  doc.text(`Issued ${data.issueDate}`, pageWidth - margin, heroTop + 61, {
+  doc.text(`Issued ${data.issueDate}`, pageWidth - margin, headerTop + 33, {
     align: 'right',
   })
 
-  let y = heroTop + heroH + 18
+  const statusTone = classifyStatusTone(data.statusLabel)
+  drawPdfStatusPill(
+    doc,
+    data.statusLabel,
+    statusTone,
+    pageWidth - margin,
+    headerTop + 40,
+  )
 
-  // Reference / Invoice / Status Bar with corner registration brackets
-  const metaBarH = 42
-  doc.setFillColor(255, 255, 255)
+  const headerDividerY = headerTop + 66
+  doc.setDrawColor(...lineGray)
+  doc.setLineWidth(0.75)
+  doc.line(margin, headerDividerY, pageWidth - margin, headerDividerY)
+
+  let y = headerDividerY + 13
+
+  // 2. Executive Summary Band (Amount Paid + Wrapped Reference / Invoice)
+  const sumLeftW = contentW * 0.54
+  const sumRightW = contentW * 0.46 - 24
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  const pdfMeasureBold95 = (t: string) => doc.getTextWidth(t)
+  const refLines = wrapTextLines(data.reference, pdfMeasureBold95, sumRightW)
+  const invoiceLines = data.invoiceNumber
+    ? wrapTextLines(data.invoiceNumber, pdfMeasureBold95, sumRightW)
+    : []
+
+  const leftBlockH = 12 + 24 + (data.paymentMethodLabel ? 13 : 0) + 13
+  const rightBlockH =
+    12 +
+    refLines.length * 11.5 +
+    (invoiceLines.length > 0 ? 15 + invoiceLines.length * 11.5 : 0) +
+    12
+  const summaryBandH = Math.max(60, leftBlockH, rightBlockH)
+
+  doc.setFillColor(...stripeRgb)
   doc.setDrawColor(...lavenderBorder)
   doc.setLineWidth(0.75)
-  doc.roundedRect(margin, y, contentW, metaBarH, 6, 6, 'FD')
+  doc.roundedRect(margin, y, contentW, summaryBandH, 6, 6, 'FD')
 
-  // Subtle corner ticks on meta bar
-  doc.setDrawColor(...brandPurple)
-  doc.setLineWidth(1.2)
-  doc.line(margin, y + 8, margin, y)
-  doc.line(margin, y, margin + 8, y)
-  doc.line(margin + contentW - 8, y + metaBarH, margin + contentW, y + metaBarH)
-  doc.line(margin + contentW, y + metaBarH - 8, margin + contentW, y + metaBarH)
-
-  const col1X = margin + 12
-  const col2X = margin + contentW * 0.44
-  const col3X = pageWidth - margin - 12
-
+  const dividerX = margin + sumLeftW
   doc.setDrawColor(...lineGray)
   doc.setLineWidth(0.6)
-  doc.line(col2X - 12, y + 8, col2X - 12, y + metaBarH - 8)
-  doc.line(margin + contentW * 0.76, y + 8, margin + contentW * 0.76, y + metaBarH - 8)
+  doc.line(dividerX, y + 10, dividerX, y + summaryBandH - 10)
 
+  // Left: Amount + Payment Method
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(6.8)
   doc.setTextColor(...mutedGray)
-  doc.text('REFERENCE', col1X, y + 14)
-  doc.text(data.invoiceNumber ? 'INVOICE NO.' : 'PAYMENT METHOD', col2X, y + 14)
-  doc.text('STATUS', col3X, y + 14, { align: 'right' })
+  doc.text(data.amountLabel, margin + 15, y + 17)
 
-  doc.setFont('courier', 'bold')
-  doc.setFontSize(10)
-  doc.setTextColor(...brandPurple)
-  doc.text(data.reference, col1X, y + 29, { maxWidth: contentW * 0.38 })
-
-  doc.setFont(data.invoiceNumber ? 'courier' : 'helvetica', 'bold')
-  doc.setFontSize(9.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(19.5)
   doc.setTextColor(...textDark)
-  doc.text(
-    data.invoiceNumber || data.paymentMethodLabel || 'Online',
-    col2X,
-    y + 29,
-    { maxWidth: contentW * 0.28 },
+  doc.text(data.amountFormatted, margin + 15, y + 38)
+
+  if (data.paymentMethodLabel) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...textBody)
+    const methodPrefix = statusTone === 'positive' ? 'Paid via' : 'Method:'
+    doc.text(
+      `${methodPrefix} ${data.paymentMethodLabel}`,
+      margin + 15,
+      y + 51,
+    )
+  }
+
+  // Right: Reference + Invoice Number (never squished)
+  let ry = y + 17
+  const rx = dividerX + 14
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(6.8)
+  doc.setTextColor(...mutedGray)
+  doc.text('REFERENCE', rx, ry)
+  ry += 11
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.2)
+  doc.setTextColor(...brandPurple)
+  for (const line of refLines) {
+    doc.text(line, rx, ry)
+    ry += 11.5
+  }
+
+  if (invoiceLines.length > 0) {
+    ry += 3
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.8)
+    doc.setTextColor(...mutedGray)
+    doc.text('INVOICE NUMBER', rx, ry)
+    ry += 11
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.2)
+    doc.setTextColor(...textDark)
+    for (const line of invoiceLines) {
+      doc.text(line, rx, ry)
+      ry += 11.5
+    }
+  }
+
+  y += summaryBandH + 15
+
+  // 3. Editorial Headline & Subheadline
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(...textDark)
+  const headlineLines = wrapTextLines(
+    data.headline,
+    (t) => doc.getTextWidth(t),
+    contentW,
   )
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
-  doc.setTextColor(...brandPurple)
-  const statusTextW = doc.getTextWidth(data.statusLabel)
-  doc.setFillColor(...brandPurple)
-  doc.circle(col3X - statusTextW - 7, y + 25.5, 2.5, 'F')
-  doc.text(data.statusLabel, col3X, y + 29, { align: 'right' })
-
-  y += metaBarH + 16
-
-  // Perforated tear divider with centered diamond mark
-  doc.setDrawColor(...lavenderBorder)
-  doc.setLineWidth(0.75)
-  doc.setLineDashPattern([3, 3], 0)
-  doc.line(margin, y, margin + contentW / 2 - 10, y)
-  doc.line(margin + contentW / 2 + 10, y, pageWidth - margin, y)
-  doc.setLineDashPattern([], 0)
-  const midX = pageWidth / 2
-  doc.setFillColor(...brandPurple)
-  doc.triangle(midX, y - 3.5, midX - 3.5, y, midX + 3.5, y, 'F')
-  doc.triangle(midX, y + 3.5, midX - 3.5, y, midX + 3.5, y, 'F')
-
-  y += 16
-
-  // Headline & optional subheadline
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13.5)
-  doc.setTextColor(...textDark)
-  const headlineLines = doc.splitTextToSize(data.headline, contentW)
+  y = ensureSpace(headlineLines.length * 16 + 22, y)
   doc.text(headlineLines, margin, y)
   y += headlineLines.length * 16
 
   if (data.subheadline) {
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9.2)
-    doc.setTextColor(...mutedGray)
-    const subLines = doc.splitTextToSize(data.subheadline, contentW)
-    doc.text(subLines, margin, y + 2)
-    y += subLines.length * 12 + 4
+    doc.setFontSize(9)
+    doc.setTextColor(...textBody)
+    const subLines = wrapTextLines(
+      data.subheadline,
+      (t) => doc.getTextWidth(t),
+      contentW,
+    )
+    doc.text(subLines, margin, y + 1)
+    y += subLines.length * 12 + 2
   }
-  y += 8
+  y += 10
 
-  // Gift Card Specimen Visual (strictly single-color chrome around the chosen specimen)
+  // 4. Optional Gift Card Specimen & Card Specification
   if (data.giftCardVisual) {
     const gc = data.giftCardVisual
-    const visualH = 148
-    y = ensureSpace(visualH + 20, y)
+    const visualH = 132
+    y = ensureSpace(visualH + 16, y)
 
     const cardW = 256
     const cardH = visualH
-    const specX = margin + cardW + 12
-    const specW = contentW - cardW - 12
+    const specX = margin + cardW + 14
+    const specW = contentW - cardW - 14
 
     const surfaceRgb = hexToRgb(gc.surfaceHex, brandPurple)
     const accentRgb = hexToRgb(gc.accentHex, brandPurple)
@@ -1033,355 +1187,398 @@ export async function downloadReceiptPdf(
     const gcFont = pdfFontFamilyForGiftCard(gc.fontName)
 
     doc.setFillColor(...surfaceRgb)
-    doc.roundedRect(margin, y, cardW, cardH, 10, 10, 'F')
+    doc.roundedRect(margin, y, cardW, cardH, 8, 8, 'F')
 
     doc.setFillColor(...accentRgb)
-    doc.roundedRect(margin + cardW * 0.58, y + 10, cardW * 0.38, cardH - 20, 8, 8, 'F')
+    doc.roundedRect(
+      margin + cardW * 0.62,
+      y + 9,
+      cardW * 0.34,
+      cardH - 18,
+      6,
+      6,
+      'F',
+    )
 
     doc.setDrawColor(255, 255, 255)
-    doc.setLineWidth(0.6)
-    doc.roundedRect(margin + 6, y + 6, cardW - 12, cardH - 12, 7, 7, 'S')
+    doc.setLineWidth(0.55)
+    doc.roundedRect(margin + 6.5, y + 6.5, cardW - 13, cardH - 13, 5, 5, 'S')
 
-    const medX = margin + cardW - 48
+    // Clean Concentric Monogram Medallion ("DS", zero sparkles)
+    const medX = margin + cardW - 44
     const medY = y + cardH / 2 + 2
     doc.setFillColor(...medallionRgb)
     doc.setDrawColor(245, 236, 248)
-    doc.setLineWidth(0.9)
-    doc.circle(medX, medY, 25, 'FD')
-    doc.setLineWidth(0.5)
-    doc.circle(medX, medY, 18, 'S')
+    doc.setLineWidth(0.85)
+    doc.circle(medX, medY, 20, 'FD')
+    doc.setLineWidth(0.45)
+    doc.circle(medX, medY, 15, 'S')
 
-    doc.setFillColor(255, 255, 255)
-    doc.triangle(medX, medY - 12, medX - 3.5, medY, medX + 3.5, medY, 'F')
-    doc.triangle(medX, medY + 12, medX - 3.5, medY, medX + 3.5, medY, 'F')
-    doc.triangle(medX - 12, medY, medX, medY - 3.5, medX, medY + 3.5, 'F')
-    doc.triangle(medX + 12, medY, medX, medY - 3.5, medX, medY + 3.5, 'F')
+    doc.setFont('times', 'bold')
+    doc.setFontSize(10.5)
+    doc.setTextColor(255, 255, 255)
+    doc.text('DS', medX, medY + 3.5, { align: 'center' })
 
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
+    doc.setFontSize(8.2)
     doc.setTextColor(255, 255, 255)
-    doc.text('DERMASPACE', margin + 16, y + 24)
-    doc.setFontSize(6.5)
-    doc.text('GIFT CARD', margin + cardW - 16, y + 24, { align: 'right' })
+    doc.text('DERMASPACE', margin + 15, y + 22)
+    doc.setFontSize(6.2)
+    doc.text('GIFT CARD', margin + cardW - 15, y + 22, { align: 'right' })
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    doc.setTextColor(240, 235, 245)
-    doc.text('FOR', margin + 16, y + 48)
+    doc.setFontSize(6.5)
+    doc.setTextColor(235, 228, 242)
+    doc.text('FOR', margin + 15, y + 43)
+
     doc.setFont(gcFont, 'bold')
     doc.setFontSize(11)
     doc.setTextColor(255, 255, 255)
-    doc.text(gc.recipientName, margin + 16, y + 62, { maxWidth: 140 })
+    const recipientLines = wrapTextLines(
+      gc.recipientName,
+      (t) => doc.getTextWidth(t),
+      132,
+    ).slice(0, 2)
+    doc.text(recipientLines, margin + 15, y + 55)
 
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.5)
-    doc.setTextColor(240, 235, 245)
-    doc.text('VALUE', margin + 16, y + 83)
+    doc.setFontSize(6.2)
+    doc.setTextColor(235, 228, 242)
+    doc.text('VALUE', margin + 15, y + 79)
     doc.setFont(gcFont, 'bold')
-    doc.setFontSize(17)
+    doc.setFontSize(15.5)
     doc.setTextColor(255, 255, 255)
-    doc.text(gc.amountFormatted, margin + 16, y + 101, { maxWidth: 145 })
+    doc.text(gc.amountFormatted, margin + 15, y + 95)
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
+    doc.setFontSize(7)
     doc.setTextColor(245, 238, 250)
-    doc.text(gc.editionLabel, margin + 16, y + cardH - 16, { maxWidth: 118 })
+    doc.text(gc.editionLabel, margin + 15, y + cardH - 14)
     if (gc.senderName) {
-      doc.setFontSize(7.2)
-      doc.text(`From: ${gc.senderName}`, margin + cardW - 16, y + cardH - 16, {
+      const fromLines = wrapTextLines(
+        `From: ${gc.senderName}`,
+        (t) => doc.getTextWidth(t),
+        92,
+      )
+      doc.text(fromLines[0] || '', margin + cardW - 15, y + cardH - 14, {
         align: 'right',
-        maxWidth: 102,
       })
     }
 
-    doc.setFillColor(...brandSoft)
+    // Specification Card
+    doc.setFillColor(...stripeRgb)
     doc.setDrawColor(...lavenderBorder)
     doc.setLineWidth(0.75)
-    doc.roundedRect(specX, y, specW, cardH, 8, 8, 'FD')
+    doc.roundedRect(specX, y, specW, cardH, 6, 6, 'FD')
 
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.2)
+    doc.setFontSize(6.8)
     doc.setTextColor(...brandPurple)
-    doc.text('CARD SPECIFICATION', specX + 12, y + 19)
-    doc.setDrawColor(...lavenderBorder)
-    doc.line(specX + 12, y + 25, specX + specW - 12, y + 25)
+    doc.text('CARD SPECIFICATION', specX + 12, y + 17)
+    doc.setDrawColor(...lineGray)
+    doc.line(specX + 12, y + 22, specX + specW - 12, y + 22)
 
     doc.setFillColor(...surfaceRgb)
-    doc.rect(specX + 12, y + 34, 11, 11, 'F')
+    doc.rect(specX + 12, y + 30, 11, 10, 'F')
     doc.setFillColor(...accentRgb)
-    doc.rect(specX + 23, y + 34, 6, 11, 'F')
+    doc.rect(specX + 23, y + 30, 6, 10, 'F')
     doc.setDrawColor(...lavenderBorder)
-    doc.rect(specX + 12, y + 34, 17, 11, 'S')
+    doc.rect(specX + 12, y + 30, 17, 10, 'S')
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.5)
+    doc.setFontSize(6.2)
     doc.setTextColor(...mutedGray)
-    doc.text('STYLE THEME', specX + 36, y + 39)
+    doc.text('STYLE THEME', specX + 35, y + 35)
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
+    doc.setFontSize(8.2)
     doc.setTextColor(...textDark)
-    doc.text(gc.designName, specX + 36, y + 49, { maxWidth: specW - 48 })
+    doc.text(gc.designName, specX + 35, y + 44)
 
     const specItems: Array<[string, string]> = [
       ['EDITION', gc.editionLabel],
       ['TYPOGRAPHY', `${gc.fontName || 'Elegant'} Font`],
       ['VALIDITY', 'VI & Ikoyi · Never Expires'],
     ]
-    let sy = y + 70
+    let sy = y + 63
     for (const [lbl, val] of specItems) {
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(6.5)
+      doc.setFontSize(6.2)
       doc.setTextColor(...mutedGray)
       doc.text(lbl, specX + 12, sy)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.5)
+      doc.setFontSize(8.2)
       doc.setTextColor(...textDark)
-      doc.text(val, specX + 12, sy + 10, { maxWidth: specW - 24 })
-      sy += 26
+      const valLines = wrapTextLines(val, (t) => doc.getTextWidth(t), specW - 24)
+      doc.text(valLines[0] || '', specX + 12, sy + 9.5)
+      sy += 23
     }
 
-    y += visualH + 16
+    y += visualH + 14
   }
 
-  // Two-column metadata summary grid
-  const rowCount = Math.ceil(data.summaryRows.length / 2)
-  const rowHeight = 33
-  const gridH = rowCount * rowHeight + 12
-  y = ensureSpace(gridH + 18, y)
-
-  doc.setDrawColor(...lavenderBorder)
-  doc.setFillColor(255, 255, 255)
-  doc.setLineWidth(0.75)
-  doc.roundedRect(margin, y, contentW, gridH, 7, 7, 'FD')
-
+  // 5. Two-Column Details Ledger (Dynamic Row Heights)
   const colW = contentW / 2
-  doc.setDrawColor(...lineGray)
-  doc.setLineWidth(0.5)
-  doc.line(margin + colW, y + 8, margin + colW, y + gridH - 8)
+  const cellMaxW = colW - 26
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.8)
+  const measuredSummary = measureSummaryPairs(
+    data.summaryRows,
+    (t) => doc.getTextWidth(t),
+    {
+      colWidth: cellMaxW,
+      labelOffset: 15,
+      lineHeight: 11,
+      bottomPadding: 6,
+      minRowHeight: 30,
+    },
+  )
 
-  let gy = y + 17
-  for (let i = 0; i < data.summaryRows.length; i += 2) {
-    const left = data.summaryRows[i]
-    const right = data.summaryRows[i + 1]
+  if (measuredSummary.pairs.length > 0) {
+    const gridH = measuredSummary.totalHeight + 6
+    y = ensureSpace(gridH + 26, y)
 
-    if (i > 0) {
-      doc.setDrawColor(244, 242, 247)
-      doc.line(margin + 10, gy - 10, pageWidth - margin - 10, gy - 10)
-    }
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.5)
-    doc.setTextColor(...mutedGray)
-    doc.text(left.label.toUpperCase(), margin + 12, gy)
-    if (right) {
-      doc.text(right.label.toUpperCase(), margin + colW + 12, gy)
-    }
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(...textDark)
-    doc.text(left.value, margin + 12, gy + 11.5, { maxWidth: colW - 22 })
-    if (right) {
-      doc.text(right.value, margin + colW + 12, gy + 11.5, {
-        maxWidth: colW - 22,
-      })
-    }
-    gy += rowHeight
-  }
-  y += gridH + 16
-
-  // Itemized Summary Table
-  if (data.lineItems && data.lineItems.length > 0) {
-    y = ensureSpace(62, y)
-
-    doc.setFillColor(...brandSoft)
-    doc.setDrawColor(...lavenderBorder)
-    doc.setLineWidth(0.6)
-    doc.roundedRect(margin, y, contentW, 21, 5, 5, 'FD')
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7.2)
     doc.setTextColor(...brandPurple)
-    doc.text('ITEM DESCRIPTION', margin + 10, y + 13.5)
-    doc.text('AMOUNT', pageWidth - margin - 10, y + 13.5, { align: 'right' })
-    y += 24
+    doc.text('RECEIPT DETAILS', margin, y)
+    y += 8
 
-    const rowH = 34
-    data.lineItems.forEach((item, idx) => {
-      y = ensureSpace(rowH + 10, y)
-      if (idx % 2 === 1) {
-        doc.setFillColor(...stripeRgb)
-        doc.rect(margin, y, contentW, rowH - 2, 'F')
+    doc.setFillColor(255, 255, 255)
+    doc.setDrawColor(...lineGray)
+    doc.setLineWidth(0.75)
+    doc.roundedRect(margin, y, contentW, gridH, 6, 6, 'FD')
+
+    // Center vertical hairline
+    doc.setDrawColor(...lineGray)
+    doc.setLineWidth(0.5)
+    doc.line(margin + colW, y + 6, margin + colW, y + gridH - 6)
+
+    let rowY = y + 3
+    measuredSummary.pairs.forEach((pair, idx) => {
+      if (idx > 0) {
+        doc.setDrawColor(242, 239, 246)
+        doc.setLineWidth(0.5)
+        doc.line(margin + 12, rowY, pageWidth - margin - 12, rowY)
       }
+
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9.5)
+      doc.setFontSize(6.3)
+      doc.setTextColor(...mutedGray)
+      doc.text(pair.left.label.toUpperCase(), margin + 12, rowY + 11)
+      if (pair.right) {
+        doc.text(pair.right.label.toUpperCase(), margin + colW + 12, rowY + 11)
+      }
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8.8)
       doc.setTextColor(...textDark)
-      doc.text(item.title, margin + 10, y + 13, { maxWidth: contentW * 0.68 })
-      if (item.amount) {
-        doc.setTextColor(...brandPurple)
-        doc.text(item.amount, pageWidth - margin - 10, y + 13, {
+      pair.left.lines.forEach((line, lIdx) => {
+        doc.text(line, margin + 12, rowY + 22 + lIdx * 11)
+      })
+      if (pair.right) {
+        pair.right.lines.forEach((line, lIdx) => {
+          doc.text(line, margin + colW + 12, rowY + 22 + lIdx * 11)
+        })
+      }
+
+      rowY += pair.height
+    })
+
+    y += gridH + 13
+  }
+
+  // 6. Itemized Breakdown Table (Adaptive Right Column + Dynamic Row Heights)
+  if (data.lineItems && data.lineItems.length > 0) {
+    const colMode = resolveLineItemColumnMode(data.lineItems)
+    const rightHeader = columnHeaderLabel(colMode)
+    const rightColReserve = colMode === 'none' ? 20 : 124
+    const titleMaxW = contentW - rightColReserve - 20
+    const subMaxW = contentW - 36
+
+    const { rows: measuredRows } = measureLineItems(
+      data.lineItems,
+      (t) => {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9.5)
+        return doc.getTextWidth(t)
+      },
+      (t) => {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        return doc.getTextWidth(t)
+      },
+      {
+        titleMaxWidth: titleMaxW,
+        subtitleMaxWidth: subMaxW,
+        topPadding: 11,
+        titleLineHeight: 13,
+        subtitleGap: 3,
+        subtitleLineHeight: 11,
+        bottomPadding: 10,
+        minRowHeight: 36,
+      },
+    )
+
+    const drawTableHeader = (atY: number): number => {
+      doc.setFillColor(...brandSoft)
+      doc.setDrawColor(...lavenderBorder)
+      doc.setLineWidth(0.6)
+      doc.roundedRect(margin, atY, contentW, 22, 4, 4, 'FD')
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(7.2)
+      doc.setTextColor(...brandPurple)
+      doc.text('DESCRIPTION', margin + 12, atY + 14)
+      if (rightHeader) {
+        doc.text(rightHeader, pageWidth - margin - 12, atY + 14, {
           align: 'right',
         })
       }
-      if (item.subtitle) {
+      return atY + 24
+    }
+
+    y = ensureSpace(24 + (measuredRows[0]?.height ?? 36) + 12, y)
+    y = drawTableHeader(y)
+
+    measuredRows.forEach((row, idx) => {
+      if (needsPageBreak(y, row.height + 10, pageHeight, footerReserve)) {
+        doc.addPage()
+        drawPdfTopAccentRule(doc, pageWidth)
+        y = drawTableHeader(34)
+      }
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(...stripeRgb)
+        doc.rect(margin, y, contentW, row.height, 'F')
+      }
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      doc.setTextColor(...textDark)
+      row.titleLines.forEach((line, lIdx) => {
+        doc.text(line, margin + 12, y + 15 + lIdx * 13)
+      })
+
+      if (row.amount) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9.5)
+        doc.setTextColor(colMode === 'amount' ? brandPurple[0] : textBody[0], colMode === 'amount' ? brandPurple[1] : textBody[1], colMode === 'amount' ? brandPurple[2] : textBody[2])
+        doc.text(row.amount, pageWidth - margin - 12, y + 15, {
+          align: 'right',
+        })
+      }
+
+      if (row.subtitleLines.length > 0) {
+        const subStartY = y + 15 + row.titleLines.length * 13 + 1
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8)
         doc.setTextColor(...mutedGray)
-        doc.text(item.subtitle, margin + 10, y + 25, {
-          maxWidth: contentW * 0.84,
+        row.subtitleLines.forEach((line, sIdx) => {
+          doc.text(line, margin + 12, subStartY + sIdx * 11)
         })
       }
+
       doc.setDrawColor(...lineGray)
       doc.setLineWidth(0.5)
-      doc.line(margin, y + rowH - 2, pageWidth - margin, y + rowH - 2)
-      y += rowH
+      doc.line(margin, y + row.height, pageWidth - margin, y + row.height)
+      y += row.height
     })
+
     y += 10
   }
 
-  // Subtotal & Discount breakdown (single color)
+  // 7. Subtotal & Voucher Breakdown (Right-aligned accounting column)
   if (data.subtotalFormatted && data.discountFormatted) {
-    y = ensureSpace(38, y)
+    y = ensureSpace(40, y)
+    const labelColX = margin + contentW * 0.52
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
+    doc.setFontSize(8.8)
     doc.setTextColor(...mutedGray)
-    doc.text('Subtotal', margin + 8, y + 10)
+    doc.text('Subtotal', labelColX, y + 10)
+    doc.setFont('helvetica', 'bold')
     doc.setTextColor(...textDark)
-    doc.text(data.subtotalFormatted, pageWidth - margin - 8, y + 10, {
+    doc.text(data.subtotalFormatted, pageWidth - margin - 12, y + 10, {
       align: 'right',
     })
 
+    doc.setFont('helvetica', 'normal')
     doc.setTextColor(...brandPurple)
-    doc.text(data.discountLabel || 'Voucher', margin + 8, y + 25)
+    doc.text(data.discountLabel || 'Voucher Discount', labelColX, y + 24)
     doc.setFont('helvetica', 'bold')
-    doc.text(data.discountFormatted, pageWidth - margin - 8, y + 25, {
+    doc.text(data.discountFormatted, pageWidth - margin - 12, y + 24, {
       align: 'right',
     })
     y += 34
   }
 
-  // Total Paid Banner (Strictly Single Brand Color #7B2D8E + subtle geometric border motif)
-  const totalCardH = 56
-  y = ensureSpace(totalCardH + 18, y)
+  // 8. Clean Solid #7B2D8E Total Summary Bar (No double inset border)
+  const totalCardH = 48
+  y = ensureSpace(totalCardH + 12, y)
 
   doc.setFillColor(...brandPurple)
-  doc.roundedRect(margin, y, contentW, totalCardH, 8, 8, 'F')
-
-  // Subtle decorative inset hairline inside the total card
-  doc.setDrawColor(255, 255, 255)
-  doc.setLineWidth(0.35)
-  doc.roundedRect(margin + 4, y + 4, contentW - 8, totalCardH - 8, 5, 5, 'S')
+  doc.roundedRect(margin, y, contentW, totalCardH, 6, 6, 'F')
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
-  doc.setTextColor(236, 223, 244)
+  doc.setFontSize(7.2)
+  doc.setTextColor(238, 226, 245)
   doc.text(data.amountLabel, margin + 16, y + 19)
 
+  const subMetaParts = [data.paymentMethodLabel, data.invoiceNumber].filter(Boolean)
+  if (subMetaParts.length > 0) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(245, 236, 250)
+    doc.text(subMetaParts.join('  ·  '), margin + 16, y + 34)
+  }
+
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(19.5)
+  doc.setFontSize(17.5)
   doc.setTextColor(255, 255, 255)
-  doc.text(data.amountFormatted, margin + 16, y + 42)
+  doc.text(data.amountFormatted, pageWidth - margin - 16, y + 30.5, {
+    align: 'right',
+  })
 
-  if (data.paymentMethodLabel) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(255, 255, 255)
-    doc.text(data.paymentMethodLabel, pageWidth - margin - 16, y + 23, {
-      align: 'right',
-    })
-  }
-  if (data.invoiceNumber) {
-    doc.setFont('courier', 'normal')
-    doc.setFontSize(8.2)
-    doc.setTextColor(236, 223, 244)
-    doc.text(data.invoiceNumber, pageWidth - margin - 16, y + 39, {
-      align: 'right',
-    })
-  }
-  y += totalCardH + 16
+  y += totalCardH + 12
 
-  // Personal Message / Notes Quote Card
+  // 9. Personal Message / Notes Quote Block
   if (data.note) {
-    const noteLines = doc.splitTextToSize(`"${data.note}"`, contentW - 28)
-    const noteBoxH = noteLines.length * 12 + 28
-    y = ensureSpace(noteBoxH + 14, y)
+    doc.setFont('times', 'italic')
+    doc.setFontSize(9.5)
+    const noteLines = wrapTextLines(
+      `"${data.note}"`,
+      (t) => doc.getTextWidth(t),
+      contentW - 32,
+    )
+    const noteBoxH = noteLines.length * 12 + 24
+    y = ensureSpace(noteBoxH + 10, y)
 
-    doc.setFillColor(...brandSoft)
+    doc.setFillColor(...stripeRgb)
     doc.setDrawColor(...lavenderBorder)
     doc.setLineWidth(0.75)
-    doc.roundedRect(margin, y, contentW, noteBoxH, 7, 7, 'FD')
+    doc.roundedRect(margin, y, contentW, noteBoxH, 6, 6, 'FD')
+
     doc.setFillColor(...brandPurple)
     doc.rect(margin, y + 5, 3, noteBoxH - 10, 'F')
 
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7)
+    doc.setFontSize(6.8)
     doc.setTextColor(...brandPurple)
-    doc.text(data.noteTitle || 'PERSONAL MESSAGE', margin + 12, y + 16)
+    doc.text(data.noteTitle || 'PERSONAL MESSAGE', margin + 14, y + 15)
 
     doc.setFont('times', 'italic')
-    doc.setFontSize(10)
-    doc.setTextColor(...textGray)
-    doc.text(noteLines, margin + 12, y + 29)
-    y += noteBoxH + 14
+    doc.setFontSize(9.5)
+    doc.setTextColor(...textBody)
+    noteLines.forEach((line, idx) => {
+      doc.text(line, margin + 14, y + 28 + idx * 12)
+    })
+    y += noteBoxH + 10
   }
 
-  // Closing Stamp + Footer
-  y = ensureSpace(60, y)
-  const footerY = Math.max(y + 12, pageHeight - 66)
-  doc.setDrawColor(...lavenderBorder)
-  doc.setLineDashPattern([3, 3], 0)
-  doc.line(margin, footerY, pageWidth - margin, footerY)
-  doc.setLineDashPattern([], 0)
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9)
-  doc.setTextColor(...brandPurple)
-  doc.text('Crafted with care at Dermaspace', pageWidth / 2, footerY + 16, {
-    align: 'center',
-  })
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.8)
-  doc.setTextColor(...mutedGray)
-  doc.text(
-    data.footerNote ||
-      '237B Muri Okunola St, Victoria Island  ·  9 Agbeke Rotinwa Cl, Ikoyi',
-    pageWidth / 2,
-    footerY + 29,
-    { align: 'center' },
-  )
-  doc.text(
-    'dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625',
-    pageWidth / 2,
-    footerY + 41,
-    { align: 'center' },
-  )
+  // Stamp clean editorial footer on every page
+  drawPdfFooterAllPages(doc, data.footerNote)
 
   doc.save(data.filename)
   return data.filename
-}
-
-/**
- * Helper to wrap text safely on HTML5 2D Canvas.
- */
-function wrapCanvasLines(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  const words = text.split(/\s+/).filter(Boolean)
-  const lines: string[] = []
-  let current = ''
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word
-    if (ctx.measureText(candidate).width <= maxWidth) {
-      current = candidate
-    } else {
-      if (current) lines.push(current)
-      current = word
-    }
-  }
-  if (current) lines.push(current)
-  return lines.length ? lines : ['']
 }
 
 function drawRoundedRectPath(
@@ -1404,6 +1601,64 @@ function drawRoundedRectPath(
   ctx.lineTo(x, y + radius)
   ctx.quadraticCurveTo(x, y, x + radius, y)
   ctx.closePath()
+}
+
+function drawCanvasStatusBadge(
+  ctx: CanvasRenderingContext2D,
+  label: string,
+  tone: ReceiptStatusTone,
+  rightX: number,
+  topY: number,
+  sansFont: string,
+): void {
+  const display = label.toUpperCase()
+  ctx.font = `700 9.5px ${sansFont}`
+  const textW = ctx.measureText(display).width
+  const iconSpace = tone === 'muted' ? 0 : 14
+  const badgeW = textW + iconSpace + 20
+  const badgeH = 24
+  const badgeX = rightX - badgeW
+
+  drawRoundedRectPath(ctx, badgeX, topY, badgeW, badgeH, 6)
+  if (tone === 'positive') {
+    ctx.fillStyle = '#F7F2FA'
+    ctx.strokeStyle = '#DAC6E5'
+  } else if (tone === 'pending') {
+    ctx.fillStyle = '#FBF9FD'
+    ctx.strokeStyle = '#E4E4E7'
+  } else {
+    ctx.fillStyle = '#F4F4F5'
+    ctx.strokeStyle = '#E4E4E7'
+  }
+  ctx.lineWidth = 1
+  ctx.fill()
+  ctx.stroke()
+
+  if (tone === 'positive') {
+    const cx = badgeX + 13
+    const cy = topY + badgeH / 2 + 0.5
+    ctx.strokeStyle = '#7B2D8E'
+    ctx.lineWidth = 1.6
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.beginPath()
+    ctx.moveTo(cx - 3.5, cy)
+    ctx.lineTo(cx - 1, cy + 2.8)
+    ctx.lineTo(cx + 4, cy - 3)
+    ctx.stroke()
+    ctx.lineCap = 'butt'
+  } else if (tone === 'pending') {
+    ctx.fillStyle = '#71717A'
+    ctx.beginPath()
+    ctx.arc(badgeX + 12, topY + badgeH / 2, 2.8, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  ctx.fillStyle =
+    tone === 'positive' ? '#7B2D8E' : tone === 'pending' ? '#3F3F46' : '#71717A'
+  ctx.textAlign = 'right'
+  ctx.fillText(display, rightX - 10, topY + 15.5)
+  ctx.textAlign = 'left'
 }
 
 function triggerCanvasPngDownload(
@@ -1440,85 +1695,174 @@ function triggerCanvasPngDownload(
 }
 
 /**
- * Generates and downloads a crisp, high-resolution, compact PNG receipt image
- * matching the single-color (#7B2D8E) patterned Dermaspace receipt design.
+ * Generates and downloads a crisp 3x Hi-DPI PNG receipt image matching the
+ * single-color (#7B2D8E + white/plum-gray) Dermaspace editorial receipt layout.
+ * Zero shadows, zero gradients, zero sparkle or zap icons, zero text squishing.
  */
 export async function downloadReceiptImage(
   data: ReceiptDocumentData,
 ): Promise<string> {
-  const scale = 2
-  const width = 520
-  const padX = 28
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    try {
+      await document.fonts.ready
+    } catch {
+      // Proceed cleanly with system fallback stack
+    }
+  }
+
+  const scale = 3
+  const width = 600
   const cardMargin = 20
   const cardX = cardMargin
   const cardW = width - cardMargin * 2
+  const padX = 30
   const innerX = cardX + padX
   const innerW = cardW - padX * 2
 
   const brandHex = RECEIPT_PALETTE.brandHex
   const tintBg = '#F7F2FA'
-  const outerBg = '#F4EFF7'
-  const borderHex = '#DECFE7'
-  const lineHex = '#ECE7F0'
+  const stripeBg = '#FBF9FD'
+  const outerBg = '#F7F5F9'
+  const brandBorder = '#DAC6E5'
+  const lineHex = '#E4E4E7'
+  const rowDividerHex = '#F1EEF4'
   const textDark = '#18181B'
+  const textBody = '#3F3F46'
   const textMuted = '#71717A'
 
-  // Preload logo bitmap if available
-  let logoBitmap: ImageBitmap | null = null
-  try {
-    const blob =
-      (await fetchImageBlobWithTimeout(LOCAL_BRAND_LOGO, 1400)) ??
-      (await fetchImageBlobWithTimeout(REMOTE_BRAND_LOGO, 1600))
-    if (blob && typeof createImageBitmap === 'function') {
-      logoBitmap = await createImageBitmap(blob)
-    }
-  } catch {
-    logoBitmap = null
-  }
+  const sansFont =
+    "'Lexend Deca', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  const serifFont = "'Playfair Display', Georgia, serif"
 
-  // Measure dynamic height with a temporary 2D context
+  const { bitmap: logoBitmap } = await loadLogoAssets()
+
   const measureCanvas = document.createElement('canvas')
   const mctx = measureCanvas.getContext('2d')!
-  mctx.font = '700 17px system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
-  const headlineLines = wrapCanvasLines(mctx, data.headline, innerW)
-  mctx.font = '400 12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
-  const subLines = data.subheadline
-    ? wrapCanvasLines(mctx, data.subheadline, innerW)
-    : []
-  mctx.font = 'italic 12px Georgia, serif'
-  const noteLines = data.note
-    ? wrapCanvasLines(mctx, `"${data.note}"`, innerW - 28)
-    : []
+  const measureWithFont = (font: string) => (text: string) => {
+    mctx.font = font
+    return mctx.measureText(text).width
+  }
 
-  const mastheadH = 92
-  const metaH = 54
-  const tearH = 26
-  const headlineH =
-    headlineLines.length * 22 + (subLines.length ? subLines.length * 17 + 4 : 0) + 14
-  const summaryRowsCount = Math.ceil(data.summaryRows.length / 2)
-  const summaryH = summaryRowsCount * 42 + 16
-  const lineItemsCount = data.lineItems?.length ?? 0
-  const itemsH = lineItemsCount > 0 ? 32 + lineItemsCount * 44 + 14 : 0
-  const discountH = data.subtotalFormatted && data.discountFormatted ? 44 : 0
-  const totalH = 74
-  const noteH = data.note ? noteLines.length * 16 + 38 + 14 : 0
+  // Measure Executive Summary Band
+  const sumLeftW = innerW * 0.54
+  const sumRightW = innerW * 0.46 - 24
+  const refFont = `700 12px ${sansFont}`
+  const refLines = wrapTextLines(
+    data.reference,
+    measureWithFont(refFont),
+    sumRightW,
+  )
+  const invoiceLines = data.invoiceNumber
+    ? wrapTextLines(
+        data.invoiceNumber,
+        measureWithFont(refFont),
+        sumRightW,
+      )
+    : []
+  const sumLeftH = 18 + 32 + (data.paymentMethodLabel ? 18 : 0) + 18
+  const sumRightH =
+    18 +
+    refLines.length * 16 +
+    (invoiceLines.length > 0 ? 22 + invoiceLines.length * 16 : 0) +
+    18
+  const summaryBandH = Math.max(84, sumLeftH, sumRightH)
+
+  // Measure Headline & Subheadline
+  const headlineLines = wrapTextLines(
+    data.headline,
+    measureWithFont(`700 18px ${sansFont}`),
+    innerW,
+  )
+  const subLines = data.subheadline
+    ? wrapTextLines(
+        data.subheadline,
+        measureWithFont(`400 12.5px ${sansFont}`),
+        innerW,
+      )
+    : []
+  const headlineBlockH =
+    headlineLines.length * 24 +
+    (subLines.length > 0 ? 4 + subLines.length * 18 : 0)
+
+  // Measure Optional Gift Card Specimen
+  const giftVisualH = data.giftCardVisual ? 174 : 0
+
+  // Measure Details Ledger
+  const detailColW = innerW / 2
+  const detailValueMaxW = detailColW - 28
+  const measuredDetails = measureSummaryPairs(
+    data.summaryRows,
+    measureWithFont(`600 12px ${sansFont}`),
+    {
+      colWidth: detailValueMaxW,
+      labelOffset: 22,
+      lineHeight: 16,
+      bottomPadding: 11,
+      minRowHeight: 46,
+    },
+  )
+  const detailsSectionH =
+    measuredDetails.pairs.length > 0 ? 18 + measuredDetails.totalHeight + 8 : 0
+
+  // Measure Line Items Table
+  const lineItems = data.lineItems ?? []
+  const colMode = resolveLineItemColumnMode(lineItems)
+  const rightColReserve = colMode === 'none' ? 24 : 140
+  const measuredItems =
+    lineItems.length > 0
+      ? measureLineItems(
+          lineItems,
+          measureWithFont(`600 12.5px ${sansFont}`),
+          measureWithFont(`400 10.5px ${sansFont}`),
+          {
+            titleMaxWidth: innerW - rightColReserve - 24,
+            subtitleMaxWidth: innerW - 36,
+            topPadding: 13,
+            titleLineHeight: 17,
+            subtitleGap: 4,
+            subtitleLineHeight: 14,
+            bottomPadding: 12,
+            minRowHeight: 46,
+          },
+        )
+      : { rows: [], totalHeight: 0 }
+  const itemsSectionH =
+    measuredItems.rows.length > 0 ? 30 + measuredItems.totalHeight : 0
+
+  // Measure Discount, Total Bar, Note & Footer
+  const discountH = data.subtotalFormatted && data.discountFormatted ? 48 : 0
+  const totalBarH = 68
+  const noteLines = data.note
+    ? wrapTextLines(
+        `"${data.note}"`,
+        measureWithFont(`italic 12.5px ${serifFont}`),
+        innerW - 34,
+      )
+    : []
+  const noteSectionH = data.note ? noteLines.length * 18 + 38 : 0
+
+  const topAccentH = 5
+  const letterheadH = 92
   const footerH = 74
 
   const cardH =
-    14 +
-    mastheadH +
+    topAccentH +
+    22 +
+    letterheadH +
+    18 +
+    summaryBandH +
+    22 +
+    headlineBlockH +
+    (giftVisualH > 0 ? 18 + giftVisualH : 0) +
+    (detailsSectionH > 0 ? 20 + detailsSectionH : 0) +
+    (itemsSectionH > 0 ? 20 + itemsSectionH : 0) +
+    (discountH > 0 ? 14 + discountH : 0) +
     16 +
-    metaH +
-    tearH +
-    headlineH +
-    summaryH +
-    16 +
-    itemsH +
-    discountH +
-    totalH +
-    16 +
-    noteH +
-    footerH
+    totalBarH +
+    (noteSectionH > 0 ? 18 + noteSectionH : 0) +
+    22 +
+    footerH +
+    22
 
   const totalHeight = cardMargin * 2 + cardH
 
@@ -1528,385 +1872,539 @@ export async function downloadReceiptImage(
   const ctx = canvas.getContext('2d')!
   ctx.scale(scale, scale)
 
-  // Outer canvas background
+  // Outer neutral paper background
   ctx.fillStyle = outerBg
   ctx.fillRect(0, 0, width, totalHeight)
 
-  // Receipt card body (zero shadow, crisp hairline border)
-  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 16)
+  // Crisp flat receipt sheet (zero shadow)
+  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 12)
   ctx.fillStyle = '#FFFFFF'
   ctx.fill()
   ctx.lineWidth = 1
-  ctx.strokeStyle = borderHex
+  ctx.strokeStyle = brandBorder
   ctx.stroke()
 
-  // Clip interior to rounded card for clean crown pattern
   ctx.save()
-  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 16)
+  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 12)
   ctx.clip()
 
   let y = cardMargin
 
-  // 1. Crown geometric diamond trellis band (14px)
+  // 1. Solid Top Brand Rule
   ctx.fillStyle = brandHex
-  ctx.fillRect(cardX, y, cardW, 4)
-  ctx.fillStyle = tintBg
-  ctx.fillRect(cardX, y + 4, cardW, 10)
-  ctx.strokeStyle = borderHex
-  ctx.lineWidth = 0.8
-  for (let dx = cardX; dx <= cardX + cardW + 12; dx += 12) {
-    ctx.beginPath()
-    ctx.moveTo(dx - 4, y + 9)
-    ctx.lineTo(dx, y + 5.5)
-    ctx.lineTo(dx + 4, y + 9)
-    ctx.lineTo(dx, y + 12.5)
-    ctx.closePath()
-    ctx.stroke()
-  }
-  ctx.fillStyle = brandHex
-  ctx.fillRect(cardX, y + 14, cardW, 1.5)
-  y += 15.5
+  ctx.fillRect(cardX, y, cardW, topAccentH)
+  y += topAccentH + 22
 
-  // 2. Masthead band with micro-dot pattern
-  ctx.fillStyle = tintBg
-  ctx.fillRect(cardX, y, cardW, mastheadH)
-  ctx.fillStyle = '#E5D5EF'
-  for (let px = cardX + 12; px < cardX + cardW - 8; px += 14) {
-    for (let py = y + 10; py < y + mastheadH - 6; py += 14) {
-      ctx.beginPath()
-      ctx.arc(px, py, 0.9, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-  ctx.strokeStyle = borderHex
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(cardX, y + mastheadH)
-  ctx.lineTo(cardX + cardW, y + mastheadH)
-  ctx.stroke()
-
+  // 2. White Editorial Letterhead
   if (logoBitmap) {
-    const logoH = 30
-    const logoW = Math.min(logoH * (logoBitmap.width / logoBitmap.height), 170)
-    ctx.drawImage(logoBitmap, innerX, y + 20, logoW, logoH)
+    const logoH = 36
+    const logoW = Math.min(logoH * (logoBitmap.width / logoBitmap.height), innerW * 0.48)
+    ctx.drawImage(logoBitmap, innerX, y + 4, logoW, logoH)
     ctx.fillStyle = textMuted
-    ctx.font = '700 8.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText('ESTHETIC & WELLNESS CENTRE  ·  LAGOS', innerX, y + 66)
+    ctx.font = `400 10px ${sansFont}`
+    ctx.fillText(
+      'Victoria Island & Ikoyi, Lagos  ·  dermaspaceng.com',
+      innerX,
+      y + 56,
+    )
   } else {
     ctx.fillStyle = brandHex
-    ctx.font = '700 22px Georgia, serif'
-    ctx.fillText('Dermaspace', innerX, y + 44)
+    ctx.font = `700 24px ${serifFont}`
+    ctx.fillText('Dermaspace', innerX, y + 26)
     ctx.fillStyle = textMuted
-    ctx.font = '700 8.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText('ESTHETIC & WELLNESS CENTRE  ·  LAGOS', innerX, y + 64)
+    ctx.font = `400 10px ${sansFont}`
+    ctx.fillText(
+      'Esthetic & Wellness Centre  ·  Lagos',
+      innerX,
+      y + 48,
+    )
   }
 
   ctx.textAlign = 'right'
   ctx.fillStyle = brandHex
-  ctx.font = '700 9px system-ui, -apple-system, sans-serif'
-  ctx.fillText('OFFICIAL RECEIPT', innerX + innerW, y + 30)
+  ctx.font = `700 9.5px ${sansFont}`
+  ctx.fillText('OFFICIAL RECEIPT', innerX + innerW, y + 10)
   ctx.fillStyle = textDark
-  ctx.font = '700 13px system-ui, -apple-system, sans-serif'
-  ctx.fillText(data.documentTitle, innerX + innerW, y + 48)
+  ctx.font = `700 15px ${sansFont}`
+  ctx.fillText(data.documentTitle, innerX + innerW, y + 30)
   ctx.fillStyle = textMuted
-  ctx.font = '400 10px system-ui, -apple-system, sans-serif'
-  ctx.fillText(`Issued ${data.issueDate}`, innerX + innerW, y + 65)
+  ctx.font = `400 10.5px ${sansFont}`
+  ctx.fillText(`Issued ${data.issueDate}`, innerX + innerW, y + 47)
   ctx.textAlign = 'left'
 
-  y += mastheadH + 16
+  const statusTone = classifyStatusTone(data.statusLabel)
+  drawCanvasStatusBadge(
+    ctx,
+    data.statusLabel,
+    statusTone,
+    innerX + innerW,
+    y + 56,
+    sansFont,
+  )
 
-  // 3. Reference / Status Bar + Corner Registration Brackets
-  drawRoundedRectPath(ctx, innerX, y, innerW, metaH, 8)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.fill()
-  ctx.strokeStyle = borderHex
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  // Corner registration ticks
-  ctx.strokeStyle = brandHex
-  ctx.lineWidth = 1.6
-  ctx.beginPath()
-  ctx.moveTo(innerX, y + 9)
-  ctx.lineTo(innerX, y)
-  ctx.lineTo(innerX + 9, y)
-  ctx.moveTo(innerX + innerW - 9, y + metaH)
-  ctx.lineTo(innerX + innerW, y + metaH)
-  ctx.lineTo(innerX + innerW, y + metaH - 9)
-  ctx.stroke()
-
-  const colSplit = innerX + innerW * 0.62
+  const headerRuleY = y + letterheadH
   ctx.strokeStyle = lineHex
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(colSplit, y + 10)
-  ctx.lineTo(colSplit, y + metaH - 10)
+  ctx.moveTo(innerX, headerRuleY)
+  ctx.lineTo(innerX + innerW, headerRuleY)
+  ctx.stroke()
+  y = headerRuleY + 18
+
+  // 3. Executive Summary Band
+  drawRoundedRectPath(ctx, innerX, y, innerW, summaryBandH, 8)
+  ctx.fillStyle = stripeBg
+  ctx.fill()
+  ctx.strokeStyle = brandBorder
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  const dividerX = innerX + sumLeftW
+  ctx.strokeStyle = lineHex
+  ctx.beginPath()
+  ctx.moveTo(dividerX, y + 14)
+  ctx.lineTo(dividerX, y + summaryBandH - 14)
   ctx.stroke()
 
   ctx.fillStyle = textMuted
-  ctx.font = '700 8.5px system-ui, -apple-system, sans-serif'
-  ctx.fillText('REFERENCE', innerX + 12, y + 18)
-  ctx.textAlign = 'right'
-  ctx.fillText('STATUS', innerX + innerW - 12, y + 18)
-
-  ctx.textAlign = 'left'
-  ctx.fillStyle = brandHex
-  ctx.font = '700 12.5px ui-monospace, SFMono-Regular, Menlo, monospace'
-  ctx.fillText(data.reference, innerX + 12, y + 38, innerW * 0.56)
-
-  ctx.textAlign = 'right'
-  ctx.fillStyle = brandHex
-  ctx.font = '700 11.5px system-ui, -apple-system, sans-serif'
-  const stWidth = ctx.measureText(data.statusLabel).width
-  ctx.beginPath()
-  ctx.arc(innerX + innerW - 12 - stWidth - 8, y + 34, 3, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillText(data.statusLabel, innerX + innerW - 12, y + 38)
-  ctx.textAlign = 'left'
-
-  y += metaH
-
-  // 4. Perforated Tear Divider with Side Notches & Centered Diamond
-  const tearY = y + tearH / 2
-  ctx.save()
-  ctx.setLineDash([4, 4])
-  ctx.strokeStyle = borderHex
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(cardX + 12, tearY)
-  ctx.lineTo(width / 2 - 10, tearY)
-  ctx.moveTo(width / 2 + 10, tearY)
-  ctx.lineTo(cardX + cardW - 12, tearY)
-  ctx.stroke()
-  ctx.restore()
-
-  // Ticket side notches
-  ctx.fillStyle = outerBg
-  ctx.beginPath()
-  ctx.arc(cardX, tearY, 8, -Math.PI / 2, Math.PI / 2)
-  ctx.fill()
-  ctx.beginPath()
-  ctx.arc(cardX + cardW, tearY, 8, Math.PI / 2, -Math.PI / 2)
-  ctx.fill()
-
-  // Center diamond seal
-  ctx.fillStyle = brandHex
-  ctx.beginPath()
-  ctx.moveTo(width / 2, tearY - 4.5)
-  ctx.lineTo(width / 2 + 4.5, tearY)
-  ctx.lineTo(width / 2, tearY + 4.5)
-  ctx.lineTo(width / 2 - 4.5, tearY)
-  ctx.closePath()
-  ctx.fill()
-
-  y += tearH
-
-  // 5. Headline & Subheadline
+  ctx.font = `700 9px ${sansFont}`
+  ctx.fillText(data.amountLabel, innerX + 18, y + 24)
   ctx.fillStyle = textDark
-  ctx.font = '700 17px system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
+  ctx.font = `700 25px ${sansFont}`
+  ctx.fillText(data.amountFormatted, innerX + 18, y + 54)
+  if (data.paymentMethodLabel) {
+    ctx.fillStyle = textBody
+    ctx.font = `400 10.5px ${sansFont}`
+    const methodPrefix = statusTone === 'positive' ? 'Paid via' : 'Method:'
+    ctx.fillText(`${methodPrefix} ${data.paymentMethodLabel}`, innerX + 18, y + 72)
+  }
+
+  let ry = y + 24
+  const rx = dividerX + 16
+  ctx.fillStyle = textMuted
+  ctx.font = `700 8.5px ${sansFont}`
+  ctx.fillText('REFERENCE', rx, ry)
+  ry += 16
+  ctx.fillStyle = brandHex
+  ctx.font = refFont
+  for (const line of refLines) {
+    ctx.fillText(line, rx, ry)
+    ry += 16
+  }
+  if (invoiceLines.length > 0) {
+    ry += 6
+    ctx.fillStyle = textMuted
+    ctx.font = `700 8.5px ${sansFont}`
+    ctx.fillText('INVOICE NUMBER', rx, ry)
+    ry += 16
+    ctx.fillStyle = textDark
+    ctx.font = refFont
+    for (const line of invoiceLines) {
+      ctx.fillText(line, rx, ry)
+      ry += 16
+    }
+  }
+
+  y += summaryBandH + 22
+
+  // 4. Headline & Subheadline
+  ctx.fillStyle = textDark
+  ctx.font = `700 18px ${sansFont}`
   for (const line of headlineLines) {
-    ctx.fillText(line, innerX, y + 14)
-    y += 22
+    ctx.fillText(line, innerX, y + 16)
+    y += 24
   }
   if (subLines.length > 0) {
-    ctx.fillStyle = textMuted
-    ctx.font = '400 12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
-    for (const line of subLines) {
-      ctx.fillText(line, innerX, y + 12)
-      y += 17
-    }
     y += 4
+    ctx.fillStyle = textBody
+    ctx.font = `400 12.5px ${sansFont}`
+    for (const line of subLines) {
+      ctx.fillText(line, innerX, y + 13)
+      y += 18
+    }
   }
-  y += 14
 
-  // 6. Summary Details Grid
-  drawRoundedRectPath(ctx, innerX, y, innerW, summaryH, 10)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.fill()
-  ctx.strokeStyle = borderHex
-  ctx.lineWidth = 1
-  ctx.stroke()
+  // 5. Optional Gift Card Specimen & Specification
+  if (data.giftCardVisual) {
+    y += 18
+    const gc = data.giftCardVisual
+    const gcCardW = 290
+    const gcCardH = giftVisualH
+    const specX = innerX + gcCardW + 14
+    const specW = innerW - gcCardW - 14
+    const gcFont = canvasFontFamilyForGiftCard(gc.fontName)
 
-  const sColW = innerW / 2
-  ctx.strokeStyle = lineHex
-  ctx.beginPath()
-  ctx.moveTo(innerX + sColW, y + 10)
-  ctx.lineTo(innerX + sColW, y + summaryH - 10)
-  ctx.stroke()
-
-  let sgy = y + 20
-  for (let i = 0; i < data.summaryRows.length; i += 2) {
-    const left = data.summaryRows[i]
-    const right = data.summaryRows[i + 1]
-    if (i > 0) {
-      ctx.strokeStyle = '#F4F1F7'
-      ctx.beginPath()
-      ctx.moveTo(innerX + 10, sgy - 12)
-      ctx.lineTo(innerX + innerW - 10, sgy - 12)
-      ctx.stroke()
-    }
-    ctx.fillStyle = textMuted
-    ctx.font = '700 8.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText(left.label.toUpperCase(), innerX + 12, sgy)
-    if (right) {
-      ctx.fillText(right.label.toUpperCase(), innerX + sColW + 12, sgy)
-    }
-    ctx.fillStyle = textDark
-    ctx.font = '600 11.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText(left.value, innerX + 12, sgy + 15, sColW - 22)
-    if (right) {
-      ctx.fillText(right.value, innerX + sColW + 12, sgy + 15, sColW - 22)
-    }
-    sgy += 42
-  }
-  y += summaryH + 16
-
-  // 7. Line Items Table
-  if (data.lineItems && data.lineItems.length > 0) {
-    drawRoundedRectPath(ctx, innerX, y, innerW, 26, 6)
-    ctx.fillStyle = tintBg
+    drawRoundedRectPath(ctx, innerX, y, gcCardW, gcCardH, 10)
+    ctx.fillStyle = gc.surfaceHex || brandHex
     ctx.fill()
-    ctx.strokeStyle = borderHex
+
+    drawRoundedRectPath(
+      ctx,
+      innerX + gcCardW * 0.62,
+      y + 12,
+      gcCardW * 0.33,
+      gcCardH - 24,
+      8,
+    )
+    ctx.fillStyle = gc.accentHex || brandHex
+    ctx.fill()
+
+    drawRoundedRectPath(ctx, innerX + 8, y + 8, gcCardW - 16, gcCardH - 16, 7)
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    // Concentric Monogram Medallion ("DS", zero sparkles)
+    const medX = innerX + gcCardW - 49
+    const medY = y + gcCardH / 2 + 2
+    ctx.beginPath()
+    ctx.arc(medX, medY, 22, 0, Math.PI * 2)
+    ctx.fillStyle = gc.medallionHex || brandHex
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'
+    ctx.lineWidth = 1.1
+    ctx.stroke()
+
+    ctx.beginPath()
+    ctx.arc(medX, medY, 16.5, 0, Math.PI * 2)
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'
     ctx.lineWidth = 0.8
     ctx.stroke()
 
-    ctx.fillStyle = brandHex
-    ctx.font = '700 9px system-ui, -apple-system, sans-serif'
-    ctx.fillText('ITEM DESCRIPTION', innerX + 12, y + 16)
-    ctx.textAlign = 'right'
-    ctx.fillText('AMOUNT', innerX + innerW - 12, y + 16)
-    ctx.textAlign = 'left'
-    y += 30
-
-    data.lineItems.forEach((item, idx) => {
-      if (idx % 2 === 1) {
-        ctx.fillStyle = '#FBF9FD'
-        ctx.fillRect(innerX, y, innerW, 42)
-      }
-      ctx.fillStyle = textDark
-      ctx.font = '600 12px system-ui, -apple-system, sans-serif'
-      ctx.fillText(item.title, innerX + 12, y + 17, innerW * 0.66)
-      if (item.amount) {
-        ctx.textAlign = 'right'
-        ctx.fillStyle = brandHex
-        ctx.font = '700 12px system-ui, -apple-system, sans-serif'
-        ctx.fillText(item.amount, innerX + innerW - 12, y + 17)
-        ctx.textAlign = 'left'
-      }
-      if (item.subtitle) {
-        ctx.fillStyle = textMuted
-        ctx.font = '400 10.5px system-ui, -apple-system, sans-serif'
-        ctx.fillText(item.subtitle, innerX + 12, y + 32, innerW * 0.84)
-      }
-      ctx.strokeStyle = lineHex
-      ctx.beginPath()
-      ctx.moveTo(innerX, y + 42)
-      ctx.lineTo(innerX + innerW, y + 42)
-      ctx.stroke()
-      y += 44
-    })
-    y += 12
-  }
-
-  // 8. Subtotal & Discount
-  if (data.subtotalFormatted && data.discountFormatted) {
-    ctx.fillStyle = textMuted
-    ctx.font = '400 11.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText('Subtotal', innerX + 8, y + 12)
-    ctx.textAlign = 'right'
-    ctx.fillStyle = textDark
-    ctx.fillText(data.subtotalFormatted, innerX + innerW - 8, y + 12)
-    ctx.textAlign = 'left'
-
-    ctx.fillStyle = brandHex
-    ctx.font = '600 11.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText(data.discountLabel || 'Voucher', innerX + 8, y + 30)
-    ctx.textAlign = 'right'
-    ctx.fillText(data.discountFormatted, innerX + innerW - 8, y + 30)
-    ctx.textAlign = 'left'
-    y += 44
-  }
-
-  // 9. Solid #7B2D8E Total Paid Banner
-  drawRoundedRectPath(ctx, innerX, y, innerW, totalH, 10)
-  ctx.fillStyle = brandHex
-  ctx.fill()
-
-  drawRoundedRectPath(ctx, innerX + 4, y + 4, innerW - 8, totalH - 8, 7)
-  ctx.strokeStyle = 'rgba(255,255,255,0.28)'
-  ctx.lineWidth = 0.9
-  ctx.stroke()
-
-  ctx.fillStyle = '#EFE3F5'
-  ctx.font = '700 9px system-ui, -apple-system, sans-serif'
-  ctx.fillText(data.amountLabel, innerX + 18, y + 24)
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = '700 24px system-ui, -apple-system, sans-serif'
-  ctx.fillText(data.amountFormatted, innerX + 18, y + 53)
-
-  ctx.textAlign = 'right'
-  if (data.paymentMethodLabel) {
+    ctx.textAlign = 'center'
     ctx.fillStyle = '#FFFFFF'
-    ctx.font = '600 11px system-ui, -apple-system, sans-serif'
-    ctx.fillText(data.paymentMethodLabel, innerX + innerW - 18, y + 30)
-  }
-  if (data.invoiceNumber) {
-    ctx.fillStyle = '#EFE3F5'
-    ctx.font = '400 10px ui-monospace, SFMono-Regular, Menlo, monospace'
-    ctx.fillText(data.invoiceNumber, innerX + innerW - 18, y + 48)
-  }
-  ctx.textAlign = 'left'
-  y += totalH + 16
+    ctx.font = `700 12.5px ${serifFont}`
+    ctx.fillText('DS', medX, medY + 4.5)
+    ctx.textAlign = 'left'
 
-  // 10. Personal Note Box
-  if (data.note) {
-    const boxH = noteLines.length * 16 + 38
-    drawRoundedRectPath(ctx, innerX, y, innerW, boxH, 8)
-    ctx.fillStyle = tintBg
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `700 10px ${sansFont}`
+    ctx.fillText('DERMASPACE', innerX + 18, y + 29)
+    ctx.textAlign = 'right'
+    ctx.font = `700 8px ${sansFont}`
+    ctx.fillText('GIFT CARD', innerX + gcCardW - 18, y + 29)
+    ctx.textAlign = 'left'
+
+    ctx.fillStyle = 'rgba(245,238,250,0.85)'
+    ctx.font = `400 8.5px ${sansFont}`
+    ctx.fillText('FOR', innerX + 18, y + 54)
+    ctx.fillStyle = '#FFFFFF'
+    const recLines = wrapTextLines(
+      gc.recipientName,
+      measureWithFont(`700 13.5px ${gcFont}`),
+      142,
+    ).slice(0, 2)
+    ctx.font = `700 13.5px ${gcFont}`
+    recLines.forEach((line, idx) => {
+      ctx.fillText(line, innerX + 18, y + 71 + idx * 17)
+    })
+
+    ctx.fillStyle = 'rgba(245,238,250,0.85)'
+    ctx.font = `700 8px ${sansFont}`
+    ctx.fillText('VALUE', innerX + 18, y + 106)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.font = `700 19px ${gcFont}`
+    ctx.fillText(gc.amountFormatted, innerX + 18, y + 127)
+
+    ctx.fillStyle = 'rgba(245,238,250,0.92)'
+    ctx.font = `400 9.5px ${sansFont}`
+    ctx.fillText(gc.editionLabel, innerX + 18, y + gcCardH - 18)
+    if (gc.senderName) {
+      const fromText = wrapTextLines(
+        `From: ${gc.senderName}`,
+        measureWithFont(`400 9px ${sansFont}`),
+        112,
+      )[0]
+      ctx.textAlign = 'right'
+      ctx.font = `400 9px ${sansFont}`
+      ctx.fillText(fromText || '', innerX + gcCardW - 18, y + gcCardH - 18)
+      ctx.textAlign = 'left'
+    }
+
+    // Card Specification Card
+    drawRoundedRectPath(ctx, specX, y, specW, gcCardH, 8)
+    ctx.fillStyle = stripeBg
     ctx.fill()
-    ctx.strokeStyle = borderHex
+    ctx.strokeStyle = brandBorder
     ctx.lineWidth = 1
     ctx.stroke()
 
     ctx.fillStyle = brandHex
-    ctx.fillRect(innerX, y + 6, 4, boxH - 12)
-    ctx.font = '700 8.5px system-ui, -apple-system, sans-serif'
-    ctx.fillText(data.noteTitle || 'PERSONAL MESSAGE', innerX + 14, y + 20)
+    ctx.font = `700 8.5px ${sansFont}`
+    ctx.fillText('CARD SPECIFICATION', specX + 14, y + 22)
+    ctx.strokeStyle = lineHex
+    ctx.beginPath()
+    ctx.moveTo(specX + 14, y + 30)
+    ctx.lineTo(specX + specW - 14, y + 30)
+    ctx.stroke()
 
-    ctx.fillStyle = '#3F3F46'
-    ctx.font = 'italic 12px Georgia, serif'
-    noteLines.forEach((line, idx) => {
-      ctx.fillText(line, innerX + 14, y + 37 + idx * 16)
-    })
-    y += boxH + 14
+    ctx.fillStyle = gc.surfaceHex || brandHex
+    ctx.fillRect(specX + 14, y + 41, 13, 13)
+    ctx.fillStyle = gc.accentHex || brandHex
+    ctx.fillRect(specX + 27, y + 41, 7, 13)
+    ctx.strokeStyle = brandBorder
+    ctx.strokeRect(specX + 14, y + 41, 20, 13)
+
+    ctx.fillStyle = textMuted
+    ctx.font = `600 8px ${sansFont}`
+    ctx.fillText('STYLE THEME', specX + 42, y + 47)
+    ctx.fillStyle = textDark
+    ctx.font = `700 10.5px ${sansFont}`
+    const styleLine = wrapTextLines(
+      gc.designName,
+      measureWithFont(`700 10.5px ${sansFont}`),
+      specW - 54,
+    )[0]
+    ctx.fillText(styleLine || '', specX + 42, y + 59)
+
+    const specItems: Array<[string, string]> = [
+      ['EDITION', gc.editionLabel],
+      ['TYPOGRAPHY', `${gc.fontName || 'Elegant'} Font`],
+      ['VALIDITY', 'VI & Ikoyi · Never Expires'],
+    ]
+    let sy = y + 83
+    for (const [lbl, val] of specItems) {
+      ctx.fillStyle = textMuted
+      ctx.font = `600 8px ${sansFont}`
+      ctx.fillText(lbl, specX + 14, sy)
+      ctx.fillStyle = textDark
+      ctx.font = `700 10.5px ${sansFont}`
+      const vLine = wrapTextLines(
+        val,
+        measureWithFont(`700 10.5px ${sansFont}`),
+        specW - 28,
+      )[0]
+      ctx.fillText(vLine || '', specX + 14, sy + 13)
+      sy += 31
+    }
+
+    y += gcCardH
   }
 
-  // 11. Footer
-  ctx.save()
-  ctx.setLineDash([4, 4])
-  ctx.strokeStyle = borderHex
+  // 6. Receipt Details Ledger
+  if (measuredDetails.pairs.length > 0) {
+    y += 20
+    ctx.fillStyle = brandHex
+    ctx.font = `700 9.5px ${sansFont}`
+    ctx.fillText('RECEIPT DETAILS', innerX, y + 10)
+    y += 18
+
+    const gridH = measuredDetails.totalHeight + 8
+    drawRoundedRectPath(ctx, innerX, y, innerW, gridH, 8)
+    ctx.fillStyle = '#FFFFFF'
+    ctx.fill()
+    ctx.strokeStyle = lineHex
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    ctx.strokeStyle = lineHex
+    ctx.beginPath()
+    ctx.moveTo(innerX + detailColW, y + 8)
+    ctx.lineTo(innerX + detailColW, y + gridH - 8)
+    ctx.stroke()
+
+    let rowY = y + 4
+    measuredDetails.pairs.forEach((pair, idx) => {
+      if (idx > 0) {
+        ctx.strokeStyle = rowDividerHex
+        ctx.beginPath()
+        ctx.moveTo(innerX + 14, rowY)
+        ctx.lineTo(innerX + innerW - 14, rowY)
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = textMuted
+      ctx.font = `700 8.5px ${sansFont}`
+      ctx.fillText(pair.left.label.toUpperCase(), innerX + 14, rowY + 16)
+      if (pair.right) {
+        ctx.fillText(
+          pair.right.label.toUpperCase(),
+          innerX + detailColW + 14,
+          rowY + 16,
+        )
+      }
+
+      ctx.fillStyle = textDark
+      ctx.font = `600 12px ${sansFont}`
+      pair.left.lines.forEach((line, lIdx) => {
+        ctx.fillText(line, innerX + 14, rowY + 32 + lIdx * 16)
+      })
+      if (pair.right) {
+        pair.right.lines.forEach((line, lIdx) => {
+          ctx.fillText(line, innerX + detailColW + 14, rowY + 32 + lIdx * 16)
+        })
+      }
+
+      rowY += pair.height
+    })
+
+    y += gridH
+  }
+
+  // 7. Itemized Breakdown Table
+  if (measuredItems.rows.length > 0) {
+    y += 20
+    const rightHeader = columnHeaderLabel(colMode)
+    drawRoundedRectPath(ctx, innerX, y, innerW, 28, 6)
+    ctx.fillStyle = tintBg
+    ctx.fill()
+    ctx.strokeStyle = brandBorder
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+
+    ctx.fillStyle = brandHex
+    ctx.font = `700 9px ${sansFont}`
+    ctx.fillText('DESCRIPTION', innerX + 14, y + 17.5)
+    if (rightHeader) {
+      ctx.textAlign = 'right'
+      ctx.fillText(rightHeader, innerX + innerW - 14, y + 17.5)
+      ctx.textAlign = 'left'
+    }
+    y += 30
+
+    measuredItems.rows.forEach((row, idx) => {
+      if (idx % 2 === 1) {
+        ctx.fillStyle = stripeBg
+        ctx.fillRect(innerX, y, innerW, row.height)
+      }
+
+      ctx.fillStyle = textDark
+      ctx.font = `600 12.5px ${sansFont}`
+      row.titleLines.forEach((line, lIdx) => {
+        ctx.fillText(line, innerX + 14, y + 19 + lIdx * 17)
+      })
+
+      if (row.amount) {
+        ctx.textAlign = 'right'
+        ctx.fillStyle = colMode === 'amount' ? brandHex : textBody
+        ctx.font = `700 12.5px ${sansFont}`
+        ctx.fillText(row.amount, innerX + innerW - 14, y + 19)
+        ctx.textAlign = 'left'
+      }
+
+      if (row.subtitleLines.length > 0) {
+        const subY = y + 19 + row.titleLines.length * 17 + 2
+        ctx.fillStyle = textMuted
+        ctx.font = `400 10.5px ${sansFont}`
+        row.subtitleLines.forEach((line, sIdx) => {
+          ctx.fillText(line, innerX + 14, subY + sIdx * 14)
+        })
+      }
+
+      ctx.strokeStyle = lineHex
+      ctx.lineWidth = 0.8
+      ctx.beginPath()
+      ctx.moveTo(innerX, y + row.height)
+      ctx.lineTo(innerX + innerW, y + row.height)
+      ctx.stroke()
+
+      y += row.height
+    })
+  }
+
+  // 8. Subtotal & Voucher Discount
+  if (data.subtotalFormatted && data.discountFormatted) {
+    y += 14
+    const labelColX = innerX + innerW * 0.48
+    ctx.fillStyle = textMuted
+    ctx.font = `400 11.5px ${sansFont}`
+    ctx.fillText('Subtotal', labelColX, y + 13)
+    ctx.textAlign = 'right'
+    ctx.fillStyle = textDark
+    ctx.font = `600 11.5px ${sansFont}`
+    ctx.fillText(data.subtotalFormatted, innerX + innerW - 14, y + 13)
+    ctx.textAlign = 'left'
+
+    ctx.fillStyle = brandHex
+    ctx.font = `400 11.5px ${sansFont}`
+    ctx.fillText(data.discountLabel || 'Voucher Discount', labelColX, y + 33)
+    ctx.textAlign = 'right'
+    ctx.font = `700 11.5px ${sansFont}`
+    ctx.fillText(data.discountFormatted, innerX + innerW - 14, y + 33)
+    ctx.textAlign = 'left'
+
+    y += 48
+  }
+
+  // 9. Clean Solid #7B2D8E Total Paid Bar
+  y += 16
+  drawRoundedRectPath(ctx, innerX, y, innerW, totalBarH, 8)
+  ctx.fillStyle = brandHex
+  ctx.fill()
+
+  ctx.fillStyle = '#EFE3F5'
+  ctx.font = `700 9.5px ${sansFont}`
+  ctx.fillText(data.amountLabel, innerX + 18, y + 26)
+
+  const subMetaParts = [data.paymentMethodLabel, data.invoiceNumber].filter(Boolean)
+  if (subMetaParts.length > 0) {
+    ctx.fillStyle = '#F7F2FA'
+    ctx.font = `400 10.5px ${sansFont}`
+    ctx.fillText(subMetaParts.join('  ·  '), innerX + 18, y + 46)
+  }
+
+  ctx.textAlign = 'right'
+  ctx.fillStyle = '#FFFFFF'
+  ctx.font = `700 22px ${sansFont}`
+  ctx.fillText(data.amountFormatted, innerX + innerW - 18, y + 42)
+  ctx.textAlign = 'left'
+  y += totalBarH
+
+  // 10. Personal Message / Notes Quote Box
+  if (data.note) {
+    y += 18
+    drawRoundedRectPath(ctx, innerX, y, innerW, noteSectionH, 8)
+    ctx.fillStyle = stripeBg
+    ctx.fill()
+    ctx.strokeStyle = brandBorder
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    ctx.fillStyle = brandHex
+    ctx.fillRect(innerX, y + 7, 4, noteSectionH - 14)
+
+    ctx.fillStyle = brandHex
+    ctx.font = `700 9px ${sansFont}`
+    ctx.fillText(data.noteTitle || 'PERSONAL MESSAGE', innerX + 16, y + 22)
+
+    ctx.fillStyle = textBody
+    ctx.font = `italic 12.5px ${serifFont}`
+    noteLines.forEach((line, idx) => {
+      ctx.fillText(line, innerX + 16, y + 41 + idx * 18)
+    })
+
+    y += noteSectionH
+  }
+
+  // 11. Editorial Footer
+  y += 22
+  ctx.strokeStyle = lineHex
+  ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(innerX, y + 6)
-  ctx.lineTo(innerX + innerW, y + 6)
+  ctx.moveTo(innerX, y)
+  ctx.lineTo(innerX + innerW, y)
   ctx.stroke()
-  ctx.restore()
 
   ctx.textAlign = 'center'
   ctx.fillStyle = brandHex
-  ctx.font = '700 11px system-ui, -apple-system, sans-serif'
-  ctx.fillText('Crafted with care at Dermaspace', width / 2, y + 28)
+  ctx.font = `700 11px ${sansFont}`
+  ctx.fillText(
+    'Dermaspace Esthetic & Wellness Centre',
+    width / 2,
+    y + 22,
+  )
   ctx.fillStyle = textMuted
-  ctx.font = '400 9.5px system-ui, -apple-system, sans-serif'
+  ctx.font = `400 9.5px ${sansFont}`
   ctx.fillText(
     data.footerNote ||
       '237B Muri Okunola St, Victoria Island  ·  9 Agbeke Rotinwa Cl, Ikoyi',
     width / 2,
-    y + 44,
+    y + 39,
   )
   ctx.fillText(
     'dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625',
     width / 2,
-    y + 58,
+    y + 54,
   )
   ctx.textAlign = 'left'
   ctx.restore()

@@ -123,7 +123,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v23';
+const VERSION = 'v24';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -138,6 +138,7 @@ const PRECACHE = [
   '/favicon.png',
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
+  '/icons/splash-512x512.png',
   '/icons/icon-maskable-512x512.png',
   '/apple-touch-icon.png',
   '/images/dermaspace-logo.png',

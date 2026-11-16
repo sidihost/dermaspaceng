@@ -316,6 +316,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Dermaspace" />
+        <link
+          rel="apple-touch-startup-image"
+          href="/icons/apple-splash-1170x2532.png"
+          media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        />
+        <link
+          rel="apple-touch-startup-image"
+          href="/icons/apple-splash-1290x2796.png"
+          media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

@@ -1,6 +1,6 @@
 {
   "id": "/?source=pwa",
-  "name": "Dermaspace Esthetic & Wellness Centre",
+  "name": "Dermaspace",
   "short_name": "Dermaspace",
   "description": "Book spa treatments, manage your wallet, chat with our team, and pick up appointment reminders — without ever opening a browser tab.",
   "start_url": "/?source=pwa",
@@ -16,7 +16,7 @@
   "icons": [
     { "src": "/icons/icon-96x96.png",          "sizes": "96x96",   "type": "image/png", "purpose": "any" },
     { "src": "/icons/icon-192x192.png",        "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512x512.png",        "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/splash-512x512.png",      "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icons/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
