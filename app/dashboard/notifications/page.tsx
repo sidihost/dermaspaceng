@@ -481,7 +481,7 @@ function NotificationRow({
             e.stopPropagation()
             onDelete()
           }}
-          className="p-1.5 rounded-lg bg-white border border-gray-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 text-gray-600"
+          className="p-1.5 rounded-lg bg-white border border-gray-200 hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] text-gray-600"
           aria-label="Delete notification"
           title="Delete"
         >

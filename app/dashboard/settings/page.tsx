@@ -20,6 +20,12 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useNotify } from '@/components/shared/notify'
 import { isSoundMuted, setSoundMuted } from '@/lib/notification-sound'
 import PageLoader from '@/components/shared/page-loader'
+import { UserAvatar } from '@/components/shared/user-avatar'
+import {
+  clearCachedUser,
+  readCachedUser,
+  writeCachedUser,
+} from '@/lib/auth-cache'
 import {
   formatAccountSubtitle,
   getVisibleEmail,
@@ -484,15 +490,54 @@ function SettingsPageContent() {
   }
 
   useEffect(() => {
+    const cached = readCachedUser()
+    if (cached) {
+      setUser({
+        id: cached.id,
+        firstName: cached.firstName,
+        lastName: cached.lastName,
+        email: '',
+        avatarUrl: cached.avatarUrl ?? undefined,
+        username: cached.username ?? undefined,
+        isPublic: cached.isPublic === false ? false : true,
+        gender: cached.gender ?? null,
+        role: cached.role ?? undefined,
+      })
+      setEditFirstName(cached.firstName || '')
+      setEditLastName(cached.lastName || '')
+      setAvatarUrl(cached.avatarUrl || null)
+      setEditUsername(cached.username || '')
+      setIsPublic(cached.isPublic === false ? false : true)
+      setIsLoading(false)
+    }
+
     const init = async () => {
       try {
-        // Check auth
-        const authRes = await fetch('/api/auth/me')
+        const [
+          authRes,
+          passRes,
+          passkeysRes,
+          twoFARes,
+          walletRes,
+          settingsRes,
+        ] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/auth/password').catch(() => null),
+          fetch('/api/auth/passkey/list').catch(() => null),
+          fetch('/api/auth/2fa/status').catch(() => null),
+          fetch('/api/wallet').catch(() => null),
+          fetch('/api/wallet/settings').catch(() => null),
+        ])
+
         if (!authRes.ok) {
+          clearCachedUser()
           router.push('/signin')
           return
         }
         const authData = await authRes.json()
+        if (authData.user) {
+          writeCachedUser(authData.user)
+        }
         setUser(authData.user)
         // Initialize profile edit fields
         setEditFirstName(authData.user.firstName || '')
@@ -511,53 +556,31 @@ function SettingsPageContent() {
           linkedin: authData.user.linkedin || '',
           youtube: authData.user.youtube || '',
         })
-        // DB default is `true`. We only flip to `false` when the
-        // server explicitly says so, so legacy rows / any failure to
-        // read the column stay visible (safe default for the user's
-        // intent — they did set up a profile to be seen).
         setIsPublic(authData.user.isPublic === false ? false : true)
 
-        // Check password status
-        const passRes = await fetch('/api/auth/password')
-        if (passRes.ok) {
+        if (passRes && passRes.ok) {
           const passData = await passRes.json()
           setHasPassword(passData.hasPassword)
           setAuthProvider(passData.authProvider)
         }
 
-        // Fetch passkeys
-        const passkeysRes = await fetch('/api/auth/passkey/list')
-        if (passkeysRes.ok) {
+        if (passkeysRes && passkeysRes.ok) {
           const passkeysData = await passkeysRes.json()
           setPasskeys(passkeysData.passkeys || [])
         }
 
-        // Fetch 2FA status
-        const twoFARes = await fetch('/api/auth/2fa/status')
-        if (twoFARes.ok) {
+        if (twoFARes && twoFARes.ok) {
           const twoFAData = await twoFARes.json()
           setTwoFAEnabled(twoFAData.isEnabled)
           setBackupCodesRemaining(twoFAData.backupCodesRemaining)
         }
 
-        // Fetch wallet and settings
-        const [walletRes, settingsRes] = await Promise.all([
-          fetch('/api/wallet'),
-          fetch('/api/wallet/settings')
-        ])
-
-        if (walletRes.ok) {
+        if (walletRes && walletRes.ok) {
           const walletData = await walletRes.json()
           setWallet(walletData.wallet)
         }
 
-        if (settingsRes.ok) {
-          // The route returns `{ success: true, settings: {...} }` — we
-          // previously spread the wrapper object itself, which meant the
-          // toggles ignored the persisted values and always rendered
-          // the in-memory defaults. Read `.settings` directly so the
-          // saved preferences (including the new `transaction_alerts`
-          // column) hydrate correctly.
+        if (settingsRes && settingsRes.ok) {
           const settingsData = await settingsRes.json()
           const persisted = settingsData?.settings ?? settingsData
           if (persisted && typeof persisted === 'object') {
@@ -565,7 +588,9 @@ function SettingsPageContent() {
           }
         }
       } catch {
-        router.push('/signin')
+        if (!cached) {
+          router.push('/signin')
+        }
       } finally {
         setIsLoading(false)
       }
@@ -600,7 +625,7 @@ function SettingsPageContent() {
       const data = await res.json()
 
       if (res.ok) {
-        setUser({
+        const updatedUser = {
           ...user!,
           firstName: data.user.firstName,
           lastName: data.user.lastName,
@@ -615,7 +640,12 @@ function SettingsPageContent() {
           facebook: data.user.facebook,
           linkedin: data.user.linkedin,
           youtube: data.user.youtube,
-        })
+        }
+        setUser(updatedUser)
+        writeCachedUser(updatedUser)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('user-updated'))
+        }
         // Success now fires a branded toast instead of the inline
         // banner — the banner lingered after the user had already
         // moved on, and a floating notification reads as a clean
@@ -675,11 +705,16 @@ function SettingsPageContent() {
       })
       if (!res.ok) throw new Error('gender save failed')
       const data = await res.json()
-      setUser((prev) =>
-        prev
-          ? { ...prev, gender: data.user.gender, avatarUrl: data.user.avatarUrl }
-          : prev,
-      )
+      const updatedFromGender = user
+        ? { ...user, gender: data.user.gender, avatarUrl: data.user.avatarUrl }
+        : null
+      if (updatedFromGender) {
+        setUser(updatedFromGender)
+        writeCachedUser(updatedFromGender)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('user-updated'))
+        }
+      }
       setProfileMessage({ type: 'success', text: 'Saved' })
     } catch {
       setUser((prev) => (prev ? { ...prev, gender: previous } : prev))
@@ -712,9 +747,13 @@ function SettingsPageContent() {
       })
       if (!res.ok) throw new Error('avatar save failed')
       const data = await res.json()
-      setUser((prev) =>
-        prev ? { ...prev, avatarUrl: data.user.avatarUrl } : prev,
-      )
+      const updatedWithAvatar = user
+        ? { ...user, avatarUrl: data.user.avatarUrl }
+        : null
+      if (updatedWithAvatar) {
+        setUser(updatedWithAvatar)
+        writeCachedUser(updatedWithAvatar)
+      }
       // Notify the header (and any other consumer) that the user's
       // avatar has changed so they can refresh without a page reload.
       if (typeof window !== 'undefined') {
@@ -1285,20 +1324,19 @@ function SettingsPageContent() {
                         <button
                           type="button"
                           onClick={() => setShowAvatarPicker(true)}
-                          className="group block w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
+                          className="group flex items-center justify-center w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden bg-[#7B2D8E] text-white text-lg sm:text-2xl font-semibold hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
                           aria-label="Change avatar"
                         >
-                          {avatarUrl ? (
-                            <img
-                              src={avatarUrl}
-                              alt="Profile"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="w-full h-full flex items-center justify-center text-white text-lg sm:text-2xl font-semibold">
-                              {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                            </span>
-                          )}
+                          <UserAvatar
+                            avatarUrl={avatarUrl}
+                            firstName={user?.firstName}
+                            lastName={user?.lastName}
+                            role={user?.role}
+                            gender={user?.gender}
+                            sizePx={160}
+                            priority
+                            alt="Profile"
+                          />
                         </button>
                         <button
                           type="button"
@@ -2484,12 +2522,12 @@ function SettingsPageContent() {
                   )}
 
                   {browserNotifPerm === 'denied' && (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="mb-4 rounded-xl border border-[#7B2D8E]/25 bg-[#FAF6FB] p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm font-semibold text-gray-900">
                           Browser notifications are blocked
                         </p>
-                        <p className="text-xs text-amber-800 mt-0.5">
+                        <p className="text-xs text-[#5A1D6A] mt-0.5">
                           Your browser is currently blocking alerts for Dermaspace. Re-enable them in site settings.
                         </p>
                       </div>
@@ -2502,7 +2540,7 @@ function SettingsPageContent() {
                             scroll: false,
                           })
                         }}
-                        className="inline-flex items-center justify-center px-3.5 py-2 rounded-lg border border-amber-300 bg-white text-amber-800 text-xs font-semibold hover:bg-amber-100/60 transition-colors flex-shrink-0"
+                        className="inline-flex items-center justify-center px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 bg-white text-[#5A1D6A] text-xs font-semibold hover:bg-[#7B2D8E]/5 transition-colors flex-shrink-0"
                       >
                         Open settings
                       </button>

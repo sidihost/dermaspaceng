@@ -120,6 +120,8 @@ export default function AboutPage() {
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
                     alt="Dermaspace Spa Interior"
                     fill
+                    sizes="(max-width: 1024px) 50vw, 256px"
+                    referrerPolicy="no-referrer"
                     className="object-cover"
                   />
                 </div>
@@ -128,6 +130,8 @@ export default function AboutPage() {
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp"
                     alt="Facial Treatment"
                     fill
+                    sizes="(max-width: 1024px) 50vw, 256px"
+                    referrerPolicy="no-referrer"
                     className="object-cover"
                   />
                 </div>
@@ -232,11 +236,13 @@ export default function AboutPage() {
                   <div className="flex items-start gap-4 mb-4">
                     {/* Profile Image */}
                     <div className="relative flex-shrink-0">
-                      <div className="w-20 h-20 rounded-xl overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
+                      <div className="relative w-20 h-20 rounded-xl overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
                         <Image
                           src={founder.image}
                           alt={founder.name}
                           fill
+                          sizes="80px"
+                          referrerPolicy="no-referrer"
                           className="object-cover"
                         />
                       </div>

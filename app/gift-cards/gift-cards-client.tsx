@@ -22,13 +22,21 @@ import {
   ChevronLeft,
   Wallet,
   Receipt,
-  Printer,
-  Loader2,
   FlipHorizontal2,
 } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
-import { downloadGiftCardReceiptPdf } from '@/lib/receipt-pdf'
+import {
+  downloadGiftCardReceiptImage,
+  downloadGiftCardReceiptPdf,
+} from '@/lib/receipt-pdf'
+import {
+  RECEIPT_MASTHEAD_PATTERN_STYLE,
+  ReceiptActionButtons,
+  ReceiptCornerMarks,
+  ReceiptCrownBand,
+  ReceiptTearDivider,
+} from '@/components/receipt/receipt-chrome'
 import {
   GiftCardBackPreview,
   GiftCardPreview,
@@ -90,6 +98,7 @@ export default function GiftCardsClient() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentError, setPaymentError] = useState('')
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
+  const [downloadingImage, setDownloadingImage] = useState(false)
   const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front')
   const [completedReceiptRef, setCompletedReceiptRef] = useState('')
   const [completedInvoiceNumber, setCompletedInvoiceNumber] = useState<string | null>(null)
@@ -362,31 +371,45 @@ export default function GiftCardsClient() {
     const summaryDeliveryDate = completedDetails?.deliveryDate ?? (deliveryDate || null)
     const summaryMessage = completedDetails?.personalMessage ?? (personalMessage || null)
 
+    const receiptPayload = {
+      amount: summaryAmount,
+      amountFormatted: formatPrice(summaryAmount),
+      recipientName: summaryRecipient,
+      recipientEmail: summaryRecipientEmail,
+      senderName: summarySender,
+      occasion: summaryOccasion,
+      designId: summaryDesignObj.id,
+      designName: summaryDesign,
+      fontName: completedDetails?.fontName || summaryFontObj.name,
+      deliveryMethod: summaryDeliveryMethod,
+      deliveryDate: summaryDeliveryDate,
+      personalMessage: summaryMessage,
+      paymentMethod: completedPaymentMethod || 'Wallet / Paystack',
+      invoiceNumber: completedInvoiceNumber,
+      receiptRef: completedReceiptRef,
+    }
+
     const handleDownloadGiftCardReceipt = async () => {
       if (downloadingReceipt) return
       setDownloadingReceipt(true)
       try {
-        await downloadGiftCardReceiptPdf({
-          amount: summaryAmount,
-          amountFormatted: formatPrice(summaryAmount),
-          recipientName: summaryRecipient,
-          recipientEmail: summaryRecipientEmail,
-          senderName: summarySender,
-          occasion: summaryOccasion,
-          designId: summaryDesignObj.id,
-          designName: summaryDesign,
-          fontName: completedDetails?.fontName || summaryFontObj.name,
-          deliveryMethod: summaryDeliveryMethod,
-          deliveryDate: summaryDeliveryDate,
-          personalMessage: summaryMessage,
-          paymentMethod: completedPaymentMethod || 'Wallet / Paystack',
-          invoiceNumber: completedInvoiceNumber,
-          receiptRef: completedReceiptRef,
-        })
+        await downloadGiftCardReceiptPdf(receiptPayload)
       } catch {
         // best effort
       } finally {
         setDownloadingReceipt(false)
+      }
+    }
+
+    const handleDownloadGiftCardImage = async () => {
+      if (downloadingImage) return
+      setDownloadingImage(true)
+      try {
+        await downloadGiftCardReceiptImage(receiptPayload)
+      } catch {
+        // best effort
+      } finally {
+        setDownloadingImage(false)
       }
     }
 
@@ -395,147 +418,152 @@ export default function GiftCardsClient() {
         <div className="print:hidden">
           <Header />
         </div>
-        <main className="min-h-screen bg-[#7B2D8E] flex items-center justify-center px-4 pt-24 pb-12 print:min-h-0 print:bg-white print:p-0 print:block">
-          <div className="max-w-md w-full bg-white rounded-2xl p-6 sm:p-8 text-center border border-white/20 print:max-w-xl print:mx-auto print:border-0 print:rounded-none print:p-2">
-            {/* Print-only official receipt letterhead */}
-            <header className="hidden print:flex items-start justify-between gap-4 border-b border-gray-200 pb-4 mb-5 text-left">
-              <div>
-                <p className="text-lg font-bold tracking-tight text-[#7B2D8E]">Dermaspace</p>
-                <p className="text-[11px] text-gray-500">Esthetic &amp; Wellness Centre · Lagos, NG</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
-                  Gift Card Receipt
-                </p>
-                {completedReceiptRef && (
-                  <p className="text-[11px] font-mono text-gray-600 mt-0.5">{completedReceiptRef}</p>
-                )}
+        <main className="min-h-screen bg-[#F7F5F9] flex items-center justify-center px-4 pt-20 pb-10 print:min-h-0 print:bg-white print:p-0 print:block">
+          <div className="max-w-md w-full bg-white rounded-2xl border border-[#7B2D8E]/20 overflow-hidden print:max-w-xl print:mx-auto print:border-0 print:rounded-none">
+            <ReceiptCrownBand />
+
+            {/* Patterned Receipt Header */}
+            <header
+              className="relative px-5 pt-4 pb-3.5 bg-[#F7F2FA] border-b border-[#7B2D8E]/15 text-left"
+              style={RECEIPT_MASTHEAD_PATTERN_STYLE}
+            >
+              <ReceiptCornerMarks inset="inset-2" />
+              <div className="relative flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold tracking-tight text-[#7B2D8E]">Dermaspace</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                    Esthetic &amp; Wellness Centre
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+                    Official Receipt
+                  </p>
+                  <p className="text-[11px] font-semibold text-gray-900">Gift Card</p>
+                  {completedReceiptRef && (
+                    <p className="text-[10px] font-mono text-gray-500 mt-0.5 truncate max-w-[140px]">
+                      {completedReceiptRef}
+                    </p>
+                  )}
+                </div>
               </div>
             </header>
 
-            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center print:hidden">
-              <Check className="w-7 h-7 text-[#7B2D8E]" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Gift Card Order Confirmed!</h2>
-            <p className="text-sm text-gray-600 mb-5">
-              Your payment is confirmed and your gift card is being prepared. A receipt has been sent to your email.
-            </p>
-            <GiftCardPreview
-              design={summaryDesignObj}
-              amountText={formatPrice(summaryAmount)}
-              recipientName={summaryRecipient}
-              senderName={summarySender || senderName}
-              occasion={summaryOccasion}
-              fontClassName={summaryFontObj.className}
-              showStack={false}
-              className="mb-5 text-left"
-            />
-            <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm border border-[#7B2D8E]/10 print:bg-white print:border-gray-200">
-              <div className="space-y-2">
-                {summaryAmount > 0 && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">Amount</span>
-                    <span className="font-semibold text-gray-900">{formatPrice(summaryAmount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between gap-3">
-                  <span className="text-gray-500">For</span>
-                  <span className="font-medium text-gray-900 text-right">{summaryRecipient}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-gray-500">Occasion</span>
-                  <span className="text-gray-900 text-right">
-                    {summaryOccasion} ({summaryOccasionMeta.editionLabel})
-                  </span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span className="text-gray-500">Card Style</span>
-                  <span className="inline-flex items-center gap-1.5 text-gray-900 text-right">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full border border-black/15"
-                      style={{ backgroundColor: summaryDesignObj.surfaceHex }}
-                    />
-                    {summaryDesign} · {completedDetails?.fontName || summaryFontObj.name}
-                  </span>
-                </div>
-                {completedPaymentMethod && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">Paid via</span>
-                    <span className="text-gray-900 text-right">{completedPaymentMethod}</span>
-                  </div>
-                )}
-                {completedInvoiceNumber && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">Invoice</span>
-                    <span className="font-mono text-xs text-gray-900 text-right">{completedInvoiceNumber}</span>
-                  </div>
-                )}
-                {completedReceiptRef && (
-                  <div className="flex justify-between gap-3">
-                    <span className="text-gray-500">Reference</span>
-                    <span className="font-mono text-xs text-gray-900 text-right truncate max-w-[180px]">{completedReceiptRef}</span>
-                  </div>
-                )}
-                {summaryMessage && (
-                  <div className="pt-2 mt-2 border-t border-[#7B2D8E]/10 text-xs text-gray-600 italic">
-                    &ldquo;{summaryMessage}&rdquo;
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2.5 print:hidden">
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={handleDownloadGiftCardReceipt}
-                  disabled={downloadingReceipt}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors text-sm disabled:opacity-60"
-                >
-                  {downloadingReceipt ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4" />
-                  )}
-                  {downloadingReceipt ? 'Saving…' : 'Download PDF'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-[#7B2D8E]/25 text-[#7B2D8E] font-semibold rounded-xl hover:bg-[#7B2D8E]/5 transition-colors text-sm"
-                >
-                  <Printer className="w-4 h-4" />
-                  Print Receipt
-                </button>
-              </div>
-              {completedReceiptRef && (
-                <Link
-                  href={`/dashboard/transactions/${encodeURIComponent(completedReceiptRef)}`}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
-                >
-                  <Receipt className="w-4 h-4" />
-                  Full Receipt &amp; Invoice
-                </Link>
-              )}
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={resetOrderForm}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
-                >
-                  Order Another
-                </button>
-                <Link
-                  href="/"
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors text-sm"
-                >
-                  Back to Home
-                </Link>
-              </div>
-            </div>
+            <ReceiptTearDivider notchBgClass="bg-[#F7F5F9]" />
 
-            <footer className="hidden print:block mt-6 pt-4 border-t border-dashed border-gray-200 text-center text-[11px] text-gray-500">
-              Dermaspace Esthetic &amp; Wellness Centre · 237B Muri Okunola St, Victoria Island · 9 Agbeke Rotinwa Cl, Ikoyi · hello@dermaspaceng.com
-            </footer>
+            <div className="px-5 pb-6 text-center">
+              <div className="w-10 h-10 mx-auto mb-2.5 rounded-full bg-[#F7F2FA] border border-[#7B2D8E]/20 flex items-center justify-center print:hidden">
+                <Check className="w-5 h-5 text-[#7B2D8E]" strokeWidth={2.5} />
+              </div>
+              <h2 className="text-base font-bold text-gray-900">Gift Card Confirmed</h2>
+              <p className="mt-1 text-xs text-gray-600 mb-4">
+                Your payment is confirmed and a copy of your receipt has been sent to your email.
+              </p>
+
+              <GiftCardPreview
+                design={summaryDesignObj}
+                amountText={formatPrice(summaryAmount)}
+                recipientName={summaryRecipient}
+                senderName={summarySender || senderName}
+                occasion={summaryOccasion}
+                fontClassName={summaryFontObj.className}
+                showStack={false}
+                className="mb-4 text-left"
+              />
+
+              <div className="bg-[#FBF9FD] rounded-xl p-3.5 mb-4 text-left text-xs border border-[#7B2D8E]/15 print:bg-white print:border-gray-200">
+                <div className="space-y-1.5">
+                  {summaryAmount > 0 && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-500">Amount</span>
+                      <span className="font-bold text-[#7B2D8E]">{formatPrice(summaryAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">For</span>
+                    <span className="font-medium text-gray-900 text-right">{summaryRecipient}</span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">Occasion</span>
+                    <span className="text-gray-900 text-right">
+                      {summaryOccasion} ({summaryOccasionMeta.editionLabel})
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-gray-500">Card Style</span>
+                    <span className="inline-flex items-center gap-1.5 text-gray-900 text-right">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full border border-black/15"
+                        style={{ backgroundColor: summaryDesignObj.surfaceHex }}
+                      />
+                      {summaryDesign} · {completedDetails?.fontName || summaryFontObj.name}
+                    </span>
+                  </div>
+                  {completedPaymentMethod && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-500">Paid via</span>
+                      <span className="text-gray-900 text-right">{completedPaymentMethod}</span>
+                    </div>
+                  )}
+                  {completedInvoiceNumber && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-500">Invoice</span>
+                      <span className="font-mono text-[11px] text-gray-900 text-right">{completedInvoiceNumber}</span>
+                    </div>
+                  )}
+                  {completedReceiptRef && (
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-500">Reference</span>
+                      <span className="font-mono text-[11px] text-[#7B2D8E] text-right truncate max-w-[170px]">{completedReceiptRef}</span>
+                    </div>
+                  )}
+                  {summaryMessage && (
+                    <div className="pt-2 mt-1.5 border-t border-[#7B2D8E]/10 text-[11px] text-gray-600 italic">
+                      &ldquo;{summaryMessage}&rdquo;
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 print:hidden">
+                <ReceiptActionButtons
+                  className="justify-center"
+                  onDownloadPdf={handleDownloadGiftCardReceipt}
+                  onDownloadImage={handleDownloadGiftCardImage}
+                  onPrint={() => window.print()}
+                  downloadingPdf={downloadingReceipt}
+                  downloadingImage={downloadingImage}
+                />
+                <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                  {completedReceiptRef && (
+                    <Link
+                      href={`/dashboard/transactions/${encodeURIComponent(completedReceiptRef)}`}
+                      className="inline-flex h-8 items-center justify-center gap-1.5 px-3 border border-gray-200 text-gray-700 font-semibold rounded-lg hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors text-xs"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      Full Receipt
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={resetOrderForm}
+                    className="inline-flex h-8 items-center justify-center px-3 border border-gray-200 text-gray-700 font-semibold rounded-lg hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors text-xs"
+                  >
+                    Order Another
+                  </button>
+                  <Link
+                    href="/"
+                    className="inline-flex h-8 items-center justify-center px-3 border border-gray-200 text-gray-700 font-semibold rounded-lg hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors text-xs"
+                  >
+                    Home
+                  </Link>
+                </div>
+              </div>
+
+              <footer className="hidden print:block mt-6 pt-4 border-t border-dashed border-gray-200 text-center text-[11px] text-gray-500">
+                Dermaspace Esthetic &amp; Wellness Centre · 237B Muri Okunola St, Victoria Island · 9 Agbeke Rotinwa Cl, Ikoyi · hello@dermaspaceng.com
+              </footer>
+            </div>
           </div>
         </main>
         <div className="print:hidden">

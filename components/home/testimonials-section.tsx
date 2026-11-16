@@ -93,7 +93,14 @@ export default function TestimonialsSection() {
                   }`}
                 >
                   <div className="relative h-11 w-11 overflow-hidden rounded-full">
-                    <Image src={t.image} alt={t.name} fill className="object-cover" />
+                    <Image
+                      src={t.image}
+                      alt={t.name}
+                      fill
+                      sizes="44px"
+                      referrerPolicy="no-referrer"
+                      className="object-cover"
+                    />
                   </div>
                   <div className="min-w-0">
                     <p

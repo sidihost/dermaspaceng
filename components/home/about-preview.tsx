@@ -35,6 +35,8 @@ export default function AboutPreview() {
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled-670-%C3%83%C2%97-700-px-1-1.png-HAZeviZdNNsUTW1ROSjFnAswOWUN4P.webp"
                 alt="Dermaspace Team"
                 fill
+                sizes="(max-width: 768px) 100vw, 672px"
+                referrerPolicy="no-referrer"
                 className="object-cover object-center"
               />
             </div>

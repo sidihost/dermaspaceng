@@ -22,6 +22,12 @@ import {
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
+import { UserAvatar } from '@/components/shared/user-avatar'
+import {
+  clearCachedUser,
+  readCachedUser,
+  writeCachedUser,
+} from '@/lib/auth-cache'
 import { logoutAndRedirect } from '@/lib/logout'
 import {
   formatAccountSubtitle,
@@ -121,9 +127,29 @@ export default function DashboardPage() {
   const [supportUnread, setSupportUnread] = useState(0)
 
   useEffect(() => {
+    const cached = readCachedUser()
+    if (cached) {
+      setUser((prev) =>
+        prev ?? {
+          id: cached.id,
+          firstName: cached.firstName,
+          lastName: cached.lastName,
+          email: '',
+          avatarUrl: cached.avatarUrl ?? null,
+          username: cached.username ?? null,
+          role: cached.role ?? undefined,
+          gender: cached.gender ?? null,
+        },
+      )
+      setIsLoading(false)
+    }
+
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const [res, ticketsRes] = await Promise.all([
+          fetch('/api/auth/me'),
+          fetch('/api/tickets').catch(() => null),
+        ])
         if (res.ok) {
           const data = await res.json()
           if (
@@ -133,39 +159,21 @@ export default function DashboardPage() {
             router.replace('/complete-profile')
             return
           }
+          if (data.user) {
+            writeCachedUser(data.user)
+          }
           setUser(data.user)
-          
-          // Check database for saved preferences
+
           if (data.preferences) {
-            // User has saved preferences in database
             setPreferences(data.preferences)
           }
-          
-          // Check if user has dismissed the welcome modal (database is the source of truth)
+
           if (!data.welcomeDismissed) {
-            // First time user - show AI welcome modal
             setShowAIWelcome(true)
           } else if (!data.avatarIntroDismissed) {
-            // Existing users who've already dismissed the AI welcome
-            // still deserve to learn about the new avatar picker — we
-            // show the intro once. The new-user branch handles the
-            // same prompt inside dismissAIWelcome() below, so new
-            // users get it right after the AI welcome flow.
-            //
-            // The "seen" flag lives on user_preferences server-side
-            // (see /api/user/preferences) so it persists across
-            // devices and private windows — the previous localStorage
-            // gate was firing every visit for users whose browser
-            // wiped storage between sessions.
-            //
-            // Delay just a hair so the dashboard has painted first
-            // and the modal doesn't feel like it blocks the page.
             setTimeout(() => setShowAvatarIntro(true), 600)
           }
-          
 
-          
-          // Load chat history
           const chatSessions = localStorage.getItem('derma-chat-sessions')
           if (chatSessions) {
             const sessions = JSON.parse(chatSessions)
@@ -176,11 +184,8 @@ export default function DashboardPage() {
             })))
           }
 
-          // Fetch support ticket unread-reply count so the sidebar & quick
-          // action can show a badge when admin has replied.
-          try {
-            const ticketsRes = await fetch('/api/tickets')
-            if (ticketsRes.ok) {
+          if (ticketsRes && ticketsRes.ok) {
+            try {
               const ticketsData = await ticketsRes.json()
               const total = (ticketsData.tickets || []).reduce(
                 (sum: number, t: { unread_reply_count?: number }) =>
@@ -188,15 +193,18 @@ export default function DashboardPage() {
                 0,
               )
               setSupportUnread(total)
+            } catch {
+              /* non-blocking */
             }
-          } catch {
-            /* non-blocking */
           }
         } else {
+          clearCachedUser()
           router.push('/signin')
         }
       } catch {
-        router.push('/signin')
+        if (!cached) {
+          router.push('/signin')
+        }
       } finally {
         setIsLoading(false)
       }
@@ -340,8 +348,13 @@ export default function DashboardPage() {
         }),
       })
       if (!res.ok) throw new Error('save failed')
+      const data = await res.json().catch(() => ({}))
+      const savedUrl = data?.user?.avatarUrl ?? url
+      const updatedUser = { ...user, avatarUrl: savedUrl }
+      setUser(updatedUser)
+      writeCachedUser(updatedUser)
       // Let the header (and any other listener) know the user's
-      // avatar has changed so they can refetch without a page reload.
+      // avatar has changed so they can refresh without a page reload.
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('user-updated'))
       }
@@ -522,7 +535,12 @@ export default function DashboardPage() {
               }),
             })
             if (!res.ok) throw new Error('gender save failed')
-            setUser({ ...user, gender: g })
+            const updatedUser = { ...user, gender: g }
+            setUser(updatedUser)
+            writeCachedUser(updatedUser)
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('user-updated'))
+            }
           }}
         />
       )}
@@ -668,19 +686,16 @@ export default function DashboardPage() {
                   className="w-10 h-10 md:w-11 md:h-11 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm lg:text-lg flex-shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
                   aria-label="Change avatar"
                 >
-                  {user?.avatarUrl ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={user.avatarUrl}
-                      alt={`${user.firstName}'s avatar`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <>
-                      {user?.firstName?.charAt(0)}
-                      {user?.lastName?.charAt(0)}
-                    </>
-                  )}
+                  <UserAvatar
+                    avatarUrl={user?.avatarUrl}
+                    firstName={user?.firstName}
+                    lastName={user?.lastName}
+                    role={user?.role}
+                    gender={user?.gender}
+                    sizePx={112}
+                    priority
+                    alt={user?.firstName ? `${user.firstName}'s avatar` : ''}
+                  />
                 </button>
                 <div className="min-w-0 leading-tight">
                   <h1 className="text-[15px] md:text-base lg:text-2xl lg:font-bold lg:tracking-tight font-semibold text-gray-900 truncate">

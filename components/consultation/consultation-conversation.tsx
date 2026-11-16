@@ -9,6 +9,7 @@ import {
   Send,
 } from 'lucide-react'
 import { AttachmentList } from '@/components/shared/attachment-list'
+import { UserAvatar } from '@/components/shared/user-avatar'
 import type { ReplyAttachment } from '@/lib/attachments'
 
 export interface ConsultationConversationReply {
@@ -60,7 +61,7 @@ export function ConsultationConversation({
   onReplySent,
   customerLabel = 'You',
   emptyTitle = 'No team responses yet',
-  emptyDescription = 'When our clinical team reviews your consultation or shares preparation advice, their responses will appear right here.',
+  emptyDescription = 'When our consultation team reviews your request or shares preparation guidance, their responses will appear right here.',
 }: ConsultationConversationProps) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -123,7 +124,7 @@ export function ConsultationConversation({
               )}
             </div>
             <p className="mt-0.5 text-xs leading-relaxed text-gray-500 text-pretty">
-              Responses from the Dermaspace clinical team and your follow-ups.
+              Consultation responses from the Dermaspace team and your follow-ups.
             </p>
           </div>
         </div>
@@ -151,17 +152,12 @@ export function ConsultationConversation({
                 >
                   <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500">
                     <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-[10px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
-                      {reply.senderAvatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={reply.senderAvatarUrl}
-                          alt=""
-                          aria-hidden="true"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        initialsOf(reply.senderName)
-                      )}
+                      <UserAvatar
+                        avatarUrl={reply.senderAvatarUrl}
+                        sizePx={40}
+                        fallback={initialsOf(reply.senderName)}
+                        imgClassName="h-full w-full object-cover"
+                      />
                     </span>
                     <span className="font-semibold text-gray-900">
                       {reply.senderName || 'Dermaspace Team'}
@@ -257,7 +253,7 @@ export function ConsultationConversation({
             )}
             {sentNotice && !error && (
               <p className="text-xs font-medium text-[#7B2D8E]">
-                Response sent — our clinical team has been notified.
+                Response sent — our consultation team has been notified.
               </p>
             )}
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">

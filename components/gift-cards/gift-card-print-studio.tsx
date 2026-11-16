@@ -300,43 +300,43 @@ export function GiftCardPrintStudio({
         </div>
 
         {/* Print Export Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <button
             type="button"
             onClick={handleDownloadPressPdf}
             disabled={downloadingType !== null}
-            className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-xs sm:text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-xs font-semibold transition-colors disabled:opacity-60 cursor-pointer"
           >
             {downloadingType === 'press' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
             )}
-            <span>Download Print-Shop PDF (CR80 + 3mm Bleed)</span>
+            <span>Print-Shop PDF (CR80)</span>
           </button>
 
           <button
             type="button"
             onClick={handleDownloadA4Sheet}
             disabled={downloadingType !== null}
-            className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl border border-[#7B2D8E]/30 bg-white hover:bg-[#FAF6FB] text-[#7B2D8E] text-xs sm:text-sm font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg border border-[#7B2D8E]/30 bg-white hover:bg-[#F7F2FA] text-[#7B2D8E] text-xs font-semibold transition-colors disabled:opacity-60 cursor-pointer"
           >
             {downloadingType === 'a4' ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <FileText className="w-4 h-4" />
+              <FileText className="w-3.5 h-3.5" />
             )}
-            <span>Download A4 Cut &amp; Proof Sheet</span>
+            <span>A4 Cut Sheet</span>
           </button>
 
           {!compact && (
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center justify-center gap-2 h-10 px-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-medium transition-colors cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg border border-gray-200 bg-white hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] text-gray-700 text-xs font-semibold transition-colors cursor-pointer"
             >
-              <Printer className="w-4 h-4" />
-              <span>Print Proof</span>
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print</span>
             </button>
           )}
 
@@ -344,10 +344,10 @@ export function GiftCardPrintStudio({
             <button
               type="button"
               onClick={() => setViewMode(viewMode === 'front' ? 'back' : 'front')}
-              className="inline-flex items-center justify-center gap-1.5 h-10 px-3 rounded-xl border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] cursor-pointer"
             >
               <FlipHorizontal2 className="w-3.5 h-3.5" />
-              <span>Flip Card</span>
+              <span>Flip</span>
             </button>
           )}
         </div>

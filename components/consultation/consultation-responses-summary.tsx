@@ -40,7 +40,7 @@ export function ConsultationResponsesSummary({
 
   return (
     <section
-      aria-label="Clinical responses summary"
+      aria-label="Consultation responses summary"
       className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5"
     >
       <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
@@ -51,7 +51,7 @@ export function ConsultationResponsesSummary({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-gray-900">
-                Clinical team responses
+                Consultation responses
               </h2>
               {replies.length > 0 && (
                 <span className="rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#7B2D8E]">
@@ -61,8 +61,8 @@ export function ConsultationResponsesSummary({
             </div>
             <p className="mt-1 text-xs leading-relaxed text-gray-500 text-pretty">
               {teamReplyCount > 0
-                ? 'Read clinical guidance and send a response to our team on the dedicated responses page.'
-                : 'View clinical team responses or send a follow-up response on the dedicated responses page.'}
+                ? 'Read consultation guidance and send a response to our team on the dedicated responses page.'
+                : 'View consultation responses or send a follow-up response on the dedicated responses page.'}
             </p>
           </div>
         </div>

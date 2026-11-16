@@ -227,6 +227,8 @@ export default function MembershipPage() {
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
                   alt="Spa interior at Dermaspace"
                   fill
+                  sizes="(max-width: 1024px) 50vw, 280px"
+                  referrerPolicy="no-referrer"
                   className="object-cover"
                 />
               </div>
@@ -235,6 +237,8 @@ export default function MembershipPage() {
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
                   alt="Facial treatment in progress"
                   fill
+                  sizes="(max-width: 1024px) 50vw, 280px"
+                  referrerPolicy="no-referrer"
                   className="object-cover"
                 />
               </div>

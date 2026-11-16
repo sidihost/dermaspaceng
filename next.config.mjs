@@ -23,15 +23,19 @@ const nextConfig = {
   // the hosts we legitimately embed images from (Vercel Blob is
   // where most of the spa's photography lives).
   images: {
-    formats: ['image/avif', 'image/webp'],
+    formats: ['image/webp'],
     remotePatterns: [
       // Vercel Blob public buckets — where all the spa's uploaded
       // photography / gallery / service artwork is stored.
       { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
       { protocol: 'https', hostname: 'public.blob.vercel-storage.com' },
       { protocol: 'https', hostname: 'hebbkx1anhila5yf.public.blob.vercel-storage.com' },
-      // Maps / profile avatars we proxy occasionally.
+      // Maps / OAuth profile avatars.
       { protocol: 'https', hostname: 'api.mapbox.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: '*.googleusercontent.com' },
+      { protocol: 'https', hostname: 'pbs.twimg.com' },
+      { protocol: 'https', hostname: 'graph.microsoft.com' },
     ],
     // Restrict device sizes to realistic target breakpoints so the
     // image CDN isn't asked to render dozens of variants it will

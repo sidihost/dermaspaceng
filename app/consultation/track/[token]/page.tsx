@@ -27,8 +27,8 @@ import {
 // Private, account-free status & conversation page for a submitted
 // consultation. The anonymous customer reaches it via the unguessable
 // token they got on submit (and by email). It shows the current request
-// status, appointment details (+ calendar add), two-way clinical team
-// conversation, and the personalised skin analysis.
+// status, appointment details (+ calendar add), two-way consultation
+// team conversation, and the personalised skin analysis.
 // ---------------------------------------------------------------------------
 
 const locationNames: Record<string, { name: string; address: string }> = {
@@ -288,8 +288,8 @@ export default function TrackConsultationPage({
                 Hi {data.firstName}, here&apos;s your consultation
               </h2>
               <p className="text-sm text-gray-600 text-pretty">
-                Bookmark this page to check your status, read responses from our
-                clinical team, and revisit your personalised skin analysis anytime.
+                Bookmark this page to check your status, read consultation responses from
+                our team, and revisit your personalised skin analysis anytime.
               </p>
             </div>
 
@@ -411,7 +411,7 @@ export default function TrackConsultationPage({
               )}
             </div>
 
-            {/* Clinical responses link card */}
+            {/* Consultation responses link card */}
             <ConsultationResponsesSummary
               replies={data.replies ?? []}
               href={`/consultation/track/${token}/responses`}

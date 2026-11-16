@@ -127,20 +127,39 @@ export function ServiceWorkerRegister() {
     })
 
     if ('serviceWorker' in navigator && canRegisterSw) {
+      const hadController = Boolean(navigator.serviceWorker.controller)
+      let swReloading = false
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
           console.log('SW registered:', registration.scope)
 
-          // Warm core offline landing pages once SW is ready
-          navigator.serviceWorker.ready
-            .then((readyReg) => {
-              readyReg.active?.postMessage({
-                type: 'CACHE_URLS',
-                urls: ['/', '/offline', '/services', '/gift-cards', '/contact', '/blog', '/about'],
-              })
-            })
-            .catch(() => {})
+          // Warm core offline landing pages only after initial page load & idle
+          // so critical images, avatars, and /api/auth/me never compete with
+          // background SSR precaching.
+          const scheduleWarmup = () => {
+            const runWarmup = () => {
+              navigator.serviceWorker.ready
+                .then((readyReg) => {
+                  readyReg.active?.postMessage({
+                    type: 'CACHE_URLS',
+                    urls: ['/', '/offline', '/services', '/gift-cards', '/contact', '/blog', '/about'],
+                  })
+                })
+                .catch(() => {})
+            }
+            const ric = (window as { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number }).requestIdleCallback
+            if (ric) {
+              ric(runWarmup, { timeout: 4000 })
+            } else {
+              window.setTimeout(runWarmup, 3000)
+            }
+          }
+          if (document.readyState === 'complete') {
+            window.setTimeout(scheduleWarmup, 1500)
+          } else {
+            window.addEventListener('load', () => window.setTimeout(scheduleWarmup, 1500), { once: true })
+          }
 
           // Check for updates periodically
           setInterval(() => {
@@ -163,8 +182,12 @@ export function ServiceWorkerRegister() {
           console.error('SW registration failed:', error)
         })
 
-      // Handle controller change (after update)
+      // Handle controller change only when replacing an existing controller so
+      // first-time SW activation (skipWaiting + clients.claim) never interrupts
+      // initial image and avatar loading with an unexpected reload.
       navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController || swReloading) return
+        swReloading = true
         window.location.reload()
       })
     } else if ('serviceWorker' in navigator && !canRegisterSw) {

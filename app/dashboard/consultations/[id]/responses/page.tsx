@@ -3,7 +3,7 @@
 /**
  * /dashboard/consultations/[id]/responses
  *
- * Dedicated page for reading clinical team responses and sending
+ * Dedicated page for reading consultation responses and sending
  * follow-up messages for a consultation belonging to the signed-in customer.
  */
 

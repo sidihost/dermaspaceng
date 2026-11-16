@@ -220,30 +220,33 @@ export default function Hero() {
     >
       {/* Background Slider */}
       <div className="absolute inset-0 bg-[#7B2D8E]">
-        {slides.map((slide, index) => (
-          <div
-            key={slide.eyebrow}
-            className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
-              index === safeSlideIndex ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            {slide.festive ? (
-              <ChristmasHeroIllustration active={index === safeSlideIndex} />
-            ) : (
-              <Image
-                src={slide.image}
-                alt={slide.title}
-                fill
-                sizes="100vw"
-                referrerPolicy="no-referrer"
-                className={`object-cover object-[center_28%] transition-transform duration-[6000ms] ease-out ${
-                  index === safeSlideIndex ? 'scale-105' : 'scale-100'
-                }`}
-                priority={index === 0}
-              />
-            )}
-          </div>
-        ))}
+        {(() => {
+          const firstPhotoSlideIndex = slides.findIndex((s) => !s.festive)
+          return slides.map((slide, index) => (
+            <div
+              key={slide.eyebrow}
+              className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
+                index === safeSlideIndex ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              {slide.festive ? (
+                <ChristmasHeroIllustration active={index === safeSlideIndex} />
+              ) : (
+                <Image
+                  src={slide.image}
+                  alt={slide.title}
+                  fill
+                  sizes="100vw"
+                  referrerPolicy="no-referrer"
+                  className={`object-cover object-[center_28%] transition-transform duration-[6000ms] ease-out ${
+                    index === safeSlideIndex ? 'scale-105' : 'scale-100'
+                  }`}
+                  priority={index === firstPhotoSlideIndex}
+                />
+              )}
+            </div>
+          ))
+        })()}
 
         {/* Clean solid contrast veil on photographic slides only (zero CSS gradients, zero CSS shadows) */}
         {!active.festive && (

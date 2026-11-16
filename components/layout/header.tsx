@@ -34,30 +34,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logoutAndRedirect } from '@/lib/logout'
+import { useAuth } from '@/hooks/use-auth'
 import { formatAccountSubtitle } from '@/lib/auth-onboarding'
 import { NotificationBell } from '@/components/shared/notification-bell'
 import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
-import { resolveAdminAvatar } from '@/lib/admin-avatars'
-
-interface UserData {
-  firstName: string
-  lastName: string
-  email: string
-  username?: string | null
-  xUsername?: string | null
-  emailIsPlaceholder?: boolean
-  needsProfileCompletion?: boolean
-  avatarUrl?: string | null
-  gender?: 'male' | 'female' | null
-  /** Admin / staff / user. Admins and staff get a branded default
-   *  avatar (resolved by lib/admin-avatars) instead of the stock spa
-   *  cartoon, matching the institutional look of the dashboard. */
-  role?: string | null
-}
-
-// Cache user data in memory to prevent flash
-let cachedUser: UserData | null = null
-let authCheckDone = false
+import { UserAvatar } from '@/components/shared/user-avatar'
 
 // Time-based greeting helper
 const getGreeting = () => {
@@ -211,8 +192,7 @@ export default function Header() {
   const router = useRouter()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [user, setUser] = useState<UserData | null>(cachedUser)
-  const [isAuthLoading, setIsAuthLoading] = useState(!authCheckDone)
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [showBanner, setShowBanner] = useState(true)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null)
@@ -222,85 +202,13 @@ export default function Header() {
   const profileDropdownRef = useRef<HTMLDivElement>(null)
   const mobileProfileDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Check if user is logged in - with caching for instant display.
-  // We always revalidate in the background (stale-while-revalidate)
-  // so profile changes (new avatar, name update, etc.) reflect in the
-  // header without needing a hard reload.
   useEffect(() => {
-    let cancelled = false
-
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me', { cache: 'no-store' })
-        if (cancelled) return
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            cachedUser = data.user
-            setUser(data.user)
-          } else {
-            cachedUser = null
-            setUser(null)
-          }
-        } else {
-          cachedUser = null
-          setUser(null)
-        }
-      } catch {
-        if (!cancelled) {
-          cachedUser = null
-          setUser(null)
-        }
-      } finally {
-        if (!cancelled) {
-          authCheckDone = true
-          setIsAuthLoading(false)
-        }
-      }
-    }
-
-    // Show cached value immediately (if we have one) so the header
-    // doesn't flicker, then revalidate in the background.
-    if (authCheckDone) {
-      setUser(cachedUser)
-      setIsAuthLoading(false)
-    }
-    fetchUser()
-
-    // Listen for profile updates from anywhere in the app (avatar,
-    // name, etc.) so the header refreshes without a page reload.
-    const onUserUpdated = () => {
-      fetchUser()
-    }
     const onAuthLogout = () => {
-      // Do not wait for `/api/auth/me` to return 401 after a sign-out.
-      // The shared logout helper has already cleared local auth state, so
-      // update this independently cached header state in the same frame.
-      cachedUser = null
-      setUser(null)
-      setIsAuthLoading(false)
       setShowProfileDropdown(false)
       setIsMobileMenuOpen(false)
     }
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== null && !e.key.startsWith('dermaspace.auth.user')) return
-      fetchUser()
-    }
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) fetchUser()
-    }
-    window.addEventListener('user-updated', onUserUpdated)
     window.addEventListener('auth-logout', onAuthLogout)
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('pageshow', onPageShow)
-
-    return () => {
-      cancelled = true
-      window.removeEventListener('user-updated', onUserUpdated)
-      window.removeEventListener('auth-logout', onAuthLogout)
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener('pageshow', onPageShow)
-    }
+    return () => window.removeEventListener('auth-logout', onAuthLogout)
   }, [])
 
   useEffect(() => {
@@ -459,30 +367,15 @@ export default function Header() {
                     <span className="text-xs font-semibold text-gray-900 whitespace-nowrap leading-tight">{user.firstName}</span>
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
-                    {(() => {
-                      const resolved = resolveAdminAvatar(
-                        user.avatarUrl,
-                        user.role,
-                        user.gender,
-                      )
-                      if (resolved) {
-                        return (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={resolved}
-                            alt=""
-                            aria-hidden="true"
-                            className="w-full h-full object-cover"
-                          />
-                        )
-                      }
-                      return (
-                        <>
-                          {user.firstName?.charAt(0)}
-                          {user.lastName?.charAt(0)}
-                        </>
-                      )
-                    })()}
+                    <UserAvatar
+                      avatarUrl={user.avatarUrl}
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      role={user.role}
+                      gender={user.gender}
+                      sizePx={64}
+                      priority
+                    />
                   </div>
                 </button>
 
@@ -544,12 +437,6 @@ export default function Header() {
                       <button
                         onClick={async () => {
                           setShowProfileDropdown(false)
-                          // Reset the header's own module-level cache so a
-                          // re-render in this tab can't re-paint the user,
-                          // then hand off to the shared helper which clears
-                          // the localStorage cache and hard-redirects.
-                          cachedUser = null
-                          authCheckDone = false
                           await logoutAndRedirect('/')
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
@@ -812,30 +699,15 @@ export default function Header() {
                     className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-[#7B2D8E]/[0.06] hover:bg-[#7B2D8E]/10 border border-[#7B2D8E]/15 hover:border-[#7B2D8E]/25 transition-colors group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-bold overflow-hidden">
-                      {(() => {
-                        const resolved = resolveAdminAvatar(
-                          user.avatarUrl,
-                          user.role,
-                          user.gender,
-                        )
-                        if (resolved) {
-                          return (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={resolved}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover"
-                            />
-                          )
-                        }
-                        return (
-                          <>
-                            {user.firstName?.charAt(0)}
-                            {user.lastName?.charAt(0)}
-                          </>
-                        )
-                      })()}
+                      <UserAvatar
+                        avatarUrl={user.avatarUrl}
+                        firstName={user.firstName}
+                        lastName={user.lastName}
+                        role={user.role}
+                        gender={user.gender}
+                        sizePx={80}
+                        priority
+                      />
                     </div>
                     <div className="flex flex-col text-left">
                       <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
@@ -905,12 +777,6 @@ export default function Header() {
                         <button
                           onClick={async () => {
                             setShowProfileDropdown(false)
-                            // Same pattern as the desktop dropdown above —
-                            // reset the local module cache, then delegate
-                            // to the shared helper for the API call,
-                            // localStorage wipe and hard redirect.
-                            cachedUser = null
-                            authCheckDone = false
                             await logoutAndRedirect('/')
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
@@ -1110,30 +976,15 @@ export default function Header() {
                     className="flex items-center justify-center gap-2 p-3 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
                   >
                     <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold overflow-hidden">
-                      {(() => {
-                        const resolved = resolveAdminAvatar(
-                          user.avatarUrl,
-                          user.role,
-                          user.gender,
-                        )
-                        if (resolved) {
-                          return (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={resolved}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover"
-                            />
-                          )
-                        }
-                        return (
-                          <>
-                            {user.firstName?.charAt(0)}
-                            {user.lastName?.charAt(0)}
-                          </>
-                        )
-                      })()}
+                      <UserAvatar
+                        avatarUrl={user.avatarUrl}
+                        firstName={user.firstName}
+                        lastName={user.lastName}
+                        role={user.role}
+                        gender={user.gender}
+                        sizePx={56}
+                        priority
+                      />
                     </div>
                     <span className="text-sm font-semibold">Dashboard</span>
                   </Link>

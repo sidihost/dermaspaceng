@@ -4,9 +4,8 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Clock, Flower2, Star, Shield, Heart } from 'lucide-react'
+import { ArrowRight, Clock, Flower2, ArrowLeft, Star, Shield, Heart } from 'lucide-react'
 import FavoriteButton from '@/components/favorite-button'
-import { ServiceBackBar } from '@/components/services/service-back-bar'
 
 const servicesData: Record<string, {
   title: string
@@ -125,9 +124,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
   const otherTreatments = service.treatments.filter(t => !t.popular)
 
   return (
-    <main className="bg-gray-50 min-h-screen">
+    <main className="bg-gradient-to-b from-gray-50 to-white min-h-screen">
       <Header />
-      <ServiceBackBar title={service.title} />
       
       {/* Hero Section - Elegant with curves */}
       <section className="relative min-h-[70vh] md:min-h-[80vh] overflow-hidden">
@@ -137,6 +135,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             src={service.image}
             alt={service.title}
             fill
+            sizes="100vw"
+            referrerPolicy="no-referrer"
             className="object-cover"
             priority
           />
@@ -161,7 +161,17 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         </div>
         
         {/* Content */}
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-20 pb-20 min-h-[64vh] md:min-h-[72vh] flex flex-col justify-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-32 pb-20 min-h-[70vh] md:min-h-[80vh] flex flex-col justify-center">
+          {/* Back button */}
+          <Link 
+            href="/services"
+            className="inline-flex items-center gap-2 text-white/70 text-sm mb-8 hover:text-white transition-colors w-fit group"
+          >
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
+              <ArrowLeft className="w-4 h-4" />
+            </span>
+            Back to Services
+          </Link>
           
           <div className="max-w-2xl">
             {/* Badge */}

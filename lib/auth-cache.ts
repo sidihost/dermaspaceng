@@ -50,6 +50,8 @@
  */
 'use client'
 
+import { sanitizeAvatarForCache } from './avatar-utils'
+
 // Bumped from v1 → v2 when we removed PII fields. The old key
 // (`dermaspace.auth.user.v1`) is actively cleared in
 // `readCachedUser` so a returning user doesn't keep email/phone
@@ -149,7 +151,7 @@ function pickDisplayFields(
   if (!id || firstName === null || lastName === null) return null
   const out: CachedAuthUser = { id, firstName, lastName }
   if (typeof input.avatarUrl === 'string' || input.avatarUrl === null) {
-    out.avatarUrl = input.avatarUrl as string | null
+    out.avatarUrl = sanitizeAvatarForCache(input.avatarUrl as string | null)
   }
   if (typeof input.username === 'string' || input.username === null) {
     out.username = input.username as string | null

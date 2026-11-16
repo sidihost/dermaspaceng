@@ -14,7 +14,8 @@ interface UserData {
   lastName: string
   email: string
   phone?: string
-  avatarUrl?: string
+  avatarUrl?: string | null
+  gender?: 'male' | 'female' | null
   username?: string
   /** Operator role — used by the staff/admin consoles to decide
    *  what surfaces and gates render. */

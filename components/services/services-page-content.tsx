@@ -159,6 +159,8 @@ export default function ServicesPageContent() {
                     src={category.image}
                     alt={category.title}
                     fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    referrerPolicy="no-referrer"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />

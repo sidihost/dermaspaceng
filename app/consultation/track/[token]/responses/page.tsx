@@ -107,7 +107,7 @@ export default function TrackConsultationResponsesPage({
               Consultation
             </p>
             <h1 className="text-sm font-semibold text-white mt-0.5">
-              Clinical team responses
+              Consultation responses
             </h1>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function TrackConsultationResponsesPage({
                       Private consultation thread
                     </p>
                     <h2 className="mt-0.5 text-lg font-semibold text-gray-900">
-                      Hi {data.firstName}, here are your clinical responses
+                      Hi {data.firstName}, here are your consultation responses
                     </h2>
                   </div>
                   <span className="rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E] capitalize">

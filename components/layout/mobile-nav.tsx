@@ -35,6 +35,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { useScrollLock } from '@/hooks/use-scroll-lock'
 import { DermaAIMark } from '@/components/shared/derma-ai-mark'
+import { UserAvatar } from '@/components/shared/user-avatar'
 import { logoutAndRedirect } from '@/lib/logout'
 import { formatAccountSubtitle } from '@/lib/auth-onboarding'
 
@@ -83,6 +84,8 @@ interface UserData {
   emailIsPlaceholder?: boolean
   needsProfileCompletion?: boolean
   avatarUrl?: string | null
+  role?: string | null
+  gender?: 'male' | 'female' | null
 }
 
 /**
@@ -155,6 +158,8 @@ export default function MobileNav() {
         emailIsPlaceholder: authUser.emailIsPlaceholder,
         needsProfileCompletion: authUser.needsProfileCompletion,
         avatarUrl: authUser.avatarUrl ?? null,
+        role: authUser.role ?? null,
+        gender: authUser.gender ?? null,
       }
     : null
   // `authChecked` used to mean "the network round-trip completed".
@@ -772,12 +777,16 @@ export default function MobileNav() {
                   />
                   <div className="relative m-[3px] w-12 h-12 rounded-full bg-white p-[2px]">
                     <div className="w-full h-full rounded-full bg-[#7B2D8E] overflow-hidden flex items-center justify-center text-white font-semibold text-sm">
-                      {user.avatarUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={user.avatarUrl} alt="" aria-hidden="true" className="w-full h-full object-cover" />
-                      ) : (
-                        initials
-                      )}
+                      <UserAvatar
+                        avatarUrl={user.avatarUrl}
+                        firstName={user.firstName}
+                        lastName={user.lastName}
+                        role={user.role}
+                        gender={user.gender}
+                        sizePx={96}
+                        priority
+                        fallback={initials}
+                      />
                     </div>
                   </div>
                 </div>
@@ -987,12 +996,16 @@ export default function MobileNav() {
                   }}
                 >
                   <span className="w-full h-full rounded-full bg-[#7B2D8E] overflow-hidden flex items-center justify-center text-[10px] font-bold text-white">
-                    {user.avatarUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={user.avatarUrl} alt="" aria-hidden="true" className="w-full h-full object-cover" />
-                    ) : (
-                      initials
-                    )}
+                    <UserAvatar
+                      avatarUrl={user.avatarUrl}
+                      firstName={user.firstName}
+                      lastName={user.lastName}
+                      role={user.role}
+                      gender={user.gender}
+                      sizePx={56}
+                      priority
+                      fallback={initials}
+                    />
                   </span>
                 </span>
                 <span className="text-[10px] font-medium text-white/70">Profile</span>

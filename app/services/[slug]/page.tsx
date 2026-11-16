@@ -135,6 +135,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             src={service.image}
             alt={service.title}
             fill
+            sizes="100vw"
+            referrerPolicy="no-referrer"
             className="object-cover"
             priority
           />

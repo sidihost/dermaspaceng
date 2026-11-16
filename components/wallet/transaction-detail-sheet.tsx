@@ -26,6 +26,7 @@ import {
   RefreshCw,
   ArrowRight,
   Download,
+  Image as ImageIcon,
   Printer,
   Loader2,
 } from 'lucide-react'
@@ -38,7 +39,11 @@ import {
 } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { downloadTransactionReceiptPdf } from '@/lib/receipt-pdf'
+import {
+  downloadTransactionReceiptImage,
+  downloadTransactionReceiptPdf,
+} from '@/lib/receipt-pdf'
+import { ReceiptCrownBand } from '@/components/receipt/receipt-chrome'
 
 export interface TransactionDetail {
   id: number | string
@@ -133,16 +138,16 @@ const STATUS_META: Record<
 > = {
   completed: {
     label: 'Completed',
-    chip: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
+    chip: 'bg-[#7B2D8E] text-white',
   },
   pending: {
     label: 'Pending',
-    chip: 'bg-amber-50 text-amber-600',
+    chip: 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/25',
     note: 'Waiting for confirmation from your bank. Your wallet will be credited automatically once it clears.',
   },
   failed: {
     label: 'Failed',
-    chip: 'bg-red-50 text-red-600',
+    chip: 'bg-gray-100 text-gray-700 border border-gray-200',
   },
   cancelled: {
     label: 'Cancelled',
@@ -180,13 +185,13 @@ function MethodIcon({
 
 function TypeIcon({ tx }: { tx: TransactionDetail }) {
   const desc = (tx.description ?? '').toLowerCase()
-  if (desc.includes('wallet funding')) return <Wallet className="h-6 w-6" />
-  if (desc.includes('gift card')) return <Gift className="h-6 w-6" />
+  if (desc.includes('wallet funding')) return <Wallet className="h-5 w-5" />
+  if (desc.includes('gift card')) return <Gift className="h-5 w-5" />
   if (desc.includes('booking') || desc.includes('appointment'))
-    return <Calendar className="h-6 w-6" />
-  if (tx.type === 'credit') return <ArrowDownLeft className="h-6 w-6" />
-  if (tx.type === 'debit') return <ArrowUpRight className="h-6 w-6" />
-  return <RotateCcw className="h-6 w-6" />
+    return <Calendar className="h-5 w-5" />
+  if (tx.type === 'credit') return <ArrowDownLeft className="h-5 w-5" />
+  if (tx.type === 'debit') return <ArrowUpRight className="h-5 w-5" />
+  return <RotateCcw className="h-5 w-5" />
 }
 
 export function TransactionDetailSheet({
@@ -196,6 +201,7 @@ export function TransactionDetailSheet({
 }: TransactionDetailSheetProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingImage, setDownloadingImage] = useState(false)
 
   if (!tx) return null
 
@@ -218,6 +224,18 @@ export function TransactionDetailSheet({
     }
   }
 
+  const handleDownloadImage = async () => {
+    if (downloadingImage) return
+    setDownloadingImage(true)
+    try {
+      await downloadTransactionReceiptImage(tx)
+    } catch {
+      // best effort
+    } finally {
+      setDownloadingImage(false)
+    }
+  }
+
   const copy = async (value: string, field: string) => {
     try {
       await navigator.clipboard.writeText(value)
@@ -232,165 +250,163 @@ export function TransactionDetailSheet({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90dvh]">
         <div className="mx-auto w-full max-w-md overflow-y-auto px-4 pb-6">
-          <DrawerHeader className="px-0 pt-2 pb-0 text-center">
-            {/* Icon */}
-            <div className="flex justify-center">
-              <div
-                className={cn(
-                  'flex h-14 w-14 items-center justify-center rounded-2xl',
-                  isIncoming
-                    ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                    : 'bg-gray-100 text-gray-700',
-                )}
-              >
-                <TypeIcon tx={tx} />
+          <div className="mt-2 overflow-hidden rounded-xl border border-[#7B2D8E]/20 bg-white">
+            <ReceiptCrownBand />
+            <DrawerHeader className="px-4 pt-4 pb-4 text-center bg-[#F7F2FA]/60 border-b border-dashed border-[#7B2D8E]/20">
+              <div className="flex justify-center">
+                <div
+                  className={cn(
+                    'flex h-11 w-11 items-center justify-center rounded-xl border border-[#7B2D8E]/20',
+                    isIncoming
+                      ? 'bg-[#7B2D8E] text-white'
+                      : 'bg-white text-[#7B2D8E]',
+                  )}
+                >
+                  <TypeIcon tx={tx} />
+                </div>
               </div>
-            </div>
 
-            <DrawerTitle className="mt-3 text-base font-semibold text-gray-900 text-balance">
-              {tx.description ||
-                (tx.type === 'credit'
-                  ? 'Wallet funding'
-                  : tx.type === 'refund'
-                    ? 'Refund'
-                    : 'Payment')}
-            </DrawerTitle>
-            <DrawerDescription className="sr-only">
-              Transaction details
-            </DrawerDescription>
+              <DrawerTitle className="mt-2.5 text-sm font-semibold text-gray-900 text-balance">
+                {tx.description ||
+                  (tx.type === 'credit'
+                    ? 'Wallet funding'
+                    : tx.type === 'refund'
+                      ? 'Refund'
+                      : 'Payment')}
+              </DrawerTitle>
+              <DrawerDescription className="sr-only">
+                Transaction details
+              </DrawerDescription>
 
-            {/* Amount */}
-            <p
-              className={cn(
-                'mt-1 text-3xl font-bold tracking-tight',
-                tx.status === 'failed' || tx.status === 'cancelled'
-                  ? 'text-gray-400'
-                  : isIncoming
-                    ? 'text-[#7B2D8E]'
-                    : 'text-gray-900',
-              )}
-            >
-              {isIncoming ? '+' : '\u2212'}
-              {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
-            </p>
-
-            {/* Status chip */}
-            <div className="mt-2 flex justify-center">
-              <span
+              <p
                 className={cn(
-                  'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold',
-                  status.chip,
+                  'mt-1 text-2xl font-bold tracking-tight tabular-nums',
+                  tx.status === 'failed' || tx.status === 'cancelled'
+                    ? 'text-gray-400'
+                    : 'text-[#7B2D8E]',
                 )}
               >
-                {status.label}
-              </span>
-            </div>
-          </DrawerHeader>
+                {isIncoming ? '+' : '\u2212'}
+                {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
+              </p>
 
-          {/* Contextual note for pending / cancelled */}
+              <div className="mt-2 flex justify-center">
+                <span
+                  className={cn(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold',
+                    status.chip,
+                  )}
+                >
+                  {status.label}
+                </span>
+              </div>
+            </DrawerHeader>
+
+            {/* Details */}
+            <div className="divide-y divide-gray-100">
+              <Row label="Payment method">
+                <span className="inline-flex items-center gap-1.5 text-gray-900">
+                  <MethodIcon method={tx.payment_method} />
+                  {methodLabel(tx.payment_method)}
+                </span>
+              </Row>
+              <Row label="Type">
+                <span className="capitalize text-gray-900">{tx.type}</span>
+              </Row>
+              <Row label="Date">
+                <span className="text-gray-900 text-right tabular-nums">
+                  {formatDateTime(tx.created_at)}
+                </span>
+              </Row>
+              {reference && (
+                <Row label="Reference">
+                  <button
+                    type="button"
+                    onClick={() => copy(reference, 'ref')}
+                    className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
+                    aria-label="Copy reference"
+                  >
+                    <span className="truncate max-w-[150px]">{reference}</span>
+                    {copiedField === 'ref' ? (
+                      <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 flex-shrink-0" />
+                    )}
+                  </button>
+                </Row>
+              )}
+              {tx.paystack_reference && tx.paystack_reference !== reference && (
+                <Row label="Processor ref">
+                  <button
+                    type="button"
+                    onClick={() => copy(tx.paystack_reference!, 'psref')}
+                    className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
+                    aria-label="Copy processor reference"
+                  >
+                    <span className="truncate max-w-[150px]">
+                      {tx.paystack_reference}
+                    </span>
+                    {copiedField === 'psref' ? (
+                      <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 flex-shrink-0" />
+                    )}
+                  </button>
+                </Row>
+              )}
+              {tx.invoice?.invoice_number && (
+                <Row label="Invoice no.">
+                  <button
+                    type="button"
+                    onClick={() => copy(tx.invoice!.invoice_number, 'inv')}
+                    className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
+                    aria-label="Copy invoice number"
+                  >
+                    <span className="truncate max-w-[150px]">
+                      {tx.invoice.invoice_number}
+                    </span>
+                    {copiedField === 'inv' ? (
+                      <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 flex-shrink-0" />
+                    )}
+                  </button>
+                </Row>
+              )}
+              {tx.giftCard?.recipient_name && (
+                <Row label="Recipient">
+                  <span className="text-gray-900 text-right truncate max-w-[180px]">
+                    {tx.giftCard.recipient_name}
+                    {tx.giftCard.occasion ? ` · ${tx.giftCard.occasion}` : ''}
+                  </span>
+                </Row>
+              )}
+            </div>
+          </div>
+
+          {/* Contextual note for pending / cancelled / failed */}
           {(tx.status === 'pending' || tx.status === 'cancelled') && (
-            <p className="mt-4 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs text-gray-600 leading-relaxed text-pretty">
+            <p className="mt-3 rounded-xl bg-[#F7F2FA] border border-[#7B2D8E]/15 px-3.5 py-2.5 text-xs text-gray-600 leading-relaxed text-pretty">
               {tx.status === 'pending' && tx.type === 'debit'
                 ? 'Waiting for confirmation from Paystack. Your order will be finalized automatically once payment clears.'
                 : status.note}
             </p>
           )}
           {tx.status === 'failed' && tx.error_message && (
-            <p className="mt-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-xs text-red-700 leading-relaxed text-pretty">
+            <p className="mt-3 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2.5 text-xs text-gray-700 leading-relaxed text-pretty">
               {tx.error_message}
             </p>
           )}
 
-          {/* Details */}
-          <div className="mt-4 rounded-2xl border border-gray-100 divide-y divide-gray-100 overflow-hidden">
-            <Row label="Payment method">
-              <span className="inline-flex items-center gap-1.5 text-gray-900">
-                <MethodIcon method={tx.payment_method} />
-                {methodLabel(tx.payment_method)}
-              </span>
-            </Row>
-            <Row label="Type">
-              <span className="capitalize text-gray-900">{tx.type}</span>
-            </Row>
-            <Row label="Date">
-              <span className="text-gray-900 text-right">
-                {formatDateTime(tx.created_at)}
-              </span>
-            </Row>
-            {reference && (
-              <Row label="Reference">
-                <button
-                  type="button"
-                  onClick={() => copy(reference, 'ref')}
-                  className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
-                  aria-label="Copy reference"
-                >
-                  <span className="truncate max-w-[150px]">{reference}</span>
-                  {copiedField === 'ref' ? (
-                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 flex-shrink-0" />
-                  )}
-                </button>
-              </Row>
-            )}
-            {tx.paystack_reference && tx.paystack_reference !== reference && (
-              <Row label="Processor ref">
-                <button
-                  type="button"
-                  onClick={() => copy(tx.paystack_reference!, 'psref')}
-                  className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
-                  aria-label="Copy processor reference"
-                >
-                  <span className="truncate max-w-[150px]">
-                    {tx.paystack_reference}
-                  </span>
-                  {copiedField === 'psref' ? (
-                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 flex-shrink-0" />
-                  )}
-                </button>
-              </Row>
-            )}
-            {tx.invoice?.invoice_number && (
-              <Row label="Invoice no.">
-                <button
-                  type="button"
-                  onClick={() => copy(tx.invoice!.invoice_number, 'inv')}
-                  className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
-                  aria-label="Copy invoice number"
-                >
-                  <span className="truncate max-w-[150px]">
-                    {tx.invoice.invoice_number}
-                  </span>
-                  {copiedField === 'inv' ? (
-                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 flex-shrink-0" />
-                  )}
-                </button>
-              </Row>
-            )}
-            {tx.giftCard?.recipient_name && (
-              <Row label="Recipient">
-                <span className="text-gray-900 text-right truncate max-w-[180px]">
-                  {tx.giftCard.recipient_name}
-                  {tx.giftCard.occasion ? ` · ${tx.giftCard.occasion}` : ''}
-                </span>
-              </Row>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="mt-5 flex flex-col gap-2">
+          {/* Actions (compact h-8 download/print controls) */}
+          <div className="mt-4 flex flex-col gap-2">
             {tx.status === 'pending' && reference && (
               <Link
                 href={`/dashboard/wallet/payment-status?reference=${encodeURIComponent(reference)}`}
                 onClick={() => onOpenChange(false)}
               >
-                <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-                  <RefreshCw className="h-4 w-4" />
+                <Button size="sm" className="w-full h-8 gap-1.5 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-xs">
+                  <RefreshCw className="h-3.5 w-3.5" />
                   Check payment status
                 </Button>
               </Link>
@@ -400,49 +416,57 @@ export function TransactionDetailSheet({
                 href={`/dashboard/wallet?fund=${tx.amount}`}
                 onClick={() => onOpenChange(false)}
               >
-                <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-                  <RefreshCw className="h-4 w-4" />
+                <Button size="sm" className="w-full h-8 gap-1.5 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-xs">
+                  <RefreshCw className="h-3.5 w-3.5" />
                   Try again
                 </Button>
               </Link>
             )}
             {tx.status === 'completed' && reference && (
               <>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleDownloadImage}
+                    disabled={downloadingImage}
+                    className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-[#7B2D8E]/30 bg-white px-2.5 text-xs font-semibold text-[#7B2D8E] hover:bg-[#F7F2FA] disabled:opacity-60 cursor-pointer"
+                  >
+                    {downloadingImage ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ImageIcon className="h-3.5 w-3.5" />
+                    )}
+                    <span>{downloadingImage ? 'Saving…' : 'Image'}</span>
+                  </button>
+                  <button
                     type="button"
                     onClick={handleDownloadPdf}
                     disabled={downloadingPdf}
-                    className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                    className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-[#7B2D8E] px-2.5 text-xs font-semibold text-white hover:bg-[#5A1D6A] disabled:opacity-60 cursor-pointer"
                   >
                     {downloadingPdf ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Download className="h-4 w-4" />
+                      <Download className="h-3.5 w-3.5" />
                     )}
-                    {downloadingPdf ? 'Saving…' : 'Download PDF'}
-                  </Button>
+                    <span>{downloadingPdf ? 'Saving…' : 'PDF'}</span>
+                  </button>
                   <Link
                     href={`/dashboard/transactions/${encodeURIComponent(reference)}?print=1`}
                     onClick={() => onOpenChange(false)}
+                    className="inline-flex h-8 items-center justify-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]"
                   >
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full gap-2 border-[#7B2D8E]/25 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
-                    >
-                      <Printer className="h-4 w-4" />
-                      Print
-                    </Button>
+                    <Printer className="h-3.5 w-3.5" />
+                    <span>Print</span>
                   </Link>
                 </div>
                 <Link
                   href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
                   onClick={() => onOpenChange(false)}
                 >
-                  <Button variant="outline" className="w-full gap-2 border-gray-200">
+                  <Button variant="outline" size="sm" className="w-full h-8 gap-1.5 border-gray-200 text-xs">
                     View full receipt &amp; invoice
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
               </>
@@ -452,15 +476,15 @@ export function TransactionDetailSheet({
                 href="/dashboard/transactions"
                 onClick={() => onOpenChange(false)}
               >
-                <Button variant="outline" className="w-full gap-2 border-gray-200">
+                <Button variant="outline" size="sm" className="w-full h-8 gap-1.5 border-gray-200 text-xs">
                   View all transactions
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </Link>
             )}
           </div>
 
-          <p className="mt-4 text-center text-[11px] text-gray-400">
+          <p className="mt-3 text-center text-[11px] text-gray-400">
             Need help with this transaction? Contact support and quote the
             reference above.
           </p>

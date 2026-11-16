@@ -1,76 +1,64 @@
-/**
- * Pure URL & response eligibility helpers for Service Worker offline caching.
- * Mirrors the exact logic in `public/sw.js` so cache matching and safety
- * guards can be regression-tested directly in `node:test`.
- */
+export const IMAGE_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+export const PAGE_WARM_FRESH_MS = 10 * 60 * 1000
 
-export function isRscRequestInfo(
-  rscHeader: string | null | undefined,
-  urlString: string,
+/**
+ * Pure decision helper mirrored by `public/sw.js` image caching.
+ * Returns `true` when an image entry in Cache Storage should be returned
+ * directly without spawning a redundant background network fetch.
+ */
+export function shouldServeCachedImageDirectly(
+  hasCached: boolean,
+  cachedAtMs: number | null,
+  nowMs: number,
+  ttlMs = IMAGE_CACHE_TTL_MS,
 ): boolean {
-  if (rscHeader === '1') return true
-  try {
-    const u = new URL(urlString, 'https://dermaspaceng.com')
-    return u.searchParams.has('_rsc')
-  } catch {
-    return false
+  if (!hasCached) return false
+  if (cachedAtMs === null || !Number.isFinite(cachedAtMs)) {
+    // Opaque or unstamped cached responses are still served cache-first
+    // to prevent duplicate network requests on every page navigation.
+    return true
   }
+  return nowMs - cachedAtMs >= 0 && nowMs - cachedAtMs < ttlMs
 }
 
 /**
- * Strips Next.js ephemeral `_rsc` cache-buster tokens from a URL while
- * preserving meaningful search parameters (e.g. `/blog?category=skincare`).
+ * Determines whether a pre-warmed page cache entry is still fresh enough
+ * to skip issuing another `cache: 'reload'` SSR request.
  */
-export function normalizeRscCacheUrl(
-  urlString: string,
-  origin = 'https://dermaspaceng.com',
-): string {
-  const u = new URL(urlString, origin)
-  u.searchParams.delete('_rsc')
-  u.hash = ''
-  return u.toString()
-}
-
-export function isCacheablePageResponse(input: {
-  ok: boolean
-  status: number
-  redirected: boolean
-  contentType: string | null | undefined
-  expectedKind: 'html' | 'rsc'
-}): boolean {
-  if (!input.ok || input.status !== 200 || input.redirected) return false
-  const ct = (input.contentType ?? '').toLowerCase()
-  if (input.expectedKind === 'html') {
-    return ct.includes('text/html')
-  }
-  // Next.js App Router serves RSC payloads as `text/x-component`.
-  return ct.includes('text/x-component')
+export function shouldSkipPageWarm(
+  cachedAtMs: number | null,
+  nowMs: number,
+  freshWindowMs = PAGE_WARM_FRESH_MS,
+): boolean {
+  if (cachedAtMs === null || !Number.isFinite(cachedAtMs)) return false
+  const age = nowMs - cachedAtMs
+  return age >= 0 && age < freshWindowMs
 }
 
 /**
- * Extracts unique same-origin `/_next/static/...` `.js` and `.css` asset URLs
- * referenced in an HTML document or RSC payload so offline navigation has its
- * script and stylesheet bundles ready in `STATIC_CACHE`.
+ * Filters a list of URLs to valid same-origin page paths (excluding API and
+ * Next internal build paths) and deduplicates while preserving order.
  */
-export function extractStaticAssetUrls(
-  bodyText: string,
-  origin = 'https://dermaspaceng.com',
-): string[] {
-  if (!bodyText) return []
-  const matches = bodyText.match(
-    /\/_next\/static\/[^\s"'<>\\)]+\.(?:js|css)(?:\?[^\s"'<>\\)]*)?/g,
-  )
-  if (!matches) return []
-  const unique = new Set<string>()
-  for (const rawPath of matches) {
+export function filterWarmablePageUrls(urls: unknown[], origin: string): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of urls) {
+    if (typeof raw !== 'string' || !raw.trim()) continue
     try {
-      const resolved = new URL(rawPath, origin)
-      if (resolved.origin === new URL(origin).origin) {
-        unique.add(resolved.toString())
+      const parsed = new URL(raw, origin)
+      if (parsed.origin !== origin) continue
+      if (parsed.pathname.startsWith('/api/') || parsed.pathname.startsWith('/_next/')) {
+        continue
+      }
+      parsed.searchParams.delete('_rsc')
+      const normalized = parsed.toString()
+      if (!seen.has(normalized)) {
+        seen.add(normalized)
+        out.push(normalized)
       }
     } catch {
-      /* ignore malformed path */
+      // Ignore malformed URLs
     }
   }
-  return Array.from(unique)
+  return out
 }

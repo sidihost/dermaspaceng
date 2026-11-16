@@ -123,7 +123,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v21';
+const VERSION = 'v22';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -552,9 +552,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // -------------------------------------------------------------------------
-  // 3. Images — cache-first with a background refresh. Images don't change
-  //    semantically the way HTML/JS does, so it's fine to serve a cached
-  //    copy and silently update it.
+  // 3. Images — true cache-first. Avoid firing a redundant network request
+  //    whenever we already have a cached copy so page transitions and repeat
+  //    renders do not saturate connections re-downloading identical images.
   // -------------------------------------------------------------------------
   if (
     request.destination === 'image' ||
@@ -563,16 +563,19 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.open(IMAGE_CACHE).then(async (cache) => {
         const cached = await cache.match(request);
-        const refresh = fetch(request)
-          .then((res) => {
-            if (res && res.ok) {
-              cache.put(request, res.clone());
-              limitCache(IMAGE_CACHE, IMAGE_CACHE_LIMIT);
-            }
-            return res;
-          })
-          .catch(() => cached || new Response('', { status: 504 }));
-        return cached || refresh;
+        if (cached) {
+          return cached;
+        }
+        try {
+          const res = await fetch(request);
+          if (res && (res.ok || res.type === 'opaque')) {
+            cache.put(request, res.clone());
+            limitCache(IMAGE_CACHE, IMAGE_CACHE_LIMIT);
+          }
+          return res;
+        } catch {
+          return new Response('', { status: 504 });
+        }
       }),
     );
     return;
@@ -867,6 +870,23 @@ const cacheUrlForOfflineNav = async (rawUrl) => {
   }
   const normalizedUrl = normalizePageOrRscUrl(resolved.toString());
   const cacheReq = new Request(normalizedUrl);
+  const WARM_FRESH_MS = 10 * 60 * 1000;
+
+  try {
+    const [pagesCache, rscCache] = await Promise.all([
+      caches.open(PAGES_CACHE),
+      caches.open(RSC_CACHE),
+    ]);
+    const [existingPage, existingRsc] = await Promise.all([
+      pagesCache.match(cacheReq),
+      rscCache.match(cacheReq, { ignoreVary: true }),
+    ]);
+    if (isFreshEnough(existingPage, WARM_FRESH_MS) && isFreshEnough(existingRsc, WARM_FRESH_MS)) {
+      return;
+    }
+  } catch {
+    /* ignore cache lookup error and proceed */
+  }
 
   // Warm both the full HTML document (for offline reload) and the Next.js
   // App Router RSC payload (for offline <Link> client navigation), plus any
@@ -922,7 +942,11 @@ self.addEventListener('message', (event) => {
   if (data.type === 'CACHE_URLS') {
     const urls = Array.isArray(data.urls) ? data.urls : [];
     event.waitUntil(
-      Promise.all(urls.map((u) => cacheUrlForOfflineNav(u))),
+      (async () => {
+        for (const u of urls) {
+          await cacheUrlForOfflineNav(u);
+        }
+      })(),
     );
     return;
   }

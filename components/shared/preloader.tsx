@@ -5,33 +5,53 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 
+const PRELOADER_SESSION_KEY = 'ds_preloader_seen'
+
 export default function Preloader() {
   const pathname = usePathname()
-  const isSystemStatusRoute =
+  const skipPreloader =
     Boolean(pathname?.startsWith('/offline')) ||
-    Boolean(pathname?.startsWith('/maintenance'))
+    Boolean(pathname?.startsWith('/maintenance')) ||
+    Boolean(pathname?.startsWith('/dashboard')) ||
+    Boolean(pathname?.startsWith('/admin')) ||
+    Boolean(pathname?.startsWith('/staff'))
 
-  const [isLoading, setIsLoading] = useState(!isSystemStatusRoute)
+  const [isLoading, setIsLoading] = useState(false)
   const [fadeOut, setFadeOut] = useState(false)
 
   useEffect(() => {
-    if (isSystemStatusRoute) {
+    if (skipPreloader) {
       setIsLoading(false)
       return
     }
-    const fade = window.setTimeout(() => setFadeOut(true), 1700)
-    const hide = window.setTimeout(() => setIsLoading(false), 2200)
+    let alreadySeen = false
+    try {
+      alreadySeen = window.sessionStorage.getItem(PRELOADER_SESSION_KEY) === '1'
+      if (!alreadySeen) {
+        window.sessionStorage.setItem(PRELOADER_SESSION_KEY, '1')
+      }
+    } catch {
+      alreadySeen = true
+    }
+    if (alreadySeen) {
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    const fade = window.setTimeout(() => setFadeOut(true), 450)
+    const hide = window.setTimeout(() => setIsLoading(false), 750)
     return () => {
       window.clearTimeout(fade)
       window.clearTimeout(hide)
     }
-  }, [isSystemStatusRoute])
+  }, [skipPreloader])
 
-  if (!isLoading || isSystemStatusRoute) return null
+  if (!isLoading || skipPreloader) return null
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-500 ${
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-300 ${
         fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
       role="status"
@@ -45,6 +65,7 @@ export default function Preloader() {
             alt="Dermaspace"
             width={180}
             height={60}
+            referrerPolicy="no-referrer"
             className="h-12 sm:h-14 w-auto"
             priority
           />
@@ -64,7 +85,7 @@ export default function Preloader() {
           100% { width: 100%; }
         }
         .animate-loading-bar {
-          animation: loading-bar 2s ease-out forwards;
+          animation: loading-bar 0.65s ease-out forwards;
         }
       `}</style>
     </div>

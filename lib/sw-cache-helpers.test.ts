@@ -1,87 +1,49 @@
-import { describe, it } from 'node:test'
+import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  extractStaticAssetUrls,
-  isCacheablePageResponse,
-  isRscRequestInfo,
-  normalizeRscCacheUrl,
+  filterWarmablePageUrls,
+  IMAGE_CACHE_TTL_MS,
+  PAGE_WARM_FRESH_MS,
+  shouldServeCachedImageDirectly,
+  shouldSkipPageWarm,
 } from './sw-cache-helpers'
 
-describe('Service Worker offline cache helpers', () => {
-  it('detects Next.js RSC requests by header or _rsc query param', () => {
-    assert.equal(isRscRequestInfo('1', 'https://dermaspaceng.com/services'), true)
-    assert.equal(
-      isRscRequestInfo(null, 'https://dermaspaceng.com/services?_rsc=1ab2c'),
-      true,
-    )
-    assert.equal(isRscRequestInfo(null, 'https://dermaspaceng.com/services'), false)
-  })
+test('shouldServeCachedImageDirectly avoids redundant refreshes on fresh cache hits', () => {
+  const now = 1_700_000_000_000
+  assert.equal(shouldServeCachedImageDirectly(false, null, now), false)
+  assert.equal(shouldServeCachedImageDirectly(true, null, now), true)
+  assert.equal(shouldServeCachedImageDirectly(true, now - 60_000, now), true)
+  assert.equal(
+    shouldServeCachedImageDirectly(true, now - IMAGE_CACHE_TTL_MS - 1, now),
+    false,
+  )
+})
 
-  it('normalizes RSC cache URLs by removing ephemeral _rsc token only', () => {
-    assert.equal(
-      normalizeRscCacheUrl('https://dermaspaceng.com/blog?category=acne&_rsc=xyz99'),
-      'https://dermaspaceng.com/blog?category=acne',
-    )
-    assert.equal(
-      normalizeRscCacheUrl('/services?_rsc=abc12#top', 'https://dermaspaceng.com'),
-      'https://dermaspaceng.com/services',
-    )
-  })
+test('shouldSkipPageWarm skips recently warmed pages', () => {
+  const now = 1_700_000_000_000
+  assert.equal(shouldSkipPageWarm(null, now), false)
+  assert.equal(shouldSkipPageWarm(now - 5_000, now), true)
+  assert.equal(shouldSkipPageWarm(now - PAGE_WARM_FRESH_MS - 1, now), false)
+})
 
-  it('rejects redirects, non-200s, and mismatched content-types', () => {
-    assert.equal(
-      isCacheablePageResponse({
-        ok: true,
-        status: 200,
-        redirected: true,
-        contentType: 'text/html; charset=utf-8',
-        expectedKind: 'html',
-      }),
-      false,
-    )
-    assert.equal(
-      isCacheablePageResponse({
-        ok: true,
-        status: 200,
-        redirected: false,
-        contentType: 'text/html; charset=utf-8',
-        expectedKind: 'html',
-      }),
-      true,
-    )
-    assert.equal(
-      isCacheablePageResponse({
-        ok: true,
-        status: 200,
-        redirected: false,
-        contentType: 'text/html; charset=utf-8',
-        expectedKind: 'rsc',
-      }),
-      false,
-    )
-    assert.equal(
-      isCacheablePageResponse({
-        ok: true,
-        status: 200,
-        redirected: false,
-        contentType: 'text/x-component',
-        expectedKind: 'rsc',
-      }),
-      true,
-    )
-  })
-
-  it('extracts unique /_next/static/ js and css URLs from HTML and RSC bodies', () => {
-    const html = `
-      <link rel="stylesheet" href="/_next/static/css/app.css?v=1">
-      <script src="/_next/static/chunks/main.js"></script>
-      <script src="/_next/static/chunks/main.js"></script>
-      <img src="/images/hero-1.jpg">
-    `
-    const urls = extractStaticAssetUrls(html, 'http://localhost:3000')
-    assert.deepEqual(urls, [
-      'http://localhost:3000/_next/static/css/app.css?v=1',
-      'http://localhost:3000/_next/static/chunks/main.js',
-    ])
-  })
+test('filterWarmablePageUrls deduplicates, strips _rsc, and excludes api/_next/cross-origin', () => {
+  const origin = 'https://dermaspaceng.com'
+  const out = filterWarmablePageUrls(
+    [
+      '/',
+      '/?_rsc=abc',
+      '/services',
+      '/api/auth/me',
+      '/_next/static/chunk.js',
+      'https://evil.example.com/phish',
+      123,
+      '/about',
+    ],
+    origin,
+  )
+  assert.deepEqual(out, [
+    'https://dermaspaceng.com/',
+    'https://dermaspaceng.com/services',
+    'https://dermaspaceng.com/about',
+  ])
 })

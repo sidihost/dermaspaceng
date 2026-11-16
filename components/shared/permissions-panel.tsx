@@ -407,7 +407,7 @@ export function PermissionsPanel({
                       </span>
                     )}
                     {state === 'denied' && (
-                      <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex-shrink-0">
+                      <span className="text-[11px] font-semibold text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/25 px-2 py-0.5 rounded-full flex-shrink-0">
                         Blocked
                       </span>
                     )}

@@ -32,16 +32,20 @@ import {
   Landmark,
   Banknote,
   Receipt,
-  Download,
-  Printer,
-  Loader2,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import PageLoader from '@/components/shared/page-loader'
 import { Button } from '@/components/ui/button'
 import type { TransactionDetail } from '@/components/wallet/transaction-detail-sheet'
-import { downloadTransactionReceiptPdf } from '@/lib/receipt-pdf'
+import {
+  downloadTransactionReceiptImage,
+  downloadTransactionReceiptPdf,
+} from '@/lib/receipt-pdf'
+import {
+  ReceiptActionButtons,
+  ReceiptCrownBand,
+} from '@/components/receipt/receipt-chrome'
 
 const POLL_INTERVAL_MS = 4000
 const MAX_POLLS = 8
@@ -98,6 +102,7 @@ function PaymentStatusContent() {
   const [copied, setCopied] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingImage, setDownloadingImage] = useState(false)
 
   const fetchTransaction = useCallback(async () => {
     if (!reference) return null
@@ -210,10 +215,10 @@ function PaymentStatusContent() {
           account. If you were charged, your money is safe — contact support
           with your bank statement and we&apos;ll trace it.
         </p>
-        <div className="mt-7 flex flex-col sm:flex-row gap-2 justify-center">
+        <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
           <Link href="/dashboard/wallet">
-            <Button className="w-full sm:w-auto gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-              <ArrowLeft className="h-4 w-4" />
+            <Button size="sm" className="w-full sm:w-auto h-8 px-3 text-xs gap-1.5 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A]">
+              <ArrowLeft className="h-3.5 w-3.5" />
               Back to wallet
             </Button>
           </Link>
@@ -332,14 +337,12 @@ function PaymentStatusContent() {
       <div className="mt-7 rounded-2xl border border-gray-100 bg-gray-50/60 text-left divide-y divide-gray-100 overflow-hidden">
         <DetailRow label="Status">
           <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
               tx.status === 'completed'
-                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                : tx.status === 'failed'
-                  ? 'bg-red-50 text-red-600'
-                  : tx.status === 'cancelled'
-                    ? 'bg-gray-100 text-gray-600'
-                    : 'bg-amber-50 text-amber-600'
+                ? 'bg-[#7B2D8E] text-white'
+                : tx.status === 'pending'
+                  ? 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/20'
+                  : 'bg-gray-100 text-gray-700'
             }`}
           >
             {tx.status}
@@ -371,7 +374,7 @@ function PaymentStatusContent() {
         </DetailRow>
         {tx.status === 'failed' && tx.error_message && (
           <DetailRow label="Reason">
-            <span className="text-red-600 text-xs">{tx.error_message}</span>
+            <span className="text-gray-700 text-xs">{tx.error_message}</span>
           </DetailRow>
         )}
       </div>
@@ -404,84 +407,74 @@ function PaymentStatusContent() {
       )}
 
       {/* Actions */}
-      <div className="mt-7 flex flex-col gap-2.5">
+      <div className="mt-6 flex flex-col gap-2.5">
         {tx.status === 'completed' && reference && (
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              onClick={async () => {
-                if (downloadingPdf) return
-                setDownloadingPdf(true)
-                try {
-                  await downloadTransactionReceiptPdf(tx)
-                } catch {
-                  // best effort
-                } finally {
-                  setDownloadingPdf(false)
-                }
-              }}
-              disabled={downloadingPdf}
-              className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
-            >
-              {downloadingPdf ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {downloadingPdf ? 'Saving…' : 'Download PDF'}
-            </Button>
-            <Link
-              href={`/dashboard/transactions/${encodeURIComponent(reference)}?print=1`}
-              className="w-full"
-            >
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2 border-[#7B2D8E]/25 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
-              >
-                <Printer className="h-4 w-4" />
-                Print
-              </Button>
-            </Link>
-          </div>
+          <ReceiptActionButtons
+            className="justify-center"
+            downloadingPdf={downloadingPdf}
+            downloadingImage={downloadingImage}
+            onDownloadImage={async () => {
+              if (downloadingImage) return
+              setDownloadingImage(true)
+              try {
+                await downloadTransactionReceiptImage(tx)
+              } catch {
+                // best effort
+              } finally {
+                setDownloadingImage(false)
+              }
+            }}
+            onDownloadPdf={async () => {
+              if (downloadingPdf) return
+              setDownloadingPdf(true)
+              try {
+                await downloadTransactionReceiptPdf(tx)
+              } catch {
+                // best effort
+              } finally {
+                setDownloadingPdf(false)
+              }
+            }}
+            onPrint={() => {
+              window.location.href = `/dashboard/transactions/${encodeURIComponent(reference)}?print=1`
+            }}
+          />
         )}
-        <div className="flex flex-col sm:flex-row gap-2 justify-center flex-wrap">
+        <div className="flex flex-wrap gap-2 justify-center">
           {tx.status === 'completed' && reference && (
-            <Link
-              href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
-              className="w-full sm:w-auto"
-            >
-              <Button variant="outline" className="w-full gap-2 border-gray-200">
-                <Receipt className="h-4 w-4" />
+            <Link href={`/dashboard/transactions/${encodeURIComponent(reference)}`}>
+              <Button variant="outline" size="sm" className="h-8 px-3 text-xs rounded-lg gap-1.5 border-gray-200 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]">
+                <Receipt className="h-3.5 w-3.5" />
                 View Receipt
               </Button>
             </Link>
           )}
           {(tx.status === 'cancelled' || tx.status === 'failed') && (
-            <Link href={`/dashboard/wallet?fund=${tx.amount}`} className="w-full sm:w-auto">
-              <Button className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
-                <RefreshCw className="h-4 w-4" />
+            <Link href={`/dashboard/wallet?fund=${tx.amount}`}>
+              <Button size="sm" className="h-8 px-3 text-xs rounded-lg gap-1.5 bg-[#7B2D8E] hover:bg-[#5A1D6A]">
+                <RefreshCw className="h-3.5 w-3.5" />
                 Try again
               </Button>
             </Link>
           )}
-          <Link href="/dashboard/wallet" className="w-full sm:w-auto">
+          <Link href="/dashboard/wallet">
             <Button
+              size="sm"
               variant={isPending ? 'default' : 'outline'}
-              className={`w-full gap-2 ${
+              className={`h-8 px-3 text-xs rounded-lg gap-1.5 ${
                 isPending
                   ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A]'
-                  : 'border-gray-200'
+                  : 'border-gray-200 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]'
               }`}
             >
-              <Wallet className="h-4 w-4" />
+              <Wallet className="h-3.5 w-3.5" />
               Back to wallet
             </Button>
           </Link>
-          <Link href="/dashboard/transactions" className="w-full sm:w-auto">
-            <Button variant="outline" className="w-full gap-2 border-gray-200">
-              View transactions
-              <ArrowRight className="h-4 w-4" />
+          <Link href="/dashboard/transactions">
+            <Button size="sm" variant="outline" className="h-8 px-3 text-xs rounded-lg gap-1.5 border-gray-200 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]">
+              Transactions
+              <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
@@ -498,16 +491,17 @@ function PaymentStatusContent() {
 
 function StatusShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-muted/30 flex flex-col">
+    <main className="min-h-screen bg-[#F7F5F9] flex flex-col">
       <Header />
-      <div className="flex-1 flex items-center justify-center px-4 py-10">
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="w-full max-w-md rounded-[28px] bg-white border border-gray-100 p-7 sm:p-10 text-center"
+          transition={{ duration: 0.25 }}
+          className="w-full max-w-md rounded-2xl bg-white border border-[#7B2D8E]/20 overflow-hidden text-center"
         >
-          {children}
+          <ReceiptCrownBand />
+          <div className="p-6 sm:p-8">{children}</div>
         </motion.div>
       </div>
       <Footer />
@@ -524,14 +518,14 @@ function StatusBadge({
 }) {
   const tones: Record<typeof tone, string> = {
     success: 'bg-[#7B2D8E] text-white',
-    error: 'bg-red-50 text-red-500 border border-red-100',
-    neutral: 'bg-gray-100 text-gray-500',
-    pending: 'bg-amber-50 text-amber-500 border border-amber-100',
+    error: 'bg-gray-100 text-gray-800 border border-gray-200',
+    neutral: 'bg-gray-100 text-gray-600',
+    pending: 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/25',
   }
   return (
     <div className="flex justify-center">
       <div
-        className={`flex h-20 w-20 items-center justify-center rounded-full ${tones[tone]}`}
+        className={`flex h-16 w-16 items-center justify-center rounded-full ${tones[tone]}`}
       >
         {children}
       </div>

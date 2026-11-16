@@ -1,67 +1,51 @@
 'use client'
 
 /**
- * TransactionDetailContent — full-page deep link for a single
- * transaction (/dashboard/transactions/[reference]).
- *
- * Receipt-style layout (inspired by leading Nigerian fintech apps,
- * re-skinned in Dermaspace purple):
- *
- *   1. Hero card — icon, title, big amount, status pill.
- *   2. "Transaction Details" card — labelled rows (credited to,
- *      remark, type, reference, date) with copy buttons.
- *   3. "More Actions" card — category + contextual actions
- *      (fund again / cancel a stuck pending / get help).
- *   4. Sticky "Share Receipt" button pinned to the bottom.
- *
- * Fetches from /api/wallet/transactions/[reference] (scoped to the
- * signed-in user). On a 404 we nudge /api/wallet/reconcile once and
- * retry — a transaction created moments ago can race the first fetch.
+ * TransactionDetailContent — compact single-color (#7B2D8E) patterned
+ * receipt view for /dashboard/transactions/[reference].
+ * Supports PNG image export, PDF download, print, and native share.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import {
-  ArrowDownLeft,
   ArrowLeft,
-  ArrowUpRight,
   Banknote,
   Calendar,
   Check,
   Clock,
   Copy,
   CreditCard,
-  Download,
-  Gift,
   Landmark,
   LifeBuoy,
-  Loader2,
   MapPin,
-  Printer,
   RefreshCw,
   RotateCcw,
-  Share2,
   Wallet,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TransactionDetail } from '@/components/wallet/transaction-detail-sheet'
-import { downloadTransactionReceiptPdf } from '@/lib/receipt-pdf'
 import {
-  findGiftCardDesignById,
-  getGiftCardOccasionMeta,
-} from '@/lib/gift-card-templates'
-
-const BRAND = '#7B2D8E'
+  downloadTransactionReceiptImage,
+  downloadTransactionReceiptPdf,
+} from '@/lib/receipt-pdf'
+import {
+  RECEIPT_MASTHEAD_PATTERN_STYLE,
+  RECEIPT_TOTAL_PATTERN_STYLE,
+  ReceiptActionButtons,
+  ReceiptCornerMarks,
+  ReceiptCrownBand,
+  ReceiptTearDivider,
+} from '@/components/receipt/receipt-chrome'
+import { getGiftCardOccasionMeta } from '@/lib/gift-card-templates'
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
   if (res.status === 401) {
-    // Signed out — distinguish from "not found" so a customer
-    // following an emailed receipt link is told to sign in rather
-    // than that their money is missing.
     return { unauthenticated: true } as const
   }
   const data = await res.json()
@@ -91,13 +75,10 @@ function formatDateTime(dateString: string) {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
+    hour12: true,
   })
 }
 
-// Booking dates arrive as plain 'YYYY-MM-DD' (no timezone). Parse the
-// parts manually so the displayed day never shifts across timezones.
 function formatAppointmentDate(dateString: string) {
   const [y, m, d] = dateString.slice(0, 10).split('-').map(Number)
   if (!y || !m || !d) return dateString
@@ -109,7 +90,6 @@ function formatAppointmentDate(dateString: string) {
   })
 }
 
-// '14:30' -> '2:30 PM'
 function formatAppointmentTime(time: string) {
   const [h, min] = time.split(':').map(Number)
   if (Number.isNaN(h) || Number.isNaN(min)) return time
@@ -128,36 +108,39 @@ function formatDuration(minutes: number) {
 }
 
 const BOOKING_STATUS_META: Record<string, { label: string; chip: string }> = {
-  pending: { label: 'Pending', chip: 'bg-amber-50 text-amber-700' },
-  confirmed: { label: 'Confirmed', chip: 'bg-[#F3E8F7] text-[#7B2D8E]' },
-  completed: { label: 'Completed', chip: 'bg-[#F3E8F7] text-[#7B2D8E]' },
+  pending: {
+    label: 'Pending',
+    chip: 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/20',
+  },
+  confirmed: { label: 'Confirmed', chip: 'bg-[#7B2D8E] text-white' },
+  completed: { label: 'Completed', chip: 'bg-[#7B2D8E] text-white' },
   cancelled: { label: 'Cancelled', chip: 'bg-gray-100 text-gray-600' },
   no_show: { label: 'No show', chip: 'bg-gray-100 text-gray-600' },
 }
 
 const STATUS_META: Record<
   TransactionDetail['status'],
-  { label: string; chip: string; Icon: typeof Check; note?: string }
+  { label: string; pillCls: string; Icon: typeof Check; note?: string }
 > = {
   completed: {
     label: 'Successful',
-    chip: 'text-[#7B2D8E]',
+    pillCls: 'bg-[#7B2D8E] text-white',
     Icon: Check,
   },
   pending: {
     label: 'Pending',
-    chip: 'text-amber-600',
+    pillCls: 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/25',
     Icon: Clock,
     note: 'Waiting for confirmation from your bank. Your wallet will be credited automatically once it clears.',
   },
   failed: {
     label: 'Failed',
-    chip: 'text-red-600',
+    pillCls: 'bg-gray-200 text-gray-800',
     Icon: X,
   },
   cancelled: {
     label: 'Cancelled',
-    chip: 'text-gray-600',
+    pillCls: 'bg-gray-100 text-gray-700',
     Icon: X,
     note: 'This payment was cancelled before it completed. No money left your account.',
   },
@@ -195,47 +178,24 @@ function MethodIcon({
   method: TransactionDetail['payment_method']
   className?: string
 }) {
-  const cls = className || 'h-4 w-4'
+  const cls = className || 'h-3.5 w-3.5'
   if (method === 'bank_transfer') return <Landmark className={cls} />
   if (method === 'cash') return <Banknote className={cls} />
   if (method === 'wallet') return <Wallet className={cls} />
   return <CreditCard className={cls} />
 }
 
-function TypeIcon({ tx }: { tx: TransactionDetail }) {
-  if (tx.booking) return <Calendar className="h-6 w-6" />
-  const desc = (tx.description ?? '').toLowerCase()
-  if (desc.includes('wallet funding')) return <Wallet className="h-6 w-6" />
-  if (desc.includes('gift card')) return <Gift className="h-6 w-6" />
-  if (desc.includes('booking') || desc.includes('appointment'))
-    return <Calendar className="h-6 w-6" />
-  if (tx.type === 'credit') return <ArrowDownLeft className="h-6 w-6" />
-  if (tx.type === 'debit') return <ArrowUpRight className="h-6 w-6" />
-  return <RotateCcw className="h-6 w-6" />
-}
-
 function DetailRow({
   label,
   children,
-  align = 'right',
 }: {
   label: string
   children: React.ReactNode
-  align?: 'right' | 'left'
 }) {
   return (
-    <div className="flex items-start justify-between gap-6 py-3">
-      <span className="text-[13px] text-gray-400 flex-shrink-0 pt-0.5">
-        {label}
-      </span>
-      <div
-        className={cn(
-          'text-[13px] text-gray-800 min-w-0',
-          align === 'right' ? 'text-right' : 'text-left',
-        )}
-      >
-        {children}
-      </div>
+    <div className="flex items-start justify-between gap-4 py-2.5">
+      <span className="text-xs text-gray-500 flex-shrink-0 pt-0.5">{label}</span>
+      <div className="text-xs text-gray-900 min-w-0 text-right">{children}</div>
     </div>
   )
 }
@@ -251,6 +211,7 @@ export default function TransactionDetailContent({
   const [shared, setShared] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadingImage, setDownloadingImage] = useState(false)
   const reconcileTried = useRef(false)
   const autoPrintTriggered = useRef(false)
 
@@ -272,9 +233,6 @@ export default function TransactionDetailContent({
     }
   }, [autoPrint, loadedTransactionId])
 
-  // A 404 right after checkout can be a race (row created moments ago,
-  // or a webhook mid-flight). Nudge server-side reconciliation once,
-  // then retry the fetch before settling on "not found".
   useEffect(() => {
     const status = (error as (Error & { status?: number }) | undefined)?.status
     if (status === 404 && !reconcileTried.current) {
@@ -293,7 +251,7 @@ export default function TransactionDetailContent({
       setCopiedField(field)
       setTimeout(() => setCopiedField(null), 2000)
     } catch {
-      // clipboard unavailable — ignore
+      // clipboard unavailable
     }
   }
 
@@ -301,7 +259,7 @@ export default function TransactionDetailContent({
     return (
       <main className="mx-auto w-full max-w-md px-4 py-10">
         <div className="flex items-center justify-center py-16">
-          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
+          <RefreshCw className="w-5 h-5 animate-spin text-[#7B2D8E]" />
           <span className="sr-only">Loading transaction</span>
         </div>
       </main>
@@ -311,19 +269,22 @@ export default function TransactionDetailContent({
   if (data && 'unauthenticated' in data) {
     return (
       <main className="mx-auto w-full max-w-md px-4 py-10">
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
-          <p className="text-sm font-medium text-gray-900">
-            Sign in to view this transaction
-          </p>
-          <p className="mt-1 text-xs text-gray-500 text-pretty">
-            Transaction details are private to your account.
-          </p>
-          <Link
-            href={`/signin?next=/dashboard/transactions/${encodeURIComponent(reference)}`}
-            className="mt-4 inline-flex items-center justify-center px-5 h-10 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors"
-          >
-            Sign in
-          </Link>
+        <div className="rounded-2xl border border-[#7B2D8E]/20 bg-white overflow-hidden text-center">
+          <ReceiptCrownBand />
+          <div className="p-6">
+            <p className="text-sm font-semibold text-gray-900">
+              Sign in to view this receipt
+            </p>
+            <p className="mt-1 text-xs text-gray-500 text-pretty">
+              Transaction details are private to your account.
+            </p>
+            <Link
+              href={`/signin?next=/dashboard/transactions/${encodeURIComponent(reference)}`}
+              className="mt-4 inline-flex items-center justify-center px-4 h-8 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] transition-colors"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
       </main>
     )
@@ -335,34 +296,36 @@ export default function TransactionDetailContent({
   if (error || !loadedTx) {
     return (
       <main className="mx-auto w-full max-w-md px-4 py-10">
-        <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
-          <p className="text-sm font-medium text-gray-900">
-            Transaction not found
-          </p>
-          <p className="mt-1 text-xs text-gray-500 text-pretty">
-            We couldn&apos;t find a transaction with this reference on your
-            account. If you just paid, give it a few seconds and refresh —
-            we may still be confirming it with Paystack.
-          </p>
-          <div className="mt-4 flex items-center justify-center gap-4">
-            <button
-              type="button"
-              onClick={() => {
-                reconcileTried.current = false
-                mutate()
-              }}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:underline"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Check again
-            </button>
-            <Link
-              href="/dashboard/transactions"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:underline"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to transactions
-            </Link>
+        <div className="rounded-2xl border border-[#7B2D8E]/20 bg-white overflow-hidden text-center">
+          <ReceiptCrownBand />
+          <div className="p-6">
+            <p className="text-sm font-semibold text-gray-900">
+              Transaction not found
+            </p>
+            <p className="mt-1 text-xs text-gray-500 text-pretty">
+              We couldn&apos;t find a transaction with this reference on your
+              account. If you just paid, give it a moment and check again.
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  reconcileTried.current = false
+                  mutate()
+                }}
+                className="inline-flex h-8 items-center gap-1.5 px-3 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A]"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Check again
+              </button>
+              <Link
+                href="/dashboard/transactions"
+                className="inline-flex h-8 items-center gap-1.5 px-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Transactions
+              </Link>
+            </div>
           </div>
         </div>
       </main>
@@ -401,12 +364,10 @@ export default function TransactionDetailContent({
         setTimeout(() => setShared(false), 2000)
       }
     } catch {
-      // user dismissed the share sheet — ignore
+      // dismissed
     }
   }
 
-  // Manual cancel for a stuck pending row. The endpoint re-verifies
-  // with Paystack first, so real money is always credited instead.
   const cancelPayment = async () => {
     if (cancelling || !txReference) return
     setCancelling(true)
@@ -435,295 +396,277 @@ export default function TransactionDetailContent({
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[#F6F4F8] print:bg-white">
-      <main className="mx-auto w-full max-w-md px-4 pt-4 pb-28 md:pb-32 print:max-w-xl print:py-4">
-        {/* Print-only official receipt letterhead */}
-        <header className="hidden print:flex items-start justify-between gap-4 border-b border-gray-200 pb-4 mb-5">
-          <div>
-            <p className="text-lg font-bold tracking-tight text-[#7B2D8E]">
-              Dermaspace
-            </p>
-            <p className="text-[11px] text-gray-500">
-              Esthetic &amp; Wellness Centre · Lagos, NG
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
-              Official Receipt
-            </p>
-            <p className="text-[11px] text-gray-500 tabular-nums mt-0.5">
-              {formatDateTime(tx.created_at)}
-            </p>
-          </div>
-        </header>
+  const handleDownloadImage = async () => {
+    if (downloadingImage) return
+    setDownloadingImage(true)
+    try {
+      await downloadTransactionReceiptImage(tx)
+    } catch {
+      // best effort
+    } finally {
+      setDownloadingImage(false)
+    }
+  }
 
-        <div className="flex items-center justify-between gap-2 print:hidden">
+  return (
+    <div className="min-h-screen bg-[#F7F5F9] print:bg-white">
+      <main className="mx-auto w-full max-w-md px-4 py-5 md:py-7 print:max-w-lg print:py-2">
+        {/* Top Action Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5 print:hidden">
           <Link
             href="/dashboard/transactions"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Transaction Details
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Transactions
           </Link>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              disabled={downloadingPdf}
-              className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/25 bg-white px-3 py-1.5 text-xs font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors disabled:opacity-60"
-            >
-              {downloadingPdf ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Download className="h-3.5 w-3.5" />
-              )}
-              {downloadingPdf ? 'Saving…' : 'PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/25 transition-colors"
-            >
-              <Printer className="h-3.5 w-3.5" />
-              Print
-            </button>
-          </div>
+          <ReceiptActionButtons
+            onDownloadPdf={handleDownloadPdf}
+            onDownloadImage={handleDownloadImage}
+            onPrint={() => window.print()}
+            onShare={shareReceipt}
+            downloadingPdf={downloadingPdf}
+            downloadingImage={downloadingImage}
+            shared={shared}
+            shareMode="copy"
+          />
         </div>
 
-        {/* ---- Hero card ---- */}
-        <div className="relative mt-8 print:mt-4">
-          {/* Floating type icon overlapping the card edge */}
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10 print:hidden">
-            <div
+        {/* ---- Unified Single-Color Patterned Receipt Card ---- */}
+        <article
+          className="relative overflow-hidden rounded-2xl bg-white border border-[#7B2D8E]/20 print:border-gray-300 print:rounded-none"
+          aria-label="Transaction receipt"
+        >
+          <ReceiptCrownBand />
+
+          {/* Patterned Masthead */}
+          <header
+            className="relative px-5 pt-4 pb-3.5 bg-[#F7F2FA] border-b border-[#7B2D8E]/15"
+            style={RECEIPT_MASTHEAD_PATTERN_STYLE}
+          >
+            <ReceiptCornerMarks inset="inset-2" />
+            <div className="relative flex items-start justify-between gap-3">
+              <div>
+                <Image
+                  src="/images/dermaspace-logo.png"
+                  alt="Dermaspace Esthetic & Wellness Centre"
+                  width={120}
+                  height={32}
+                  priority
+                  className="h-7 w-auto object-contain"
+                />
+                <p className="mt-1 text-[9.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Esthetic &amp; Wellness · Lagos
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+                  Official Receipt
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold text-gray-900">
+                  {categoryLabel(tx)}
+                </p>
+                <p className="mt-0.5 text-[10.5px] text-gray-500 tabular-nums">
+                  {formatDateTime(tx.created_at)}
+                </p>
+              </div>
+            </div>
+          </header>
+
+          {/* Reference & Status Strip */}
+          <div className="px-5 pt-3.5 pb-0.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-gray-400">
+                Reference
+              </p>
+              <button
+                type="button"
+                onClick={() => txReference && copy(txReference, 'ref-top')}
+                className="mt-0.5 inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-[#7B2D8E] hover:underline"
+                aria-label="Copy transaction reference"
+              >
+                <span className="truncate max-w-[200px]">{txReference}</span>
+                {copiedField === 'ref-top' ? (
+                  <Check className="h-3 w-3 shrink-0" />
+                ) : (
+                  <Copy className="h-3 w-3 shrink-0 text-[#7B2D8E]/60" />
+                )}
+              </button>
+            </div>
+
+            <span
               className={cn(
-                'flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#F6F4F8]',
-                isIncoming
-                  ? 'bg-[#7B2D8E] text-white'
-                  : 'bg-white text-[#7B2D8E]',
+                'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                status.pillCls,
               )}
             >
-              <TypeIcon tx={tx} />
-            </div>
+              <StatusIcon className="h-3 w-3" strokeWidth={2.5} />
+              {status.label}
+            </span>
           </div>
 
-          <div className="rounded-2xl bg-white px-5 pt-11 pb-6 text-center border border-gray-100 print:pt-5 print:border-gray-200">
-            <h1 className="text-[15px] font-semibold text-gray-900 text-balance leading-snug">
+          <ReceiptTearDivider notchBgClass="bg-[#F7F5F9]" />
+
+          {/* Summary Hero */}
+          <div className="px-5 pb-3 text-center">
+            <h1 className="text-sm font-semibold text-gray-900 text-balance leading-snug">
               {title}
             </h1>
-
             <p
               className={cn(
-                'mt-2 text-[34px] font-bold tracking-tight leading-none tabular-nums',
+                'mt-1.5 text-[28px] font-bold tracking-tight leading-none tabular-nums',
                 tx.status === 'failed' || tx.status === 'cancelled'
-                  ? 'text-gray-400'
-                  : 'text-gray-900',
+                  ? 'text-gray-400 line-through'
+                  : 'text-[#7B2D8E]',
               )}
             >
               {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
             </p>
+          </div>
 
-            <div className="mt-3 flex items-center justify-center gap-1.5">
-              <span
-                className={cn(
-                  'flex h-5 w-5 items-center justify-center rounded-full',
-                  tx.status === 'completed'
-                    ? 'bg-[#7B2D8E] text-white'
-                    : tx.status === 'pending'
-                      ? 'bg-amber-100 text-amber-600'
-                      : tx.status === 'failed'
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-200 text-gray-600',
-                )}
+          {(tx.status === 'pending' || tx.status === 'cancelled') && (
+            <p className="mx-5 mb-3 rounded-lg bg-[#F7F2FA] border border-[#7B2D8E]/15 px-3 py-2 text-[11px] text-gray-700 leading-relaxed">
+              {tx.status === 'pending' && tx.type === 'debit'
+                ? 'Waiting for confirmation from Paystack. Your order will finalize automatically once payment clears.'
+                : status.note}
+            </p>
+          )}
+          {tx.status === 'failed' && tx.error_message && (
+            <p className="mx-5 mb-3 rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 text-[11px] text-gray-700 leading-relaxed">
+              {tx.error_message}
+            </p>
+          )}
+
+          {/* Transaction Details Section */}
+          <div className="mx-5 rounded-xl border border-[#7B2D8E]/15 overflow-hidden">
+            <div className="px-3.5 py-2 bg-[#F7F2FA] border-b border-[#7B2D8E]/15 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
+              <span>Transaction Details</span>
+              <span>Ledger</span>
+            </div>
+            <div className="px-3.5 divide-y divide-gray-100">
+              <DetailRow
+                label={
+                  isIncoming
+                    ? 'Credited to'
+                    : tx.payment_method === 'wallet'
+                      ? 'Paid from'
+                      : 'Paid via'
+                }
               >
-                <StatusIcon className="h-3 w-3" strokeWidth={3} />
-              </span>
-              <span className={cn('text-sm font-semibold', status.chip)}>
-                {status.label}
-              </span>
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  {isIncoming || tx.payment_method === 'wallet' ? (
+                    <>
+                      <Wallet className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                      Wallet Balance
+                    </>
+                  ) : (
+                    <>
+                      <MethodIcon
+                        method={tx.payment_method}
+                        className="h-3.5 w-3.5 text-[#7B2D8E]"
+                      />
+                      {methodLabel(tx.payment_method)}
+                    </>
+                  )}
+                </span>
+              </DetailRow>
+
+              <DetailRow label="Payment method">
+                <span className="inline-flex items-center gap-1.5 font-medium">
+                  <MethodIcon
+                    method={tx.payment_method}
+                    className="h-3.5 w-3.5 text-[#7B2D8E]"
+                  />
+                  {methodLabel(tx.payment_method)}
+                </span>
+              </DetailRow>
+
+              <DetailRow label="Type">
+                <span className="font-medium">
+                  {tx.type === 'credit'
+                    ? 'Deposit'
+                    : tx.type === 'refund'
+                      ? 'Refund'
+                      : 'Payment'}
+                </span>
+              </DetailRow>
+
+              {tx.paystack_reference && tx.paystack_reference !== txReference && (
+                <DetailRow label="Session ID">
+                  <button
+                    type="button"
+                    onClick={() => copy(tx.paystack_reference as string, 'psref')}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] hover:text-[#7B2D8E]"
+                    aria-label="Copy processor reference"
+                  >
+                    <span className="truncate max-w-[150px]">{tx.paystack_reference}</span>
+                    {copiedField === 'psref' ? (
+                      <Check className="h-3 w-3 text-[#7B2D8E]" />
+                    ) : (
+                      <Copy className="h-3 w-3 text-gray-400" />
+                    )}
+                  </button>
+                </DetailRow>
+              )}
+
+              {tx.invoice?.invoice_number && (
+                <DetailRow label="Invoice no.">
+                  <button
+                    type="button"
+                    onClick={() => copy(tx.invoice!.invoice_number, 'inv')}
+                    className="inline-flex items-center gap-1 font-mono text-[11px] hover:text-[#7B2D8E]"
+                    aria-label="Copy invoice number"
+                  >
+                    <span>{tx.invoice.invoice_number}</span>
+                    {copiedField === 'inv' ? (
+                      <Check className="h-3 w-3 text-[#7B2D8E]" />
+                    ) : (
+                      <Copy className="h-3 w-3 text-gray-400" />
+                    )}
+                  </button>
+                </DetailRow>
+              )}
+
+              {tx.description && (
+                <DetailRow label="Remark">
+                  <span className="leading-relaxed">{tx.description}</span>
+                </DetailRow>
+              )}
             </div>
           </div>
-        </div>
 
-        {(tx.status === 'pending' || tx.status === 'cancelled') && (
-          <p className="mt-3 rounded-xl bg-white px-4 py-3 text-xs text-gray-500 leading-relaxed text-pretty border border-gray-100">
-            {tx.status === 'pending' && tx.type === 'debit'
-              ? 'Waiting for confirmation from Paystack. Your order will be finalized automatically once payment clears.'
-              : status.note}
-          </p>
-        )}
-        {tx.status === 'failed' && tx.error_message && (
-          <p className="mt-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-xs text-red-700 leading-relaxed text-pretty">
-            {tx.error_message}
-          </p>
-        )}
-
-        {/* ---- Transaction Details card ---- */}
-        <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
-          <h2 className="text-[15px] font-bold text-gray-900">
-            Transaction Details
-          </h2>
-
-          <div className="mt-1 divide-y divide-gray-50">
-            <DetailRow
-              label={
-                isIncoming
-                  ? 'Credited to'
-                  : tx.payment_method === 'wallet'
-                    ? 'Paid from'
-                    : 'Paid via'
-              }
-            >
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                {isIncoming || tx.payment_method === 'wallet' ? (
-                  <>
-                    <Wallet className="h-3.5 w-3.5 text-[#7B2D8E]" />
-                    Wallet Balance
-                  </>
-                ) : (
-                  <>
-                    <MethodIcon
-                      method={tx.payment_method}
-                      className="h-3.5 w-3.5 text-[#7B2D8E]"
-                    />
-                    {methodLabel(tx.payment_method)}
-                  </>
+          {/* Gift Card block if present */}
+          {tx.giftCard && (
+            <div className="mx-5 mt-3 rounded-xl border border-[#7B2D8E]/15 overflow-hidden">
+              <div className="px-3.5 py-2 bg-[#F7F2FA] border-b border-[#7B2D8E]/15 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
+                  Gift Card
+                </span>
+                <span className="text-[10px] font-semibold uppercase text-[#7B2D8E]">
+                  {tx.giftCard.status || 'Confirmed'}
+                </span>
+              </div>
+              <div className="px-3.5 divide-y divide-gray-100">
+                {tx.giftCard.recipient_name && (
+                  <DetailRow label="Recipient">
+                    <span className="font-medium">{tx.giftCard.recipient_name}</span>
+                  </DetailRow>
                 )}
-              </span>
-            </DetailRow>
-
-            <DetailRow label="Payment method">
-              <span className="inline-flex items-center gap-1.5 font-medium">
-                <MethodIcon
-                  method={tx.payment_method}
-                  className="h-3.5 w-3.5 text-[#7B2D8E]"
-                />
-                {methodLabel(tx.payment_method)}
-              </span>
-            </DetailRow>
-
-            {tx.description && (
-              <DetailRow label="Remark">
-                <span className="leading-relaxed">{tx.description}</span>
-              </DetailRow>
-            )}
-
-            <DetailRow label="Transaction type">
-              <span className="capitalize font-medium">
-                {tx.type === 'credit'
-                  ? 'Deposit'
-                  : tx.type === 'refund'
-                    ? 'Refund'
-                    : 'Payment'}
-              </span>
-            </DetailRow>
-
-            {txReference && (
-              <DetailRow label="Transaction no.">
-                <button
-                  type="button"
-                  onClick={() => copy(txReference, 'ref')}
-                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-[#7B2D8E] transition-colors min-w-0"
-                  aria-label="Copy reference"
-                >
-                  <span className="truncate max-w-[160px]">{txReference}</span>
-                  {copiedField === 'ref' ? (
-                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                  )}
-                </button>
-              </DetailRow>
-            )}
-
-            {tx.paystack_reference && tx.paystack_reference !== txReference && (
-              <DetailRow label="Session ID">
-                <button
-                  type="button"
-                  onClick={() => copy(tx.paystack_reference as string, 'psref')}
-                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-[#7B2D8E] transition-colors min-w-0"
-                  aria-label="Copy processor reference"
-                >
-                  <span className="truncate max-w-[160px]">
-                    {tx.paystack_reference}
-                  </span>
-                  {copiedField === 'psref' ? (
-                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                  )}
-                </button>
-              </DetailRow>
-            )}
-
-            {tx.invoice?.invoice_number && (
-              <DetailRow label="Invoice no.">
-                <button
-                  type="button"
-                  onClick={() => copy(tx.invoice!.invoice_number, 'inv')}
-                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-[#7B2D8E] transition-colors min-w-0"
-                  aria-label="Copy invoice number"
-                >
-                  <span className="truncate max-w-[160px]">
-                    {tx.invoice.invoice_number}
-                  </span>
-                  {copiedField === 'inv' ? (
-                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                  )}
-                </button>
-              </DetailRow>
-            )}
-
-            <DetailRow label="Transaction date">
-              <span className="tabular-nums">{formatDateTime(tx.created_at)}</span>
-            </DetailRow>
-          </div>
-        </div>
-
-        {/* ---- Gift Card details card (only when payment funded a gift card) ---- */}
-        {tx.giftCard && (
-          <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100 print:border-gray-200">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[15px] font-bold text-gray-900">Gift Card</h2>
-              <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-[#F3E8F7] text-[#7B2D8E] capitalize">
-                {tx.giftCard.status || 'processing'}
-              </span>
-            </div>
-
-            <div className="mt-1 divide-y divide-gray-50">
-              {tx.giftCard.recipient_name && (
-                <DetailRow label="Recipient">
-                  <span className="font-medium">{tx.giftCard.recipient_name}</span>
-                </DetailRow>
-              )}
-              {tx.giftCard.recipient_email && (
-                <DetailRow label="Recipient email">
-                  <span className="break-all">{tx.giftCard.recipient_email}</span>
-                </DetailRow>
-              )}
-              {tx.giftCard.occasion && (
-                <DetailRow label="Occasion">
-                  <span>
-                    {tx.giftCard.occasion} ({getGiftCardOccasionMeta(tx.giftCard.occasion).editionLabel})
-                  </span>
-                </DetailRow>
-              )}
-              {(tx.giftCard.design_name || tx.giftCard.design || tx.giftCard.font_name) && (
-                <DetailRow label="Card style">
-                  <span className="inline-flex items-center justify-end gap-1.5">
-                    {(() => {
-                      const designObj = findGiftCardDesignById(
-                        tx.giftCard.design || tx.giftCard.design_name,
-                      )
-                      return (
-                        <span
-                          className="inline-block h-2.5 w-2.5 rounded-full border border-black/15 flex-shrink-0"
-                          style={{ backgroundColor: designObj.surfaceHex }}
-                        />
-                      )
-                    })()}
+                {tx.giftCard.recipient_email && (
+                  <DetailRow label="Recipient email">
+                    <span className="break-all">{tx.giftCard.recipient_email}</span>
+                  </DetailRow>
+                )}
+                {tx.giftCard.occasion && (
+                  <DetailRow label="Occasion">
+                    <span>
+                      {tx.giftCard.occasion} (
+                      {getGiftCardOccasionMeta(tx.giftCard.occasion).editionLabel})
+                    </span>
+                  </DetailRow>
+                )}
+                {(tx.giftCard.design_name || tx.giftCard.design || tx.giftCard.font_name) && (
+                  <DetailRow label="Card style">
                     <span>
                       {[
                         tx.giftCard.design_name || tx.giftCard.design,
@@ -732,235 +675,181 @@ export default function TransactionDetailContent({
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
+                  </DetailRow>
+                )}
+                {tx.giftCard.personal_message && (
+                  <DetailRow label="Message">
+                    <span className="italic text-gray-600">
+                      &ldquo;{tx.giftCard.personal_message}&rdquo;
+                    </span>
+                  </DetailRow>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Appointment block if present */}
+          {tx.booking && (
+            <div className="mx-5 mt-3 rounded-xl border border-[#7B2D8E]/15 overflow-hidden">
+              <div className="px-3.5 py-2 bg-[#F7F2FA] border-b border-[#7B2D8E]/15 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
+                  Appointment
+                </span>
+                {(() => {
+                  const meta =
+                    BOOKING_STATUS_META[tx.booking.status] ??
+                    BOOKING_STATUS_META.pending
+                  return (
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                        meta.chip,
+                      )}
+                    >
+                      {meta.label}
+                    </span>
+                  )
+                })()}
+              </div>
+              <div className="px-3.5 divide-y divide-gray-100">
+                {tx.booking.services && tx.booking.services.length > 0 && (
+                  <DetailRow
+                    label={tx.booking.services.length > 1 ? 'Services' : 'Service'}
+                  >
+                    <span className="font-medium leading-relaxed">
+                      {tx.booking.services.map((s) => s.treatment_name).join(', ')}
+                    </span>
+                  </DetailRow>
+                )}
+                <DetailRow label="Date & Time">
+                  <span className="font-medium tabular-nums">
+                    {formatAppointmentDate(tx.booking.appointment_date)} ·{' '}
+                    {formatAppointmentTime(tx.booking.appointment_time)}
                   </span>
                 </DetailRow>
-              )}
-              {tx.giftCard.delivery_method && (
-                <DetailRow label="Delivery">
-                  <span className="capitalize">
-                    {tx.giftCard.delivery_method}
-                    {tx.giftCard.delivery_date
-                      ? ` · ${formatAppointmentDate(tx.giftCard.delivery_date)}`
-                      : ''}
+                {formatDuration(tx.booking.total_duration) && (
+                  <DetailRow label="Duration">
+                    <span className="font-medium">
+                      {formatDuration(tx.booking.total_duration)}
+                    </span>
+                  </DetailRow>
+                )}
+                <DetailRow label="Location">
+                  <span className="inline-flex items-center gap-1 font-medium">
+                    <MapPin className="h-3 w-3 text-[#7B2D8E] shrink-0" />
+                    {tx.booking.location_name}
                   </span>
                 </DetailRow>
-              )}
-              {tx.giftCard.personal_message && (
-                <DetailRow label="Message">
-                  <span className="italic text-gray-600">
-                    &ldquo;{tx.giftCard.personal_message}&rdquo;
-                  </span>
+                <DetailRow label="Booking ref">
+                  <Link
+                    href={`/booking/${encodeURIComponent(tx.booking.booking_reference)}`}
+                    className="font-mono text-[11px] font-semibold text-[#7B2D8E] hover:underline"
+                  >
+                    {tx.booking.booking_reference}
+                  </Link>
                 </DetailRow>
-              )}
+              </div>
+            </div>
+          )}
+
+          {/* Solid Single-Color Total Block */}
+          <div
+            className="mx-5 mt-3.5 rounded-xl bg-[#7B2D8E] text-white px-4 py-3 flex items-center justify-between border border-[#7B2D8E]"
+            style={RECEIPT_TOTAL_PATTERN_STYLE}
+          >
+            <div>
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.18em] text-white/75">
+                {tx.status === 'completed'
+                  ? isIncoming
+                    ? 'Total Credited'
+                    : 'Total Paid'
+                  : 'Amount'}
+              </p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums">
+                {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] font-semibold text-white">
+                {methodLabel(tx.payment_method)}
+              </p>
+              <p className="text-[10px] font-mono text-white/75 mt-0.5">
+                {status.label}
+              </p>
             </div>
           </div>
-        )}
 
-        {/* ---- Appointment card (only when this payment funded a booking) ---- */}
-        {tx.booking && (
-          <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[15px] font-bold text-gray-900">Appointment</h2>
-              {(() => {
-                const meta =
-                  BOOKING_STATUS_META[tx.booking.status] ??
-                  BOOKING_STATUS_META.pending
-                return (
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                      meta.chip,
-                    )}
-                  >
-                    {meta.label}
-                  </span>
-                )
-              })()}
-            </div>
+          <ReceiptTearDivider notchBgClass="bg-[#F7F5F9]" className="mt-2" />
 
-            <div className="mt-1 divide-y divide-gray-50">
-              {tx.booking.services && tx.booking.services.length > 0 && (
-                <DetailRow
-                  label={tx.booking.services.length > 1 ? 'Services' : 'Service'}
-                >
-                  <span className="font-medium leading-relaxed">
-                    {tx.booking.services.map((s) => s.treatment_name).join(', ')}
-                  </span>
-                </DetailRow>
+          <footer className="px-5 pb-4 pt-1 text-center text-[10.5px] text-gray-500 leading-relaxed">
+            <p className="font-semibold text-[#7B2D8E]">
+              Crafted with care at Dermaspace
+            </p>
+            <p className="mt-0.5">
+              237B Muri Okunola St, VI &middot; 9 Agbeke Rotinwa Cl, Ikoyi &middot; hello@dermaspaceng.com
+            </p>
+          </footer>
+        </article>
+
+        {/* Compact Secondary Actions Below Receipt */}
+        <div className="mt-3.5 rounded-xl bg-white px-4 py-3 border border-gray-200 flex flex-wrap items-center justify-between gap-2 print:hidden">
+          {tx.status === 'pending' && (
+            <button
+              type="button"
+              onClick={cancelPayment}
+              disabled={cancelling}
+              className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-[#7B2D8E] disabled:opacity-60"
+            >
+              {cancelling ? (
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <X className="h-3.5 w-3.5" />
               )}
-
-              <DetailRow label="Date">
-                <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
-                  <Calendar className="h-3.5 w-3.5 text-[#7B2D8E]" />
-                  {formatAppointmentDate(tx.booking.appointment_date)}
-                </span>
-              </DetailRow>
-
-              <DetailRow label="Time">
-                <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
-                  <Clock className="h-3.5 w-3.5 text-[#7B2D8E]" />
-                  {formatAppointmentTime(tx.booking.appointment_time)}
-                </span>
-              </DetailRow>
-
-              {formatDuration(tx.booking.total_duration) && (
-                <DetailRow label="Duration">
-                  <span className="font-medium">
-                    {formatDuration(tx.booking.total_duration)}
-                  </span>
-                </DetailRow>
-              )}
-
-              <DetailRow label="Location">
-                <span className="inline-flex items-start gap-1.5 font-medium">
-                  <MapPin className="h-3.5 w-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                  <span className="leading-relaxed">
-                    {tx.booking.location_name}
-                    {tx.booking.location_address && (
-                      <span className="block text-xs font-normal text-gray-400">
-                        {tx.booking.location_address}
-                      </span>
-                    )}
-                  </span>
-                </span>
-              </DetailRow>
-
-              <DetailRow label="Booking ref">
-                <span className="font-mono text-xs">
-                  {tx.booking.booking_reference}
-                </span>
-              </DetailRow>
-            </div>
-
-            <div
-              className="my-2 border-t border-dashed border-gray-200"
-              aria-hidden="true"
-            />
-
+              {cancelling ? 'Checking…' : 'Cancel pending'}
+            </button>
+          )}
+          {(tx.status === 'cancelled' || tx.status === 'failed') && (
+            <Link
+              href={`/dashboard/wallet?fund=${tx.amount}`}
+              className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:underline"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Try again
+            </Link>
+          )}
+          {tx.status === 'completed' && isIncoming && (
+            <Link
+              href="/dashboard/wallet"
+              className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:underline"
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              Fund wallet again
+            </Link>
+          )}
+          {tx.booking && (
             <Link
               href={`/booking/${encodeURIComponent(tx.booking.booking_reference)}`}
-              className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
+              className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:underline"
             >
-              <Calendar className="h-4 w-4" />
-              View full booking
+              <Calendar className="h-3.5 w-3.5" />
+              Full booking
             </Link>
-          </div>
-        )}
-
-        {/* ---- More Actions card ---- */}
-        <div className="mt-3 rounded-2xl bg-white px-5 py-4 border border-gray-100 print:hidden">
-          <h2 className="text-[15px] font-bold text-gray-900">More Actions</h2>
-
-          <div className="mt-1">
-            <DetailRow label="Category">
-              <span className="font-medium">{categoryLabel(tx)}</span>
-            </DetailRow>
-          </div>
-
-          <div
-            className="my-2 border-t border-dashed border-gray-200"
-            aria-hidden="true"
-          />
-
-          <div className="flex flex-col">
-            {tx.status === 'pending' && (
-              <button
-                type="button"
-                onClick={cancelPayment}
-                disabled={cancelling}
-                className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-60"
-              >
-                {cancelling ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <X className="h-4 w-4" />
-                )}
-                {cancelling
-                  ? 'Checking with Paystack…'
-                  : 'I cancelled this payment'}
-              </button>
-            )}
-            {(tx.status === 'cancelled' || tx.status === 'failed') && (
-              <Link
-                href={`/dashboard/wallet?fund=${tx.amount}`}
-                className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
-              >
-                <RotateCcw className="h-4 w-4" />
-                Try this payment again
-              </Link>
-            )}
-            {tx.status === 'completed' && isIncoming && (
-              <Link
-                href="/dashboard/wallet"
-                className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
-              >
-                <Wallet className="h-4 w-4" />
-                Fund again
-              </Link>
-            )}
-            <Link
-              href="/dashboard/support"
-              className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
-            >
-              <LifeBuoy className="h-4 w-4" />
-              Get help with this transaction
-            </Link>
-          </div>
+          )}
+          <Link
+            href="/dashboard/support"
+            className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-[#7B2D8E] ml-auto"
+          >
+            <LifeBuoy className="h-3.5 w-3.5" />
+            Support
+          </Link>
         </div>
-        {/* ---- Download PDF, Print & Share Receipt (in-flow on mobile, sticky on desktop) ---- */}
-        <div className="mt-4 md:mt-0 md:fixed md:inset-x-0 md:bottom-0 md:z-20 md:bg-[#F6F4F8] md:border-t md:border-gray-100 md:px-4 md:pb-[max(1rem,env(safe-area-inset-bottom))] md:pt-3 print:hidden">
-          <div className="mx-auto w-full max-w-md flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleDownloadPdf}
-              disabled={downloadingPdf}
-              className="flex flex-1 items-center justify-center gap-2 h-12 rounded-full text-sm font-semibold text-white transition-colors disabled:opacity-60"
-              style={{ backgroundColor: BRAND }}
-              aria-label="Download PDF receipt"
-            >
-              {downloadingPdf ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              {downloadingPdf ? 'Preparing PDF…' : 'Download PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center justify-center gap-1.5 h-12 px-4 rounded-full border border-[#7B2D8E]/25 bg-white text-sm font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors flex-shrink-0"
-              aria-label="Print receipt"
-            >
-              <Printer className="h-4 w-4" />
-              Print
-            </button>
-            <button
-              type="button"
-              onClick={shareReceipt}
-              className="inline-flex items-center justify-center h-12 w-12 rounded-full border border-gray-200 bg-white text-gray-700 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/30 transition-colors flex-shrink-0"
-              aria-label={shared ? 'Receipt copied' : 'Share receipt'}
-              title={shared ? 'Copied!' : 'Share receipt'}
-            >
-              {shared ? (
-                <Check className="h-4 w-4 text-[#7B2D8E]" />
-              ) : (
-                <Share2 className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Print-only footer */}
-        <footer className="hidden print:block mt-6 pt-4 border-t border-dashed border-gray-200 text-center text-[11px] text-gray-500">
-          Dermaspace Esthetic &amp; Wellness Centre · 237B Muri Okunola St, Victoria Island · 9 Agbeke Rotinwa Cl, Ikoyi · hello@dermaspaceng.com
-        </footer>
       </main>
 
       <style jsx global>{`
         @media print {
           @page {
             size: A4;
-            margin: 14mm 12mm;
+            margin: 12mm;
           }
           html,
           body {
