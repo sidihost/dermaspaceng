@@ -123,7 +123,7 @@ export async function generateMetadata({
     ? profile.avatar_url.startsWith('http')
       ? profile.avatar_url
       : `${base}${profile.avatar_url.startsWith('/') ? '' : '/'}${profile.avatar_url}`
-    : `${base}/icon-512.png`
+    : `${base}/icons/icon-512x512.png`
 
   return {
     title,

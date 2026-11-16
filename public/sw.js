@@ -123,7 +123,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v22';
+const VERSION = 'v23';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -136,6 +136,11 @@ const RSC_CACHE     = `dermaspace-rsc-${VERSION}`;
 const PRECACHE = [
   '/manifest.json',
   '/favicon.png',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/icon-maskable-512x512.png',
+  '/apple-touch-icon.png',
+  '/images/dermaspace-logo.png',
 ];
 
 // Routes we want available offline immediately after install, even before
@@ -769,8 +774,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Dermaspace', {
       body: data.body || '',
-      icon: data.icon || '/icons/icon-512x512.webp',
-      badge: data.badge || '/icons/icon-512x512.webp',
+      icon: data.icon || '/icons/icon-192x192.png',
+      badge: data.badge || '/favicon.png',
       image: data.image,
       vibrate: [100, 50, 100],
       tag: data.tag || url,
@@ -819,10 +824,8 @@ self.addEventListener('notificationclick', (event) => {
 //
 // Three message types matter today:
 //
-//   1. SKIP_WAITING — `service-worker-register.tsx` posts this when the
-//      user clicks "Update Now" on the in-page update banner. Forces
-//      the new SW to take over without requiring the user to close
-//      every tab first.
+//   1. SKIP_WAITING — forces a waiting SW to activate immediately if
+//      explicitly requested (sw.js already calls skipWaiting() on install).
 //
 //   2. CACHE_NAVIGATION — the register posts this on every Next.js
 //      client-side route change with `{ url: '/path?qs' }`. The SW's

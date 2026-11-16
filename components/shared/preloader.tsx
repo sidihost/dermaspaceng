@@ -61,12 +61,11 @@ export default function Preloader() {
         <div className="relative inline-block">
           <ChristmasLogoHat className="w-7 h-7 -top-3.5 left-0 sm:w-8 sm:h-8 sm:-top-4 sm:left-0" />
           <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
-            alt="Dermaspace"
-            width={180}
-            height={60}
-            referrerPolicy="no-referrer"
-            className="h-12 sm:h-14 w-auto"
+            src="/images/dermaspace-logo.png"
+            alt="Dermaspace Esthetic And Wellness Centre"
+            width={220}
+            height={45}
+            className="h-11 sm:h-12 w-auto object-contain"
             priority
           />
         </div>

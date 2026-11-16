@@ -691,27 +691,18 @@ export default function BroadcastPage() {
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
                 <div className="bg-[#7B2D8E] px-3 py-3 flex items-start gap-2.5 sm:px-4 sm:gap-3">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-0.5 overflow-hidden">
-                  {/* Real Dermaspace butterfly mark — the previous
-                      /icons/icon-192x192.png was a generic green leaf
-                      placeholder shipped with the PWA template, which
-                      is what the admin caught with "this isn't our
-                      logo". The asset at /icon-light-32x32.webp is the
-                      actual brand mark used in the sidebar / favicon
-                      pipeline, so the bell preview now reads as a
-                      real Dermaspace push instead of a stock icon.
-                      Falls back to /icon.png (the wordmark with the
-                      butterfly built in) only if the webp 404s. */}
+                  {/* Real Dermaspace butterfly mark on solid white */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/icon-light-32x32.webp"
+                    src="/icons/icon-192x192.png"
                     alt="Dermaspace"
                     width={32}
                     height={32}
                     className="h-full w-full object-contain"
                     onError={(e) => {
                       const img = e.currentTarget
-                      if (!img.src.endsWith('/icon.png')) {
-                        img.src = '/icon.png'
+                      if (!img.src.endsWith('/favicon.png')) {
+                        img.src = '/favicon.png'
                       }
                     }}
                   />

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { X, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { X, Wifi, WifiOff } from 'lucide-react'
 import Image from 'next/image'
 import { isServiceWorkerAllowedOrigin } from '@/lib/push-origin'
 
@@ -14,7 +14,6 @@ export function ServiceWorkerRegister() {
   // Default to `null` and guard the cache-precaching effect below.
   const pathname = usePathname()
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
-  const [showUpdatePrompt, setShowUpdatePrompt] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
   const [showOnlineBanner, setShowOnlineBanner] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
@@ -161,22 +160,11 @@ export function ServiceWorkerRegister() {
             window.addEventListener('load', () => window.setTimeout(scheduleWarmup, 1500), { once: true })
           }
 
-          // Check for updates periodically
+          // Check for updates periodically — sw.js calls skipWaiting() and
+          // clients.claim(), and controllerchange below reloads seamlessly.
           setInterval(() => {
             registration.update()
           }, 60 * 60 * 1000) // Check every hour
-
-          // Handle updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setShowUpdatePrompt(true)
-                }
-              })
-            }
-          })
         })
         .catch((error) => {
           console.error('SW registration failed:', error)
@@ -365,17 +353,6 @@ export function ServiceWorkerRegister() {
     localStorage.setItem('pwa-install-prompt-seen', 'true')
   }
 
-  const handleUpdate = () => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((registration) => {
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-        }
-      })
-    }
-    setShowUpdatePrompt(false)
-  }
-
   return (
     <>
       {/* Offline Banner — was previously `fixed top-0`, which sat
@@ -431,13 +408,13 @@ export function ServiceWorkerRegister() {
                 <X className="w-4 h-4 text-white/80" />
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/30 p-1.5">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center flex-shrink-0 border border-white/30 p-1 overflow-hidden">
                   <Image
-                    src="/icons/icon-512x512.webp"
+                    src="/icons/icon-192x192.png"
                     alt="Dermaspace"
-                    width={44}
-                    height={44}
-                    className="object-contain"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-contain"
                   />
                 </div>
                 <div>
@@ -468,39 +445,6 @@ export function ServiceWorkerRegister() {
                   Install App
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Update Prompt */}
-      {showUpdatePrompt && (
-        <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <RefreshCw className="w-6 h-6 text-[#7B2D8E]" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 text-sm">Update Available</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  A new version of Dermaspace is ready
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setShowUpdatePrompt(false)}
-                className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-full transition-colors border border-gray-200"
-              >
-                Later
-              </button>
-              <button
-                onClick={handleUpdate}
-                className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2D7E] transition-colors font-medium"
-              >
-                Update Now
-              </button>
             </div>
           </div>
         </div>

@@ -65,6 +65,11 @@ export function CookieBanner() {
     } catch {
       // Swallow — we already control the in-memory state below.
     }
+    try {
+      window.dispatchEvent(new Event('ds:cookies-settled'))
+    } catch {
+      // Ignore if CustomEvent/Event fails
+    }
     setVisible(false)
   }
 
