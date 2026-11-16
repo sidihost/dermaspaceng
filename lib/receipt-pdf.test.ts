@@ -12,6 +12,7 @@ import {
 } from './receipt-pdf'
 import {
   classifyStatusTone,
+  measureLedgerRows,
   measureLineItems,
   measureSummaryPairs,
   needsPageBreak,
@@ -77,6 +78,7 @@ test('buildTransactionReceiptData maps gift card style, visual colors, occasion,
   assert.equal(receipt.statusLabel, 'Successful')
   assert.equal(receipt.amountLabel, 'TOTAL PAID')
   assert.equal(receipt.amountFormatted, 'NGN 25,000')
+  assert.equal(receipt.headline, null)
   assert.equal(receipt.filename, 'Dermaspace-Receipt-GC-2026-8841.pdf')
   assert.equal(receipt.imageFilename, 'Dermaspace-Receipt-GC-2026-8841.png')
   assert.equal(receipt.note, 'Enjoy a relaxing spa afternoon!')
@@ -87,14 +89,12 @@ test('buildTransactionReceiptData maps gift card style, visual colors, occasion,
   assert.equal(receipt.giftCardVisual?.editionLabel, 'Birthday Celebration')
   assert.ok(
     receipt.summaryRows.some(
-      (r) =>
-        r.label === 'Occasion & Theme' &&
-        r.value === 'Birthday (Birthday Celebration)',
+      (r) => r.label === 'Occasion' && r.value === 'Birthday',
     ),
   )
   assert.ok(
     receipt.summaryRows.some(
-      (r) => r.label === 'Card Style' && r.value === 'Deep Emerald · Elegant font',
+      (r) => r.label === 'Delivery' && r.value === 'email',
     ),
   )
   assert.ok(
@@ -102,7 +102,11 @@ test('buildTransactionReceiptData maps gift card style, visual colors, occasion,
       (r) => r.label === 'Invoice Number' && r.value === 'INV-2026-0091',
     ),
   )
-  assert.equal(receipt.lineItems?.[0]?.title, 'Dermaspace Gift Card — Birthday Celebration')
+  assert.equal(
+    receipt.summaryRows.some((r) => r.label === 'Card Style' || r.label === 'Payment Method'),
+    false,
+  )
+  assert.equal(receipt.lineItems, undefined)
 })
 
 test('buildGiftCardReceiptData formats gift card confirmation receipt and visual theme consistently', () => {
@@ -122,6 +126,7 @@ test('buildGiftCardReceiptData formats gift card confirmation receipt and visual
   })
 
   assert.equal(receipt.documentTitle, 'GIFT CARD RECEIPT')
+  assert.equal(receipt.headline, null)
   assert.equal(receipt.amountFormatted, 'NGN 50,000')
   assert.equal(receipt.filename, 'Dermaspace-Receipt-DS_GIFT_881.pdf')
   assert.equal(receipt.imageFilename, 'Dermaspace-Receipt-DS_GIFT_881.png')
@@ -131,14 +136,19 @@ test('buildGiftCardReceiptData formats gift card confirmation receipt and visual
   assert.equal(receipt.giftCardVisual?.editionLabel, 'Christmas Edition')
   assert.ok(
     receipt.summaryRows.some(
-      (r) => r.label === 'Occasion & Theme' && r.value === 'Christmas (Christmas Edition)',
+      (r) => r.label === 'Occasion' && r.value === 'Christmas',
     ),
   )
   assert.ok(
     receipt.summaryRows.some(
-      (r) => r.label === 'Card Style' && r.value === 'Midnight Sapphire · Modern font',
+      (r) => r.label === 'Delivery' && r.value === 'download',
     ),
   )
+  assert.equal(
+    receipt.summaryRows.some((r) => r.label === 'Card Style' || r.label === 'Paid Via'),
+    false,
+  )
+  assert.equal(receipt.lineItems, undefined)
 })
 
 test('buildBookingReceiptData formats booking treatments, voucher discount, and filenames', () => {
@@ -172,6 +182,8 @@ test('buildBookingReceiptData formats booking treatments, voucher discount, and 
 
   assert.equal(receipt.documentTitle, 'BOOKING RECEIPT')
   assert.equal(receipt.statusLabel, 'Confirmed')
+  assert.equal(receipt.headline, null)
+  assert.equal(receipt.subheadline, null)
   assert.equal(receipt.amountLabel, 'TOTAL PAID')
   assert.equal(receipt.amountFormatted, 'NGN 45,000')
   assert.equal(receipt.subtotalFormatted, 'NGN 50,000')
@@ -180,6 +192,43 @@ test('buildBookingReceiptData formats booking treatments, voucher discount, and 
   assert.equal(receipt.filename, 'Dermaspace-Receipt-DS-BK-2026-77.pdf')
   assert.equal(receipt.imageFilename, 'Dermaspace-Receipt-DS-BK-2026-77.png')
   assert.equal(receipt.note, 'Sensitive skin')
+  assert.equal(receipt.footerNote, undefined)
+  assert.ok(
+    receipt.summaryRows.some(
+      (r) => r.label === 'Client' && r.value === 'Itunu Lawal',
+    ),
+  )
+
+  const withAddress = buildBookingReceiptData({
+    booking_reference: 'DS-BK-2026-78',
+    location_name: 'Victoria Island',
+    location_address: '237B Muri Okunola St, Victoria Island',
+    appointment_date: '2026-12-01',
+    appointment_time: '14:00',
+    total_duration: 60,
+    total_price_kobo: 4500000,
+    customer_name: 'Itunu Lawal',
+    customer_email: 'itunu@example.com',
+    customer_phone: '08012345678',
+    status: 'confirmed',
+    payment_status: 'paid',
+    payment_method: 'paystack',
+    services: [
+      {
+        treatmentName: 'Deep Cleansing Facial',
+        categoryName: 'Facial Treatments',
+        duration: 60,
+        priceKobo: 4500000,
+      },
+    ],
+  })
+  assert.ok(
+    withAddress.summaryRows.some(
+      (r) =>
+        r.label === 'Branch Address' &&
+        r.value === '237B Muri Okunola St, Victoria Island',
+    ),
+  )
 })
 
 test('buildMembershipReceiptData maps both site-wide tiers and Platinum wallet credit', () => {
@@ -204,8 +253,16 @@ test('buildMembershipReceiptData maps both site-wide tiers and Platinum wallet c
 
   assert.equal(gold.documentTitle, 'MEMBERSHIP RECEIPT')
   assert.equal(gold.statusLabel, 'Paid')
+  assert.equal(gold.headline, 'Gold Membership')
+  assert.equal(gold.subheadline, null)
   assert.equal(gold.lineItems?.length, 2)
   assert.equal(gold.imageFilename, 'Dermaspace-Receipt-MS_GOLD_101.png')
+  assert.ok(gold.summaryRows.some((r) => r.label === 'Member' && r.value === 'Ada Obi'))
+  assert.ok(gold.summaryRows.some((r) => r.label === 'Starts'))
+  assert.equal(
+    gold.summaryRows.some((r) => r.label === 'Payment Method' || r.label === 'Validity'),
+    false,
+  )
 
   const platinum = buildMembershipReceiptData({
     reference: 'MS_PLAT_202',
@@ -350,4 +407,37 @@ test('measureSummaryPairs and measureLineItems expand row heights dynamically on
   assert.equal(needsPageBreak(720, 60, 841.89, 82), true)
   assert.equal(needsPageBreak(500, 60, 841.89, 82), false)
 })
+
+test('measureLedgerRows wraps long right-aligned values without colliding with left labels', () => {
+  const monoMeasure = (t: string) => t.length * 7
+  const ledger = measureLedgerRows(
+    [
+      { label: 'Location', value: 'Victoria Island Sanctuary' },
+      {
+        label: 'Email',
+        value: 'chidinma.okonkwo.executive@enterprise-wellness.example.com',
+      },
+    ],
+    monoMeasure,
+    monoMeasure,
+    {
+      totalWidth: 440,
+      labelMaxWidthRatio: 0.4,
+      minGap: 20,
+      topPadding: 8,
+      lineHeight: 16,
+      bottomPadding: 8,
+      minRowHeight: 30,
+    },
+  )
+
+  assert.equal(ledger.rows.length, 2)
+  assert.equal(ledger.rows[0].valueLines.length, 1)
+  assert.equal(ledger.rows[0].height, 32)
+  assert.ok(ledger.rows[1].valueLines.length >= 2)
+  assert.ok(ledger.rows[1].height > 32)
+  // Verify break happens cleanly at delimiter before falling back mid-word
+  assert.ok(ledger.rows[1].valueLines[0].endsWith('@') || ledger.rows[1].valueLines[0].endsWith('.'))
+})
+
 

@@ -5,8 +5,8 @@ import {
 } from './gift-card-templates'
 import {
   classifyStatusTone,
+  measureLedgerRows,
   measureLineItems,
-  measureSummaryPairs,
   needsPageBreak,
   resolveLineItemColumnMode,
   wrapTextLines,
@@ -28,6 +28,7 @@ export const RECEIPT_PALETTE = {
   brandTintRgb: [247, 242, 250] as [number, number, number],
   brandPatternRgb: [232, 217, 240] as [number, number, number],
   brandBorderRgb: [218, 198, 229] as [number, number, number],
+  atelierBorderRgb: [234, 224, 242] as [number, number, number],
   textDarkRgb: [24, 24, 27] as [number, number, number],
   textBodyRgb: [63, 63, 70] as [number, number, number],
   mutedRgb: [113, 113, 122] as [number, number, number],
@@ -66,7 +67,7 @@ export interface ReceiptDocumentData {
   reference: string
   invoiceNumber?: string | null
   issueDate: string
-  headline: string
+  headline?: string | null
   subheadline?: string | null
   amountFormatted: string
   amountLabel: string
@@ -340,9 +341,6 @@ export function buildTransactionReceiptData(
               ? 'Refund'
               : 'Payment',
     },
-    { label: 'Payment Method', value: paymentMethodDisplay(tx.payment_method) },
-    { label: 'Reference', value: ref },
-    { label: 'Date & Time', value: formatReceiptDate(tx.created_at) },
   ]
 
   if (tx.paystack_reference && tx.paystack_reference !== ref) {
@@ -355,6 +353,7 @@ export function buildTransactionReceiptData(
   let lineItems: ReceiptLineItem[] | undefined
   let giftCardVisual: ReceiptGiftCardVisual | null = null
   let note: string | null = null
+  let headline: string | null = tx.giftCard ? null : title
 
   if (tx.giftCard) {
     const occasionMeta = getGiftCardOccasionMeta(tx.giftCard.occasion)
@@ -386,19 +385,8 @@ export function buildTransactionReceiptData(
     }
     if (tx.giftCard.occasion) {
       summaryRows.push({
-        label: 'Occasion & Theme',
-        value: `${tx.giftCard.occasion} (${occasionMeta.editionLabel})`,
-      })
-    }
-    if (resolvedDesignName || tx.giftCard.font_name) {
-      summaryRows.push({
-        label: 'Card Style',
-        value: [
-          resolvedDesignName,
-          tx.giftCard.font_name ? `${tx.giftCard.font_name} font` : null,
-        ]
-          .filter(Boolean)
-          .join(' · '),
+        label: 'Occasion',
+        value: tx.giftCard.occasion,
       })
     }
     if (tx.giftCard.delivery_method) {
@@ -409,13 +397,6 @@ export function buildTransactionReceiptData(
           : tx.giftCard.delivery_method,
       })
     }
-    lineItems = [
-      {
-        title: `Dermaspace Gift Card — ${occasionMeta.editionLabel}`,
-        subtitle: `For ${tx.giftCard.recipient_name || 'Recipient'} · ${resolvedDesignName}`,
-        amount: amountFormatted,
-      },
-    ]
     giftCardVisual = {
       recipientName: tx.giftCard.recipient_name || 'Recipient',
       senderName,
@@ -431,6 +412,7 @@ export function buildTransactionReceiptData(
     }
     note = tx.giftCard.personal_message || null
   } else if (tx.booking) {
+    headline = null
     summaryRows.push({
       label: 'Booking Ref',
       value: tx.booking.booking_reference,
@@ -450,14 +432,6 @@ export function buildTransactionReceiptData(
         amount: `${s.duration} min`,
       }))
     }
-  } else {
-    lineItems = [
-      {
-        title,
-        subtitle: `${paymentMethodDisplay(tx.payment_method)} · ${statusDisplay(tx.status)}`,
-        amount: amountFormatted,
-      },
-    ]
   }
 
   return {
@@ -466,7 +440,7 @@ export function buildTransactionReceiptData(
     reference: ref,
     invoiceNumber: invoiceNo,
     issueDate: formatReceiptDate(tx.created_at),
-    headline: title,
+    headline,
     amountFormatted,
     amountLabel:
       tx.status === 'completed'
@@ -503,35 +477,22 @@ export function buildGiftCardReceiptData(
       : []),
     ...(input.senderName ? [{ label: 'From', value: input.senderName }] : []),
     {
-      label: 'Occasion & Theme',
-      value: `${input.occasion} (${occasionMeta.editionLabel})`,
-    },
-    {
-      label: 'Card Style',
-      value: [
-        resolvedDesignName,
-        input.fontName ? `${input.fontName} font` : null,
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      label: 'Occasion',
+      value: input.occasion,
     },
     ...(input.deliveryMethod
       ? [
           {
-            label: 'Delivery Method',
+            label: 'Delivery',
             value: input.deliveryDate
               ? `${input.deliveryMethod} (${input.deliveryDate})`
               : input.deliveryMethod,
           },
         ]
       : []),
-    ...(input.paymentMethod
-      ? [{ label: 'Paid Via', value: input.paymentMethod }]
-      : []),
     ...(input.invoiceNumber
       ? [{ label: 'Invoice Number', value: input.invoiceNumber }]
       : []),
-    { label: 'Reference', value: ref },
   ]
 
   return {
@@ -540,18 +501,11 @@ export function buildGiftCardReceiptData(
     reference: ref,
     invoiceNumber: input.invoiceNumber ?? null,
     issueDate: formatReceiptDate(input.issuedAt),
-    headline: `Gift Card for ${input.recipientName || 'Recipient'}`,
+    headline: null,
     amountFormatted: amountText,
     amountLabel: 'TOTAL PAID',
     paymentMethodLabel: input.paymentMethod || undefined,
     summaryRows,
-    lineItems: [
-      {
-        title: `Dermaspace Gift Card — ${occasionMeta.editionLabel}`,
-        subtitle: `${resolvedDesignName}${input.fontName ? ` · ${input.fontName} font` : ''}`,
-        amount: amountText,
-      },
-    ],
     giftCardVisual: {
       recipientName: input.recipientName || 'Recipient',
       senderName: input.senderName,
@@ -590,7 +544,6 @@ export function buildBookingReceiptData(
     : formatReceiptDate(null)
 
   const isPaid = booking.payment_status === 'paid'
-  const firstName = booking.customer_name.split(' ')[0] || booking.customer_name
 
   const statusLabel = (() => {
     if (booking.status === 'cancelled') {
@@ -604,24 +557,6 @@ export function buildBookingReceiptData(
     return booking.payment_status === 'unpaid' ? 'Awaiting Payment' : 'Pending'
   })()
 
-  const headline =
-    booking.status === 'completed'
-      ? `Thank you for visiting us, ${firstName}`
-      : booking.status === 'cancelled'
-        ? 'This appointment was cancelled'
-        : isPaid
-          ? `Appointment confirmed for ${firstName}`
-          : `Appointment reserved for ${firstName}`
-
-  const subheadline =
-    booking.status === 'completed'
-      ? 'We hope you enjoyed your experience at Dermaspace.'
-      : booking.status === 'cancelled'
-        ? booking.payment_status === 'refunded'
-          ? 'Your refund has been processed.'
-          : 'Book another visit whenever you are ready.'
-        : 'Reschedule anytime up to 24 hours before your slot.'
-
   const subtotal = Number(booking.subtotal_kobo ?? booking.total_price_kobo) / 100
   const discount = Number(booking.discount_kobo ?? 0) / 100
   const total = Number(booking.total_price_kobo) / 100
@@ -634,10 +569,14 @@ export function buildBookingReceiptData(
         : 'Online'
 
   const summaryRows: ReceiptDetailRow[] = [
+    { label: 'Client', value: booking.customer_name },
     { label: 'Date', value: dateLabel },
     { label: 'Time', value: booking.appointment_time },
     { label: 'Duration', value: `${booking.total_duration} minutes` },
     { label: 'Location', value: booking.location_name },
+    ...(booking.location_address
+      ? [{ label: 'Branch Address', value: booking.location_address }]
+      : []),
     { label: 'Phone', value: booking.customer_phone },
     { label: 'Email', value: booking.customer_email },
   ]
@@ -654,8 +593,8 @@ export function buildBookingReceiptData(
     reference: booking.booking_reference,
     invoiceNumber: null,
     issueDate,
-    headline,
-    subheadline,
+    headline: null,
+    subheadline: null,
     amountFormatted: formatNairaPlain(total, 'NGN'),
     amountLabel: isPaid ? 'TOTAL PAID' : 'TOTAL DUE',
     paymentMethodLabel: methodLabel,
@@ -674,7 +613,6 @@ export function buildBookingReceiptData(
       discount > 0 ? `- ${formatNairaPlain(discount, 'NGN')}` : null,
     note: booking.notes || null,
     noteTitle: 'APPOINTMENT NOTES',
-    footerNote: 'Reschedule up to 24 hours before your slot · hello@dermaspaceng.com',
     filename: sanitizeReceiptFilename(booking.booking_reference),
     imageFilename: sanitizeReceiptImageFilename(booking.booking_reference),
   }
@@ -698,7 +636,7 @@ export function buildMembershipReceiptData(
     },
     {
       title: 'Glow Points earned',
-      subtitle: 'Non-monetary loyalty reward added to your account',
+      subtitle: 'Loyalty points credited to your account',
       amount: `+${pointsFormatted}`,
     },
   ]
@@ -706,7 +644,7 @@ export function buildMembershipReceiptData(
   if (!input.siteWideOnly && input.walletCredit > 0) {
     lineItems.push({
       title: 'Credited to Wallet',
-      subtitle: 'Available immediately for spa bookings',
+      subtitle: 'Available for spa bookings and treatments',
       amount: formatNairaPlain(input.walletCredit, 'NGN'),
     })
   }
@@ -717,21 +655,19 @@ export function buildMembershipReceiptData(
     reference: input.reference,
     invoiceNumber: input.invoiceNumber,
     issueDate: formatReceiptDate(input.txCreatedAt),
-    headline: `${input.planName} Membership Activated`,
-    subheadline: `Thank you, ${input.buyerFirstName}. Valid for ${validityCopy}.`,
+    headline: `${input.planName} Membership`,
+    subheadline: null,
     amountFormatted: planPriceFormatted,
     amountLabel: 'AMOUNT PAID',
     paymentMethodLabel: input.paymentMethod,
     summaryRows: [
       {
-        label: 'Billed To',
+        label: 'Member',
         value: `${input.buyerFirstName} ${input.buyerLastName}`.trim(),
       },
       { label: 'Email', value: input.buyerEmail },
-      { label: 'Payment Method', value: input.paymentMethod },
-      { label: 'Validity', value: validityCopy },
       {
-        label: 'Membership Starts',
+        label: 'Starts',
         value: formatDateOnly(input.membershipStartedAt),
       },
       {
@@ -805,15 +741,59 @@ function pdfFontFamilyForGiftCard(
   return 'times'
 }
 
-function canvasFontFamilyForGiftCard(fontName?: string | null): string {
+function resolveSiteFonts(): { sansFont: string; serifFont: string } {
+  const fallbackSans =
+    "'Lexend Deca', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+  const fallbackSerif = "'Playfair Display', Georgia, serif"
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return { sansFont: fallbackSans, serifFont: fallbackSerif }
+  }
+  const rootStyle = getComputedStyle(document.documentElement)
+  const bodyStyle = document.body ? getComputedStyle(document.body) : null
+  const lexend = rootStyle.getPropertyValue('--font-lexend').trim()
+  const poppins = rootStyle.getPropertyValue('--font-poppins').trim()
+  const playfair = rootStyle.getPropertyValue('--font-playfair').trim()
+  const bodyFamily = bodyStyle?.fontFamily?.trim()
+
+  const sansParts = [lexend, poppins, bodyFamily, fallbackSans].filter(Boolean)
+  const serifParts = [playfair, fallbackSerif].filter(Boolean)
+  return {
+    sansFont: sansParts.join(', '),
+    serifFont: serifParts.join(', '),
+  }
+}
+
+async function ensureSiteFontsLoaded(
+  sansFont: string,
+  serifFont: string,
+): Promise<void> {
+  if (typeof document === 'undefined' || !document.fonts) return
+  try {
+    await document.fonts.ready
+    await Promise.allSettled([
+      document.fonts.load(`400 12px ${sansFont}`),
+      document.fonts.load(`600 12px ${sansFont}`),
+      document.fonts.load(`700 14px ${sansFont}`),
+      document.fonts.load(`700 32px ${serifFont}`),
+      document.fonts.load(`italic 14px ${serifFont}`),
+    ])
+  } catch {
+    // Graceful fallback if font loading fails
+  }
+}
+
+function canvasFontFamilyForGiftCard(
+  fontName: string | null | undefined,
+  siteFonts: { sansFont: string; serifFont: string },
+): string {
   const lower = (fontName || '').toLowerCase()
   if (lower.includes('modern') || lower.includes('sans')) {
-    return "'Lexend Deca', 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif"
+    return siteFonts.sansFont
   }
   if (lower.includes('playful') || lower.includes('mono')) {
     return "'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace"
   }
-  return "'Playfair Display', Georgia, serif"
+  return siteFonts.serifFont
 }
 
 function columnHeaderLabel(mode: LineItemColumnMode): string {
@@ -822,127 +802,263 @@ function columnHeaderLabel(mode: LineItemColumnMode): string {
   return ''
 }
 
-function drawPdfTopAccentRule(
-  doc: import('jspdf').jsPDF,
-  pageWidth: number,
-): void {
-  doc.setFillColor(...RECEIPT_PALETTE.brandRgb)
-  doc.rect(0, 0, pageWidth, 4.5, 'F')
+function formatDocTitleDisplay(title: string): string {
+  const cleaned = (title || 'Transaction Receipt').trim().toLowerCase()
+  return cleaned.replace(/\b\w/g, (ch) => ch.toUpperCase())
 }
 
-function drawPdfStatusPill(
+function formatCompactHeaderRef(
+  ref: string,
+  measureWidth: (text: string) => number,
+  maxWidth: number,
+): string {
+  const prefix = `Ref: ${ref}`
+  if (measureWidth(prefix) <= maxWidth) return prefix
+  const wrapped = wrapTextLines(prefix, measureWidth, maxWidth)
+  if (wrapped.length === 1) return wrapped[0]
+  return `${wrapped[0].replace(/[.\s]+$/, '')}...`
+}
+
+function drawPdfPageBackdropAndWatermark(
+  doc: import('jspdf').jsPDF,
+  opts: {
+    pageWidth: number
+    pageHeight: number
+    cardX: number
+    cardY: number
+    cardW: number
+    cardH: number
+    scallopTop: boolean
+    scallopBottom: boolean
+  },
+): void {
+  const { pageWidth, pageHeight, cardX, cardY, cardW, cardH } = opts
+  // Serene spa mist page backdrop (#EEE8F4)
+  doc.setFillColor(238, 232, 244)
+  doc.rect(0, 0, pageWidth, pageHeight, 'F')
+
+  // Seamless pure white stationery slip
+  doc.setFillColor(255, 255, 255)
+  doc.roundedRect(cardX, cardY, cardW, cardH, 10, 10, 'F')
+
+  // Inner letterpress atelier hairline frame clear of scalloped perforations
+  doc.setDrawColor(...RECEIPT_PALETTE.atelierBorderRgb)
+  doc.setLineWidth(0.65)
+  doc.roundedRect(cardX + 12, cardY + 13, cardW - 24, cardH - 26, 6, 6, 'S')
+
+  // Subtle top brand accent hairline inside atelier frame
+  doc.setFillColor(...RECEIPT_PALETTE.brandRgb)
+  doc.rect(cardX + 26, cardY + 13, cardW - 52, 1.8, 'F')
+
+  // Uniform boutique paper scallops along top and/or bottom flat edges
+  const drawEdgeScallops = (edgeY: number) => {
+    const inset = 22
+    const span = cardW - inset * 2
+    const step = 16
+    const count = Math.floor(span / step)
+    if (count <= 0) return
+    const startX = cardX + (cardW - (count - 1) * step) / 2
+    doc.setFillColor(238, 232, 244)
+    for (let i = 0; i < count; i += 1) {
+      doc.circle(startX + i * step, edgeY, 4.2, 'F')
+    }
+  }
+  if (opts.scallopTop) drawEdgeScallops(cardY)
+  if (opts.scallopBottom) drawEdgeScallops(cardY + cardH)
+
+  // Whisper-subtle diagonal Dermaspace anti-tamper watermark behind content
+  doc.setFont('times', 'bolditalic')
+  doc.setFontSize(14.5)
+  doc.setTextColor(248, 244, 251)
+  const cols = [cardX + 80, cardX + cardW * 0.5, cardX + cardW - 80]
+  for (let rowIdx = 0; rowIdx < 6; rowIdx += 1) {
+    const wy = cardY + 115 + rowIdx * 118
+    if (wy > cardY + cardH - 80) break
+    cols.forEach((wx, colIdx) => {
+      if ((rowIdx + colIdx) % 2 === 0) {
+        doc.text('Dermaspace', wx, wy, { align: 'center', angle: 20 })
+      }
+    })
+  }
+}
+
+function drawPdfDashedRule(
+  doc: import('jspdf').jsPDF,
+  x1: number,
+  y: number,
+  x2: number,
+): void {
+  doc.setDrawColor(...RECEIPT_PALETTE.brandBorderRgb)
+  doc.setLineWidth(0.75)
+  const pdfWithDash = doc as import('jspdf').jsPDF & {
+    setLineDashPattern?: (dashArray: number[], dashPhase: number) => void
+  }
+  if (typeof pdfWithDash.setLineDashPattern === 'function') {
+    pdfWithDash.setLineDashPattern([4, 3], 0)
+    doc.line(x1, y, x2, y)
+    pdfWithDash.setLineDashPattern([], 0)
+  } else {
+    doc.line(x1, y, x2, y)
+  }
+}
+
+/**
+ * Draws a minimalist 3-petal spa botanical lotus blossom between horizontal
+ * hairlines using pure organic Bezier curves (zero 4-point star/sparkle geometry).
+ */
+function drawPdfBotanicalDivider(
+  doc: import('jspdf').jsPDF,
+  x1: number,
+  x2: number,
+  cy: number,
+): void {
+  const cx = (x1 + x2) / 2
+  const gapHalf = 16
+
+  doc.setDrawColor(...RECEIPT_PALETTE.brandBorderRgb)
+  doc.setLineWidth(0.6)
+  doc.line(x1, cy, cx - gapHalf, cy)
+  doc.line(cx + gapHalf, cy, x2, cy)
+
+  doc.setDrawColor(...RECEIPT_PALETTE.brandRgb)
+  doc.setLineWidth(0.85)
+  // Center upright lotus petal
+  doc.lines(
+    [
+      [-3.8, -3, -3.2, -8, 0, -11.5],
+      [3.2, 3.5, 3.8, 8.5, 0, 11.5],
+    ],
+    cx,
+    cy + 4.5,
+    [1, 1],
+    'S',
+  )
+  // Left cradling lotus petal
+  doc.lines(
+    [
+      [-5.5, -0.5, -8.8, -4.2, -9.2, -8.5],
+      [4.5, 0.5, 7.8, 3.8, 9.2, 8.5],
+    ],
+    cx,
+    cy + 4.5,
+    [1, 1],
+    'S',
+  )
+  // Right cradling lotus petal
+  doc.lines(
+    [
+      [5.5, -0.5, 8.8, -4.2, 9.2, -8.5],
+      [-4.5, 0.5, -7.8, 3.8, -9.2, 8.5],
+    ],
+    cx,
+    cy + 4.5,
+    [1, 1],
+    'S',
+  )
+  // Delicate curved stem/chalice base
+  doc.setDrawColor(...RECEIPT_PALETTE.brandBorderRgb)
+  doc.setLineWidth(0.75)
+  doc.lines([[4.2, 2.2, 9.8, 2.2, 14, 0]], cx - 7, cy + 5.8, [1, 1], 'S')
+}
+
+function drawPdfHeroStatus(
   doc: import('jspdf').jsPDF,
   label: string,
   tone: ReceiptStatusTone,
-  rightX: number,
-  topY: number,
-): number {
-  const {
-    brandRgb,
-    brandTintRgb,
-    brandBorderRgb,
-    textBodyRgb,
-    mutedRgb,
-    lineRgb,
-    stripeRgb,
-  } = RECEIPT_PALETTE
-
+  centerX: number,
+  baselineY: number,
+): void {
+  const { brandRgb, textBodyRgb, mutedRgb } = RECEIPT_PALETTE
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
-  const textW = doc.getTextWidth(label.toUpperCase())
-  const iconSpace = tone === 'muted' ? 0 : 11
-  const pillW = textW + iconSpace + 16
-  const pillH = 18
-  const pillX = rightX - pillW
+  doc.setFontSize(10.5)
+  const textW = doc.getTextWidth(label)
+  const iconSize = 11
+  const gap = 5
+  const totalW = iconSize + gap + textW
+  const startX = centerX - totalW / 2
+  const iconCx = startX + iconSize / 2
+  const iconCy = baselineY - 3.3
 
   if (tone === 'positive') {
-    doc.setFillColor(...brandTintRgb)
-    doc.setDrawColor(...brandBorderRgb)
+    doc.setFillColor(...brandRgb)
+    doc.circle(iconCx, iconCy, 5.2, 'F')
+    doc.setDrawColor(255, 255, 255)
+    doc.setLineWidth(1.2)
+    doc.line(iconCx - 2.3, iconCy, iconCx - 0.5, iconCy + 2)
+    doc.line(iconCx - 0.5, iconCy + 2, iconCx + 2.7, iconCy - 2)
+    doc.setTextColor(...brandRgb)
   } else if (tone === 'pending') {
-    doc.setFillColor(...stripeRgb)
-    doc.setDrawColor(...lineRgb)
+    doc.setDrawColor(...textBodyRgb)
+    doc.setLineWidth(1)
+    doc.circle(iconCx, iconCy, 4.8, 'S')
+    doc.setFillColor(...textBodyRgb)
+    doc.circle(iconCx, iconCy, 1.8, 'F')
+    doc.setTextColor(...textBodyRgb)
   } else {
-    doc.setFillColor(244, 244, 245)
-    doc.setDrawColor(...lineRgb)
-  }
-  doc.setLineWidth(0.75)
-  doc.roundedRect(pillX, topY, pillW, pillH, 4, 4, 'FD')
-
-  const textColor =
-    tone === 'positive' ? brandRgb : tone === 'pending' ? textBodyRgb : mutedRgb
-
-  if (tone === 'positive') {
-    const cx = pillX + 10
-    const cy = topY + pillH / 2 + 0.5
-    doc.setDrawColor(...brandRgb)
-    doc.setLineWidth(1.25)
-    doc.line(cx - 2.6, cy, cx - 0.6, cy + 2.2)
-    doc.line(cx - 0.6, cy + 2.2, cx + 3.1, cy - 2.3)
-  } else if (tone === 'pending') {
-    doc.setFillColor(...mutedRgb)
-    doc.circle(pillX + 10, topY + pillH / 2, 2.2, 'F')
+    doc.setDrawColor(...mutedRgb)
+    doc.setLineWidth(1)
+    doc.circle(iconCx, iconCy, 4.8, 'S')
+    doc.line(iconCx - 2.2, iconCy, iconCx + 2.2, iconCy)
+    doc.setTextColor(...mutedRgb)
   }
 
-  doc.setTextColor(...textColor)
-  doc.text(label.toUpperCase(), rightX - 8, topY + 11.7, { align: 'right' })
-
-  return pillH
+  doc.text(label, startX + iconSize + gap, baselineY)
 }
 
 function drawPdfFooterAllPages(
   doc: import('jspdf').jsPDF,
-  footerNote?: string | null,
+  footerNote: string | null | undefined,
+  cardX: number,
+  cardY: number,
+  cardW: number,
+  cardH: number,
+  padX: number,
 ): void {
   const pageCount = doc.getNumberOfPages()
-  const pageWidth = doc.internal.pageSize.getWidth()
-  const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 44
   const { brandRgb, mutedRgb, lineRgb } = RECEIPT_PALETTE
+  const innerX = cardX + padX
+  const innerW = cardW - padX * 2
+  const centerX = cardX + cardW / 2
 
   for (let p = 1; p <= pageCount; p += 1) {
     doc.setPage(p)
-    const ruleY = pageHeight - 58
+    const ruleY = cardY + cardH - 68
 
     doc.setDrawColor(...lineRgb)
-    doc.setLineWidth(0.75)
-    doc.line(margin, ruleY, pageWidth - margin, ruleY)
+    doc.setLineWidth(0.6)
+    doc.line(innerX, ruleY, innerX + innerW, ruleY)
 
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.2)
+    doc.setFont('times', 'bold')
+    doc.setFontSize(9)
     doc.setTextColor(...brandRgb)
-    doc.text('Dermaspace Esthetic & Wellness Centre', margin, ruleY + 14)
+    doc.text('Dermaspace Esthetic & Wellness Centre', centerX, ruleY + 14, {
+      align: 'center',
+    })
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.4)
+    doc.setFontSize(7.2)
     doc.setTextColor(...mutedRgb)
     doc.text(
       footerNote ||
         '237B Muri Okunola St, Victoria Island  ·  9 Agbeke Rotinwa Cl, Ikoyi',
-      margin,
+      centerX,
       ruleY + 25,
+      { align: 'center' },
     )
     doc.text(
-      'dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625',
-      margin,
-      ruleY + 35,
-    )
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.4)
-    doc.setTextColor(...mutedRgb)
-    doc.text(
-      `Verified Electronic Receipt  ·  Page ${p} of ${pageCount}`,
-      pageWidth - margin,
-      ruleY + 14,
-      { align: 'right' },
+      `dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625  ·  Page ${p} of ${pageCount}`,
+      centerX,
+      ruleY + 36,
+      { align: 'center' },
     )
   }
 }
 
 /**
- * Renders and downloads an executive A4 vector PDF receipt anchored in the
- * Dermaspace palette (#7B2D8E + white/plum-gray neutrals). Zero shadows,
- * zero gradients, zero sparkle or zap symbols.
+ * Renders and downloads an A4 vector PDF spa receipt combining crisp ledger
+ * clarity with Dermaspace's light plum stationery aesthetic (#7B2D8E + white),
+ * botanical lotus ornament, unboxed editorial totals and notes, zero shadows,
+ * zero gradients, and zero sparkle/zap symbols.
  */
 export async function downloadReceiptPdf(
   data: ReceiptDocumentData,
@@ -951,250 +1067,181 @@ export async function downloadReceiptPdf(
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
-  const margin = 44
-  const contentW = pageWidth - margin * 2
-  const footerReserve = 70
+
+  const cardX = 36
+  const cardY = 24
+  const cardW = pageWidth - cardX * 2
+  const cardH = pageHeight - cardY * 2
+  const padX = 36
+  const innerX = cardX + padX
+  const innerW = cardW - padX * 2
+  const footerReserve = 78
 
   const {
     brandRgb: brandPurple,
-    brandTintRgb: brandSoft,
     brandBorderRgb: lavenderBorder,
+    atelierBorderRgb,
     textDarkRgb: textDark,
     textBodyRgb: textBody,
     mutedRgb: mutedGray,
     lineRgb: lineGray,
-    stripeRgb,
   } = RECEIPT_PALETTE
 
   const ensureSpace = (neededHeight: number, currentY: number): number => {
     if (needsPageBreak(currentY, neededHeight, pageHeight, footerReserve)) {
       doc.addPage()
-      drawPdfTopAccentRule(doc, pageWidth)
-      return 30
+      drawPdfPageBackdropAndWatermark(doc, {
+        pageWidth,
+        pageHeight,
+        cardX,
+        cardY,
+        cardW,
+        cardH,
+        scallopTop: false,
+        scallopBottom: true,
+      })
+      return cardY + 34
     }
     return currentY
   }
 
   const { dataUrl: logoDataUrl, aspect: logoAspect } = await loadLogoAssets()
 
-  drawPdfTopAccentRule(doc, pageWidth)
+  drawPdfPageBackdropAndWatermark(doc, {
+    pageWidth,
+    pageHeight,
+    cardX,
+    cardY,
+    cardW,
+    cardH,
+    scallopTop: true,
+    scallopBottom: true,
+  })
 
-  // 1. Clean White Editorial Letterhead
-  const headerTop = 24
+  // 1. Asymmetric Top Header (Full Logo Left · Document Title + Factual Ref Right)
+  let y = cardY + 28
   if (logoDataUrl) {
-    const logoH = 28
-    const logoW = Math.min(logoH * logoAspect, contentW * 0.44)
+    const logoH = 26
+    const logoW = Math.min(logoH * logoAspect, innerW * 0.44)
     doc.addImage(
       logoDataUrl,
       'PNG',
-      margin,
-      headerTop,
+      innerX,
+      y,
       logoW,
       logoH,
       undefined,
       'FAST',
     )
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.8)
-    doc.setTextColor(...mutedGray)
-    doc.text(
-      'Victoria Island & Ikoyi, Lagos  ·  dermaspaceng.com',
-      margin,
-      headerTop + 42,
-    )
   } else {
     doc.setFont('times', 'bold')
-    doc.setFontSize(21)
+    doc.setFontSize(20)
     doc.setTextColor(...brandPurple)
-    doc.text('Dermaspace', margin, headerTop + 20)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.8)
-    doc.setTextColor(...mutedGray)
-    doc.text(
-      'Esthetic & Wellness Centre  ·  Victoria Island & Ikoyi, Lagos',
-      margin,
-      headerTop + 36,
-    )
+    doc.text('Dermaspace', innerX, y + 19)
   }
 
-  // Right Letterhead Metadata + Status Tag
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7)
-  doc.setTextColor(...brandPurple)
-  doc.text('OFFICIAL RECEIPT', pageWidth - margin, headerTop + 6, {
-    align: 'right',
-  })
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(12)
+  doc.setFontSize(11)
   doc.setTextColor(...textDark)
-  doc.text(data.documentTitle, pageWidth - margin, headerTop + 21, {
+  doc.text(formatDocTitleDisplay(data.documentTitle), innerX + innerW, y + 12, {
     align: 'right',
   })
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(...mutedGray)
-  doc.text(`Issued ${data.issueDate}`, pageWidth - margin, headerTop + 33, {
+  doc.setFontSize(7.4)
+  doc.setTextColor(...brandPurple)
+  const headerRefLabel = formatCompactHeaderRef(
+    data.reference,
+    (t) => doc.getTextWidth(t),
+    innerW * 0.46,
+  )
+  doc.text(headerRefLabel, innerX + innerW, y + 23.5, {
     align: 'right',
   })
 
+  y += 42
+
+  // 2. Centered Editorial Hero Amount, Status & Timestamp
+  const centerX = cardX + cardW / 2
   const statusTone = classifyStatusTone(data.statusLabel)
-  drawPdfStatusPill(
-    doc,
-    data.statusLabel,
-    statusTone,
-    pageWidth - margin,
-    headerTop + 40,
-  )
 
-  const headerDividerY = headerTop + 66
-  doc.setDrawColor(...lineGray)
-  doc.setLineWidth(0.75)
-  doc.line(margin, headerDividerY, pageWidth - margin, headerDividerY)
-
-  let y = headerDividerY + 13
-
-  // 2. Executive Summary Band (Amount Paid + Wrapped Reference / Invoice)
-  const sumLeftW = contentW * 0.54
-  const sumRightW = contentW * 0.46 - 24
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
-  const pdfMeasureBold95 = (t: string) => doc.getTextWidth(t)
-  const refLines = wrapTextLines(data.reference, pdfMeasureBold95, sumRightW)
-  const invoiceLines = data.invoiceNumber
-    ? wrapTextLines(data.invoiceNumber, pdfMeasureBold95, sumRightW)
-    : []
-
-  const leftBlockH = 12 + 24 + (data.paymentMethodLabel ? 13 : 0) + 13
-  const rightBlockH =
-    12 +
-    refLines.length * 11.5 +
-    (invoiceLines.length > 0 ? 15 + invoiceLines.length * 11.5 : 0) +
-    12
-  const summaryBandH = Math.max(60, leftBlockH, rightBlockH)
-
-  doc.setFillColor(...stripeRgb)
-  doc.setDrawColor(...lavenderBorder)
-  doc.setLineWidth(0.75)
-  doc.roundedRect(margin, y, contentW, summaryBandH, 6, 6, 'FD')
-
-  const dividerX = margin + sumLeftW
-  doc.setDrawColor(...lineGray)
-  doc.setLineWidth(0.6)
-  doc.line(dividerX, y + 10, dividerX, y + summaryBandH - 10)
-
-  // Left: Amount + Payment Method
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(6.8)
-  doc.setTextColor(...mutedGray)
-  doc.text(data.amountLabel, margin + 15, y + 17)
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(19.5)
-  doc.setTextColor(...textDark)
-  doc.text(data.amountFormatted, margin + 15, y + 38)
-
-  if (data.paymentMethodLabel) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(...textBody)
-    const methodPrefix = statusTone === 'positive' ? 'Paid via' : 'Method:'
-    doc.text(
-      `${methodPrefix} ${data.paymentMethodLabel}`,
-      margin + 15,
-      y + 51,
-    )
-  }
-
-  // Right: Reference + Invoice Number (never squished)
-  let ry = y + 17
-  const rx = dividerX + 14
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(6.8)
-  doc.setTextColor(...mutedGray)
-  doc.text('REFERENCE', rx, ry)
-  ry += 11
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.2)
+  doc.setFont('times', 'bold')
+  doc.setFontSize(26)
   doc.setTextColor(...brandPurple)
-  for (const line of refLines) {
-    doc.text(line, rx, ry)
-    ry += 11.5
-  }
+  doc.text(data.amountFormatted, centerX, y + 17, { align: 'center' })
 
-  if (invoiceLines.length > 0) {
-    ry += 3
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.8)
-    doc.setTextColor(...mutedGray)
-    doc.text('INVOICE NUMBER', rx, ry)
-    ry += 11
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.2)
-    doc.setTextColor(...textDark)
-    for (const line of invoiceLines) {
-      doc.text(line, rx, ry)
-      ry += 11.5
-    }
-  }
+  drawPdfHeroStatus(doc, data.statusLabel, statusTone, centerX, y + 36)
 
-  y += summaryBandH + 15
-
-  // 3. Editorial Headline & Subheadline
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
-  doc.setTextColor(...textDark)
-  const headlineLines = wrapTextLines(
-    data.headline,
-    (t) => doc.getTextWidth(t),
-    contentW,
-  )
-  y = ensureSpace(headlineLines.length * 16 + 22, y)
-  doc.text(headlineLines, margin, y)
-  y += headlineLines.length * 16
-
-  if (data.subheadline) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(...textBody)
-    const subLines = wrapTextLines(
-      data.subheadline,
-      (t) => doc.getTextWidth(t),
-      contentW,
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.1)
+  doc.setTextColor(...mutedGray)
+  const heroMetaParts = [`Issued ${data.issueDate}`]
+  if (data.paymentMethodLabel) {
+    heroMetaParts.push(
+      statusTone === 'positive'
+        ? `Paid via ${data.paymentMethodLabel}`
+        : data.paymentMethodLabel,
     )
-    doc.text(subLines, margin, y + 1)
-    y += subLines.length * 12 + 2
   }
-  y += 10
+  doc.text(heroMetaParts.join('  ·  '), centerX, y + 51, { align: 'center' })
 
-  // 4. Optional Gift Card Specimen & Card Specification
+  // Spa botanical lotus ornament divider separating Hero from Receipt Details
+  y += 68
+  drawPdfBotanicalDivider(doc, innerX, innerX + innerW, y)
+  y += 16
+
+  // 3. Optional Calm Editorial Context Headline
+  if (data.headline) {
+    doc.setFont('times', 'bold')
+    doc.setFontSize(13)
+    doc.setTextColor(...textDark)
+    const headlineLines = wrapTextLines(
+      data.headline,
+      (t) => doc.getTextWidth(t),
+      innerW,
+    )
+    y = ensureSpace(headlineLines.length * 16 + 14, y)
+    doc.text(headlineLines, centerX, y + 2, { align: 'center' })
+    y += headlineLines.length * 16
+
+    if (data.subheadline) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.2)
+      doc.setTextColor(...mutedGray)
+      const subLines = wrapTextLines(
+        data.subheadline,
+        (t) => doc.getTextWidth(t),
+        innerW - 24,
+      )
+      doc.text(subLines, centerX, y + 1, { align: 'center' })
+      y += subLines.length * 11
+    }
+    y += 10
+  }
+
+  // 4. Optional Gift Card Specimen Card (Unboxed metadata line underneath)
   if (data.giftCardVisual) {
     const gc = data.giftCardVisual
-    const visualH = 132
-    y = ensureSpace(visualH + 16, y)
+    const cardVisualH = 108
+    const specLineH = 18
+    y = ensureSpace(cardVisualH + specLineH + 8, y)
 
-    const cardW = 256
-    const cardH = visualH
-    const specX = margin + cardW + 14
-    const specW = contentW - cardW - 14
-
+    const gcW = Math.min(266, innerW)
+    const gcX = centerX - gcW / 2
     const surfaceRgb = hexToRgb(gc.surfaceHex, brandPurple)
     const accentRgb = hexToRgb(gc.accentHex, brandPurple)
     const medallionRgb = hexToRgb(gc.medallionHex, brandPurple)
     const gcFont = pdfFontFamilyForGiftCard(gc.fontName)
 
     doc.setFillColor(...surfaceRgb)
-    doc.roundedRect(margin, y, cardW, cardH, 8, 8, 'F')
+    doc.roundedRect(gcX, y, gcW, cardVisualH, 8, 8, 'F')
 
     doc.setFillColor(...accentRgb)
     doc.roundedRect(
-      margin + cardW * 0.62,
-      y + 9,
-      cardW * 0.34,
-      cardH - 18,
+      gcX + gcW * 0.62,
+      y + 8,
+      gcW * 0.34,
+      cardVisualH - 16,
       6,
       6,
       'F',
@@ -1202,380 +1249,359 @@ export async function downloadReceiptPdf(
 
     doc.setDrawColor(255, 255, 255)
     doc.setLineWidth(0.55)
-    doc.roundedRect(margin + 6.5, y + 6.5, cardW - 13, cardH - 13, 5, 5, 'S')
+    doc.roundedRect(gcX + 6, y + 6, gcW - 12, cardVisualH - 12, 5, 5, 'S')
 
-    // Clean Concentric Monogram Medallion ("DS", zero sparkles)
-    const medX = margin + cardW - 44
-    const medY = y + cardH / 2 + 2
+    // Concentric Monogram Medallion ("DS", zero sparkles)
+    const medX = gcX + gcW - 42
+    const medY = y + cardVisualH / 2 + 1
     doc.setFillColor(...medallionRgb)
     doc.setDrawColor(245, 236, 248)
     doc.setLineWidth(0.85)
-    doc.circle(medX, medY, 20, 'FD')
+    doc.circle(medX, medY, 17.5, 'FD')
     doc.setLineWidth(0.45)
-    doc.circle(medX, medY, 15, 'S')
+    doc.circle(medX, medY, 13.5, 'S')
 
     doc.setFont('times', 'bold')
+    doc.setFontSize(9.5)
+    doc.setTextColor(255, 255, 255)
+    doc.text('DS', medX, medY + 3.2, { align: 'center' })
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7.8)
+    doc.setTextColor(255, 255, 255)
+    doc.text('DERMASPACE', gcX + 14, y + 19)
+    doc.setFontSize(6)
+    doc.text('GIFT CARD', gcX + gcW - 14, y + 19, { align: 'right' })
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(6)
+    doc.setTextColor(235, 228, 242)
+    doc.text('FOR', gcX + 14, y + 36)
+
+    doc.setFont(gcFont, 'bold')
     doc.setFontSize(10.5)
     doc.setTextColor(255, 255, 255)
-    doc.text('DS', medX, medY + 3.5, { align: 'center' })
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.2)
-    doc.setTextColor(255, 255, 255)
-    doc.text('DERMASPACE', margin + 15, y + 22)
-    doc.setFontSize(6.2)
-    doc.text('GIFT CARD', margin + cardW - 15, y + 22, { align: 'right' })
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.5)
-    doc.setTextColor(235, 228, 242)
-    doc.text('FOR', margin + 15, y + 43)
-
-    doc.setFont(gcFont, 'bold')
-    doc.setFontSize(11)
-    doc.setTextColor(255, 255, 255)
-    const recipientLines = wrapTextLines(
+    const recLines = wrapTextLines(
       gc.recipientName,
       (t) => doc.getTextWidth(t),
-      132,
+      140,
     ).slice(0, 2)
-    doc.text(recipientLines, margin + 15, y + 55)
+    doc.text(recLines, gcX + 14, y + 47)
 
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.2)
+    doc.setFontSize(5.8)
     doc.setTextColor(235, 228, 242)
-    doc.text('VALUE', margin + 15, y + 79)
+    doc.text('VALUE', gcX + 14, y + 67)
     doc.setFont(gcFont, 'bold')
-    doc.setFontSize(15.5)
+    doc.setFontSize(14)
     doc.setTextColor(255, 255, 255)
-    doc.text(gc.amountFormatted, margin + 15, y + 95)
+    doc.text(gc.amountFormatted, gcX + 14, y + 81)
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
+    doc.setFontSize(6.8)
     doc.setTextColor(245, 238, 250)
-    doc.text(gc.editionLabel, margin + 15, y + cardH - 14)
+    doc.text(gc.editionLabel, gcX + 14, y + cardVisualH - 12)
     if (gc.senderName) {
-      const fromLines = wrapTextLines(
+      const fromText = wrapTextLines(
         `From: ${gc.senderName}`,
         (t) => doc.getTextWidth(t),
         92,
-      )
-      doc.text(fromLines[0] || '', margin + cardW - 15, y + cardH - 14, {
+      )[0]
+      doc.text(fromText || '', gcX + gcW - 14, y + cardVisualH - 12, {
         align: 'right',
       })
     }
 
-    // Specification Card
-    doc.setFillColor(...stripeRgb)
-    doc.setDrawColor(...lavenderBorder)
-    doc.setLineWidth(0.75)
-    doc.roundedRect(specX, y, specW, cardH, 6, 6, 'FD')
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.8)
-    doc.setTextColor(...brandPurple)
-    doc.text('CARD SPECIFICATION', specX + 12, y + 17)
-    doc.setDrawColor(...lineGray)
-    doc.line(specX + 12, y + 22, specX + specW - 12, y + 22)
-
-    doc.setFillColor(...surfaceRgb)
-    doc.rect(specX + 12, y + 30, 11, 10, 'F')
-    doc.setFillColor(...accentRgb)
-    doc.rect(specX + 23, y + 30, 6, 10, 'F')
-    doc.setDrawColor(...lavenderBorder)
-    doc.rect(specX + 12, y + 30, 17, 10, 'S')
-
+    y += cardVisualH + 13
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.2)
+    doc.setFontSize(7.4)
     doc.setTextColor(...mutedGray)
-    doc.text('STYLE THEME', specX + 35, y + 35)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.2)
-    doc.setTextColor(...textDark)
-    doc.text(gc.designName, specX + 35, y + 44)
-
-    const specItems: Array<[string, string]> = [
-      ['EDITION', gc.editionLabel],
-      ['TYPOGRAPHY', `${gc.fontName || 'Elegant'} Font`],
-      ['VALIDITY', 'VI & Ikoyi · Never Expires'],
-    ]
-    let sy = y + 63
-    for (const [lbl, val] of specItems) {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(6.2)
-      doc.setTextColor(...mutedGray)
-      doc.text(lbl, specX + 12, sy)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.2)
-      doc.setTextColor(...textDark)
-      const valLines = wrapTextLines(val, (t) => doc.getTextWidth(t), specW - 24)
-      doc.text(valLines[0] || '', specX + 12, sy + 9.5)
-      sy += 23
-    }
-
-    y += visualH + 14
+    doc.text(
+      `Theme: ${gc.designName}  ·  Font: ${gc.fontName || 'Elegant'}  ·  Valid at VI & Ikoyi  ·  No Expiry`,
+      centerX,
+      y,
+      { align: 'center' },
+    )
+    y += 10
   }
 
-  // 5. Two-Column Details Ledger (Dynamic Row Heights)
-  const colW = contentW / 2
-  const cellMaxW = colW - 26
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.8)
-  const measuredSummary = measureSummaryPairs(
+  // 5. Left-Label / Right-Value Clean Key-Value Ledger
+  const compactLedger = Boolean(data.giftCardVisual)
+  const measuredLedger = measureLedgerRows(
     data.summaryRows,
-    (t) => doc.getTextWidth(t),
+    (t) => {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.3)
+      return doc.getTextWidth(t)
+    },
+    (t) => {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8.5)
+      return doc.getTextWidth(t)
+    },
     {
-      colWidth: cellMaxW,
-      labelOffset: 15,
+      totalWidth: innerW,
+      labelMaxWidthRatio: 0.4,
+      minGap: 18,
+      topPadding: compactLedger ? 3.5 : 4.5,
       lineHeight: 11,
-      bottomPadding: 6,
-      minRowHeight: 30,
+      bottomPadding: compactLedger ? 3.5 : 4.5,
+      minRowHeight: compactLedger ? 16.5 : 19,
     },
   )
 
-  if (measuredSummary.pairs.length > 0) {
-    const gridH = measuredSummary.totalHeight + 6
-    y = ensureSpace(gridH + 26, y)
+  if (measuredLedger.rows.length > 0) {
+    measuredLedger.rows.forEach((row, idx) => {
+      y = ensureSpace(row.height + 4, y)
+      const baselineY = y + (compactLedger ? 11 : 12)
 
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.2)
-    doc.setTextColor(...brandPurple)
-    doc.text('RECEIPT DETAILS', margin, y)
-    y += 8
-
-    doc.setFillColor(255, 255, 255)
-    doc.setDrawColor(...lineGray)
-    doc.setLineWidth(0.75)
-    doc.roundedRect(margin, y, contentW, gridH, 6, 6, 'FD')
-
-    // Center vertical hairline
-    doc.setDrawColor(...lineGray)
-    doc.setLineWidth(0.5)
-    doc.line(margin + colW, y + 6, margin + colW, y + gridH - 6)
-
-    let rowY = y + 3
-    measuredSummary.pairs.forEach((pair, idx) => {
-      if (idx > 0) {
-        doc.setDrawColor(242, 239, 246)
-        doc.setLineWidth(0.5)
-        doc.line(margin + 12, rowY, pageWidth - margin - 12, rowY)
-      }
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(6.3)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8.3)
       doc.setTextColor(...mutedGray)
-      doc.text(pair.left.label.toUpperCase(), margin + 12, rowY + 11)
-      if (pair.right) {
-        doc.text(pair.right.label.toUpperCase(), margin + colW + 12, rowY + 11)
-      }
+      doc.text(row.label, innerX, baselineY)
 
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.8)
+      doc.setFontSize(8.5)
       doc.setTextColor(...textDark)
-      pair.left.lines.forEach((line, lIdx) => {
-        doc.text(line, margin + 12, rowY + 22 + lIdx * 11)
-      })
-      if (pair.right) {
-        pair.right.lines.forEach((line, lIdx) => {
-          doc.text(line, margin + colW + 12, rowY + 22 + lIdx * 11)
+      row.valueLines.forEach((line, lIdx) => {
+        doc.text(line, innerX + innerW, baselineY + lIdx * 11, {
+          align: 'right',
         })
-      }
+      })
 
-      rowY += pair.height
+      if (idx < measuredLedger.rows.length - 1) {
+        doc.setDrawColor(242, 238, 246)
+        doc.setLineWidth(0.5)
+        doc.line(innerX, y + row.height, innerX + innerW, y + row.height)
+      }
+      y += row.height
     })
 
-    y += gridH + 13
+    y += compactLedger ? 7 : 10
   }
 
-  // 6. Itemized Breakdown Table (Adaptive Right Column + Dynamic Row Heights)
+  // 6. Dashed Editorial Divider + Itemized Spa Breakdown
   if (data.lineItems && data.lineItems.length > 0) {
     const colMode = resolveLineItemColumnMode(data.lineItems)
     const rightHeader = columnHeaderLabel(colMode)
-    const rightColReserve = colMode === 'none' ? 20 : 124
-    const titleMaxW = contentW - rightColReserve - 20
-    const subMaxW = contentW - 36
+    const rightColReserve = colMode === 'none' ? 16 : 112
+    const titleMaxW = innerW - rightColReserve - 16
+    const subMaxW = innerW - rightColReserve - 16
 
     const { rows: measuredRows } = measureLineItems(
       data.lineItems,
       (t) => {
         doc.setFont('helvetica', 'bold')
-        doc.setFontSize(9.5)
+        doc.setFontSize(9)
         return doc.getTextWidth(t)
       },
       (t) => {
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(8)
+        doc.setFontSize(7.8)
         return doc.getTextWidth(t)
       },
       {
         titleMaxWidth: titleMaxW,
         subtitleMaxWidth: subMaxW,
-        topPadding: 11,
-        titleLineHeight: 13,
-        subtitleGap: 3,
-        subtitleLineHeight: 11,
-        bottomPadding: 10,
-        minRowHeight: 36,
+        topPadding: 7,
+        titleLineHeight: 12,
+        subtitleGap: 2.5,
+        subtitleLineHeight: 10.5,
+        bottomPadding: 7,
+        minRowHeight: 28,
       },
     )
 
-    const drawTableHeader = (atY: number): number => {
-      doc.setFillColor(...brandSoft)
-      doc.setDrawColor(...lavenderBorder)
-      doc.setLineWidth(0.6)
-      doc.roundedRect(margin, atY, contentW, 22, 4, 4, 'FD')
-
+    const drawBreakdownHeader = (atY: number): number => {
+      drawPdfDashedRule(doc, innerX, atY, innerX + innerW)
+      const capY = atY + 15
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(7.2)
+      doc.setFontSize(7)
       doc.setTextColor(...brandPurple)
-      doc.text('DESCRIPTION', margin + 12, atY + 14)
+      doc.text('SERVICES & ITEMS', innerX, capY)
       if (rightHeader) {
-        doc.text(rightHeader, pageWidth - margin - 12, atY + 14, {
-          align: 'right',
-        })
+        doc.text(rightHeader, innerX + innerW, capY, { align: 'right' })
       }
-      return atY + 24
+      return capY + 6
     }
 
-    y = ensureSpace(24 + (measuredRows[0]?.height ?? 36) + 12, y)
-    y = drawTableHeader(y)
+    y = ensureSpace(28 + (measuredRows[0]?.height ?? 28), y)
+    y = drawBreakdownHeader(y)
 
     measuredRows.forEach((row, idx) => {
       if (needsPageBreak(y, row.height + 10, pageHeight, footerReserve)) {
         doc.addPage()
-        drawPdfTopAccentRule(doc, pageWidth)
-        y = drawTableHeader(34)
+        drawPdfPageBackdropAndWatermark(doc, {
+          pageWidth,
+          pageHeight,
+          cardX,
+          cardY,
+          cardW,
+          cardH,
+          scallopTop: false,
+          scallopBottom: true,
+        })
+        y = drawBreakdownHeader(cardY + 34)
       }
 
-      if (idx % 2 === 1) {
-        doc.setFillColor(...stripeRgb)
-        doc.rect(margin, y, contentW, row.height, 'F')
-      }
-
+      const rowBaselineY = y + 13
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9.5)
+      doc.setFontSize(9)
       doc.setTextColor(...textDark)
       row.titleLines.forEach((line, lIdx) => {
-        doc.text(line, margin + 12, y + 15 + lIdx * 13)
+        doc.text(line, innerX, rowBaselineY + lIdx * 12)
       })
 
       if (row.amount) {
         doc.setFont('helvetica', 'bold')
-        doc.setFontSize(9.5)
-        doc.setTextColor(colMode === 'amount' ? brandPurple[0] : textBody[0], colMode === 'amount' ? brandPurple[1] : textBody[1], colMode === 'amount' ? brandPurple[2] : textBody[2])
-        doc.text(row.amount, pageWidth - margin - 12, y + 15, {
-          align: 'right',
-        })
+        doc.setFontSize(9)
+        doc.setTextColor(
+          colMode === 'amount' ? brandPurple[0] : textBody[0],
+          colMode === 'amount' ? brandPurple[1] : textBody[1],
+          colMode === 'amount' ? brandPurple[2] : textBody[2],
+        )
+        doc.text(row.amount, innerX + innerW, rowBaselineY, { align: 'right' })
       }
 
       if (row.subtitleLines.length > 0) {
-        const subStartY = y + 15 + row.titleLines.length * 13 + 1
+        const subStartY = rowBaselineY + row.titleLines.length * 12 + 0.5
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(8)
+        doc.setFontSize(7.8)
         doc.setTextColor(...mutedGray)
         row.subtitleLines.forEach((line, sIdx) => {
-          doc.text(line, margin + 12, subStartY + sIdx * 11)
+          doc.text(line, innerX, subStartY + sIdx * 10.5)
         })
       }
 
-      doc.setDrawColor(...lineGray)
-      doc.setLineWidth(0.5)
-      doc.line(margin, y + row.height, pageWidth - margin, y + row.height)
+      if (idx < measuredRows.length - 1) {
+        doc.setDrawColor(242, 238, 246)
+        doc.setLineWidth(0.5)
+        doc.line(innerX, y + row.height, innerX + innerW, y + row.height)
+      }
       y += row.height
     })
 
-    y += 10
+    y += 6
   }
 
-  // 7. Subtotal & Voucher Breakdown (Right-aligned accounting column)
+  // 7. Subtotal, Discount & Unboxed Couture Total Block
   if (data.subtotalFormatted && data.discountFormatted) {
-    y = ensureSpace(40, y)
-    const labelColX = margin + contentW * 0.52
+    y = ensureSpace(38, y)
+    doc.setDrawColor(...lineGray)
+    doc.setLineWidth(0.5)
+    doc.line(innerX, y, innerX + innerW, y)
+    y += 13
+
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.8)
+    doc.setFontSize(8.4)
     doc.setTextColor(...mutedGray)
-    doc.text('Subtotal', labelColX, y + 10)
+    doc.text('Subtotal', innerX, y)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...textDark)
-    doc.text(data.subtotalFormatted, pageWidth - margin - 12, y + 10, {
-      align: 'right',
-    })
+    doc.text(data.subtotalFormatted, innerX + innerW, y, { align: 'right' })
 
+    y += 14
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(...brandPurple)
-    doc.text(data.discountLabel || 'Voucher Discount', labelColX, y + 24)
+    doc.text(data.discountLabel || 'Voucher Discount', innerX, y)
     doc.setFont('helvetica', 'bold')
-    doc.text(data.discountFormatted, pageWidth - margin - 12, y + 24, {
-      align: 'right',
-    })
-    y += 34
+    doc.text(data.discountFormatted, innerX + innerW, y, { align: 'right' })
+    y += 12
   }
 
-  // 8. Clean Solid #7B2D8E Total Summary Bar (No double inset border)
-  const totalCardH = 48
-  y = ensureSpace(totalCardH + 12, y)
+  // Unboxed Total Paid Block (Signature plum rule + open editorial total + double hairline)
+  const totalBlockH = 44
+  y = ensureSpace(totalBlockH + 14, y)
 
-  doc.setFillColor(...brandPurple)
-  doc.roundedRect(margin, y, contentW, totalCardH, 6, 6, 'F')
+  doc.setDrawColor(...brandPurple)
+  doc.setLineWidth(1.4)
+  doc.line(innerX, y, innerX + innerW, y)
 
+  const totalMetaParts = [data.paymentMethodLabel, data.invoiceNumber].filter(
+    Boolean,
+  )
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.2)
-  doc.setTextColor(238, 226, 245)
-  doc.text(data.amountLabel, margin + 16, y + 19)
+  doc.setFontSize(7.6)
+  doc.setTextColor(...brandPurple)
+  doc.text(data.amountLabel, innerX, y + (totalMetaParts.length > 0 ? 17 : 24))
 
-  const subMetaParts = [data.paymentMethodLabel, data.invoiceNumber].filter(Boolean)
-  if (subMetaParts.length > 0) {
+  if (totalMetaParts.length > 0) {
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(245, 236, 250)
-    doc.text(subMetaParts.join('  ·  '), margin + 16, y + 34)
+    doc.setFontSize(7.8)
+    doc.setTextColor(...textBody)
+    doc.text(totalMetaParts.join('  ·  '), innerX, y + 30)
   }
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(17.5)
-  doc.setTextColor(255, 255, 255)
-  doc.text(data.amountFormatted, pageWidth - margin - 16, y + 30.5, {
+  doc.setFont('times', 'bold')
+  doc.setFontSize(20)
+  doc.setTextColor(...brandPurple)
+  doc.text(data.amountFormatted, innerX + innerW, y + 26.5, {
     align: 'right',
   })
 
-  y += totalCardH + 12
+  y += totalBlockH
+  doc.setDrawColor(...lavenderBorder)
+  doc.setLineWidth(0.7)
+  doc.line(innerX, y, innerX + innerW, y)
+  doc.setDrawColor(...atelierBorderRgb)
+  doc.setLineWidth(0.45)
+  doc.line(innerX, y + 3, innerX + innerW, y + 3)
 
-  // 9. Personal Message / Notes Quote Block
+  y += 18
+
+  // 8. Unboxed Personal Message / Appointment Note (Directly on white stationery)
   if (data.note) {
     doc.setFont('times', 'italic')
-    doc.setFontSize(9.5)
+    doc.setFontSize(9.8)
     const noteLines = wrapTextLines(
       `"${data.note}"`,
       (t) => doc.getTextWidth(t),
-      contentW - 32,
+      innerW - 44,
     )
-    const noteBoxH = noteLines.length * 12 + 24
-    y = ensureSpace(noteBoxH + 10, y)
+    const noteBlockH = 22 + noteLines.length * 13
+    y = ensureSpace(noteBlockH + 10, y)
 
-    doc.setFillColor(...stripeRgb)
-    doc.setDrawColor(...lavenderBorder)
-    doc.setLineWidth(0.75)
-    doc.roundedRect(margin, y, contentW, noteBoxH, 6, 6, 'FD')
-
-    doc.setFillColor(...brandPurple)
-    doc.rect(margin, y + 5, 3, noteBoxH - 10, 'F')
-
+    const noteTitle = data.noteTitle || 'PERSONAL MESSAGE'
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(6.8)
     doc.setTextColor(...brandPurple)
-    doc.text(data.noteTitle || 'PERSONAL MESSAGE', margin + 14, y + 15)
+    const titleW = doc.getTextWidth(noteTitle)
+    const dashLen = 14
+    const dashGap = 7
+    doc.setDrawColor(...lavenderBorder)
+    doc.setLineWidth(0.6)
+    doc.line(
+      centerX - titleW / 2 - dashGap - dashLen,
+      y + 3.5,
+      centerX - titleW / 2 - dashGap,
+      y + 3.5,
+    )
+    doc.line(
+      centerX + titleW / 2 + dashGap,
+      y + 3.5,
+      centerX + titleW / 2 + dashGap + dashLen,
+      y + 3.5,
+    )
+    doc.text(noteTitle, centerX, y + 6, { align: 'center' })
 
     doc.setFont('times', 'italic')
-    doc.setFontSize(9.5)
+    doc.setFontSize(9.8)
     doc.setTextColor(...textBody)
     noteLines.forEach((line, idx) => {
-      doc.text(line, margin + 14, y + 28 + idx * 12)
+      doc.text(line, centerX, y + 22 + idx * 13, { align: 'center' })
     })
-    y += noteBoxH + 10
   }
 
-  // Stamp clean editorial footer on every page
-  drawPdfFooterAllPages(doc, data.footerNote)
+  // Stamp footer cleanly on every page
+  drawPdfFooterAllPages(
+    doc,
+    data.footerNote,
+    cardX,
+    cardY,
+    cardW,
+    cardH,
+    padX,
+  )
 
   doc.save(data.filename)
   return data.filename
@@ -1603,62 +1629,146 @@ function drawRoundedRectPath(
   ctx.closePath()
 }
 
-function drawCanvasStatusBadge(
+function drawCanvasHeroStatus(
   ctx: CanvasRenderingContext2D,
   label: string,
   tone: ReceiptStatusTone,
-  rightX: number,
-  topY: number,
+  centerX: number,
+  baselineY: number,
   sansFont: string,
 ): void {
-  const display = label.toUpperCase()
-  ctx.font = `700 9.5px ${sansFont}`
-  const textW = ctx.measureText(display).width
-  const iconSpace = tone === 'muted' ? 0 : 14
-  const badgeW = textW + iconSpace + 20
-  const badgeH = 24
-  const badgeX = rightX - badgeW
-
-  drawRoundedRectPath(ctx, badgeX, topY, badgeW, badgeH, 6)
-  if (tone === 'positive') {
-    ctx.fillStyle = '#F7F2FA'
-    ctx.strokeStyle = '#DAC6E5'
-  } else if (tone === 'pending') {
-    ctx.fillStyle = '#FBF9FD'
-    ctx.strokeStyle = '#E4E4E7'
-  } else {
-    ctx.fillStyle = '#F4F4F5'
-    ctx.strokeStyle = '#E4E4E7'
-  }
-  ctx.lineWidth = 1
-  ctx.fill()
-  ctx.stroke()
+  ctx.font = `700 15px ${sansFont}`
+  const textW = ctx.measureText(label).width
+  const iconSize = 16
+  const gap = 7
+  const totalW = iconSize + gap + textW
+  const startX = centerX - totalW / 2
+  const iconCx = startX + iconSize / 2
+  const iconCy = baselineY - 4.8
 
   if (tone === 'positive') {
-    const cx = badgeX + 13
-    const cy = topY + badgeH / 2 + 0.5
-    ctx.strokeStyle = '#7B2D8E'
-    ctx.lineWidth = 1.6
+    ctx.beginPath()
+    ctx.arc(iconCx, iconCy, 7.5, 0, Math.PI * 2)
+    ctx.fillStyle = RECEIPT_PALETTE.brandHex
+    ctx.fill()
+
+    ctx.strokeStyle = '#FFFFFF'
+    ctx.lineWidth = 1.8
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
-    ctx.moveTo(cx - 3.5, cy)
-    ctx.lineTo(cx - 1, cy + 2.8)
-    ctx.lineTo(cx + 4, cy - 3)
+    ctx.moveTo(iconCx - 3.3, iconCy)
+    ctx.lineTo(iconCx - 0.8, iconCy + 2.8)
+    ctx.lineTo(iconCx + 3.8, iconCy - 2.8)
     ctx.stroke()
     ctx.lineCap = 'butt'
+
+    ctx.fillStyle = RECEIPT_PALETTE.brandHex
   } else if (tone === 'pending') {
-    ctx.fillStyle = '#71717A'
     ctx.beginPath()
-    ctx.arc(badgeX + 12, topY + badgeH / 2, 2.8, 0, Math.PI * 2)
+    ctx.arc(iconCx, iconCy, 7, 0, Math.PI * 2)
+    ctx.strokeStyle = '#52525B'
+    ctx.lineWidth = 1.4
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.arc(iconCx, iconCy, 2.6, 0, Math.PI * 2)
+    ctx.fillStyle = '#52525B'
     ctx.fill()
+    ctx.fillStyle = '#3F3F46'
+  } else {
+    ctx.beginPath()
+    ctx.arc(iconCx, iconCy, 7, 0, Math.PI * 2)
+    ctx.strokeStyle = '#71717A'
+    ctx.lineWidth = 1.4
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(iconCx - 3, iconCy)
+    ctx.lineTo(iconCx + 3, iconCy)
+    ctx.stroke()
+    ctx.fillStyle = '#71717A'
   }
 
-  ctx.fillStyle =
-    tone === 'positive' ? '#7B2D8E' : tone === 'pending' ? '#3F3F46' : '#71717A'
-  ctx.textAlign = 'right'
-  ctx.fillText(display, rightX - 10, topY + 15.5)
   ctx.textAlign = 'left'
+  ctx.fillText(label, startX + iconSize + gap, baselineY)
+}
+
+function drawCanvasDashedRule(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y: number,
+  x2: number,
+  color: string,
+): void {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1.1
+  ctx.setLineDash([6, 5])
+  ctx.beginPath()
+  ctx.moveTo(x1, y)
+  ctx.lineTo(x2, y)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
+ * Draws a symmetric minimalist 3-petal spa lotus blossom between horizontal
+ * hairlines using pure Bezier curves (zero 4-point star/sparkle geometry).
+ */
+function drawCanvasBotanicalDivider(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  x2: number,
+  cy: number,
+  brandHex: string,
+  borderHex: string,
+): void {
+  const cx = (x1 + x2) / 2
+  const gapHalf = 22
+
+  ctx.save()
+  ctx.strokeStyle = borderHex
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(x1, cy)
+  ctx.lineTo(cx - gapHalf, cy)
+  ctx.moveTo(cx + gapHalf, cy)
+  ctx.lineTo(x2, cy)
+  ctx.stroke()
+
+  ctx.strokeStyle = brandHex
+  ctx.lineWidth = 1.35
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+
+  // Center upright lotus petal
+  ctx.beginPath()
+  ctx.moveTo(cx, cy + 6)
+  ctx.bezierCurveTo(cx - 5.2, cy + 2, cx - 4.4, cy - 5, cx, cy - 15)
+  ctx.bezierCurveTo(cx + 4.4, cy - 5, cx + 5.2, cy + 2, cx, cy + 6)
+  ctx.stroke()
+
+  // Left cradling lotus petal
+  ctx.beginPath()
+  ctx.moveTo(cx, cy + 6)
+  ctx.bezierCurveTo(cx - 7.5, cy + 5.3, cx - 12, cy + 0.2, cx - 12.6, cy - 6)
+  ctx.bezierCurveTo(cx - 6.4, cy - 5.3, cx - 1.8, cy - 0.8, cx, cy + 6)
+  ctx.stroke()
+
+  // Right cradling lotus petal
+  ctx.beginPath()
+  ctx.moveTo(cx, cy + 6)
+  ctx.bezierCurveTo(cx + 7.5, cy + 5.3, cx + 12, cy + 0.2, cx + 12.6, cy - 6)
+  ctx.bezierCurveTo(cx + 6.4, cy - 5.3, cx + 1.8, cy - 0.8, cx, cy + 6)
+  ctx.stroke()
+
+  // Delicate curved chalice arc underneath petals
+  ctx.strokeStyle = borderHex
+  ctx.lineWidth = 1.1
+  ctx.beginPath()
+  ctx.moveTo(cx - 9.5, cy + 8.2)
+  ctx.quadraticCurveTo(cx, cy + 11.2, cx + 9.5, cy + 8.2)
+  ctx.stroke()
+  ctx.restore()
 }
 
 function triggerCanvasPngDownload(
@@ -1695,44 +1805,37 @@ function triggerCanvasPngDownload(
 }
 
 /**
- * Generates and downloads a crisp 3x Hi-DPI PNG receipt image matching the
- * single-color (#7B2D8E + white/plum-gray) Dermaspace editorial receipt layout.
- * Zero shadows, zero gradients, zero sparkle or zap icons, zero text squishing.
+ * Generates and downloads a crisp 3x Hi-DPI PNG spa receipt slip (#FFFFFF
+ * stationery card on #EEE8F4 mist, #7B2D8E plum accents, botanical lotus
+ * divider, unboxed couture total and notes, scalloped edges, zero dark
+ * backgrounds, zero shadows, zero gradients, and zero sparkle/zap symbols).
  */
 export async function downloadReceiptImage(
   data: ReceiptDocumentData,
 ): Promise<string> {
-  if (typeof document !== 'undefined' && document.fonts?.ready) {
-    try {
-      await document.fonts.ready
-    } catch {
-      // Proceed cleanly with system fallback stack
-    }
-  }
+  const siteFonts = resolveSiteFonts()
+  const { sansFont, serifFont } = siteFonts
+  await ensureSiteFontsLoaded(sansFont, serifFont)
 
   const scale = 3
-  const width = 600
-  const cardMargin = 20
+  const width = 620
+  const cardMargin = 22
   const cardX = cardMargin
   const cardW = width - cardMargin * 2
-  const padX = 30
+  const padX = 34
   const innerX = cardX + padX
   const innerW = cardW - padX * 2
+  const centerX = width / 2
 
   const brandHex = RECEIPT_PALETTE.brandHex
-  const tintBg = '#F7F2FA'
-  const stripeBg = '#FBF9FD'
-  const outerBg = '#F7F5F9'
+  const outerBg = '#EEE8F4'
   const brandBorder = '#DAC6E5'
-  const lineHex = '#E4E4E7'
-  const rowDividerHex = '#F1EEF4'
+  const atelierBorder = '#EAE0F2'
+  const lineHex = '#EAE3F0'
+  const rowDividerHex = '#F3EFF6'
   const textDark = '#18181B'
   const textBody = '#3F3F46'
   const textMuted = '#71717A'
-
-  const sansFont =
-    "'Lexend Deca', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-  const serifFont = "'Playfair Display', Georgia, serif"
 
   const { bitmap: logoBitmap } = await loadLogoAssets()
 
@@ -1743,71 +1846,52 @@ export async function downloadReceiptImage(
     return mctx.measureText(text).width
   }
 
-  // Measure Executive Summary Band
-  const sumLeftW = innerW * 0.54
-  const sumRightW = innerW * 0.46 - 24
-  const refFont = `700 12px ${sansFont}`
-  const refLines = wrapTextLines(
-    data.reference,
-    measureWithFont(refFont),
-    sumRightW,
-  )
-  const invoiceLines = data.invoiceNumber
+  // Measure Optional Headline & Subheadline
+  const headlineLines = data.headline
     ? wrapTextLines(
-        data.invoiceNumber,
-        measureWithFont(refFont),
-        sumRightW,
-      )
-    : []
-  const sumLeftH = 18 + 32 + (data.paymentMethodLabel ? 18 : 0) + 18
-  const sumRightH =
-    18 +
-    refLines.length * 16 +
-    (invoiceLines.length > 0 ? 22 + invoiceLines.length * 16 : 0) +
-    18
-  const summaryBandH = Math.max(84, sumLeftH, sumRightH)
-
-  // Measure Headline & Subheadline
-  const headlineLines = wrapTextLines(
-    data.headline,
-    measureWithFont(`700 18px ${sansFont}`),
-    innerW,
-  )
-  const subLines = data.subheadline
-    ? wrapTextLines(
-        data.subheadline,
-        measureWithFont(`400 12.5px ${sansFont}`),
+        data.headline,
+        measureWithFont(`700 17.5px ${serifFont}`),
         innerW,
       )
     : []
+  const subLines =
+    data.headline && data.subheadline
+      ? wrapTextLines(
+          data.subheadline,
+          measureWithFont(`400 11.5px ${sansFont}`),
+          innerW - 24,
+        )
+      : []
   const headlineBlockH =
-    headlineLines.length * 24 +
-    (subLines.length > 0 ? 4 + subLines.length * 18 : 0)
+    headlineLines.length > 0
+      ? headlineLines.length * 23 +
+        (subLines.length > 0 ? 5 + subLines.length * 16 : 0) +
+        6
+      : 0
 
-  // Measure Optional Gift Card Specimen
-  const giftVisualH = data.giftCardVisual ? 174 : 0
+  // Measure Gift Card Visual (if present — unboxed metadata line beneath)
+  const giftVisualH = data.giftCardVisual ? 164 + 16 + 14 : 0
 
-  // Measure Details Ledger
-  const detailColW = innerW / 2
-  const detailValueMaxW = detailColW - 28
-  const measuredDetails = measureSummaryPairs(
+  // Measure Left-Label / Right-Value Ledger
+  const measuredLedger = measureLedgerRows(
     data.summaryRows,
+    measureWithFont(`400 12px ${sansFont}`),
     measureWithFont(`600 12px ${sansFont}`),
     {
-      colWidth: detailValueMaxW,
-      labelOffset: 22,
+      totalWidth: innerW,
+      labelMaxWidthRatio: 0.4,
+      minGap: 20,
+      topPadding: 8,
       lineHeight: 16,
-      bottomPadding: 11,
-      minRowHeight: 46,
+      bottomPadding: 8,
+      minRowHeight: 30,
     },
   )
-  const detailsSectionH =
-    measuredDetails.pairs.length > 0 ? 18 + measuredDetails.totalHeight + 8 : 0
 
-  // Measure Line Items Table
+  // Measure Itemized Spa Breakdown
   const lineItems = data.lineItems ?? []
   const colMode = resolveLineItemColumnMode(lineItems)
-  const rightColReserve = colMode === 'none' ? 24 : 140
+  const rightColReserve = colMode === 'none' ? 16 : 132
   const measuredItems =
     lineItems.length > 0
       ? measureLineItems(
@@ -1815,54 +1899,56 @@ export async function downloadReceiptImage(
           measureWithFont(`600 12.5px ${sansFont}`),
           measureWithFont(`400 10.5px ${sansFont}`),
           {
-            titleMaxWidth: innerW - rightColReserve - 24,
-            subtitleMaxWidth: innerW - 36,
-            topPadding: 13,
+            titleMaxWidth: innerW - rightColReserve - 16,
+            subtitleMaxWidth: innerW - rightColReserve - 16,
+            topPadding: 10,
             titleLineHeight: 17,
-            subtitleGap: 4,
+            subtitleGap: 3,
             subtitleLineHeight: 14,
-            bottomPadding: 12,
-            minRowHeight: 46,
+            bottomPadding: 10,
+            minRowHeight: 40,
           },
         )
       : { rows: [], totalHeight: 0 }
   const itemsSectionH =
-    measuredItems.rows.length > 0 ? 30 + measuredItems.totalHeight : 0
+    measuredItems.rows.length > 0 ? 34 + measuredItems.totalHeight : 0
 
-  // Measure Discount, Total Bar, Note & Footer
+  // Measure Subtotal/Discount, Unboxed Couture Total Block, Unboxed Note & Footer
   const discountH = data.subtotalFormatted && data.discountFormatted ? 48 : 0
-  const totalBarH = 68
+  const totalBlockH = 66
   const noteLines = data.note
     ? wrapTextLines(
         `"${data.note}"`,
-        measureWithFont(`italic 12.5px ${serifFont}`),
-        innerW - 34,
+        measureWithFont(`italic 13.5px ${serifFont}`),
+        innerW - 48,
       )
     : []
-  const noteSectionH = data.note ? noteLines.length * 18 + 38 : 0
+  const noteSectionH = data.note ? 26 + noteLines.length * 19 : 0
 
-  const topAccentH = 5
-  const letterheadH = 92
-  const footerH = 74
+  const headerH = 44
+  const heroH = 98
+  const footerH = 68
+
+  const giftVisualGapH =
+    giftVisualH > 0 ? (headlineLines.length > 0 ? 14 : 10) + giftVisualH : 0
 
   const cardH =
-    topAccentH +
-    22 +
-    letterheadH +
+    36 +
+    headerH +
     18 +
-    summaryBandH +
-    22 +
+    heroH +
+    18 +
     headlineBlockH +
-    (giftVisualH > 0 ? 18 + giftVisualH : 0) +
-    (detailsSectionH > 0 ? 20 + detailsSectionH : 0) +
-    (itemsSectionH > 0 ? 20 + itemsSectionH : 0) +
-    (discountH > 0 ? 14 + discountH : 0) +
+    giftVisualGapH +
+    (measuredLedger.rows.length > 0 ? 14 + measuredLedger.totalHeight : 0) +
+    (itemsSectionH > 0 ? 18 + itemsSectionH : 0) +
+    (discountH > 0 ? 10 + discountH : 0) +
     16 +
-    totalBarH +
-    (noteSectionH > 0 ? 18 + noteSectionH : 0) +
-    22 +
+    totalBlockH +
+    (noteSectionH > 0 ? 22 + noteSectionH : 0) +
+    26 +
     footerH +
-    22
+    26
 
   const totalHeight = cardMargin * 2 + cardH
 
@@ -1872,190 +1958,179 @@ export async function downloadReceiptImage(
   const ctx = canvas.getContext('2d')!
   ctx.scale(scale, scale)
 
-  // Outer neutral paper background
+  // Serene soft-plum paper backdrop (#EEE8F4)
   ctx.fillStyle = outerBg
   ctx.fillRect(0, 0, width, totalHeight)
 
-  // Crisp flat receipt sheet (zero shadow)
-  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 12)
+  // Seamless pure white stationery slip
+  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 14)
   ctx.fillStyle = '#FFFFFF'
   ctx.fill()
-  ctx.lineWidth = 1
-  ctx.strokeStyle = brandBorder
-  ctx.stroke()
 
   ctx.save()
-  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 12)
+  drawRoundedRectPath(ctx, cardX, cardMargin, cardW, cardH, 14)
   ctx.clip()
 
-  let y = cardMargin
+  // Whisper-subtle diagonal "Dermaspace" anti-tamper watermark tiled cleanly inside body
+  ctx.save()
+  ctx.fillStyle = 'rgba(123, 45, 142, 0.024)'
+  ctx.font = `700 21px ${serifFont}`
+  ctx.textAlign = 'center'
+  const wmCols = [cardX + 104, width / 2, cardX + cardW - 104]
+  for (let row = 0; ; row += 1) {
+    const wy = cardMargin + 132 + row * 136
+    if (wy > cardMargin + cardH - 110) break
+    wmCols.forEach((wx, cIdx) => {
+      if ((row + cIdx) % 2 === 0) {
+        ctx.save()
+        ctx.translate(wx, wy)
+        ctx.rotate((-20 * Math.PI) / 180)
+        ctx.fillText('Dermaspace', 0, 0)
+        ctx.restore()
+      }
+    })
+  }
+  ctx.restore()
 
-  // 1. Solid Top Brand Rule
+  // Inner letterpress atelier hairline frame (clear of top/bottom scallops)
+  drawRoundedRectPath(
+    ctx,
+    cardX + 15,
+    cardMargin + 17,
+    cardW - 30,
+    cardH - 34,
+    8,
+  )
+  ctx.strokeStyle = atelierBorder
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  // Top signature plum rule aligned cleanly along top of atelier frame
   ctx.fillStyle = brandHex
-  ctx.fillRect(cardX, y, cardW, topAccentH)
-  y += topAccentH + 22
+  ctx.fillRect(cardX + 34, cardMargin + 17, cardW - 68, 2.4)
 
-  // 2. White Editorial Letterhead
+  let y = cardMargin + 36
+
+  // 1. Header Row (Logo Left · Receipt Title & Factual Ref Right)
   if (logoBitmap) {
-    const logoH = 36
-    const logoW = Math.min(logoH * (logoBitmap.width / logoBitmap.height), innerW * 0.48)
-    ctx.drawImage(logoBitmap, innerX, y + 4, logoW, logoH)
-    ctx.fillStyle = textMuted
-    ctx.font = `400 10px ${sansFont}`
-    ctx.fillText(
-      'Victoria Island & Ikoyi, Lagos  ·  dermaspaceng.com',
-      innerX,
-      y + 56,
+    const logoH = 34
+    const logoW = Math.min(
+      logoH * (logoBitmap.width / logoBitmap.height),
+      innerW * 0.45,
     )
+    ctx.drawImage(logoBitmap, innerX, y + 4, logoW, logoH)
   } else {
     ctx.fillStyle = brandHex
     ctx.font = `700 24px ${serifFont}`
-    ctx.fillText('Dermaspace', innerX, y + 26)
-    ctx.fillStyle = textMuted
-    ctx.font = `400 10px ${sansFont}`
-    ctx.fillText(
-      'Esthetic & Wellness Centre  ·  Lagos',
-      innerX,
-      y + 48,
-    )
+    ctx.fillText('Dermaspace', innerX, y + 28)
   }
 
   ctx.textAlign = 'right'
-  ctx.fillStyle = brandHex
-  ctx.font = `700 9.5px ${sansFont}`
-  ctx.fillText('OFFICIAL RECEIPT', innerX + innerW, y + 10)
   ctx.fillStyle = textDark
-  ctx.font = `700 15px ${sansFont}`
-  ctx.fillText(data.documentTitle, innerX + innerW, y + 30)
-  ctx.fillStyle = textMuted
-  ctx.font = `400 10.5px ${sansFont}`
-  ctx.fillText(`Issued ${data.issueDate}`, innerX + innerW, y + 47)
+  ctx.font = `700 14.5px ${sansFont}`
+  ctx.fillText(formatDocTitleDisplay(data.documentTitle), innerX + innerW, y + 18)
+  ctx.fillStyle = brandHex
+  ctx.font = `500 10px ${sansFont}`
+  const headerRefLabel = formatCompactHeaderRef(
+    data.reference,
+    measureWithFont(`500 10px ${sansFont}`),
+    innerW * 0.46,
+  )
+  ctx.fillText(headerRefLabel, innerX + innerW, y + 34)
   ctx.textAlign = 'left'
 
+  y += headerH + 18
+
+  // 2. Centered Editorial Hero Amount, Status & Timestamp
   const statusTone = classifyStatusTone(data.statusLabel)
-  drawCanvasStatusBadge(
-    ctx,
-    data.statusLabel,
-    statusTone,
-    innerX + innerW,
-    y + 56,
-    sansFont,
-  )
 
-  const headerRuleY = y + letterheadH
-  ctx.strokeStyle = lineHex
-  ctx.lineWidth = 1
-  ctx.beginPath()
-  ctx.moveTo(innerX, headerRuleY)
-  ctx.lineTo(innerX + innerW, headerRuleY)
-  ctx.stroke()
-  y = headerRuleY + 18
-
-  // 3. Executive Summary Band
-  drawRoundedRectPath(ctx, innerX, y, innerW, summaryBandH, 8)
-  ctx.fillStyle = stripeBg
-  ctx.fill()
-  ctx.strokeStyle = brandBorder
-  ctx.lineWidth = 1
-  ctx.stroke()
-
-  const dividerX = innerX + sumLeftW
-  ctx.strokeStyle = lineHex
-  ctx.beginPath()
-  ctx.moveTo(dividerX, y + 14)
-  ctx.lineTo(dividerX, y + summaryBandH - 14)
-  ctx.stroke()
-
-  ctx.fillStyle = textMuted
-  ctx.font = `700 9px ${sansFont}`
-  ctx.fillText(data.amountLabel, innerX + 18, y + 24)
-  ctx.fillStyle = textDark
-  ctx.font = `700 25px ${sansFont}`
-  ctx.fillText(data.amountFormatted, innerX + 18, y + 54)
-  if (data.paymentMethodLabel) {
-    ctx.fillStyle = textBody
-    ctx.font = `400 10.5px ${sansFont}`
-    const methodPrefix = statusTone === 'positive' ? 'Paid via' : 'Method:'
-    ctx.fillText(`${methodPrefix} ${data.paymentMethodLabel}`, innerX + 18, y + 72)
-  }
-
-  let ry = y + 24
-  const rx = dividerX + 16
-  ctx.fillStyle = textMuted
-  ctx.font = `700 8.5px ${sansFont}`
-  ctx.fillText('REFERENCE', rx, ry)
-  ry += 16
+  ctx.textAlign = 'center'
   ctx.fillStyle = brandHex
-  ctx.font = refFont
-  for (const line of refLines) {
-    ctx.fillText(line, rx, ry)
-    ry += 16
+  ctx.font = `700 34px ${serifFont}`
+  ctx.fillText(data.amountFormatted, centerX, y + 28)
+  ctx.textAlign = 'left'
+
+  drawCanvasHeroStatus(ctx, data.statusLabel, statusTone, centerX, y + 57, sansFont)
+
+  ctx.textAlign = 'center'
+  ctx.fillStyle = textMuted
+  ctx.font = `400 11px ${sansFont}`
+  const heroMetaParts = [`Issued ${data.issueDate}`]
+  if (data.paymentMethodLabel) {
+    heroMetaParts.push(
+      statusTone === 'positive'
+        ? `Paid via ${data.paymentMethodLabel}`
+        : data.paymentMethodLabel,
+    )
   }
-  if (invoiceLines.length > 0) {
-    ry += 6
-    ctx.fillStyle = textMuted
-    ctx.font = `700 8.5px ${sansFont}`
-    ctx.fillText('INVOICE NUMBER', rx, ry)
-    ry += 16
+  ctx.fillText(heroMetaParts.join('  ·  '), centerX, y + 79)
+  ctx.textAlign = 'left'
+
+  // Botanical spa lotus ornament divider
+  y += heroH
+  drawCanvasBotanicalDivider(
+    ctx,
+    innerX,
+    innerX + innerW,
+    y,
+    brandHex,
+    brandBorder,
+  )
+  y += 18
+
+  // 3. Optional Centered Editorial Context Headline
+  if (headlineLines.length > 0) {
+    ctx.textAlign = 'center'
     ctx.fillStyle = textDark
-    ctx.font = refFont
-    for (const line of invoiceLines) {
-      ctx.fillText(line, rx, ry)
-      ry += 16
+    ctx.font = `700 17.5px ${serifFont}`
+    headlineLines.forEach((line, idx) => {
+      ctx.fillText(line, centerX, y + 14 + idx * 23)
+    })
+    y += headlineLines.length * 23
+
+    if (subLines.length > 0) {
+      y += 5
+      ctx.fillStyle = textMuted
+      ctx.font = `400 11.5px ${sansFont}`
+      subLines.forEach((line, idx) => {
+        ctx.fillText(line, centerX, y + 12 + idx * 16)
+      })
+      y += subLines.length * 16
     }
+    y += 6
+    ctx.textAlign = 'left'
   }
 
-  y += summaryBandH + 22
-
-  // 4. Headline & Subheadline
-  ctx.fillStyle = textDark
-  ctx.font = `700 18px ${sansFont}`
-  for (const line of headlineLines) {
-    ctx.fillText(line, innerX, y + 16)
-    y += 24
-  }
-  if (subLines.length > 0) {
-    y += 4
-    ctx.fillStyle = textBody
-    ctx.font = `400 12.5px ${sansFont}`
-    for (const line of subLines) {
-      ctx.fillText(line, innerX, y + 13)
-      y += 18
-    }
-  }
-
-  // 5. Optional Gift Card Specimen & Specification
+  // 4. Optional Gift Card Specimen Card (Unboxed metadata line underneath)
   if (data.giftCardVisual) {
-    y += 18
+    y += headlineLines.length > 0 ? 14 : 10
     const gc = data.giftCardVisual
-    const gcCardW = 290
-    const gcCardH = giftVisualH
-    const specX = innerX + gcCardW + 14
-    const specW = innerW - gcCardW - 14
-    const gcFont = canvasFontFamilyForGiftCard(gc.fontName)
+    const gcCardW = Math.min(340, innerW)
+    const gcCardH = 164
+    const gcX = centerX - gcCardW / 2
+    const gcFont = canvasFontFamilyForGiftCard(gc.fontName, siteFonts)
 
-    drawRoundedRectPath(ctx, innerX, y, gcCardW, gcCardH, 10)
+    drawRoundedRectPath(ctx, gcX, y, gcCardW, gcCardH, 10)
     ctx.fillStyle = gc.surfaceHex || brandHex
     ctx.fill()
 
     drawRoundedRectPath(
       ctx,
-      innerX + gcCardW * 0.62,
-      y + 12,
+      gcX + gcCardW * 0.62,
+      y + 11,
       gcCardW * 0.33,
-      gcCardH - 24,
+      gcCardH - 22,
       8,
     )
     ctx.fillStyle = gc.accentHex || brandHex
     ctx.fill()
 
-    drawRoundedRectPath(ctx, innerX + 8, y + 8, gcCardW - 16, gcCardH - 16, 7)
+    drawRoundedRectPath(ctx, gcX + 8, y + 8, gcCardW - 16, gcCardH - 16, 7)
     ctx.strokeStyle = 'rgba(255,255,255,0.45)'
     ctx.lineWidth = 1
     ctx.stroke()
 
-    // Concentric Monogram Medallion ("DS", zero sparkles)
-    const medX = innerX + gcCardW - 49
+    const medX = gcX + gcCardW - 55
     const medY = y + gcCardH / 2 + 2
     ctx.beginPath()
     ctx.arc(medX, medY, 22, 0, Math.PI * 2)
@@ -2079,305 +2154,257 @@ export async function downloadReceiptImage(
 
     ctx.fillStyle = '#FFFFFF'
     ctx.font = `700 10px ${sansFont}`
-    ctx.fillText('DERMASPACE', innerX + 18, y + 29)
+    ctx.fillText('DERMASPACE', gcX + 18, y + 28)
     ctx.textAlign = 'right'
     ctx.font = `700 8px ${sansFont}`
-    ctx.fillText('GIFT CARD', innerX + gcCardW - 18, y + 29)
+    ctx.fillText('GIFT CARD', gcX + gcCardW - 18, y + 28)
     ctx.textAlign = 'left'
 
     ctx.fillStyle = 'rgba(245,238,250,0.85)'
     ctx.font = `400 8.5px ${sansFont}`
-    ctx.fillText('FOR', innerX + 18, y + 54)
+    ctx.fillText('FOR', gcX + 18, y + 52)
     ctx.fillStyle = '#FFFFFF'
     const recLines = wrapTextLines(
       gc.recipientName,
-      measureWithFont(`700 13.5px ${gcFont}`),
-      142,
+      measureWithFont(`700 14px ${gcFont}`),
+      168,
     ).slice(0, 2)
-    ctx.font = `700 13.5px ${gcFont}`
+    ctx.font = `700 14px ${gcFont}`
     recLines.forEach((line, idx) => {
-      ctx.fillText(line, innerX + 18, y + 71 + idx * 17)
+      ctx.fillText(line, gcX + 18, y + 69 + idx * 17)
     })
 
     ctx.fillStyle = 'rgba(245,238,250,0.85)'
     ctx.font = `700 8px ${sansFont}`
-    ctx.fillText('VALUE', innerX + 18, y + 106)
+    ctx.fillText('VALUE', gcX + 18, y + 102)
     ctx.fillStyle = '#FFFFFF'
     ctx.font = `700 19px ${gcFont}`
-    ctx.fillText(gc.amountFormatted, innerX + 18, y + 127)
+    ctx.fillText(gc.amountFormatted, gcX + 18, y + 123)
 
     ctx.fillStyle = 'rgba(245,238,250,0.92)'
     ctx.font = `400 9.5px ${sansFont}`
-    ctx.fillText(gc.editionLabel, innerX + 18, y + gcCardH - 18)
+    ctx.fillText(gc.editionLabel, gcX + 18, y + gcCardH - 18)
     if (gc.senderName) {
       const fromText = wrapTextLines(
         `From: ${gc.senderName}`,
         measureWithFont(`400 9px ${sansFont}`),
-        112,
+        118,
       )[0]
       ctx.textAlign = 'right'
       ctx.font = `400 9px ${sansFont}`
-      ctx.fillText(fromText || '', innerX + gcCardW - 18, y + gcCardH - 18)
+      ctx.fillText(fromText || '', gcX + gcCardW - 18, y + gcCardH - 18)
       ctx.textAlign = 'left'
     }
 
-    // Card Specification Card
-    drawRoundedRectPath(ctx, specX, y, specW, gcCardH, 8)
-    ctx.fillStyle = stripeBg
-    ctx.fill()
-    ctx.strokeStyle = brandBorder
-    ctx.lineWidth = 1
-    ctx.stroke()
-
-    ctx.fillStyle = brandHex
-    ctx.font = `700 8.5px ${sansFont}`
-    ctx.fillText('CARD SPECIFICATION', specX + 14, y + 22)
-    ctx.strokeStyle = lineHex
-    ctx.beginPath()
-    ctx.moveTo(specX + 14, y + 30)
-    ctx.lineTo(specX + specW - 14, y + 30)
-    ctx.stroke()
-
-    ctx.fillStyle = gc.surfaceHex || brandHex
-    ctx.fillRect(specX + 14, y + 41, 13, 13)
-    ctx.fillStyle = gc.accentHex || brandHex
-    ctx.fillRect(specX + 27, y + 41, 7, 13)
-    ctx.strokeStyle = brandBorder
-    ctx.strokeRect(specX + 14, y + 41, 20, 13)
-
+    y += gcCardH + 16
+    ctx.textAlign = 'center'
     ctx.fillStyle = textMuted
-    ctx.font = `600 8px ${sansFont}`
-    ctx.fillText('STYLE THEME', specX + 42, y + 47)
-    ctx.fillStyle = textDark
-    ctx.font = `700 10.5px ${sansFont}`
-    const styleLine = wrapTextLines(
-      gc.designName,
-      measureWithFont(`700 10.5px ${sansFont}`),
-      specW - 54,
-    )[0]
-    ctx.fillText(styleLine || '', specX + 42, y + 59)
-
-    const specItems: Array<[string, string]> = [
-      ['EDITION', gc.editionLabel],
-      ['TYPOGRAPHY', `${gc.fontName || 'Elegant'} Font`],
-      ['VALIDITY', 'VI & Ikoyi · Never Expires'],
-    ]
-    let sy = y + 83
-    for (const [lbl, val] of specItems) {
-      ctx.fillStyle = textMuted
-      ctx.font = `600 8px ${sansFont}`
-      ctx.fillText(lbl, specX + 14, sy)
-      ctx.fillStyle = textDark
-      ctx.font = `700 10.5px ${sansFont}`
-      const vLine = wrapTextLines(
-        val,
-        measureWithFont(`700 10.5px ${sansFont}`),
-        specW - 28,
-      )[0]
-      ctx.fillText(vLine || '', specX + 14, sy + 13)
-      sy += 31
-    }
-
-    y += gcCardH
+    ctx.font = `400 10px ${sansFont}`
+    ctx.fillText(
+      `Theme: ${gc.designName}  ·  Font: ${gc.fontName || 'Elegant'}  ·  Valid at VI & Ikoyi  ·  No Expiry`,
+      centerX,
+      y + 8,
+    )
+    ctx.textAlign = 'left'
+    y += 14
   }
 
-  // 6. Receipt Details Ledger
-  if (measuredDetails.pairs.length > 0) {
-    y += 20
-    ctx.fillStyle = brandHex
-    ctx.font = `700 9.5px ${sansFont}`
-    ctx.fillText('RECEIPT DETAILS', innerX, y + 10)
-    y += 18
-
-    const gridH = measuredDetails.totalHeight + 8
-    drawRoundedRectPath(ctx, innerX, y, innerW, gridH, 8)
-    ctx.fillStyle = '#FFFFFF'
-    ctx.fill()
-    ctx.strokeStyle = lineHex
-    ctx.lineWidth = 1
-    ctx.stroke()
-
-    ctx.strokeStyle = lineHex
-    ctx.beginPath()
-    ctx.moveTo(innerX + detailColW, y + 8)
-    ctx.lineTo(innerX + detailColW, y + gridH - 8)
-    ctx.stroke()
-
-    let rowY = y + 4
-    measuredDetails.pairs.forEach((pair, idx) => {
-      if (idx > 0) {
-        ctx.strokeStyle = rowDividerHex
-        ctx.beginPath()
-        ctx.moveTo(innerX + 14, rowY)
-        ctx.lineTo(innerX + innerW - 14, rowY)
-        ctx.stroke()
-      }
-
+  // 5. Left-Label / Right-Value Clean Key-Value Ledger
+  if (measuredLedger.rows.length > 0) {
+    y += 14
+    measuredLedger.rows.forEach((row, idx) => {
+      const baselineY = y + 18
       ctx.fillStyle = textMuted
-      ctx.font = `700 8.5px ${sansFont}`
-      ctx.fillText(pair.left.label.toUpperCase(), innerX + 14, rowY + 16)
-      if (pair.right) {
-        ctx.fillText(
-          pair.right.label.toUpperCase(),
-          innerX + detailColW + 14,
-          rowY + 16,
-        )
-      }
+      ctx.font = `400 12px ${sansFont}`
+      ctx.fillText(row.label, innerX, baselineY)
 
+      ctx.textAlign = 'right'
       ctx.fillStyle = textDark
       ctx.font = `600 12px ${sansFont}`
-      pair.left.lines.forEach((line, lIdx) => {
-        ctx.fillText(line, innerX + 14, rowY + 32 + lIdx * 16)
+      row.valueLines.forEach((line, lIdx) => {
+        ctx.fillText(line, innerX + innerW, baselineY + lIdx * 16)
       })
-      if (pair.right) {
-        pair.right.lines.forEach((line, lIdx) => {
-          ctx.fillText(line, innerX + detailColW + 14, rowY + 32 + lIdx * 16)
-        })
+      ctx.textAlign = 'left'
+
+      if (idx < measuredLedger.rows.length - 1) {
+        ctx.strokeStyle = rowDividerHex
+        ctx.lineWidth = 0.8
+        ctx.beginPath()
+        ctx.moveTo(innerX, y + row.height)
+        ctx.lineTo(innerX + innerW, y + row.height)
+        ctx.stroke()
       }
-
-      rowY += pair.height
+      y += row.height
     })
-
-    y += gridH
   }
 
-  // 7. Itemized Breakdown Table
+  // 6. Dashed Editorial Divider + Itemized Spa Breakdown
   if (measuredItems.rows.length > 0) {
-    y += 20
-    const rightHeader = columnHeaderLabel(colMode)
-    drawRoundedRectPath(ctx, innerX, y, innerW, 28, 6)
-    ctx.fillStyle = tintBg
-    ctx.fill()
-    ctx.strokeStyle = brandBorder
-    ctx.lineWidth = 0.8
-    ctx.stroke()
+    y += 18
+    drawCanvasDashedRule(ctx, innerX, y, innerX + innerW, brandBorder)
+    y += 22
 
+    const rightHeader = columnHeaderLabel(colMode)
     ctx.fillStyle = brandHex
-    ctx.font = `700 9px ${sansFont}`
-    ctx.fillText('DESCRIPTION', innerX + 14, y + 17.5)
+    ctx.font = `700 9.5px ${sansFont}`
+    ctx.fillText('SERVICES & ITEMS', innerX, y)
     if (rightHeader) {
       ctx.textAlign = 'right'
-      ctx.fillText(rightHeader, innerX + innerW - 14, y + 17.5)
+      ctx.fillText(rightHeader, innerX + innerW, y)
       ctx.textAlign = 'left'
     }
-    y += 30
+    y += 12
 
     measuredItems.rows.forEach((row, idx) => {
-      if (idx % 2 === 1) {
-        ctx.fillStyle = stripeBg
-        ctx.fillRect(innerX, y, innerW, row.height)
-      }
-
+      const rowBaselineY = y + 18
       ctx.fillStyle = textDark
       ctx.font = `600 12.5px ${sansFont}`
       row.titleLines.forEach((line, lIdx) => {
-        ctx.fillText(line, innerX + 14, y + 19 + lIdx * 17)
+        ctx.fillText(line, innerX, rowBaselineY + lIdx * 17)
       })
 
       if (row.amount) {
         ctx.textAlign = 'right'
         ctx.fillStyle = colMode === 'amount' ? brandHex : textBody
         ctx.font = `700 12.5px ${sansFont}`
-        ctx.fillText(row.amount, innerX + innerW - 14, y + 19)
+        ctx.fillText(row.amount, innerX + innerW, rowBaselineY)
         ctx.textAlign = 'left'
       }
 
       if (row.subtitleLines.length > 0) {
-        const subY = y + 19 + row.titleLines.length * 17 + 2
+        const subY = rowBaselineY + row.titleLines.length * 17 + 1
         ctx.fillStyle = textMuted
         ctx.font = `400 10.5px ${sansFont}`
         row.subtitleLines.forEach((line, sIdx) => {
-          ctx.fillText(line, innerX + 14, subY + sIdx * 14)
+          ctx.fillText(line, innerX, subY + sIdx * 14)
         })
       }
 
-      ctx.strokeStyle = lineHex
-      ctx.lineWidth = 0.8
-      ctx.beginPath()
-      ctx.moveTo(innerX, y + row.height)
-      ctx.lineTo(innerX + innerW, y + row.height)
-      ctx.stroke()
-
+      if (idx < measuredItems.rows.length - 1) {
+        ctx.strokeStyle = rowDividerHex
+        ctx.lineWidth = 0.8
+        ctx.beginPath()
+        ctx.moveTo(innerX, y + row.height)
+        ctx.lineTo(innerX + innerW, y + row.height)
+        ctx.stroke()
+      }
       y += row.height
     })
   }
 
-  // 8. Subtotal & Voucher Discount
+  // 7. Subtotal & Discount
   if (data.subtotalFormatted && data.discountFormatted) {
-    y += 14
-    const labelColX = innerX + innerW * 0.48
+    y += 10
+    ctx.strokeStyle = lineHex
+    ctx.lineWidth = 0.8
+    ctx.beginPath()
+    ctx.moveTo(innerX, y)
+    ctx.lineTo(innerX + innerW, y)
+    ctx.stroke()
+    y += 18
+
     ctx.fillStyle = textMuted
     ctx.font = `400 11.5px ${sansFont}`
-    ctx.fillText('Subtotal', labelColX, y + 13)
+    ctx.fillText('Subtotal', innerX, y)
     ctx.textAlign = 'right'
     ctx.fillStyle = textDark
     ctx.font = `600 11.5px ${sansFont}`
-    ctx.fillText(data.subtotalFormatted, innerX + innerW - 14, y + 13)
+    ctx.fillText(data.subtotalFormatted, innerX + innerW, y)
     ctx.textAlign = 'left'
 
+    y += 20
     ctx.fillStyle = brandHex
     ctx.font = `400 11.5px ${sansFont}`
-    ctx.fillText(data.discountLabel || 'Voucher Discount', labelColX, y + 33)
+    ctx.fillText(data.discountLabel || 'Voucher Discount', innerX, y)
     ctx.textAlign = 'right'
     ctx.font = `700 11.5px ${sansFont}`
-    ctx.fillText(data.discountFormatted, innerX + innerW - 14, y + 33)
+    ctx.fillText(data.discountFormatted, innerX + innerW, y)
     ctx.textAlign = 'left'
-
-    y += 48
+    y += 10
   }
 
-  // 9. Clean Solid #7B2D8E Total Paid Bar
+  // 8. Unboxed Couture Total Block (Signature plum rule + open editorial amount + double hairline)
   y += 16
-  drawRoundedRectPath(ctx, innerX, y, innerW, totalBarH, 8)
+  ctx.strokeStyle = brandHex
+  ctx.lineWidth = 1.9
+  ctx.beginPath()
+  ctx.moveTo(innerX, y)
+  ctx.lineTo(innerX + innerW, y)
+  ctx.stroke()
+
+  const totalMetaParts = [data.paymentMethodLabel, data.invoiceNumber].filter(
+    Boolean,
+  )
   ctx.fillStyle = brandHex
-  ctx.fill()
+  ctx.font = `700 10px ${sansFont}`
+  ctx.fillText(
+    data.amountLabel,
+    innerX,
+    y + (totalMetaParts.length > 0 ? 25 : 35),
+  )
 
-  ctx.fillStyle = '#EFE3F5'
-  ctx.font = `700 9.5px ${sansFont}`
-  ctx.fillText(data.amountLabel, innerX + 18, y + 26)
-
-  const subMetaParts = [data.paymentMethodLabel, data.invoiceNumber].filter(Boolean)
-  if (subMetaParts.length > 0) {
-    ctx.fillStyle = '#F7F2FA'
+  if (totalMetaParts.length > 0) {
+    ctx.fillStyle = textBody
     ctx.font = `400 10.5px ${sansFont}`
-    ctx.fillText(subMetaParts.join('  ·  '), innerX + 18, y + 46)
+    ctx.fillText(totalMetaParts.join('  ·  '), innerX, y + 44)
   }
 
   ctx.textAlign = 'right'
-  ctx.fillStyle = '#FFFFFF'
-  ctx.font = `700 22px ${sansFont}`
-  ctx.fillText(data.amountFormatted, innerX + innerW - 18, y + 42)
+  ctx.fillStyle = brandHex
+  ctx.font = `700 26px ${serifFont}`
+  ctx.fillText(data.amountFormatted, innerX + innerW, y + 38)
   ctx.textAlign = 'left'
-  y += totalBarH
 
-  // 10. Personal Message / Notes Quote Box
+  y += totalBlockH - 4
+  ctx.strokeStyle = brandBorder
+  ctx.lineWidth = 0.9
+  ctx.beginPath()
+  ctx.moveTo(innerX, y)
+  ctx.lineTo(innerX + innerW, y)
+  ctx.stroke()
+
+  ctx.strokeStyle = atelierBorder
+  ctx.lineWidth = 0.6
+  ctx.beginPath()
+  ctx.moveTo(innerX, y + 4)
+  ctx.lineTo(innerX + innerW, y + 4)
+  ctx.stroke()
+  y += 4
+
+  // 9. Unboxed Personal Message / Appointment Notes (Directly on clean white stationery)
   if (data.note) {
-    y += 18
-    drawRoundedRectPath(ctx, innerX, y, innerW, noteSectionH, 8)
-    ctx.fillStyle = stripeBg
-    ctx.fill()
+    y += 22
+    const noteTitle = data.noteTitle || 'PERSONAL MESSAGE'
+    ctx.font = `700 9px ${sansFont}`
+    const titleW = ctx.measureText(noteTitle).width
+    const dashLen = 18
+    const dashGap = 9
+
     ctx.strokeStyle = brandBorder
-    ctx.lineWidth = 1
+    ctx.lineWidth = 0.85
+    ctx.beginPath()
+    ctx.moveTo(centerX - titleW / 2 - dashGap - dashLen, y + 4.5)
+    ctx.lineTo(centerX - titleW / 2 - dashGap, y + 4.5)
+    ctx.moveTo(centerX + titleW / 2 + dashGap, y + 4.5)
+    ctx.lineTo(centerX + titleW / 2 + dashGap + dashLen, y + 4.5)
     ctx.stroke()
 
+    ctx.textAlign = 'center'
     ctx.fillStyle = brandHex
-    ctx.fillRect(innerX, y + 7, 4, noteSectionH - 14)
-
-    ctx.fillStyle = brandHex
-    ctx.font = `700 9px ${sansFont}`
-    ctx.fillText(data.noteTitle || 'PERSONAL MESSAGE', innerX + 16, y + 22)
+    ctx.fillText(noteTitle, centerX, y + 8)
 
     ctx.fillStyle = textBody
-    ctx.font = `italic 12.5px ${serifFont}`
+    ctx.font = `italic 13.5px ${serifFont}`
     noteLines.forEach((line, idx) => {
-      ctx.fillText(line, innerX + 16, y + 41 + idx * 18)
+      ctx.fillText(line, centerX, y + 29 + idx * 19)
     })
-
+    ctx.textAlign = 'left'
     y += noteSectionH
   }
 
-  // 11. Editorial Footer
-  y += 22
+  y += 26
+
+  // 10. Authentic Sanctuary Footer
   ctx.strokeStyle = lineHex
   ctx.lineWidth = 1
   ctx.beginPath()
@@ -2387,10 +2414,10 @@ export async function downloadReceiptImage(
 
   ctx.textAlign = 'center'
   ctx.fillStyle = brandHex
-  ctx.font = `700 11px ${sansFont}`
+  ctx.font = `700 11.5px ${serifFont}`
   ctx.fillText(
     'Dermaspace Esthetic & Wellness Centre',
-    width / 2,
+    centerX,
     y + 22,
   )
   ctx.fillStyle = textMuted
@@ -2398,16 +2425,34 @@ export async function downloadReceiptImage(
   ctx.fillText(
     data.footerNote ||
       '237B Muri Okunola St, Victoria Island  ·  9 Agbeke Rotinwa Cl, Ikoyi',
-    width / 2,
+    centerX,
     y + 39,
   )
   ctx.fillText(
     'dermaspaceng.com  ·  hello@dermaspaceng.com  ·  09013134945 / 09061836625',
-    width / 2,
+    centerX,
     y + 54,
   )
   ctx.textAlign = 'left'
   ctx.restore()
+
+  // Uniform boutique paper scallops along top and bottom flat card edges
+  const drawCanvasEdgeScallops = (edgeY: number) => {
+    const inset = 26
+    const span = cardW - inset * 2
+    const step = 22
+    const count = Math.floor(span / step)
+    if (count <= 0) return
+    const startX = cardX + (cardW - (count - 1) * step) / 2
+    ctx.fillStyle = outerBg
+    for (let i = 0; i < count; i += 1) {
+      ctx.beginPath()
+      ctx.arc(startX + i * step, edgeY, 5.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  drawCanvasEdgeScallops(cardMargin)
+  drawCanvasEdgeScallops(cardMargin + cardH)
 
   const imageName =
     data.imageFilename || sanitizeReceiptImageFilename(data.reference)

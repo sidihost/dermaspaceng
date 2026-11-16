@@ -289,3 +289,63 @@ export function needsPageBreak(
 ): boolean {
   return currentY + blockHeight > pageHeight - footerReserve
 }
+
+export interface MeasuredLedgerRow {
+  label: string
+  valueLines: string[]
+  height: number
+}
+
+export interface LedgerMeasureOptions {
+  totalWidth: number
+  labelMaxWidthRatio?: number
+  minGap?: number
+  topPadding: number
+  lineHeight: number
+  bottomPadding: number
+  minRowHeight: number
+}
+
+/**
+ * Measures Left-Label / Right-Value ledger rows so multi-line right-aligned
+ * values (e.g. long customer emails or processor references) never collide
+ * with left-side field labels.
+ */
+export function measureLedgerRows(
+  rows: ReadonlyArray<LayoutDetailRow>,
+  measureLabelWidth: TextWidthMeasurer,
+  measureValueWidth: TextWidthMeasurer,
+  opts: LedgerMeasureOptions,
+): { rows: MeasuredLedgerRow[]; totalHeight: number } {
+  const minGap = opts.minGap ?? 18
+  const maxLabelCap = opts.totalWidth * (opts.labelMaxWidthRatio ?? 0.42)
+  const measured: MeasuredLedgerRow[] = []
+  let totalHeight = 0
+
+  for (const row of rows) {
+    const labelText = row.label || ''
+    const measuredLabelW = Math.min(measureLabelWidth(labelText), maxLabelCap)
+    const availableValueW = Math.max(
+      opts.totalWidth - measuredLabelW - minGap,
+      opts.totalWidth * 0.46,
+    )
+    const valueLines = wrapTextLines(
+      row.value || '—',
+      measureValueWidth,
+      availableValueW,
+    )
+    const height = Math.max(
+      opts.minRowHeight,
+      opts.topPadding + valueLines.length * opts.lineHeight + opts.bottomPadding,
+    )
+    measured.push({
+      label: labelText,
+      valueLines,
+      height,
+    })
+    totalHeight += height
+  }
+
+  return { rows: measured, totalHeight }
+}
+
