@@ -1135,7 +1135,7 @@ export function GiftCardPreview({
         {/* Bottom Row — hairline brand rule + edition & sender */}
         <div className="relative shrink-0 pt-1.5 sm:pt-2 border-t border-[#E9D5FF]/30 flex items-center justify-between gap-2">
           <span className="text-[9px] sm:text-[11px] font-medium text-white/90 tracking-wide truncate">
-            {occasion ? occasionMeta.editionLabel : 'Signature Sanctuary'}
+            {occasion ? occasionMeta.editionLabel : 'Signature Edition'}
           </span>
           <p className="text-[#E9D5FF] text-[9px] sm:text-[11px] truncate text-right">
             From:{' '}
@@ -1271,9 +1271,11 @@ export function GiftCardBackPreview({
           {/* Left Column — Unboxed Editorial Note & Redemption Terms */}
           <div className="flex-1 min-w-0 flex flex-col justify-center gap-2 sm:gap-2.5 overflow-hidden">
             <div className="min-w-0 space-y-1">
-              <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.18em] font-bold text-[#7B2D8E] leading-none">
-                {personalMessage?.trim() ? 'Personal Note' : 'Dermaspace Sanctuary'}
-              </p>
+              {personalMessage?.trim() && (
+                <p className="text-[6.5px] sm:text-[7.5px] uppercase tracking-[0.18em] font-bold text-[#7B2D8E] leading-none">
+                  Personal Note
+                </p>
+              )}
               <p
                 className={`text-[9.5px] sm:text-[11px] text-[#1a0d1f] leading-[1.35] line-clamp-3 ${fontClassName}`}
               >

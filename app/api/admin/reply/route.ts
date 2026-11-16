@@ -328,7 +328,7 @@ export async function POST(request: NextRequest) {
               VALUES (
                 ${notifId},
                 ${userResult[0].id},
-                ${`New reply on your ${
+                ${`New ${requestType === 'consultation' ? 'response' : 'reply'} on your ${
                   requestType === 'complaint' ? 'complaint'
                   : requestType === 'consultation' ? 'consultation'
                   : requestType === 'ticket' ? 'support ticket'
@@ -353,7 +353,7 @@ export async function POST(request: NextRequest) {
               : requestType === 'ticket' ? 'support ticket'
               : 'request'
             await sendPushToUser(userResult[0].id, {
-              title: `New reply on your ${requestLabel}`,
+              title: `New ${requestType === 'consultation' ? 'response' : 'reply'} on your ${requestLabel}`,
               body: message.length > 140 ? message.slice(0, 140) + '…' : message,
               url:
                 requestType === 'ticket'

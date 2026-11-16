@@ -59,7 +59,7 @@ export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
   },
   {
     id: 'emerald',
-    name: 'Sanctuary Emerald',
+    name: 'Deep Emerald',
     surfaceHex: '#184E3F',
     accentHex: '#2A6F5B',
     medallionHex: '#0E3127',
@@ -96,6 +96,14 @@ export const INITIAL_GIFT_CARD_DESIGNS: GiftCardDesign[] = [
     accentHex: '#3D3744',
     medallionHex: '#141118',
     gradient: 'from-[#242029] to-[#3D3744]',
+  },
+  {
+    id: 'black',
+    name: 'Black',
+    surfaceHex: '#0A0A0C',
+    accentHex: '#18181D',
+    medallionHex: '#050507',
+    gradient: 'from-[#0A0A0C] to-[#18181D]',
   },
 ]
 
@@ -228,6 +236,9 @@ export function findGiftCardDesignById(id?: string | null): GiftCardDesign {
   ) {
     return CHRISTMAS_GIFT_CARD_DESIGN
   }
+  if (normalized === 'sanctuary emerald') {
+    return INITIAL_GIFT_CARD_DESIGNS.find((d) => d.id === 'emerald') ?? INITIAL_GIFT_CARD_DESIGNS[0]
+  }
   const all = [...INITIAL_GIFT_CARD_DESIGNS, ...LEGACY_GIFT_CARD_DESIGNS]
   return (
     all.find(
@@ -270,7 +281,7 @@ export const GIFT_CARD_OCCASION_META_LIST: GiftCardOccasionMeta[] = [
     id: 'christmas',
     occasion: CHRISTMAS_OCCASION,
     editionLabel: 'Christmas Edition',
-    tagline: 'Winter Sanctuary Gift',
+    tagline: 'Winter Spa Gift',
     suggestedDesignId: 'emerald',
   },
   {
@@ -334,7 +345,7 @@ export const GIFT_CARD_OCCASION_META_LIST: GiftCardOccasionMeta[] = [
 const CLASSIC_OCCASION_META: GiftCardOccasionMeta = {
   id: 'classic',
   occasion: 'Gift Card',
-  editionLabel: 'Signature Sanctuary',
+  editionLabel: 'Signature Edition',
   tagline: 'Timeless Spa Wellness',
   suggestedDesignId: 'royal',
 }

@@ -55,14 +55,14 @@ export function ConsultationResponsesSummary({
               </h2>
               {replies.length > 0 && (
                 <span className="rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#7B2D8E]">
-                  {replies.length} {replies.length === 1 ? 'update' : 'updates'}
+                  {replies.length} {replies.length === 1 ? 'response' : 'responses'}
                 </span>
               )}
             </div>
             <p className="mt-1 text-xs leading-relaxed text-gray-500 text-pretty">
               {teamReplyCount > 0
-                ? 'Read clinical guidance and follow up with our team on the dedicated responses page.'
-                : 'View clinical team responses or send a follow-up note on the dedicated responses page.'}
+                ? 'Read clinical guidance and send a response to our team on the dedicated responses page.'
+                : 'View clinical team responses or send a follow-up response on the dedicated responses page.'}
             </p>
           </div>
         </div>

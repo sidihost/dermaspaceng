@@ -626,14 +626,13 @@ function renderCardBackAt(
   // Left Editorial Column — clean unboxed typography directly on card surface
   const leftColW = qrBoxX - safeX - 4.0
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(4.8)
-  doc.setTextColor(...brandPurple)
-  doc.text(
-    input.personalMessage?.trim() ? 'PERSONAL NOTE' : 'DERMASPACE SANCTUARY',
-    safeX,
-    bodyTopY + 2.2,
-  )
+  const hasPersonalNote = Boolean(input.personalMessage?.trim())
+  if (hasPersonalNote) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(4.8)
+    doc.setTextColor(...brandPurple)
+    doc.text('PERSONAL NOTE', safeX, bodyTopY + 2.2)
+  }
 
   const noteText =
     input.personalMessage?.trim() ||
@@ -642,7 +641,7 @@ function renderCardBackAt(
   doc.setFontSize(6.3)
   doc.setTextColor(...textDark)
   const wrappedNote = doc.splitTextToSize(`"${noteText}"`, leftColW).slice(0, 3)
-  doc.text(wrappedNote, safeX, bodyTopY + 5.6)
+  doc.text(wrappedNote, safeX, hasPersonalNote ? bodyTopY + 5.6 : bodyTopY + 3.2)
 
   if (input.senderName?.trim()) {
     doc.setFont('helvetica', 'bold')

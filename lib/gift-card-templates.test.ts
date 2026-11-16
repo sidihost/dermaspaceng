@@ -69,8 +69,11 @@ test('disabling festive flag removes Christmas occasion while keeping all color 
 
 test('findGiftCardDesignById resolves current, legacy, and named templates cleanly', () => {
   assert.equal(findGiftCardDesignById('christmas').name, 'Christmas Edition')
-  assert.equal(findGiftCardDesignById('emerald').name, 'Sanctuary Emerald')
+  assert.equal(findGiftCardDesignById('emerald').name, 'Deep Emerald')
+  assert.equal(findGiftCardDesignById('Deep Emerald').id, 'emerald')
   assert.equal(findGiftCardDesignById('Sanctuary Emerald').id, 'emerald')
+  assert.equal(findGiftCardDesignById('black').name, 'Black')
+  assert.equal(findGiftCardDesignById('Black').surfaceHex, '#0A0A0C')
   assert.equal(findGiftCardDesignById('plum').name, 'Plum')
   assert.equal(findGiftCardDesignById('unknown-id').id, 'royal')
 })

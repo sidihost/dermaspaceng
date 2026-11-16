@@ -40,7 +40,7 @@ test('buildTransactionReceiptData maps gift card style, visual colors, occasion,
       sender_name: 'Chidinma',
       occasion: 'Birthday',
       design: 'emerald',
-      design_name: 'Sanctuary Emerald',
+      design_name: 'Deep Emerald',
       font_name: 'Elegant',
       delivery_method: 'email',
       personal_message: 'Enjoy a relaxing spa afternoon!',
@@ -67,7 +67,7 @@ test('buildTransactionReceiptData maps gift card style, visual colors, occasion,
   )
   assert.ok(
     receipt.summaryRows.some(
-      (r) => r.label === 'Card Style' && r.value === 'Sanctuary Emerald · Elegant font',
+      (r) => r.label === 'Card Style' && r.value === 'Deep Emerald · Elegant font',
     ),
   )
   assert.ok(

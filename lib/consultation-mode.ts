@@ -152,7 +152,7 @@ export function buildConsultationReplyTarget(args: {
       ctaLabel: 'View response',
       actionPath,
       footerNote:
-        'You can read this response and reply directly from your Dermaspace responses page at any time.',
+        'You can read this response and send a response from your Dermaspace responses page at any time.',
     }
   }
 
@@ -164,7 +164,7 @@ export function buildConsultationReplyTarget(args: {
       ctaLabel: 'View response',
       actionPath: null,
       footerNote:
-        'Use the button above to open your private responses page and send a message back to our team anytime.',
+        'Use the button above to open your private responses page and send a response back to our team anytime.',
     }
   }
 

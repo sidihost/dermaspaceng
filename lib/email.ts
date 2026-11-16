@@ -2106,7 +2106,7 @@ export async function sendReplyNotification(data: {
     <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">You&rsquo;ve got a response</h2>
     <p style="margin: 0 0 28px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.firstName}, ${data.responderName} from the Dermaspace team has
-      replied to your ${typeLabels[data.requestType].toLowerCase()}.
+      ${data.requestType === 'consultation' ? 'sent a response to' : 'replied to'} your ${typeLabels[data.requestType].toLowerCase()}.
     </p>
 
     <!--
@@ -2147,7 +2147,7 @@ export async function sendReplyNotification(data: {
                   ${data.responderName}
                 </div>
                 <div style="margin-top: 2px; font-size: 12px; color: #8a8b91; letter-spacing: 0.2px;">
-                  Dermaspace Team &middot; replied to you
+                  Dermaspace Team &middot; ${data.requestType === 'consultation' ? 'sent a response' : 'replied to you'}
                 </div>
               </td>
             </tr>
@@ -2303,9 +2303,9 @@ export async function sendConsultationCustomerReplyAlert(data: {
   const safeMessage = escapeHtml(data.replyMessage)
 
   const content = `
-    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">New Consultation Reply</h2>
+    <h2 class="ds-h1" style="margin: 0 0 14px; font-size: 19px; line-height: 1.3; font-weight: 600; letter-spacing: -0.01em; color: #1a1a1a;">New Consultation Response</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
-      <strong>${safeName}</strong>${data.isAnonymous ? ' (via tracking link)' : ''} sent a follow-up message on their consultation${safeLocation ? ` (${safeLocation})` : ''}.
+      <strong>${safeName}</strong>${data.isAnonymous ? ' (via tracking link)' : ''} sent a follow-up response on their consultation${safeLocation ? ` (${safeLocation})` : ''}.
     </p>
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border-left: 4px solid #7B2D8E;">
@@ -2339,7 +2339,7 @@ export async function sendConsultationCustomerReplyAlert(data: {
 
   return sendEmail({
     to: data.to,
-    subject: `New consultation reply from ${data.customerName || 'Customer'} - Dermaspace`,
+    subject: `New consultation response from ${data.customerName || 'Customer'} - Dermaspace`,
     html: getEmailTemplate(content),
   })
 }

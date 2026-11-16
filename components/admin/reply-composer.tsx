@@ -91,6 +91,7 @@ export interface ReplyComposerProps {
   aiContext?: string
   allowSenderPicker?: boolean
   placeholder?: string
+  noun?: 'reply' | 'response'
 }
 
 export default function ReplyComposer({
@@ -106,7 +107,9 @@ export default function ReplyComposer({
   aiContext,
   allowSenderPicker = true,
   placeholder,
+  noun = 'reply',
 }: ReplyComposerProps) {
+  const isResponse = noun === 'response'
   const [aiBusy, setAiBusy] = useState<Mode | null>(null)
   const [aiError, setAiError] = useState('')
   const [senderOpen, setSenderOpen] = useState(false)
@@ -151,7 +154,7 @@ export default function ReplyComposer({
     try {
       await Promise.resolve(onSend())
       notify.success(
-        isInternal ? 'Note saved' : 'Reply sent',
+        isInternal ? 'Note saved' : isResponse ? 'Response sent' : 'Reply sent',
         isInternal
           ? 'Your internal note is visible to staff only.'
           : 'The customer has been notified by email and in-app.',
@@ -162,9 +165,15 @@ export default function ReplyComposer({
           ? err.message
           : typeof err === 'string'
             ? err
-            : 'Could not deliver the reply.'
+            : isResponse
+              ? 'Could not deliver the response.'
+              : 'Could not deliver the reply.'
       notify.error(
-        isInternal ? 'Could not save note' : 'Could not send reply',
+        isInternal
+          ? 'Could not save note'
+          : isResponse
+            ? 'Could not send response'
+            : 'Could not send reply',
         msg.length > 160 ? msg.slice(0, 160) + '…' : msg,
       )
     }
@@ -207,7 +216,11 @@ export default function ReplyComposer({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
           <Send className="w-3.5 h-3.5" />
-          {isInternal ? 'Add internal note' : 'Reply to customer'}
+          {isInternal
+            ? 'Add internal note'
+            : isResponse
+              ? 'Respond to customer'
+              : 'Reply to customer'}
         </h3>
 
         <div className="flex items-center gap-3">
@@ -275,7 +288,7 @@ export default function ReplyComposer({
                       className="w-full h-8 px-2 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
                     />
                     <p className="mt-1 text-[10px] text-gray-400">
-                      The customer sees this name on the reply.
+                      The customer sees this name on the {isResponse ? 'response' : 'reply'}.
                     </p>
                   </div>
                 </div>
@@ -320,7 +333,9 @@ export default function ReplyComposer({
             placeholder ||
             (isInternal
               ? 'Add an internal note — not visible to the customer…'
-              : 'Type your reply here…')
+              : isResponse
+                ? 'Type your response here…'
+                : 'Type your reply here…')
           }
           rows={5}
           className="block w-full px-4 py-3 text-sm bg-transparent border-0 outline-none focus:ring-0 resize-none"
@@ -384,7 +399,9 @@ export default function ReplyComposer({
         <p className="text-xs text-gray-400 hidden sm:block">
           {isInternal
             ? 'Only staff with admin access will see this note.'
-            : 'The customer will receive this reply by email.'}
+            : isResponse
+              ? 'The customer will receive this response by email.'
+              : 'The customer will receive this reply by email.'}
         </p>
         <button
           onClick={handleSend}
@@ -399,7 +416,7 @@ export default function ReplyComposer({
           ) : (
             <>
               <Send className="w-4 h-4" />
-              {isInternal ? 'Add note' : 'Send reply'}
+              {isInternal ? 'Add note' : isResponse ? 'Send response' : 'Send reply'}
             </>
           )}
         </button>

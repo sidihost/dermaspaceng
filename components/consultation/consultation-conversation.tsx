@@ -60,7 +60,7 @@ export function ConsultationConversation({
   onReplySent,
   customerLabel = 'You',
   emptyTitle = 'No team responses yet',
-  emptyDescription = 'When our clinical team reviews your consultation or shares preparation advice, their messages will appear right here.',
+  emptyDescription = 'When our clinical team reviews your consultation or shares preparation advice, their responses will appear right here.',
 }: ConsultationConversationProps) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -86,7 +86,7 @@ export function ConsultationConversation({
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(json.error || 'Could not send your message. Please try again.')
+        setError(json.error || 'Could not send your response. Please try again.')
         return
       }
       setMessage('')
@@ -95,7 +95,7 @@ export function ConsultationConversation({
         onReplySent(json.reply as ConsultationConversationReply)
       }
     } catch {
-      setError('Connection error while sending your message. Please try again.')
+      setError('Connection error while sending your response. Please try again.')
     } finally {
       setSending(false)
     }
@@ -114,7 +114,7 @@ export function ConsultationConversation({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-gray-900">
-                Responses &amp; messages
+                Responses
               </h2>
               {replies.length > 0 && (
                 <span className="rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-[#7B2D8E]">
@@ -123,7 +123,7 @@ export function ConsultationConversation({
               )}
             </div>
             <p className="mt-0.5 text-xs leading-relaxed text-gray-500 text-pretty">
-              Updates from the Dermaspace clinical team and your follow-up notes.
+              Responses from the Dermaspace clinical team and your follow-ups.
             </p>
           </div>
         </div>
@@ -232,7 +232,7 @@ export function ConsultationConversation({
               htmlFor="consultation-reply-input"
               className="block text-xs font-medium text-gray-700"
             >
-              Send a message to our team
+              Send a response to our team
             </label>
             <textarea
               id="consultation-reply-input"
@@ -257,12 +257,12 @@ export function ConsultationConversation({
             )}
             {sentNotice && !error && (
               <p className="text-xs font-medium text-[#7B2D8E]">
-                Message sent — our clinical team has been notified.
+                Response sent — our clinical team has been notified.
               </p>
             )}
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[11px] text-gray-400">
-                Replies are shared privately with the Dermaspace team.
+                Responses are shared privately with the Dermaspace team.
               </p>
               <button
                 type="submit"
@@ -277,7 +277,7 @@ export function ConsultationConversation({
                 ) : (
                   <>
                     <Send className="h-3.5 w-3.5" />
-                    Send reply
+                    Send response
                   </>
                 )}
               </button>

@@ -784,7 +784,7 @@ export default function GiftCardsClient() {
                       {selectedDesign.name}
                     </span>
                   </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-4 gap-2">
                     {cardDesigns.map((design) => {
                       const isSelected = selectedDesign.id === design.id
                       return (
