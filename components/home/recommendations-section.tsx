@@ -177,9 +177,10 @@ function CarouselCard({
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#FAF6FB] ring-1 ring-[#7B2D8E]/10 transition-colors duration-300 group-hover:ring-[#7B2D8E]/30">
         <Image
           src={image}
-          alt=""
+          alt={title}
           fill
           sizes="184px"
+          referrerPolicy="no-referrer"
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 

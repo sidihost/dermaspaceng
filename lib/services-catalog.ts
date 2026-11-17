@@ -584,7 +584,8 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Buy a Course, Save More",
     description:
       "Pre-purchase a multi-session course of our most-loved treatments at a meaningful discount over the per-session price.",
-    image: "/images/bulk-packages.png",
+    image:
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp",
     treatments: [
       {
         id: "bulk-dcf-3",
@@ -889,7 +890,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Permanent Reduction, Safely Delivered",
     description:
       "FDA-cleared diode and Nd:YAG laser hair removal, safe on deeper skin tones. Female pricing shown — male pricing available at the clinic.",
-    image: "/images/laser-hair-removal-ng.jpg",
+    image: "/images/laser-hero-ng.jpg",
     treatments: [
       {
         id: "laser-chin-cheeks",
@@ -1079,7 +1080,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Bigger Areas, Bigger Savings",
     description:
       "Pre-bundled laser hair removal packages covering multiple areas in one session at a discounted rate.",
-    image: "/images/laser-hair-removal-ng.jpg",
+    image: "/images/laser-rejuvenation-ng.jpg",
     treatments: [
       {
         id: "laser-full-body",
