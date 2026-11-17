@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdmin } from '@/lib/auth'
 import { invalidateUserMe } from '@/lib/redis'
+import {
+  dispatchReinstatementNotification,
+  dispatchSuspensionNotification,
+} from '@/lib/suspension-appeals-db'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -112,7 +116,7 @@ export async function PUT(request: NextRequest) {
   try {
     const admin = await requireAdmin()
 
-    const { userId, action, value } = await request.json()
+    const { userId, action, value, reason } = await request.json()
 
     if (!userId || !action) {
       return NextResponse.json(
@@ -219,20 +223,67 @@ export async function PUT(request: NextRequest) {
         }
         break
       }
-      case 'toggle_active':
-        await sql`UPDATE users SET is_active = ${value} WHERE id = ${userId}`
+      case 'toggle_active': {
+        if (typeof value !== 'boolean') {
+          return NextResponse.json(
+            { error: 'Invalid status value.' },
+            { status: 400 },
+          )
+        }
+        if (value === false && String(userId) === String(admin.id)) {
+          return NextResponse.json(
+            { error: 'You cannot suspend your own account.' },
+            { status: 400 },
+          )
+        }
+
+        const prevRows = (await sql`
+          SELECT
+            COALESCE(is_active, TRUE) AS is_active,
+            COALESCE(is_super_admin, FALSE) AS is_super_admin,
+            deleted_at
+          FROM users
+          WHERE id = ${userId}
+          LIMIT 1
+        `) as Array<{
+          is_active: boolean
+          is_super_admin: boolean
+          deleted_at: string | null
+        }>
+
+        const target = prevRows[0]
+        if (!target) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+        if (target.deleted_at !== null) {
+          return NextResponse.json(
+            { error: 'Archived accounts must be restored from archive first.' },
+            { status: 409 },
+          )
+        }
+        if (value === false && target.is_super_admin) {
+          return NextResponse.json(
+            { error: 'Super admins cannot be suspended. Transfer the super admin role first.' },
+            { status: 409 },
+          )
+        }
+
+        const wasActive = target.is_active !== false
+
+        await sql`UPDATE users SET is_active = ${value}, updated_at = NOW() WHERE id = ${userId}`
         // Suspending a user must take effect immediately on THEIR
-        // device — until now we only flipped the column, which left
-        // suspended customers with a perfectly valid session cookie
-        // and no visible change in the app. We now wipe every active
-        // session for the affected user, so the next request they
-        // make 401s and their UI redirects to /signin (or shows the
-        // "account suspended" message on signin). Reactivating
-        // doesn't need session work — the user just signs back in.
+        // device — wipe every active session so the next request 401s.
         if (value === false) {
           await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+          await dispatchSuspensionNotification({
+            userId: String(userId),
+            reason: typeof reason === 'string' && reason.trim() ? reason.trim() : null,
+          })
+        } else if (value === true && !wasActive) {
+          await dispatchReinstatementNotification({ userId: String(userId) })
         }
         break
+      }
       case 'delete_user':
         // Soft-delete a user account: change role to 'user', deactivate,
         // clear sessions, revoke special flags. Creates an approval request

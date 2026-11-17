@@ -304,7 +304,15 @@ function SignInForm() {
 
         {error && (
           <div className="mb-6 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
-            {error}
+            <p>{error}</p>
+            {/suspended/i.test(error) && (
+              <Link
+                href="/appeal"
+                className="mt-2 inline-block text-xs font-semibold text-[#7B2D8E] underline underline-offset-2 hover:text-[#5A1D6A]"
+              >
+                Submit an account appeal
+              </Link>
+            )}
           </div>
         )}
 

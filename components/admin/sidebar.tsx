@@ -31,6 +31,7 @@ import {
   Lightbulb,
   Building2,
   Headphones,
+  ShieldAlert,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -98,6 +99,7 @@ const adminNavItems: NavItem[] = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: null, group: 'main' },
   { href: '/admin/users', icon: Users, label: 'Users', badge: null, group: 'main' },
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null, group: 'main' },
+  { href: '/admin/appeals', icon: ShieldAlert, label: 'Appeals', badge: null, group: 'main' },
   // Bookings management — admins land here from the sidebar to confirm,
   // complete or cancel any appointment across every branch. Sits next to
   // Transactions because the two surfaces are revenue-adjacent and admins
@@ -191,6 +193,8 @@ const adminStatsFetcher = (url: string) =>
         feedback?: { new: number; unactioned: number }
         // Newsletter badge — daily new active subscribers.
         newsletter?: { todayNew: number; active: number }
+        // Suspension appeals pending review.
+        appeals?: { pending: number }
       }
     }>
   })
@@ -456,6 +460,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
   const openTickets = statsData?.stats.tickets?.open ?? 0
   const newFeedback = statsData?.stats.feedback?.new ?? 0
   const newNewsletterToday = statsData?.stats.newsletter?.todayNew ?? 0
+  const pendingAppeals = statsData?.stats.appeals?.pending ?? 0
 
   const [seenTick, setSeenTick] = useState(0)
 
@@ -505,6 +510,8 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
       return Math.max(0, newFeedback - readBaseline('feedback'))
     if (href === '/admin/newsletter')
       return Math.max(0, newNewsletterToday - readBaseline('newsletter'))
+    if (href === '/admin/appeals')
+      return Math.max(0, pendingAppeals - readBaseline('appeals'))
     return 0
   }
 
@@ -517,7 +524,8 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
     getCount('/admin/users') +
     getCount('/admin/bookings') +
     getCount('/admin/feedback') +
-    getCount('/admin/newsletter')
+    getCount('/admin/newsletter') +
+    getCount('/admin/appeals')
 
   // Close the mobile menu whenever the route changes. The previous
   // implementation relied on an onClick on every Link — fine, but fragile.

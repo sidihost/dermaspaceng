@@ -439,11 +439,16 @@ export async function sendNewsletterCampaign(input: {
 
 // Send email via Zepto Mail SMTP with bounded timeouts and transient retry
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+  const safeSubject = String(subject ?? '')
+    .replace(/[\r\n\0\u2028\u2029]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 300)
   return sendMailWithRetry({
     password: SMTP_PASSWORD,
     from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
     to,
-    subject,
+    subject: safeSubject,
     html,
   })
 }
@@ -4145,3 +4150,289 @@ export async function sendDirectUserEmail(data: {
     }),
   })
 }
+
+/**
+ * Sent immediately when a client or staff/admin account is suspended.
+ * Uses the existing Dermaspace transactional email shell untouched and
+ * includes a signed one-click appeal CTA button.
+ */
+export async function sendAccountSuspendedEmail(data: {
+  email: string
+  firstName?: string | null
+  role?: 'user' | 'staff' | 'admin' | string | null
+  reason?: string | null
+  appealUrl: string
+}): Promise<boolean> {
+  const safeName = escapeHtml(data.firstName?.trim() || 'there')
+  const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const safeReason = data.reason?.trim() ? escapeHtml(data.reason.trim()) : null
+  const safeAppealUrl = escapeHtml(data.appealUrl)
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      ${isTeamMember ? 'Your team access has been suspended' : 'Your account has been suspended'}
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      ${
+        isTeamMember
+          ? 'Your Dermaspace staff access has been temporarily suspended, and active sessions on your account have been signed out.'
+          : 'Your Dermaspace account has been temporarily suspended, and active sessions have been signed out. Your existing records and booking history remain safely preserved.'
+      }
+    </p>
+
+    ${
+      safeReason
+        ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Reason</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${safeReason}</p>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
+
+    <p style="margin: 0 0 20px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      If you believe this happened by mistake or would like us to review your account for reinstatement, you can submit an appeal below.
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${safeAppealUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Submit an Appeal
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 12px; font-size: 12px; color: #666; line-height: 1.55; word-break: break-all;">
+      Or copy and paste this link into your browser:<br />
+      <a href="${safeAppealUrl}" style="color: ${BRAND_COLOR}; text-decoration: underline;">${safeAppealUrl}</a>
+    </p>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Need help? Reply to this email or contact hello@dermaspaceng.com.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: isTeamMember
+      ? 'Your Dermaspace staff access has been suspended'
+      : 'Your Dermaspace account has been suspended',
+    html: getEmailTemplate(content, {
+      preheader: isTeamMember
+        ? 'Your Dermaspace team access is paused. Submit an appeal for review.'
+        : 'Your Dermaspace account is paused. Submit an appeal if you believe this was an error.',
+      eyebrow: isTeamMember ? 'Staff account notice' : 'Account notice',
+    }),
+  })
+}
+
+/**
+ * Confirmation email sent to the user or staff member right after
+ * they file a suspension appeal.
+ */
+export async function sendAppealReceivedEmail(data: {
+  email: string
+  firstName?: string | null
+  appealId: string
+}): Promise<boolean> {
+  const safeName = escapeHtml(data.firstName?.trim() || 'there')
+  const safeId = escapeHtml(data.appealId)
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      We received your appeal
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      Thank you for reaching out. Our team has received your account reinstatement appeal and will review it carefully. You will receive another email once a decision is made.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Appeal Reference</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; font-family: monospace; font-weight: 600;">${safeId}</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Please keep this reference handy if you follow up at hello@dermaspaceng.com.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: 'We received your Dermaspace account appeal',
+    html: getEmailTemplate(content, {
+      preheader: `Appeal ${data.appealId} is under review by our team.`,
+      eyebrow: 'Appeal received',
+    }),
+  })
+}
+
+/**
+ * Sent when an admin approves or declines a suspension appeal.
+ */
+export async function sendAppealDecisionEmail(data: {
+  email: string
+  firstName?: string | null
+  role?: 'user' | 'staff' | 'admin' | string | null
+  decision: 'approved' | 'rejected'
+  reviewNote?: string | null
+}): Promise<boolean> {
+  const safeName = escapeHtml(data.firstName?.trim() || 'there')
+  const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const approved = data.decision === 'approved'
+  const safeNote = data.reviewNote?.trim() ? escapeHtml(data.reviewNote.trim()) : null
+  const signInUrl = `${PUBLIC_ORIGIN}/signin`
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      ${
+        approved
+          ? isTeamMember
+            ? 'Your staff access has been reinstated'
+            : 'Your account has been reinstated'
+          : 'Update on your account appeal'
+      }
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      ${
+        approved
+          ? isTeamMember
+            ? 'Following our review of your appeal, your Dermaspace team account is now active again. You can sign back in immediately.'
+            : 'Following our review of your appeal, your Dermaspace account has been reinstated. You can sign back in right away.'
+          : 'After reviewing your appeal, we are unable to reinstate your account at this time.'
+      }
+    </p>
+
+    ${
+      safeNote
+        ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Reviewer Note</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${safeNote}</p>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
+
+    ${
+      approved
+        ? `
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${signInUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Sign In to Dermaspace
+          </a>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Questions? Reply to this email or contact hello@dermaspaceng.com.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: approved
+      ? isTeamMember
+        ? 'Your Dermaspace staff access has been reinstated'
+        : 'Your Dermaspace account has been reinstated'
+      : 'Update on your Dermaspace account appeal',
+    html: getEmailTemplate(content, {
+      preheader: approved
+        ? 'Your appeal was approved — you can sign back into Dermaspace now.'
+        : 'A decision has been reached regarding your Dermaspace account appeal.',
+      eyebrow: approved ? 'Account reinstated' : 'Appeal decision',
+    }),
+  })
+}
+
+/**
+ * Sent when an admin manually reinstates a suspended client or staff account.
+ */
+export async function sendAccountReinstatedEmail(data: {
+  email: string
+  firstName?: string | null
+  role?: 'user' | 'staff' | 'admin' | string | null
+}): Promise<boolean> {
+  const safeName = escapeHtml(data.firstName?.trim() || 'there')
+  const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const signInUrl = `${PUBLIC_ORIGIN}/signin`
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      ${isTeamMember ? 'Your staff access is active again' : 'Your account is active again'}
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 20px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      ${
+        isTeamMember
+          ? 'Your Dermaspace staff account has been reactivated by an administrator. You can sign back in to the team console anytime.'
+          : 'Your Dermaspace account has been reactivated by our team. You can sign back in anytime.'
+      }
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${signInUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Sign In to Dermaspace
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Questions? Reply to this email or contact hello@dermaspaceng.com.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: isTeamMember
+      ? 'Your Dermaspace staff access has been reactivated'
+      : 'Your Dermaspace account has been reactivated',
+    html: getEmailTemplate(content, {
+      preheader: 'Your Dermaspace account is active again — sign in anytime.',
+      eyebrow: 'Account reactivated',
+    }),
+  })
+}
+

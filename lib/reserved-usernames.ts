@@ -45,6 +45,8 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'accept-invite',
   'admin',
   'api',
+  'appeal',
+  'appeals',
   'birthday',
   'blocked',
   'blog',

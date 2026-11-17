@@ -832,7 +832,7 @@ export default function StaffPage() {
                                           handleToggleSuspend(member, true)
                                         }
                                         disabled={!!busy}
-                                        className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                        className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/30 bg-[#7B2D8E]/10 px-2 py-1 text-[11px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/15 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                                         title="Reinstate access — the staffer can sign back in"
                                       >
                                         {busy === 'reinstate' ? (

@@ -24,6 +24,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdmin } from '@/lib/auth'
+import { invalidateUserMe } from '@/lib/redis'
+import {
+  dispatchReinstatementNotification,
+  dispatchSuspensionNotification,
+} from '@/lib/suspension-appeals-db'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -306,6 +311,7 @@ export async function PATCH(
 
     const body = (await request.json().catch(() => ({}))) as {
       action?: 'suspend' | 'reinstate'
+      reason?: string
     }
     const action = body.action
     if (action !== 'suspend' && action !== 'reinstate') {
@@ -316,15 +322,27 @@ export async function PATCH(
     }
 
     const targetRows = (await sql`
-      SELECT id, role, COALESCE(is_super_admin, FALSE) AS is_super_admin
+      SELECT id, role, COALESCE(is_active, TRUE) AS is_active, COALESCE(is_super_admin, FALSE) AS is_super_admin, deleted_at
       FROM users
       WHERE id = ${userId}
       LIMIT 1
-    `) as Array<{ id: string; role: string; is_super_admin: boolean }>
+    `) as Array<{
+      id: string
+      role: string
+      is_active: boolean
+      is_super_admin: boolean
+      deleted_at: string | null
+    }>
 
     const target = targetRows[0]
     if (!target) {
       return NextResponse.json({ error: 'Staff member not found' }, { status: 404 })
+    }
+    if (target.deleted_at !== null) {
+      return NextResponse.json(
+        { error: 'Archived accounts must be restored from archive first.' },
+        { status: 409 },
+      )
     }
     if (!['admin', 'staff'].includes(target.role)) {
       return NextResponse.json(
@@ -350,12 +368,21 @@ export async function PATCH(
       `
       // Kill live sessions so the change takes effect immediately.
       await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+      await invalidateUserMe(String(userId))
+      await dispatchSuspensionNotification({
+        userId: String(userId),
+        reason: typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null,
+      })
     } else {
       await sql`
         UPDATE users
         SET is_active = TRUE, updated_at = NOW()
         WHERE id = ${userId}
       `
+      await invalidateUserMe(String(userId))
+      if (!target.is_active) {
+        await dispatchReinstatementNotification({ userId: String(userId) })
+      }
     }
 
     return NextResponse.json({ success: true, action })

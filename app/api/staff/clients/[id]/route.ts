@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import { requireAdminOrStaff } from "@/lib/auth"
+import { invalidateUserMe } from "@/lib/redis"
+import { dispatchSuspensionNotification } from "@/lib/suspension-appeals-db"
 
 /**
  * GET /api/staff/clients/[id]
@@ -244,12 +246,13 @@ export async function PATCH(
  * An admin can restore the account from `/admin/users/[userId]`.
  */
 export async function DELETE(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
     const me = await requireAdminOrStaff()
     const { id } = await context.params
+    const body = (await req.json().catch(() => ({}))) as { reason?: string }
     if (!id) {
       return NextResponse.json(
         { success: false, error: "Missing client id" },
@@ -258,12 +261,18 @@ export async function DELETE(
     }
 
     const target = (await sql`
-      SELECT id, role FROM users WHERE id = ${id} LIMIT 1
+      SELECT id, role, deleted_at FROM users WHERE id = ${id} LIMIT 1
     `) as any[]
     if (target.length === 0) {
       return NextResponse.json(
         { success: false, error: "Client not found" },
         { status: 404 }
+      )
+    }
+    if (target[0].deleted_at !== null) {
+      return NextResponse.json(
+        { success: false, error: "This account is already archived" },
+        { status: 409 }
       )
     }
     if (
@@ -282,6 +291,11 @@ export async function DELETE(
     } catch {
       /* sessions table optional in some test envs */
     }
+    await invalidateUserMe(String(id))
+    await dispatchSuspensionNotification({
+      userId: String(id),
+      reason: typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : null,
+    })
 
     try {
       await sql`

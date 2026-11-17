@@ -27,6 +27,8 @@
 // ---------------------------------------------------------------------------
 
 import { sql } from '@/lib/db'
+import { invalidateUserMe } from '@/lib/redis'
+import { dispatchSuspensionNotification } from '@/lib/suspension-appeals-db'
 
 /**
  * Domains that comments may freely link to. Lowercase, no scheme,
@@ -202,6 +204,15 @@ export async function recordSpamAndSuspend(args: {
       await sql`DELETE FROM sessions WHERE user_id = ${userId}`
     } catch {
       // ignore
+    }
+    try {
+      await invalidateUserMe(String(userId))
+      await dispatchSuspensionNotification({
+        userId: String(userId),
+        reason: 'External link posted in blog comments',
+      })
+    } catch {
+      // Best-effort notification — never block spam logging.
     }
   } catch (err) {
     console.error('[spam] failed to log/suspend:', err)

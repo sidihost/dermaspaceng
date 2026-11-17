@@ -154,6 +154,7 @@ function isMaintenanceExempt(pathname: string): boolean {
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot-password') ||
     pathname.startsWith('/reset-password') ||
+    pathname.startsWith('/appeal') ||
     pathname.startsWith('/blocked') ||
     // Static + framework — already excluded by the matcher below, but
     // listing them here makes the intent explicit and protects us if

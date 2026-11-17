@@ -490,6 +490,17 @@ async function computeAdminStats() {
       /* activity_log missing or variant — leave empty */
     }
 
+    let appealsPending = 0
+    try {
+      const appealsRows = await sql`
+        SELECT COUNT(*) FILTER (WHERE status = 'pending')::int AS pending
+        FROM account_appeals
+      `
+      appealsPending = Number(appealsRows[0]?.pending) || 0
+    } catch {
+      /* account_appeals table not yet initialized */
+    }
+
     // Calculate user growth percentage
     const users = usersResult[0]
     const userGrowth = users.last_month > 0 
@@ -559,6 +570,9 @@ async function computeAdminStats() {
           items: todayBookingsItems,
         },
         recentStaffActivity,
+        appeals: {
+          pending: appealsPending,
+        },
       },
       revenue: salesSummary,
       charts: {

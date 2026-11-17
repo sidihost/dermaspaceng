@@ -33,7 +33,6 @@ import {
   Save,
   AlertTriangle,
   Mail,
-  Send,
   Plus,
   ExternalLink,
 } from "lucide-react"
@@ -193,6 +192,12 @@ function ClientAvatar({
 export default function StaffClientsPage() {
   const [q, setQ] = useState("")
   const [activeId, setActiveId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const cid = new URLSearchParams(window.location.search).get("client")
+    if (cid) setActiveId(cid)
+  }, [])
 
   const { data, error, isLoading, mutate } = useSWR<{ clients: Client[]; total: number }>(
     `/api/staff/clients?q=${encodeURIComponent(q)}&limit=50`,
@@ -372,10 +377,6 @@ function ClientDetailDrawer({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [emailOpen, setEmailOpen] = useState(false)
-  const [sendingEmail, setSendingEmail] = useState(false)
-  const [emailSubject, setEmailSubject] = useState("")
-  const [emailMessage, setEmailMessage] = useState("")
   const [notesOpen, setNotesOpen] = useState(false)
   const [notesLoading, setNotesLoading] = useState(false)
   const [notesError, setNotesError] = useState<string | null>(null)
@@ -534,38 +535,6 @@ function ClientDetailDrawer({
     }
   }
 
-  const handleSendEmail = async () => {
-    if (!emailSubject.trim() || !emailMessage.trim()) {
-      notify.error("Missing details", "Please enter both a subject and a message.")
-      return
-    }
-    setSendingEmail(true)
-    try {
-      const res = await fetch(`/api/staff/clients/${clientId}/email`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: emailSubject.trim(),
-          message: emailMessage.trim(),
-        }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok || !j?.success) {
-        notify.error("Could not send email", j?.error || `HTTP ${res.status}`)
-        return
-      }
-      notify.success("Email sent", `Message delivered to ${j.sentTo || client?.email || "client"}.`)
-      setEmailOpen(false)
-      setEmailSubject("")
-      setEmailMessage("")
-    } catch (err) {
-      console.error("client email failed:", err)
-      notify.error("Network error", "Could not send email.")
-    } finally {
-      setSendingEmail(false)
-    }
-  }
-
   return (
     <>
       <div
@@ -621,20 +590,29 @@ function ClientDetailDrawer({
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!client.email || isPlaceholderEmail(client.email)}
-                  className="gap-1.5 border-[#7B2D8E]/30 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
-                  onClick={() => {
-                    setEmailSubject("")
-                    setEmailMessage("")
-                    setEmailOpen(true)
-                  }}
-                >
-                  <Mail className="h-3.5 w-3.5" />
-                  Email
-                </Button>
+                {client.email && !isPlaceholderEmail(client.email) ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    asChild
+                    className="gap-1.5 border-[#7B2D8E]/30 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                  >
+                    <Link href={`/staff/clients/${encodeURIComponent(client.id)}/email`}>
+                      <Mail className="h-3.5 w-3.5" />
+                      Email
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    className="gap-1.5 border-[#7B2D8E]/30 text-[#7B2D8E]"
+                  >
+                    <Mail className="h-3.5 w-3.5" />
+                    Email
+                  </Button>
+                )}
                 <Button
                   size="sm"
                   variant="outline"
@@ -853,70 +831,6 @@ function ClientDetailDrawer({
         </DialogContent>
       </Dialog>
 
-      {/* Compose email dialog */}
-      <Dialog
-        open={emailOpen}
-        onOpenChange={(open) => {
-          if (!open && !sendingEmail) setEmailOpen(false)
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Mail className="h-4 w-4 text-[#7B2D8E]" />
-              Email {client ? [client.firstName, client.lastName].filter(Boolean).join(" ") || client.email : "client"}
-            </DialogTitle>
-            <DialogDescription>
-              Sent in the Dermaspace email layout to {client?.email}.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="staff-email-subject">Subject</Label>
-              <Input
-                id="staff-email-subject"
-                value={emailSubject}
-                onChange={(e) => setEmailSubject(e.target.value)}
-                placeholder="e.g. Follow-up on your facial appointment"
-                maxLength={200}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="staff-email-message">Message</Label>
-              <textarea
-                id="staff-email-message"
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                rows={5}
-                maxLength={10000}
-                placeholder="Write a warm, clear note for the client..."
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none focus:ring-1 focus:ring-[#7B2D8E]/20"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEmailOpen(false)}
-              disabled={sendingEmail}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendEmail}
-              disabled={sendingEmail || !emailSubject.trim() || !emailMessage.trim()}
-              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] gap-1.5"
-            >
-              {sendingEmail ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
-              )}
-              Send email
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       {/* Client notes dialog */}
       <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto border-gray-200 bg-white">
