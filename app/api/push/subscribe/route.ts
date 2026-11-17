@@ -3,9 +3,11 @@ import { getCurrentUser } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { ensurePushSchema } from '@/lib/push'
 import {
+  extractHostname,
   isPreviewDeploymentEnv,
   isPreviewRequestHost,
   isServiceWorkerAllowedOrigin,
+  validatePushSubscriptionPayload,
 } from '@/lib/push-origin'
 
 /**
@@ -13,11 +15,17 @@ import {
  *
  * Browser notifications carry the SW's origin in the OS notification
  * UI ("from dermaspaceng.com"). Reject preview / `.vercel.app` origins
- * and preview deployment environments unconditionally.
+ * and preview deployment environments unconditionally, and validate
+ * the Web Push endpoint URL to prevent SSRF.
  */
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
 
   const origin = request.headers.get('origin')
   const referer = request.headers.get('referer')
@@ -38,7 +46,13 @@ export async function POST(request: NextRequest) {
   const hostValid =
     !effectiveHost || isServiceWorkerAllowedOrigin(effectiveHost, canonicalOptions)
 
-  if (isPreview || !originValid || !hostValid) {
+  // If both Origin and effectiveHost are present, ensure they refer to the same host
+  // so a cross-site request cannot spoof an arbitrary Origin/X-Forwarded-Host pair.
+  const originHost = extractHostname(origin)
+  const requestHost = extractHostname(effectiveHost)
+  const originMatchesHost = !originHost || !requestHost || originHost === requestHost
+
+  if (isPreview || !originValid || !hostValid || !originMatchesHost) {
     console.warn('[push/subscribe] rejecting preview/invalid origin', {
       origin,
       effectiveHost,
@@ -46,7 +60,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(
       { error: 'Push notifications are not available on preview deployments' },
-      { status: 403 },
+      { status: 403, headers: { 'Cache-Control': 'no-store' } },
     )
   }
 
@@ -54,14 +68,21 @@ export async function POST(request: NextRequest) {
     await ensurePushSchema()
     const body = await request.json()
     const sub = body.subscription || body
-    const endpoint: string | undefined = sub?.endpoint
-    const p256dh: string | undefined = sub?.keys?.p256dh
-    const auth: string | undefined = sub?.keys?.auth
-    if (!endpoint || !p256dh || !auth) {
-      return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 })
+    const validated = validatePushSubscriptionPayload(sub)
+    if (!validated.ok) {
+      return NextResponse.json(
+        { error: validated.error },
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
+      )
     }
+
+    const { endpoint, p256dh, auth } = validated
     const ua = request.headers.get('user-agent') || null
-    const storedOrigin = origin || (effectiveHost ? `https://${effectiveHost}` : null)
+    const storedOrigin =
+      origin ||
+      (effectiveHost
+        ? `${effectiveHost.startsWith('localhost') || effectiveHost.startsWith('127.') ? 'http' : 'https'}://${effectiveHost}`
+        : null)
 
     await sql`
       INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, origin)
@@ -74,9 +95,15 @@ export async function POST(request: NextRequest) {
         origin       = EXCLUDED.origin,
         last_used_at = NOW()
     `
-    return NextResponse.json({ ok: true })
+    return NextResponse.json(
+      { ok: true },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (err) {
     console.error('[push/subscribe]', err)
-    return NextResponse.json({ error: 'Failed to save subscription' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Failed to save subscription' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 }

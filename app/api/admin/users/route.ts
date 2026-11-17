@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdmin } from '@/lib/auth'
+import { invalidateUserMe } from '@/lib/redis'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -17,15 +18,6 @@ export async function GET(request: NextRequest) {
     // default. Pass ?archived=true to review the archive and restore them.
     const includeArchived = searchParams.get('archived') === 'true'
     const offset = (page - 1) * limit
-
-    // Build query conditions
-    let whereClause = 'WHERE 1=1'
-    if (search) {
-      whereClause += ` AND (LOWER(email) LIKE LOWER('%${search}%') OR LOWER(first_name) LIKE LOWER('%${search}%') OR LOWER(last_name) LIKE LOWER('%${search}%'))`
-    }
-    if (role) {
-      whereClause += ` AND role = '${role}'`
-    }
 
     // Get users with pagination.
     //
@@ -105,6 +97,9 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized:')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     console.error('Get users error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch users' },
@@ -364,8 +359,19 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
+    if (
+      ['update_profile', 'toggle_active', 'change_role', 'archive_user', 'restore_user'].includes(
+        action,
+      )
+    ) {
+      await invalidateUserMe(String(userId))
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized:')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     console.error('Update user error:', error)
     return NextResponse.json(
       { error: 'Failed to update user' },

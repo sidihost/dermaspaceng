@@ -11,7 +11,7 @@ import PageLoader from '@/components/shared/page-loader'
 import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
 import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
-import { resolvePostAuthRedirect } from '@/lib/auth-onboarding'
+import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 
 const COUNTRY_CODES = [
@@ -32,8 +32,10 @@ const COUNTRY_CODES = [
 function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo =
-    searchParams.get('redirect') || searchParams.get('next') || '/dashboard'
+  const redirectTo = sanitizeSafeInternalPath(
+    searchParams.get('redirect') || searchParams.get('next'),
+    '/dashboard',
+  )
   const captchaRef = useRef<HCaptchaRef>(null)
   
   const [isLoading, setIsLoading] = useState(false)

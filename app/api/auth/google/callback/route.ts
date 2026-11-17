@@ -67,6 +67,10 @@ export async function GET(request: NextRequest) {
     }
     
     const googleUser: GoogleUserInfo = await userInfoResponse.json()
+
+    if (googleUser.verified_email === false || !googleUser.email) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=user_info_failed`)
+    }
     
     // Check if user exists by google_id or email
     const existingUserResult = await query(

@@ -129,9 +129,11 @@
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: clip;
   }
 
   html {
+    overflow-x: clip;
     scroll-behavior: smooth;
     /* Native iOS-style momentum scrolling on the body when nested
        scroll containers hand off. Default is "auto" which feels

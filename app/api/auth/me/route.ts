@@ -40,6 +40,7 @@ interface CachedUserRow {
   // personalise the greeting and skip the policy gate when the
   // user has already accepted the current version.
   role: 'user' | 'staff' | 'admin' | null
+  is_active: boolean | null
   // Developer / Sidihost super-admin flag. Surfaced so the client
   // can gate platform-only routes (QStash schedules, feature
   // flags) without an extra round-trip.
@@ -144,6 +145,7 @@ export async function GET() {
             -- header / staff console can personalise the experience
             -- and skip the staff-policy gate once accepted.
             u.role,
+            COALESCE(u.is_active, TRUE) AS is_active,
             -- Super-admin flag (Sidihost developer dashboard). Coalesced
             -- so legacy rows without the column populated read as FALSE
             -- on the client.
@@ -210,6 +212,15 @@ export async function GET() {
       // Defensive — session row pointed at a missing user. Treat as
       // expired so the client clears its state.
       return unauthenticated('Session expired')
+    }
+
+    if (session.is_active === false) {
+      try {
+        await sql`DELETE FROM sessions WHERE id = ${sessionId}`
+      } catch {
+        /* best-effort */
+      }
+      return unauthenticated('Account suspended')
     }
 
     // Re-shape preferences for the response. We keep the legacy

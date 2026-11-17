@@ -229,8 +229,8 @@ export default function TransactionsContent() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <main className="min-h-screen bg-white overflow-x-clip">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10 min-w-0">
           {/* Breadcrumb */}
           <Link
             href="/dashboard"
@@ -264,25 +264,25 @@ export default function TransactionsContent() {
               data, since "₦0 in" carries no meaning in that case. */}
           {transactions.length > 0 && (
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+              <div className="min-w-0 rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   Money in
                 </p>
-                <p className="mt-1.5 text-xl sm:text-2xl font-bold text-[#7B2D8E]">
+                <p className="mt-1.5 text-lg sm:text-2xl font-bold text-[#7B2D8E] truncate tabular-nums">
                   +{formatCurrency(totalIn)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500">
+                <p className="mt-0.5 text-[11px] text-gray-500 truncate">
                   {counts.credit + counts.refund} credit{counts.credit + counts.refund === 1 ? '' : 's'}
                 </p>
               </div>
-              <div className="rounded-2xl border border-gray-100 bg-white p-4">
+              <div className="min-w-0 rounded-2xl border border-gray-100 bg-white p-3.5 sm:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   Spent
                 </p>
-                <p className="mt-1.5 text-xl sm:text-2xl font-bold text-gray-900">
+                <p className="mt-1.5 text-lg sm:text-2xl font-bold text-gray-900 truncate tabular-nums">
                   &minus;{formatCurrency(totalOut)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500">
+                <p className="mt-0.5 text-[11px] text-gray-500 truncate">
                   {counts.debit} payment{counts.debit === 1 ? '' : 's'}
                 </p>
               </div>
@@ -411,18 +411,18 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         : 'Payment')
 
   const rowInner = (
-    <div className="flex items-start sm:items-center gap-3 sm:gap-4">
+    <div className="flex items-start sm:items-center gap-2.5 sm:gap-4 min-w-0 max-w-full">
         <div
           className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-0 ${iconTone}`}
         >
           <Icon className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <p className="text-[14.5px] font-semibold text-gray-900 leading-snug break-words">
+          <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0">
+            <p className="flex-1 min-w-0 text-[14px] sm:text-[14.5px] font-semibold text-gray-900 leading-snug break-words [overflow-wrap:anywhere]">
               {description}
             </p>
-            <p className={`text-[14.5px] font-semibold tabular-nums whitespace-nowrap flex-shrink-0 ${tone}`}>
+            <p className={`text-[14px] sm:text-[14.5px] font-semibold tabular-nums whitespace-nowrap flex-shrink-0 ${tone}`}>
               {sign}
               {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
             </p>

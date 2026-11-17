@@ -35,9 +35,38 @@ export function shouldSkipPageWarm(
   return age >= 0 && age < freshWindowMs
 }
 
+export const PRIVATE_SW_ROUTE_PREFIXES = [
+  '/dashboard',
+  '/admin',
+  '/staff',
+  '/signin',
+  '/signup',
+  '/logout',
+  '/complete-profile',
+  '/verify-email',
+  '/forgot-password',
+  '/reset-password',
+  '/accept-invite',
+  '/booking',
+  '/membership/receipt',
+] as const
+
 /**
- * Filters a list of URLs to valid same-origin page paths (excluding API and
- * Next internal build paths) and deduplicates while preserving order.
+ * True when a route serves authenticated, account-specific, or auth-flow HTML
+ * that must never be stored in shared Cache Storage for offline reuse.
+ */
+export function isPrivateOrAuthRoute(pathname: string): boolean {
+  if (!pathname) return false
+  const normalized = pathname.toLowerCase()
+  return PRIVATE_SW_ROUTE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  )
+}
+
+/**
+ * Filters a list of URLs to valid same-origin public page paths (excluding API,
+ * Next internal build paths, and private/authenticated routes) and deduplicates
+ * while preserving order.
  */
 export function filterWarmablePageUrls(urls: unknown[], origin: string): string[] {
   const seen = new Set<string>()
@@ -47,7 +76,11 @@ export function filterWarmablePageUrls(urls: unknown[], origin: string): string[
     try {
       const parsed = new URL(raw, origin)
       if (parsed.origin !== origin) continue
-      if (parsed.pathname.startsWith('/api/') || parsed.pathname.startsWith('/_next/')) {
+      if (
+        parsed.pathname.startsWith('/api/') ||
+        parsed.pathname.startsWith('/_next/') ||
+        isPrivateOrAuthRoute(parsed.pathname)
+      ) {
         continue
       }
       parsed.searchParams.delete('_rsc')

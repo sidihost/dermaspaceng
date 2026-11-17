@@ -12,6 +12,7 @@ import {
   shouldAutoSendVerificationOtp,
   stripVerifySendParam,
 } from '@/lib/verify-email-guard'
+import { sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 
 // ---------------------------------------------------------------------------
 // Standalone email-verification page.
@@ -37,7 +38,10 @@ function VerifyEmailInner() {
 
   // Seed the email from the query string. If it's absent the user enters it.
   const emailParam = (searchParams.get('email') || '').trim()
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const redirectTo = sanitizeSafeInternalPath(
+    searchParams.get('redirect'),
+    '/dashboard',
+  )
   // Only auto-issue a fresh code when the link explicitly asks for it
   // (?send=1, used by the onboarding reminder email). Once handled we
   // immediately strip `send` from the browser URL and record a session

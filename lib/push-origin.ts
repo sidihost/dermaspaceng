@@ -267,7 +267,7 @@ export function sanitizeVapidSubject(subject?: string | null): string {
 
 /**
  * Normalize notification click URLs so a push payload never sends the user to
- * a `.vercel.app` preview origin.
+ * a `.vercel.app` preview origin or an untrusted external origin.
  */
 export function sanitizePushActionUrl(
   rawUrl: string | null | undefined,
@@ -280,7 +280,7 @@ export function sanitizePushActionUrl(
   const trimmed = rawUrl.trim()
   if (!trimmed) return `${base}/dashboard/notifications`
 
-  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.startsWith('/\\')) {
     return `${base}${trimmed}`
   }
 
@@ -289,13 +289,116 @@ export function sanitizePushActionUrl(
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
       return `${base}/dashboard/notifications`
     }
+    const baseUrl = new URL(base)
+    if (
+      parsed.origin === baseUrl.origin ||
+      CANONICAL_PRODUCTION_HOSTS.has(parsed.hostname.toLowerCase())
+    ) {
+      return `${base}${parsed.pathname}${parsed.search}${parsed.hash}`
+    }
     if (isPreviewOrVercelDeploymentHost(parsed.hostname)) {
       return `${base}${parsed.pathname}${parsed.search}${parsed.hash}`
     }
-    return parsed.toString()
+    return `${base}/dashboard/notifications`
   } catch {
     return `${base}/dashboard/notifications`
   }
+}
+
+function isPrivateOrDisallowedIpOrHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '')
+  if (!host) return true
+  if (
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    host.endsWith('.arpa')
+  ) {
+    return true
+  }
+
+  // IPv6 literals (loopback ::1, ULA fc00::/7, link-local fe80::/10, IPv4-mapped)
+  if (host.includes(':')) {
+    return true
+  }
+
+  // Dotted IPv4 literal check (reject all raw IPv4 addresses for Web Push endpoints)
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    return true
+  }
+
+  // Numeric/hex/single-label hostnames (e.g. 2130706433, 0x7f000001, intranet)
+  if (!host.includes('.')) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Validate that a Web Push subscription endpoint is a public HTTPS push-service
+ * URL (never http://, localhost, private/loopback/metadata IPs, or embedded
+ * credentials) to prevent SSRF when dispatching Web Push notifications.
+ */
+export function isValidWebPushEndpoint(rawEndpoint: unknown): boolean {
+  if (typeof rawEndpoint !== 'string') return false
+  const trimmed = rawEndpoint.trim()
+  if (!trimmed || trimmed.length > 2048) return false
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    return false
+  }
+
+  if (parsed.protocol !== 'https:') return false
+  if (parsed.username || parsed.password) return false
+  if (isPrivateOrDisallowedIpOrHost(parsed.hostname)) return false
+  return true
+}
+
+const BASE64URL_KEY_RE = /^[A-Za-z0-9_-]+=*$/
+
+export type ValidatedPushSubscription =
+  | { ok: true; endpoint: string; p256dh: string; auth: string }
+  | { ok: false; error: string }
+
+/**
+ * Validate incoming Web Push subscription payloads before storing in Postgres.
+ */
+export function validatePushSubscriptionPayload(
+  raw: unknown,
+): ValidatedPushSubscription {
+  if (!raw || typeof raw !== 'object') {
+    return { ok: false, error: 'Invalid subscription' }
+  }
+  const obj = raw as {
+    endpoint?: unknown
+    keys?: { p256dh?: unknown; auth?: unknown } | null
+  }
+  const endpoint = typeof obj.endpoint === 'string' ? obj.endpoint.trim() : ''
+  const p256dh = typeof obj.keys?.p256dh === 'string' ? obj.keys.p256dh.trim() : ''
+  const auth = typeof obj.keys?.auth === 'string' ? obj.keys.auth.trim() : ''
+
+  if (!endpoint || !p256dh || !auth) {
+    return { ok: false, error: 'Invalid subscription' }
+  }
+  if (!isValidWebPushEndpoint(endpoint)) {
+    return { ok: false, error: 'Invalid push endpoint URL' }
+  }
+  if (
+    p256dh.length < 20 ||
+    p256dh.length > 256 ||
+    !BASE64URL_KEY_RE.test(p256dh) ||
+    auth.length < 12 ||
+    auth.length > 128 ||
+    !BASE64URL_KEY_RE.test(auth)
+  ) {
+    return { ok: false, error: 'Invalid push encryption keys' }
+  }
+  return { ok: true, endpoint, p256dh, auth }
 }
 
 /**

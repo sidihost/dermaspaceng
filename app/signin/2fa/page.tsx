@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense, KeyboardEvent, ClipboardEvent } 
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft, HelpCircle } from 'lucide-react'
-import { resolvePostAuthRedirect } from '@/lib/auth-onboarding'
+import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 
 /**
  * Two-Factor Authentication screen.
@@ -19,7 +19,10 @@ function TwoFactorForm() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const partialToken = searchParams.get('token')
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const redirectTo = sanitizeSafeInternalPath(
+    searchParams.get('redirect'),
+    '/dashboard',
+  )
 
   // Each slot is tracked individually so we can render an OTP-style group
   // (similar to banking / passport apps) while still submitting a single

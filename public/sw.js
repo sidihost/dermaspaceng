@@ -123,7 +123,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v24';
+const VERSION = 'v25';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -156,6 +156,67 @@ const PRECACHE_PAGES = [
   '/contact',
   '/desktop',
 ];
+
+const PRIVATE_ROUTE_PREFIXES = [
+  '/dashboard',
+  '/admin',
+  '/staff',
+  '/signin',
+  '/signup',
+  '/logout',
+  '/complete-profile',
+  '/verify-email',
+  '/forgot-password',
+  '/reset-password',
+  '/accept-invite',
+  '/booking',
+  '/membership/receipt',
+];
+
+const isPrivateOrAuthPathname = (pathname) => {
+  if (!pathname) return false;
+  const normalized = String(pathname).toLowerCase();
+  return PRIVATE_ROUTE_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+};
+
+const toSafeSameOriginPath = (rawUrl, fallback = '/') => {
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return fallback;
+  const trimmed = rawUrl.trim();
+  if (trimmed.startsWith('/\\') || trimmed.includes('\\')) return fallback;
+  try {
+    const parsed = new URL(trimmed, self.location.origin);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return fallback;
+    if (
+      parsed.origin === self.location.origin ||
+      parsed.hostname === 'dermaspaceng.com' ||
+      parsed.hostname === 'www.dermaspaceng.com' ||
+      parsed.hostname.endsWith('.vercel.app') ||
+      parsed.hostname.endsWith('.vercel.dev')
+    ) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}` || fallback;
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const toSafeNotificationAsset = (rawUrl, fallback) => {
+  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return fallback;
+  const trimmed = rawUrl.trim();
+  if (trimmed.startsWith('/\\') || trimmed.includes('\\')) return fallback;
+  try {
+    const parsed = new URL(trimmed, self.location.origin);
+    if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+      return parsed.toString();
+    }
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+};
 
 const RUNTIME_CACHE_LIMIT = 60;
 const IMAGE_CACHE_LIMIT   = 100;
@@ -457,6 +518,9 @@ const normalizePageOrRscUrl = (rawUrl) => {
 
 const isCacheableResponse = (res, expectedKind) => {
   if (!res || !res.ok || res.status !== 200 || res.redirected) return false;
+  if (res.headers.has('set-cookie')) return false;
+  const cc = (res.headers.get('Cache-Control') || '').toLowerCase();
+  if (/\b(?:no-store|private)\b/.test(cc)) return false;
   const ct = (res.headers.get('Content-Type') || '').toLowerCase();
   if (expectedKind === 'html') return ct.includes('text/html');
   if (expectedKind === 'rsc') return ct.includes('text/x-component');
@@ -593,6 +657,9 @@ self.addEventListener('fetch', (event) => {
   //      with `{ ignoreVary: true }` so offline in-app <Link> clicks succeed!
   // -------------------------------------------------------------------------
   if (isRscRequest(request, url)) {
+    if (isPrivateOrAuthPathname(url.pathname)) {
+      return;
+    }
     event.respondWith(
       (async () => {
         const normalizedKey = new Request(normalizePageOrRscUrl(request.url));
@@ -653,6 +720,21 @@ self.addEventListener('fetch', (event) => {
   //    never cause false cache misses when offline.
   // -------------------------------------------------------------------------
   if (request.mode === 'navigate') {
+    if (isPrivateOrAuthPathname(url.pathname)) {
+      event.respondWith(
+        fetch(request).catch(
+          () =>
+            new Response(OFFLINE_HTML, {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/html; charset=utf-8',
+                'Cache-Control': 'no-store',
+              },
+            }),
+        ),
+      );
+      return;
+    }
     event.respondWith(
       (async () => {
         const cleanUrl = normalizePageOrRscUrl(request.url);
@@ -720,10 +802,13 @@ self.addEventListener('fetch', (event) => {
   // -------------------------------------------------------------------------
   // 5. Everything else — runtime cache, network-first with a stale fallback.
   // -------------------------------------------------------------------------
+  if (isPrivateOrAuthPathname(url.pathname)) {
+    return;
+  }
   event.respondWith(
     fetch(request)
       .then((res) => {
-        if (res && res.ok && res.status === 200 && !res.redirected) {
+        if (isCacheableResponse(res)) {
           const clone = res.clone();
           caches.open(RUNTIME_CACHE).then((cache) => {
             cache.put(request, clone);
@@ -760,24 +845,13 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'Dermaspace', body: event.data.text() };
   }
-  let url = data.url || '/';
-  try {
-    const parsed = new URL(url, self.location.origin);
-    if (
-      parsed.hostname.endsWith('.vercel.app') ||
-      parsed.hostname.endsWith('.vercel.dev')
-    ) {
-      url = `${parsed.pathname}${parsed.search}${parsed.hash}` || '/';
-    }
-  } catch {
-    url = '/';
-  }
+  const url = toSafeSameOriginPath(data?.url, '/');
   event.waitUntil(
     self.registration.showNotification(data.title || 'Dermaspace', {
       body: data.body || '',
-      icon: data.icon || '/icons/icon-192x192.png',
-      badge: data.badge || '/favicon.png',
-      image: data.image,
+      icon: toSafeNotificationAsset(data.icon, '/icons/icon-192x192.png'),
+      badge: toSafeNotificationAsset(data.badge, '/favicon.png'),
+      image: data.image ? toSafeNotificationAsset(data.image, undefined) : undefined,
       vibrate: [100, 50, 100],
       tag: data.tag || url,
       renotify: true,
@@ -797,7 +871,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   if (event.action === 'close') return;
-  const url = event.notification.data?.url || '/';
+  const safePath = toSafeSameOriginPath(event.notification.data?.url, '/');
+  const targetUrl = new URL(safePath, self.location.origin);
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({
@@ -807,7 +882,10 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of all) {
         try {
           const clientUrl = new URL(client.url);
-          if (clientUrl.pathname === new URL(url, self.location.origin).pathname) {
+          if (
+            clientUrl.origin === self.location.origin &&
+            clientUrl.pathname === targetUrl.pathname
+          ) {
             await client.focus();
             return;
           }
@@ -815,7 +893,7 @@ self.addEventListener('notificationclick', (event) => {
           /* ignore malformed client URLs */
         }
       }
-      await self.clients.openWindow(url);
+      await self.clients.openWindow(targetUrl.toString());
     })(),
   );
 });
@@ -868,7 +946,8 @@ const cacheUrlForOfflineNav = async (rawUrl) => {
   if (resolved.origin !== self.location.origin) return;
   if (
     resolved.pathname.startsWith('/api/') ||
-    resolved.pathname.startsWith('/_next/')
+    resolved.pathname.startsWith('/_next/') ||
+    isPrivateOrAuthPathname(resolved.pathname)
   ) {
     return;
   }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   filterWarmablePageUrls,
   IMAGE_CACHE_TTL_MS,
+  isPrivateOrAuthRoute,
   PAGE_WARM_FRESH_MS,
   shouldServeCachedImageDirectly,
   shouldSkipPageWarm,
@@ -26,13 +27,28 @@ test('shouldSkipPageWarm skips recently warmed pages', () => {
   assert.equal(shouldSkipPageWarm(now - PAGE_WARM_FRESH_MS - 1, now), false)
 })
 
-test('filterWarmablePageUrls deduplicates, strips _rsc, and excludes api/_next/cross-origin', () => {
+test('isPrivateOrAuthRoute identifies authenticated and auth-flow paths', () => {
+  assert.equal(isPrivateOrAuthRoute('/dashboard'), true)
+  assert.equal(isPrivateOrAuthRoute('/dashboard/wallet'), true)
+  assert.equal(isPrivateOrAuthRoute('/admin/users'), true)
+  assert.equal(isPrivateOrAuthRoute('/staff'), true)
+  assert.equal(isPrivateOrAuthRoute('/signin'), true)
+  assert.equal(isPrivateOrAuthRoute('/booking/confirm'), true)
+  assert.equal(isPrivateOrAuthRoute('/services'), false)
+  assert.equal(isPrivateOrAuthRoute('/'), false)
+})
+
+test('filterWarmablePageUrls deduplicates, strips _rsc, and excludes api/_next/cross-origin/private routes', () => {
   const origin = 'https://dermaspaceng.com'
   const out = filterWarmablePageUrls(
     [
       '/',
       '/?_rsc=abc',
       '/services',
+      '/dashboard',
+      '/dashboard/notifications',
+      '/admin',
+      '/signin',
       '/api/auth/me',
       '/_next/static/chunk.js',
       'https://evil.example.com/phish',

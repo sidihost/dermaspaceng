@@ -343,13 +343,13 @@ export default function ActivityFeed() {
         <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedItem(null)} />
           <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[85vh] overflow-hidden">
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-gray-900 min-w-0 break-words flex-1">
                 {getTitle(selectedItem)}
               </h2>
               <button 
                 onClick={() => setSelectedItem(null)} 
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 flex-shrink-0"
               >
                 <X className="w-4 h-4 text-gray-500" />
               </button>
@@ -380,29 +380,29 @@ export default function ActivityFeed() {
                 const designObj = findGiftCardDesignById(selectedItem.design || selectedItem.design_name)
                 return (
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Amount</span>
-                    <span className="text-sm font-semibold text-gray-900">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-gray-500 flex-shrink-0">Amount</span>
+                    <span className="text-sm font-semibold text-gray-900 text-right min-w-0">
                       ₦{selectedItem.amount?.toLocaleString()}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Recipient</span>
-                    <span className="text-sm text-gray-900">{selectedItem.recipient_name}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-gray-500 flex-shrink-0">Recipient</span>
+                    <span className="text-sm text-gray-900 text-right min-w-0 break-words">{selectedItem.recipient_name}</span>
                   </div>
                   {selectedItem.occasion && (
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Occasion</span>
-                      <span className="text-sm text-gray-900">{selectedItem.occasion}</span>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-sm text-gray-500 flex-shrink-0">Occasion</span>
+                      <span className="text-sm text-gray-900 text-right min-w-0 break-words">{selectedItem.occasion}</span>
                     </div>
                   )}
                   {(selectedItem.design_name || selectedItem.design) && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">Card Style</span>
-                      <span className="text-sm text-gray-900 inline-flex items-center gap-1.5">
+                    <div className="flex justify-between items-center gap-3">
+                      <span className="text-sm text-gray-500 flex-shrink-0">Card Style</span>
+                      <span className="text-sm text-gray-900 inline-flex items-center justify-end gap-1.5 min-w-0 text-right break-words">
                         <span
                           aria-hidden="true"
-                          className="w-3.5 h-2.5 rounded border border-black/15 overflow-hidden inline-flex"
+                          className="w-3.5 h-2.5 rounded border border-black/15 overflow-hidden inline-flex flex-shrink-0"
                         >
                           <span className="w-3/5 h-full" style={{ backgroundColor: designObj.surfaceHex }} />
                           <span className="w-2/5 h-full" style={{ backgroundColor: designObj.accentHex }} />
@@ -418,7 +418,7 @@ export default function ActivityFeed() {
 
               {selectedItem.type === "complaint" && (
                 <div className="bg-gray-50 rounded-xl p-4">
-                  <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                  <p className="text-sm text-gray-600 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                     {selectedItem.message}
                   </p>
                 </div>
@@ -426,19 +426,19 @@ export default function ActivityFeed() {
 
               {selectedItem.type === "consultation" && (
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Concern</span>
-                    <span className="text-sm text-gray-900 capitalize">{selectedItem.concern_type}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-gray-500 flex-shrink-0">Concern</span>
+                    <span className="text-sm text-gray-900 capitalize text-right min-w-0 break-words">{selectedItem.concern_type}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Preferred Date</span>
-                    <span className="text-sm text-gray-900">
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-gray-500 flex-shrink-0">Preferred Date</span>
+                    <span className="text-sm text-gray-900 text-right min-w-0">
                       {new Date(selectedItem.preferred_date || "").toLocaleDateString()}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Preferred Time</span>
-                    <span className="text-sm text-gray-900">{selectedItem.preferred_time}</span>
+                  <div className="flex justify-between gap-3">
+                    <span className="text-sm text-gray-500 flex-shrink-0">Preferred Time</span>
+                    <span className="text-sm text-gray-900 text-right min-w-0">{selectedItem.preferred_time}</span>
                   </div>
                 </div>
               )}

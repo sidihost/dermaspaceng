@@ -19,6 +19,7 @@ import { sql } from './db'
 import {
   filterValidPushSubscriptions,
   isPreviewDeploymentEnv,
+  isValidWebPushEndpoint,
   sanitizePushActionUrl,
   sanitizeVapidSubject,
 } from './push-origin'
@@ -116,6 +117,9 @@ async function sendToSubscription(
   sub: Subscription,
   payload: PushPayload,
 ): Promise<{ ok: boolean; expired?: boolean }> {
+  if (!isValidWebPushEndpoint(sub.endpoint)) {
+    return { ok: false, expired: true }
+  }
   const safePayload: PushPayload = {
     ...payload,
     url: sanitizePushActionUrl(payload.url),

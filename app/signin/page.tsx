@@ -9,12 +9,14 @@ import { startAuthentication } from '@simplewebauthn/browser'
 import PageLoader from '@/components/shared/page-loader'
 import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
-import { resolvePostAuthRedirect } from '@/lib/auth-onboarding'
+import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 
 function SignInForm() {
   const searchParams = useSearchParams()
-  const redirectTo =
-    searchParams.get('redirect') || searchParams.get('next') || '/dashboard'
+  const redirectTo = sanitizeSafeInternalPath(
+    searchParams.get('redirect') || searchParams.get('next'),
+    '/dashboard',
+  )
   const captchaRef = useRef<HCaptchaRef>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)

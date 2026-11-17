@@ -37,20 +37,23 @@ export async function GET(request: NextRequest) {
     }
 
     // Return payment details (without sensitive info)
-    return NextResponse.json({
-      payment: {
-        id: payment.id,
-        user_id: payment.user_id,
-        payment_type: payment.payment_type,
-        amount: payment.amount,
-        currency: payment.currency,
-        item_details: payment.item_details,
-        paystack_reference: payment.paystack_reference,
-        status: payment.status,
-        expires_at: payment.expires_at,
-        created_at: payment.created_at
-      }
-    })
+    return NextResponse.json(
+      {
+        payment: {
+          id: payment.id,
+          user_id: payment.user_id,
+          payment_type: payment.payment_type,
+          amount: payment.amount,
+          currency: payment.currency,
+          item_details: payment.item_details,
+          paystack_reference: payment.paystack_reference,
+          status: payment.status,
+          expires_at: payment.expires_at,
+          created_at: payment.created_at
+        }
+      },
+      { headers: { 'Cache-Control': 'private, no-store, max-age=0' } },
+    )
   } catch (error) {
     console.error('Payment recovery error:', error)
     return NextResponse.json({ error: 'Failed to fetch payment details' }, { status: 500 })

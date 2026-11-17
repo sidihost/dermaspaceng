@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
     // Get user details
     const userResult = await sql`
-      SELECT id, email, first_name, last_name, role 
+      SELECT id, email, first_name, last_name, role, COALESCE(is_active, TRUE) AS is_active
       FROM users 
       WHERE id = ${result.userId}
     `
@@ -64,6 +64,12 @@ export async function POST(request: Request) {
     }
 
     const user = userResult[0]
+    if (user.is_active === false) {
+      return NextResponse.json(
+        { error: 'Your account has been suspended. Please contact support.' },
+        { status: 403 },
+      )
+    }
 
     // Check if 2FA is required (cast to UUID since user_2fa_settings.user_id is UUID type)
     const twoFAResult = await sql`

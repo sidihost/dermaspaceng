@@ -188,6 +188,46 @@ async function cleanupPushSubscriptionOnLogout(): Promise<void> {
   }
 }
 
+async function clearOfflineCachesOnLogout(): Promise<void> {
+  if (typeof window === 'undefined') return
+  try {
+    const tasks: Promise<unknown>[] = []
+    if ('serviceWorker' in navigator) {
+      tasks.push(
+        navigator.serviceWorker
+          .getRegistration()
+          .then((reg) => {
+            reg?.active?.postMessage({ type: 'ds.clearCache' })
+            navigator.serviceWorker.controller?.postMessage({ type: 'ds.clearCache' })
+          })
+          .catch(() => {}),
+      )
+    }
+    if ('caches' in window) {
+      tasks.push(
+        caches
+          .keys()
+          .then((names) =>
+            Promise.all(
+              names
+                .filter((name) => name.startsWith('dermaspace-'))
+                .map((name) => caches.delete(name).catch(() => {})),
+            ),
+          )
+          .catch(() => {}),
+      )
+    }
+    if (tasks.length > 0) {
+      await Promise.race([
+        Promise.allSettled(tasks),
+        new Promise((resolve) => setTimeout(resolve, 250)),
+      ])
+    }
+  } catch {
+    /* best-effort cache cleanup */
+  }
+}
+
 export async function performLogout(redirectTo: string = '/'): Promise<void> {
   // The logout page is deliberately visible for a short moment. Clear local
   // auth state first so a slow network request cannot preserve a stale user
@@ -199,7 +239,10 @@ export async function performLogout(redirectTo: string = '/'): Promise<void> {
     /* browser globals unavailable — continue with the server logout */
   }
 
-  await cleanupPushSubscriptionOnLogout()
+  await Promise.all([
+    cleanupPushSubscriptionOnLogout(),
+    clearOfflineCachesOnLogout(),
+  ])
 
   try {
     await fetch('/api/auth/logout', {

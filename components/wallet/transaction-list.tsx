@@ -197,11 +197,12 @@ export function TransactionList({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
+            className="min-w-0 max-w-full"
           >
             <button
               type="button"
               onClick={() => openDetail(transaction)}
-              className="w-full text-left flex items-start sm:items-center gap-3 sm:gap-4 rounded-lg border bg-card p-3.5 sm:p-4 transition-colors hover:bg-muted/50 cursor-pointer"
+              className="w-full max-w-full min-w-0 overflow-hidden text-left flex items-start sm:items-center gap-2.5 sm:gap-4 rounded-lg border bg-card p-3 sm:p-4 transition-colors hover:bg-muted/50 cursor-pointer"
             >
               {/* Icon */}
               <div className={cn('flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full flex-shrink-0 mt-0.5 sm:mt-0', styles.icon)}>
@@ -210,11 +211,11 @@ export function TransactionList({
               
               {/* Details + Amount */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm sm:text-base font-medium text-foreground leading-snug break-words">
+                <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0">
+                  <p className="flex-1 min-w-0 text-sm sm:text-base font-medium text-foreground leading-snug break-words [overflow-wrap:anywhere]">
                     {title}
                   </p>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
                     <span className={cn('text-sm sm:text-base font-semibold tabular-nums whitespace-nowrap', styles.amount)}>
                       {styles.prefix}{transaction.formattedAmount || formatCurrency(transaction.amount, transaction.currency)}
                     </span>
@@ -222,13 +223,13 @@ export function TransactionList({
                   </div>
                 </div>
 
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground">
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 sm:gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground min-w-0">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="capitalize">{transaction.payment_method.replace('_', ' ')}</span>
+                    <span className="capitalize truncate">{transaction.payment_method.replace('_', ' ')}</span>
                     <span aria-hidden="true">&bull;</span>
                     <span className="whitespace-nowrap">{transaction.formattedDate || formatDate(transaction.created_at)}</span>
                   </div>
-                  <div className={cn('inline-flex items-center gap-1 capitalize font-medium whitespace-nowrap', getStatusTextColor(transaction.status))}>
+                  <div className={cn('inline-flex items-center gap-1 capitalize font-medium whitespace-nowrap flex-shrink-0', getStatusTextColor(transaction.status))}>
                     {getStatusIcon(transaction.status)}
                     <span>{transaction.status}</span>
                   </div>

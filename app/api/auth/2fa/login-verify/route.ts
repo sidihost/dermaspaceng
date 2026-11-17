@@ -6,6 +6,7 @@ import { verify, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken'
 import { createSession, checkNewDevice } from '@/lib/auth'
 import { sendNewDeviceAlert } from '@/lib/email'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { rateLimit } from '@/lib/redis'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -59,6 +60,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid token type' }, { status: 400 })
     }
 
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const [ipLimit, userLimit] = await Promise.all([
+      rateLimit('2fa:login:ip', ip, 30, 300),
+      rateLimit('2fa:login:user', decoded.userId, 10, 300),
+    ])
+    if (!ipLimit.ok || !userLimit.ok) {
+      return NextResponse.json(
+        {
+          error: 'Too many verification attempts. Please wait a few minutes and try again.',
+        },
+        { status: 429 },
+      )
+    }
+
     // Verify the TOTP code
     const isValid = await verifyTOTPCode(decoded.userId, code)
 
@@ -78,6 +94,7 @@ export async function POST(request: Request) {
     // Get user details
     const userResult = await sql`
       SELECT id, email, first_name, last_name, role,
+             COALESCE(is_active, TRUE) AS is_active,
              COALESCE(profile_complete, FALSE) AS profile_complete,
              (google_id IS NOT NULL OR microsoft_id IS NOT NULL OR x_id IS NOT NULL) AS has_social_auth
       FROM users WHERE id = ${decoded.userId}
@@ -88,6 +105,12 @@ export async function POST(request: Request) {
     }
 
     const user = userResult[0]
+    if (user.is_active === false) {
+      return NextResponse.json(
+        { error: 'Your account has been suspended. Please contact support.' },
+        { status: 403 },
+      )
+    }
 
     // Get device info and IP for session creation
     const headersList = await headers()

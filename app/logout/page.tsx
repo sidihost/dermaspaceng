@@ -18,18 +18,11 @@ import * as React from 'react'
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { performLogout } from '@/lib/logout'
-
-// Only allow same-origin paths as the post-logout destination so the
-// `?redirect=` param can never be turned into an open redirect.
-function safeRedirect(raw: string | null): string {
-  if (!raw) return '/'
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/'
-  return raw
-}
+import { sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 
 function LogoutRunner() {
   const params = useSearchParams()
-  const redirectTo = safeRedirect(params.get('redirect'))
+  const redirectTo = sanitizeSafeInternalPath(params.get('redirect'), '/')
 
   const started = React.useRef(false)
 

@@ -28,16 +28,19 @@ export async function GET(request: Request) {
 
     const payment = abandonedPayments[0]
 
-    return NextResponse.json({
-      id: payment.id,
-      itemType: payment.item_type,
-      itemDetails: payment.item_details,
-      user: {
-        email: payment.email,
-        firstName: payment.first_name
+    return NextResponse.json(
+      {
+        id: payment.id,
+        itemType: payment.item_type,
+        itemDetails: payment.item_details,
+        user: {
+          email: payment.email,
+          firstName: payment.first_name
+        },
+        expiresAt: payment.expires_at
       },
-      expiresAt: payment.expires_at
-    })
+      { headers: { 'Cache-Control': 'private, no-store, max-age=0' } },
+    )
   } catch (error) {
     console.error('Recovery fetch error:', error)
     return NextResponse.json({ error: 'Failed to fetch recovery data' }, { status: 500 })
@@ -72,13 +75,27 @@ export async function POST(request: Request) {
 
     // Check if user is logged in and matches
     const currentUser = await getCurrentUser()
-    if (currentUser && currentUser.id !== payment.user_id) {
-      return NextResponse.json({ 
-        error: 'This recovery link belongs to a different account' 
-      }, { status: 403 })
+    if (paymentMethod === 'wallet') {
+      if (!currentUser) {
+        return NextResponse.json(
+          { error: 'Please sign in to pay with your wallet.' },
+          { status: 401 },
+        )
+      }
+      if (currentUser.id !== payment.user_id) {
+        return NextResponse.json(
+          { error: 'This recovery link belongs to a different account' },
+          { status: 403 },
+        )
+      }
+    } else if (currentUser && currentUser.id !== payment.user_id) {
+      return NextResponse.json(
+        { error: 'This recovery link belongs to a different account' },
+        { status: 403 },
+      )
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspace.ng'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'
 
     // Handle payment based on method
     if (paymentMethod === 'wallet') {
@@ -112,11 +129,14 @@ export async function POST(request: Request) {
           WHERE id = ${payment.id}
         `
 
-        return NextResponse.json({
-          success: true,
-          message: 'Payment completed successfully',
-          transactionId: result.transactionId
-        })
+        return NextResponse.json(
+          {
+            success: true,
+            message: 'Payment completed successfully',
+            transactionId: result.transactionId
+          },
+          { headers: { 'Cache-Control': 'private, no-store, max-age=0' } },
+        )
       } else {
         return NextResponse.json({ error: result.error }, { status: 400 })
       }
@@ -145,11 +165,14 @@ export async function POST(request: Request) {
           WHERE id = ${payment.id}
         `
 
-        return NextResponse.json({
-          success: true,
-          authorization_url: paystackResult.data.authorization_url,
-          reference
-        })
+        return NextResponse.json(
+          {
+            success: true,
+            authorization_url: paystackResult.data.authorization_url,
+            reference
+          },
+          { headers: { 'Cache-Control': 'private, no-store, max-age=0' } },
+        )
       } else {
         return NextResponse.json({ 
           error: 'Failed to initialize payment' 

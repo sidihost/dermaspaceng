@@ -374,7 +374,7 @@ function WalletDashboardContent() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30">
+    <main className="min-h-screen bg-muted/30 overflow-x-clip">
       <Header />
       
       {/* Notification Toast */}
@@ -384,7 +384,7 @@ function WalletDashboardContent() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 left-1/2 z-50 -translate-x-1/2"
+            className="fixed top-20 left-1/2 z-50 -translate-x-1/2 w-max max-w-[calc(100vw-2rem)]"
           >
             <div className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg ${
               notification.type === 'success' 
@@ -393,13 +393,13 @@ function WalletDashboardContent() {
                   ? 'bg-[#7B2D8E]/5 text-[#7B2D8E] border border-[#7B2D8E]/20'
                   : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
             }`}>
-              {notification.type === 'success' && <CheckCircle className="h-5 w-5 text-[#7B2D8E]" />}
-              {notification.type === 'error' && <XCircle className="h-5 w-5 text-[#7B2D8E]" />}
-              {notification.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600" />}
-              <span className="text-sm font-medium">{notification.message}</span>
+              {notification.type === 'success' && <CheckCircle className="h-5 w-5 text-[#7B2D8E] flex-shrink-0" />}
+              {notification.type === 'error' && <XCircle className="h-5 w-5 text-[#7B2D8E] flex-shrink-0" />}
+              {notification.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />}
+              <span className="text-sm font-medium min-w-0 break-words">{notification.message}</span>
               <button 
                 onClick={() => setNotification(null)}
-                className="ml-2 text-current opacity-60 hover:opacity-100"
+                className="ml-2 text-current opacity-60 hover:opacity-100 flex-shrink-0"
               >
                 <XCircle className="h-4 w-4" />
               </button>
@@ -409,19 +409,19 @@ function WalletDashboardContent() {
       </AnimatePresence>
       
       <div className="py-6 md:py-8 px-4">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto min-w-0">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0">
               <Link 
                 href="/dashboard"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
               >
                 <ArrowLeft className="h-5 w-5 text-gray-900" />
               </Link>
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900">My Wallet</h1>
-                <p className="text-xs sm:text-sm text-gray-500">Manage your Dermaspace balance</p>
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">My Wallet</h1>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Manage your Dermaspace balance</p>
               </div>
             </div>
             <div className="flex items-center gap-2 ml-auto sm:ml-0">
@@ -461,27 +461,27 @@ function WalletDashboardContent() {
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-            <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
+            <div className="min-w-0 rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#7B2D8E]/10 flex-shrink-0">
                   <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#7B2D8E]" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500">Total Funded</p>
-                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">Total Funded</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate tabular-nums">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalCredits)}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
+            <div className="min-w-0 rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-red-100 flex-shrink-0">
                   <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500">Total Spent</p>
-                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">Total Spent</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate tabular-nums">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)}
                   </p>
                 </div>
@@ -517,14 +517,14 @@ function WalletDashboardContent() {
           )}
 
           {/* Recent Transactions */}
-          <div className="rounded-xl bg-white border border-gray-200 p-4 md:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center text-[#7B2D8E] font-bold text-sm">₦</span>
-                <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
+          <div className="min-w-0 overflow-hidden rounded-xl bg-white border border-gray-200 p-3.5 sm:p-4 md:p-6">
+            <div className="flex items-center justify-between gap-2 min-w-0 mb-4">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="flex h-5 w-5 items-center justify-center text-[#7B2D8E] font-bold text-sm flex-shrink-0">₦</span>
+                <h2 className="font-semibold text-gray-900 truncate">Recent Transactions</h2>
               </div>
               {transactions.length > 0 && (
-                <span className="text-xs sm:text-sm text-gray-500">
+                <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap flex-shrink-0">
                   {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
                 </span>
               )}

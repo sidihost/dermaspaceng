@@ -106,6 +106,36 @@ export function shouldRequireProfileCompletion(input: {
 }
 
 /**
+ * Sanitize a relative internal navigation path so `?redirect=` / `?next=`
+ * parameters can never trigger an open redirect (including `//evil.com`,
+ * `/\evil.com`, control chars, or `javascript:` schemes).
+ */
+export function sanitizeSafeInternalPath(
+  raw: string | null | undefined,
+  fallback = '/dashboard',
+): string {
+  if (!raw || typeof raw !== 'string') return fallback
+  const trimmed = raw.trim()
+  if (
+    !trimmed ||
+    !trimmed.startsWith('/') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('/\\') ||
+    /[\u0000-\u001F\u007F]/.test(trimmed) ||
+    trimmed.includes('\\')
+  ) {
+    return fallback
+  }
+  try {
+    const parsed = new URL(trimmed, 'https://dermaspaceng.com')
+    if (parsed.origin !== 'https://dermaspaceng.com') return fallback
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return fallback
+  }
+}
+
+/**
  * Sanitize a relative post-auth redirect target and force `/complete-profile`
  * when onboarding is incomplete.
  */
@@ -126,22 +156,11 @@ export function resolvePostAuthRedirect(
     return '/complete-profile'
   }
 
-  if (!requestedRedirect || typeof requestedRedirect !== 'string') {
+  const safe = sanitizeSafeInternalPath(requestedRedirect, '/dashboard')
+  if (safe.startsWith('/signin') || safe.startsWith('/signup')) {
     return '/dashboard'
   }
-
-  const trimmed = requestedRedirect.trim()
-  if (
-    !trimmed.startsWith('/') ||
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('/\\') ||
-    trimmed.startsWith('/signin') ||
-    trimmed.startsWith('/signup')
-  ) {
-    return '/dashboard'
-  }
-
-  return trimmed
+  return safe
 }
 
 /**

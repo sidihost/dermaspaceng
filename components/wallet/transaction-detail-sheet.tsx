@@ -266,7 +266,7 @@ export function TransactionDetailSheet({
                 </div>
               </div>
 
-              <DrawerTitle className="mt-2.5 text-sm font-semibold text-gray-900 text-balance">
+              <DrawerTitle className="mt-2.5 text-sm font-semibold text-gray-900 text-balance break-words [overflow-wrap:anywhere]">
                 {tx.description ||
                   (tx.type === 'credit'
                     ? 'Wallet funding'

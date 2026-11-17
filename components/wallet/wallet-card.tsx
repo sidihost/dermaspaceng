@@ -53,7 +53,7 @@ export function WalletCard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          'relative overflow-hidden rounded-2xl sm:rounded-3xl',
+          'relative w-full max-w-full overflow-hidden rounded-2xl sm:rounded-3xl',
           className
         )}
       >
@@ -87,27 +87,27 @@ export function WalletCard({
         {/* Card Content */}
         <div className="relative z-10 p-5 sm:p-6 text-white">
           {/* Header Row */}
-          <div className="flex items-start justify-between mb-6 sm:mb-8">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-sm border border-white/10">
+          <div className="flex items-start justify-between gap-3 mb-6 sm:mb-8">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-sm border border-white/10 flex-shrink-0">
                 <Wallet className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 {userName ? (
-                  <p className="text-sm sm:text-base font-semibold text-white">
+                  <p className="text-sm sm:text-base font-semibold text-white truncate">
                     Hi, {userName.split(' ')[0]}
                   </p>
                 ) : (
-                  <p className="text-sm sm:text-base font-semibold text-white">Dermaspace Wallet</p>
+                  <p className="text-sm sm:text-base font-semibold text-white truncate">Dermaspace Wallet</p>
                 )}
-                <p className="text-xs sm:text-sm text-white/60">Available Balance</p>
+                <p className="text-xs sm:text-sm text-white/60 truncate">Available Balance</p>
               </div>
             </div>
             
             <button
               type="button"
               onClick={() => setShowBalance(!showBalance)}
-              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 transition-all hover:bg-white/20 active:scale-95"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 transition-all hover:bg-white/20 active:scale-95 flex-shrink-0"
               aria-label={showBalance ? 'Hide balance' : 'Show balance'}
             >
               {showBalance ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
@@ -115,7 +115,7 @@ export function WalletCard({
           </div>
           
           {/* Balance Display */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6 sm:mb-8 min-w-0">
             <AnimatePresence mode="wait">
               <motion.div
                 key={showBalance ? 'visible' : 'hidden'}
@@ -125,7 +125,7 @@ export function WalletCard({
                 transition={{ duration: 0.2 }}
               >
                 {showBalance ? (
-                  <p className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">
+                  <p className="text-2xl sm:text-4xl md:text-5xl font-bold tracking-tight break-words tabular-nums">
                     {formatCurrency(balance)}
                   </p>
                 ) : (
@@ -142,9 +142,9 @@ export function WalletCard({
           {/* Last Transaction */}
           {lastTransaction && (
             <div className="mb-5 sm:mb-6">
-              <div className="inline-flex items-center gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
+              <div className="inline-flex max-w-full flex-wrap items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
                 <div className={cn(
-                  "flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg",
+                  "flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg flex-shrink-0",
                   lastTransaction.type === 'credit' ? 'bg-white/20' : 'bg-rose-500/20'
                 )}>
                   {lastTransaction.type === 'credit' ? (
@@ -153,14 +153,14 @@ export function WalletCard({
                     <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-300" />
                   )}
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <span className="text-xs text-white/50 leading-none mb-0.5">Last Transaction</span>
-                  <span className="text-sm sm:text-base font-medium">
+                  <span className="text-sm sm:text-base font-medium tabular-nums">
                     {lastTransaction.type === 'credit' ? '+' : '-'}
                     {formatCurrency(lastTransaction.amount)}
                   </span>
                 </div>
-                <span className="ml-2 text-xs text-white/40">{lastTransaction.date}</span>
+                <span className="ml-1 sm:ml-2 text-xs text-white/40 whitespace-nowrap">{lastTransaction.date}</span>
               </div>
             </div>
           )}

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { X, Wifi, WifiOff } from 'lucide-react'
 import Image from 'next/image'
 import { isServiceWorkerAllowedOrigin } from '@/lib/push-origin'
+import { isPrivateOrAuthRoute } from '@/lib/sw-cache-helpers'
 
 export function ServiceWorkerRegister() {
   // `usePathname()` can return `null` during certain app-shell
@@ -284,9 +285,15 @@ export function ServiceWorkerRegister() {
     }
     if (!navigator.onLine) return
     if (!pathname) return
-    // Skip non-page routes — defence in depth; the SW also filters
-    // these, but skipping the postMessage saves a roundtrip.
-    if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) return
+    // Skip non-page and private/authenticated routes — defence in depth; the SW also filters
+    // these, but skipping the postMessage prevents private pages from being warmed into shared Cache Storage.
+    if (
+      pathname.startsWith('/api/') ||
+      pathname.startsWith('/_next/') ||
+      isPrivateOrAuthRoute(pathname)
+    ) {
+      return
+    }
 
     const url = pathname + window.location.search
 
