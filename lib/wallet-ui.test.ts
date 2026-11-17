@@ -4,6 +4,7 @@ import {
   computeWalletStats,
   formatPaymentChannel,
   formatWalletCurrency,
+  formatWalletDisplayName,
   formatWalletTransactionDate,
   parseTransactionSummary,
   type WalletTransactionItem,
@@ -94,3 +95,10 @@ test('computeWalletStats totals only completed transactions', () => {
     spentCount: 1,
   })
 })
+
+test('formatWalletDisplayName returns clean wallet title without clutter', () => {
+  assert.equal(formatWalletDisplayName('Deborah Sidi'), 'DermaspaceNG Wallet')
+  assert.equal(formatWalletDisplayName(''), 'Your Wallet')
+  assert.equal(formatWalletDisplayName(null), 'Your Wallet')
+})
+

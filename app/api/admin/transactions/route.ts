@@ -6,7 +6,7 @@ import {
   formatCurrency 
 } from '@/lib/wallet'
 
-// GET /api/admin/transactions - Get all transactions (admin only)
+// GET /api/admin/transactions - Get all transactions (staff & admin)
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser()
@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    if (user.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (user.role !== 'admin' && user.role !== 'staff') {
+      return NextResponse.json({ error: 'Staff or admin access required' }, { status: 403 })
     }
     
     const searchParams = request.nextUrl.searchParams

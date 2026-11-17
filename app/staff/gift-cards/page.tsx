@@ -40,9 +40,11 @@ import {
   Phone,
   Calendar as CalendarIcon,
   QrCode,
+  Receipt,
 } from "lucide-react"
 import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
+import { getReceiptHref } from "@/lib/receipt-access"
 import { GiftCardPrintStudio } from "@/components/gift-cards/gift-card-print-studio"
 import {
   findGiftCardDesignById,
@@ -440,7 +442,18 @@ export default function StaffGiftCardsPage() {
                         {r.recipient_notified_at ? " · Recipient emailed" : ""}
                       </p>
                     </div>
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex flex-wrap gap-2 flex-shrink-0">
+                      {(() => {
+                        const receiptHref = getReceiptHref({ reference: r.payment_reference })
+                        return receiptHref ? (
+                          <Button asChild variant="outline" size="sm" className="gap-1 border-[#7B2D8E]/30 text-[#7B2D8E]">
+                            <Link href={receiptHref}>
+                              <Receipt className="h-3.5 w-3.5" />
+                              Receipt
+                            </Link>
+                          </Button>
+                        ) : null
+                      })()}
                       <Button
                         variant="outline"
                         size="sm"
@@ -626,7 +639,23 @@ export default function StaffGiftCardsPage() {
             </div>
             )
           })()}
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
+            {(() => {
+              const receiptHref = getReceiptHref({ reference: selected?.payment_reference })
+              return receiptHref ? (
+                <Button
+                  asChild
+                  type="button"
+                  variant="outline"
+                  className="gap-1.5 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]"
+                >
+                  <Link href={receiptHref}>
+                    <Receipt className="h-3.5 w-3.5" />
+                    View receipt
+                  </Link>
+                </Button>
+              ) : null
+            })()}
             {selected?.recipient_email && (
               <Button
                 type="button"

@@ -3,20 +3,14 @@
 /**
  * /staff/reports
  *
- * Splice "Business Performance" screen, in Dermaspace purple/black.
- *
- *   - Tabs: Executive Summary | Monthly Summary | Customer Spend | Reviews | Expense Report
- *     (only Executive is wired today; the others render empty states.)
- *   - Top row: Customers (new vs returning bar) + Trends (line + delta).
- *   - Bottom row: Appointments (donut) + Sales (gross/tax/net stack)
- *     + Services & Products tallies.
- *
- * Charts use Recharts (already a dep) and are themed with #7B2D8E
- * (returning / dark) and #C9A4D6 (new / light) to stay inside the
- * 3-colour brand budget.
+ * Business Performance console for Dermaspace staff & admin.
+ * All 5 tabs (Executive Summary, Monthly Summary, Customer Spend,
+ * Reviews, Expense Report) and the Staff + Date Range filters are wired
+ * directly to /api/staff/reports.
  */
 
 import { useState } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import {
   BarChart,
@@ -34,19 +28,24 @@ import {
   Legend,
 } from "recharts"
 import {
-  ChevronDown,
   TrendingUp,
   Loader2,
   MapPin,
   User,
   Package,
   ShoppingBag,
+  Star,
+  Receipt,
+  Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { safeFetcher } from "@/lib/safe-fetcher"
+import { DataLoadError } from "@/components/shared/data-load-error"
 
-const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json())
+const fetcher = (url: string) => safeFetcher(url, { cache: "no-store" })
 
 interface ReportsData {
+  staffOptions?: Array<{ id: string; name: string }>
   charts: {
     customers: { month: string; new: number; returning: number }[]
     trend: { date: string; value: number }[]
@@ -61,6 +60,43 @@ interface ReportsData {
     productsItems: number
     appointmentsTotal: number
     appointmentsBreakdown: { status: string; count: number }[]
+  }
+  monthly?: Array<{
+    month: string
+    bookings: number
+    completed: number
+    revenue: number
+  }>
+  customerSpend?: Array<{
+    id: string
+    name: string
+    email: string
+    bookingsCount: number
+    totalSpent: number
+    lastVisit: string
+  }>
+  reviews?: {
+    avgRating: number
+    totalReviews: number
+    items: Array<{
+      bookingReference: string
+      customerName: string
+      rating: number
+      body: string | null
+      wouldRecommend: boolean | null
+      createdAt: string
+    }>
+  }
+  expenses?: {
+    totalExpenses: number
+    categories: Array<{ category: string; total: number; count: number }>
+    recent: Array<{
+      id: string
+      category: string
+      description: string
+      amount: number
+      paidAt: string
+    }>
   }
 }
 
@@ -80,23 +116,25 @@ const naira0 = (n: number) =>
 export default function StaffReportsPage() {
   const [tab, setTab] = useState<Tab>("executive")
   const [range, setRange] = useState<"last_month" | "last_30d" | "this_year">("last_month")
+  const [staffId, setStaffId] = useState<string>("all")
 
-  const { data, isLoading } = useSWR<{ success: boolean } & ReportsData>(
-    `/api/staff/reports?range=${range}`,
+  const { data, error, isLoading, mutate } = useSWR<{ success: boolean } & ReportsData>(
+    `/api/staff/reports?range=${range}&staffId=${encodeURIComponent(staffId)}`,
     fetcher,
     { revalidateOnFocus: false }
   )
 
+  const staffOptions = data?.staffOptions ?? []
+
   return (
     <div className="space-y-5">
-      {/* Page header */}
       <header>
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
           Business Performance
         </h1>
       </header>
 
-      {/* Tabs (horizontally scrollable on mobile) */}
+      {/* Tabs */}
       <div className="overflow-x-auto -mx-1 sm:mx-0 px-1 sm:px-0">
         <div className="inline-flex items-center gap-1 rounded-full bg-gray-100 p-1 whitespace-nowrap">
           {TABS.map((t) => (
@@ -106,7 +144,7 @@ export default function StaffReportsPage() {
               className={cn(
                 "px-4 py-1.5 text-sm font-medium rounded-full transition-colors",
                 tab === t.key
-                  ? "bg-white text-gray-900 shadow-sm"
+                  ? "bg-white text-gray-900"
                   : "text-gray-500 hover:text-gray-700"
               )}
             >
@@ -116,105 +154,299 @@ export default function StaffReportsPage() {
         </div>
       </div>
 
-      {tab !== "executive" ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-white py-16 text-center">
-          <p className="text-sm font-semibold text-gray-900">Coming soon</p>
-          <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
-            This report is queued for the next release. The Executive
-            Summary tab is fully wired today.
+      {/* Filter bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">
+            {TABS.find((t) => t.key === tab)?.label}
+          </h2>
+          <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <MapPin className="h-3 w-3" />
+            All branches
           </p>
         </div>
-      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700">
+            <User className="h-3.5 w-3.5 text-[#7B2D8E]" />
+            <select
+              aria-label="Filter by staff member"
+              value={staffId}
+              onChange={(e) => setStaffId(e.target.value)}
+              className="bg-transparent font-medium text-gray-700 focus:outline-none"
+            >
+              <option value="all">All staff</option>
+              {staffOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700">
+            <Calendar className="h-3.5 w-3.5 text-[#7B2D8E]" />
+            <select
+              aria-label="Select date range"
+              value={range}
+              onChange={(e) =>
+                setRange(e.target.value as "last_month" | "last_30d" | "this_year")
+              }
+              className="bg-transparent font-medium text-gray-700 focus:outline-none"
+            >
+              <option value="last_month">Last month</option>
+              <option value="last_30d">Last 30 days</option>
+              <option value="this_year">This year</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {error && !data ? (
+        <DataLoadError title="Could not load report" error={error} onRetry={() => mutate()} />
+      ) : isLoading || !data ? (
+        <div className="rounded-2xl border border-gray-100 bg-white py-24 flex items-center justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
+        </div>
+      ) : tab === "executive" ? (
         <>
-          {/* General Overview header row */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-gray-900">General Overview</h2>
-              <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-gray-500">
-                <MapPin className="h-3 w-3" />
-                All branches
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <SoftSelect icon={User} label="All staff" />
-              <SoftSelect
-                label={
-                  range === "last_month"
-                    ? "Last month"
-                    : range === "last_30d"
-                      ? "Last 30 days"
-                      : "This year"
-                }
-                onClick={() =>
-                  setRange((prev) =>
-                    prev === "last_month"
-                      ? "last_30d"
-                      : prev === "last_30d"
-                        ? "this_year"
-                        : "last_month"
-                  )
-                }
-              />
-            </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CustomersCard data={data.charts.customers} />
+            <TrendsCard
+              data={data.charts.trend}
+              avg={data.stats.avgAppointments}
+              delta={data.stats.trendsDeltaPct}
+            />
           </div>
 
-          {isLoading || !data ? (
-            <div className="rounded-2xl border border-gray-100 bg-white py-24 flex items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
-            </div>
-          ) : (
-            <>
-              {/* Top row: Customers + Trends */}
-              <div className="grid gap-4 lg:grid-cols-2">
-                <CustomersCard data={data.charts.customers} />
-                <TrendsCard
-                  data={data.charts.trend}
-                  avg={data.stats.avgAppointments}
-                  delta={data.stats.trendsDeltaPct}
-                />
-              </div>
-
-              {/* Bottom row: Appointments + Sales + Services & Products */}
-              <div className="grid gap-4 lg:grid-cols-3">
-                <AppointmentsCard
-                  total={data.stats.appointmentsTotal}
-                  breakdown={data.stats.appointmentsBreakdown}
-                />
-                <SalesCard data={data.charts.sales} />
-                <ServicesProductsCard
-                  servicesQty={data.stats.servicesQty}
-                  servicesItems={data.stats.servicesItems}
-                  productsQty={data.stats.productsQty}
-                  productsItems={data.stats.productsItems}
-                />
-              </div>
-            </>
-          )}
+          <div className="grid gap-4 lg:grid-cols-3">
+            <AppointmentsCard
+              total={data.stats.appointmentsTotal}
+              breakdown={data.stats.appointmentsBreakdown}
+            />
+            <SalesCard data={data.charts.sales} />
+            <ServicesProductsCard
+              servicesQty={data.stats.servicesQty}
+              servicesItems={data.stats.servicesItems}
+              productsQty={data.stats.productsQty}
+              productsItems={data.stats.productsItems}
+            />
+          </div>
         </>
+      ) : tab === "monthly" ? (
+        <MonthlySummaryTab rows={data.monthly ?? []} />
+      ) : tab === "customer_spend" ? (
+        <CustomerSpendTab rows={data.customerSpend ?? []} />
+      ) : tab === "reviews" ? (
+        <ReviewsTab reviews={data.reviews} />
+      ) : (
+        <ExpenseReportTab expenses={data.expenses} />
       )}
     </div>
   )
 }
 
-function SoftSelect({
-  label,
-  icon: Icon,
-  onClick,
+function MonthlySummaryTab({
+  rows,
 }: {
-  label: string
-  icon?: React.ComponentType<{ className?: string }>
-  onClick?: () => void
+  rows: NonNullable<ReportsData["monthly"]>
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]"
-    >
-      {Icon && <Icon className="h-3.5 w-3.5" />}
-      <span className="font-medium">{label}</span>
-      <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
-    </button>
+    <section className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+      <div className="grid grid-cols-12 gap-3 border-b border-gray-100 bg-gray-50/50 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="col-span-4">Month</div>
+        <div className="col-span-2 text-right">Bookings</div>
+        <div className="col-span-3 text-right">Completed</div>
+        <div className="col-span-3 text-right">Paid Revenue</div>
+      </div>
+      {rows.length === 0 ? (
+        <p className="py-12 text-center text-xs text-gray-500">No monthly booking records yet.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {rows.map((r) => (
+            <li key={r.month} className="grid grid-cols-12 gap-3 items-center px-5 py-3 text-sm">
+              <span className="col-span-4 font-medium text-gray-900">{r.month}</span>
+              <span className="col-span-2 text-right tabular-nums text-gray-700">{r.bookings}</span>
+              <span className="col-span-3 text-right tabular-nums text-gray-700">{r.completed}</span>
+              <span className="col-span-3 text-right tabular-nums font-semibold text-[#7B2D8E]">
+                ₦{naira0(r.revenue)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function CustomerSpendTab({
+  rows,
+}: {
+  rows: NonNullable<ReportsData["customerSpend"]>
+}) {
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+      <div className="hidden sm:grid grid-cols-12 gap-3 border-b border-gray-100 bg-gray-50/50 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
+        <div className="col-span-5">Customer</div>
+        <div className="col-span-2 text-right">Visits</div>
+        <div className="col-span-3 text-right">Last visit</div>
+        <div className="col-span-2 text-right">Total spend</div>
+      </div>
+      {rows.length === 0 ? (
+        <p className="py-12 text-center text-xs text-gray-500">No customer spend records yet.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100">
+          {rows.map((c) => (
+            <li
+              key={c.id}
+              className="grid grid-cols-12 gap-2 items-center px-5 py-3.5 text-sm hover:bg-[#7B2D8E]/[0.03]"
+            >
+              <div className="col-span-12 sm:col-span-5 min-w-0">
+                <p className="font-medium text-gray-900 truncate">{c.name}</p>
+                <p className="text-xs text-gray-500 truncate">{c.email}</p>
+              </div>
+              <div className="col-span-4 sm:col-span-2 sm:text-right text-xs text-gray-700 tabular-nums">
+                {c.bookingsCount} visits
+              </div>
+              <div className="col-span-4 sm:col-span-3 sm:text-right text-xs text-gray-500 tabular-nums">
+                {c.lastVisit || "—"}
+              </div>
+              <div className="col-span-4 sm:col-span-2 text-right font-semibold text-[#7B2D8E] tabular-nums">
+                ₦{naira0(c.totalSpent)}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function ReviewsTab({ reviews }: { reviews?: ReportsData["reviews"] }) {
+  const items = reviews?.items ?? []
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 max-w-md">
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
+            Average Rating
+          </p>
+          <p className="mt-1 text-xl font-bold text-gray-900 inline-flex items-center gap-1.5 tabular-nums">
+            <Star className="h-4 w-4 fill-[#7B2D8E] text-[#7B2D8E]" />
+            {reviews?.avgRating ?? 0} / 5
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
+            Total Reviews
+          </p>
+          <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">
+            {reviews?.totalReviews ?? 0}
+          </p>
+        </div>
+      </div>
+
+      <section className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+        {items.length === 0 ? (
+          <p className="py-12 text-center text-xs text-gray-500">No client reviews submitted yet.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {items.map((r) => (
+              <li key={`${r.bookingReference}-${r.createdAt}`} className="px-5 py-4 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-900">{r.customerName}</span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] px-2 py-0.5 text-[11px] font-semibold">
+                      <Star className="h-3 w-3 fill-[#7B2D8E]" />
+                      {r.rating}.0
+                    </span>
+                  </div>
+                  <Link
+                    href={`/booking/${encodeURIComponent(r.bookingReference)}`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:underline"
+                  >
+                    <Receipt className="h-3 w-3" />
+                    {r.bookingReference}
+                  </Link>
+                </div>
+                {r.body && <p className="text-sm text-gray-700">{r.body}</p>}
+                <p className="text-[11px] text-gray-400">
+                  {new Date(r.createdAt).toLocaleDateString("en-NG", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  {r.wouldRecommend === true ? " · Recommends Dermaspace" : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function ExpenseReportTab({ expenses }: { expenses?: ReportsData["expenses"] }) {
+  const categories = expenses?.categories ?? []
+  const recent = expenses?.recent ?? []
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3">
+          <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
+            Total Recorded Expenses
+          </p>
+          <p className="mt-1 text-xl font-bold text-[#7B2D8E] tabular-nums">
+            ₦{naira0(expenses?.totalExpenses ?? 0)}
+          </p>
+        </div>
+        {categories.slice(0, 2).map((c) => (
+          <div key={c.category} className="rounded-xl border border-gray-100 bg-white px-4 py-3">
+            <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500 truncate">
+              {c.category}
+            </p>
+            <p className="mt-1 text-xl font-bold text-gray-900 tabular-nums">
+              ₦{naira0(c.total)}
+            </p>
+            <p className="text-[11px] text-gray-500">{c.count} entries</p>
+          </div>
+        ))}
+      </div>
+
+      <section className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+          <p className="text-sm font-semibold text-gray-900">Recent expenses</p>
+          <Link href="/staff/money" className="text-xs font-semibold text-[#7B2D8E] hover:underline">
+            Record in Money
+          </Link>
+        </div>
+        {recent.length === 0 ? (
+          <p className="py-12 text-center text-xs text-gray-500">
+            No operating expenses recorded yet. Use Money › Record expense to log items.
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {recent.map((e) => (
+              <li key={e.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{e.description}</p>
+                  <p className="text-xs text-gray-500">
+                    {e.category} ·{" "}
+                    {new Date(e.paidAt).toLocaleDateString("en-NG", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <span className="font-semibold text-[#7B2D8E] tabular-nums flex-shrink-0">
+                  ₦{naira0(e.amount)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -293,7 +525,7 @@ function TrendsCard({
             <TrendingUp className={cn("h-3.5 w-3.5", positive ? "rotate-0" : "rotate-180")} />
           </p>
           <p className="text-[10.5px] uppercase tracking-wider text-gray-500 font-semibold">
-            vs last month
+            vs last period
           </p>
         </div>
       </div>
@@ -319,8 +551,6 @@ function AppointmentsCard({
   total: number
   breakdown: { status: string; count: number }[]
 }) {
-  // Splice's pie shows three groups (online / rebooked / walk-in). We
-  // map our booking statuses onto a similar three-segment palette.
   const palette = ["#7B2D8E", "#C9A4D6", "#E5D6EB", "#F3E8F8", "#1F0626"]
   const slices = breakdown.map((b, i) => ({
     name: b.status.replace("_", " "),
@@ -365,11 +595,6 @@ function AppointmentsCard({
 }
 
 function SalesCard({ data }: { data: ReportsData["charts"]["sales"] }) {
-  // Detect a "no sales yet" state so we don't render five identical
-  // "0k" tick labels stacked on top of each other (the previous
-  // build's most-reported eyesore on mobile). When everything is
-  // zero we swap the chart for a small empty state that still
-  // explains the legend, instead of the visually-broken axis.
   const hasData = data.some(
     (d) => Number(d.gross || 0) + Number(d.tax || 0) + Number(d.net || 0) > 0,
   )

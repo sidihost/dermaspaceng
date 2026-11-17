@@ -19,7 +19,7 @@ import AdminAvailabilityPage from '@/app/admin/availability/page'
 
 export default async function StaffAvailabilityPage() {
   const user = await getCurrentUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/signin')
   if (user.role === 'admin') redirect('/admin/availability')
   if (!user.can_manage_services) redirect('/staff')
 

@@ -56,7 +56,11 @@ const fetcher = async (url: string) => {
     err.status = res.status
     throw err
   }
-  return data as { success: boolean; transaction: TransactionDetail }
+  return data as {
+    success: boolean
+    viewerIsTeam?: boolean
+    transaction: TransactionDetail
+  }
 }
 
 function formatCurrency(value: number, currency = 'NGN') {
@@ -292,6 +296,9 @@ export default function TransactionDetailContent({
 
   const loadedTx =
     data && 'transaction' in data && data.transaction ? data.transaction : null
+  const viewerIsTeam = Boolean(
+    data && 'viewerIsTeam' in data && data.viewerIsTeam,
+  )
 
   if (error || !loadedTx) {
     return (
@@ -414,11 +421,11 @@ export default function TransactionDetailContent({
         {/* Top Action Bar */}
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5 print:hidden">
           <Link
-            href="/dashboard/transactions"
+            href={viewerIsTeam ? '/staff/money' : '/dashboard/transactions'}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Transactions
+            {viewerIsTeam ? 'Back to Staff' : 'Transactions'}
           </Link>
           <ReceiptActionButtons
             onDownloadPdf={handleDownloadPdf}
@@ -544,6 +551,14 @@ export default function TransactionDetailContent({
               <span>Ledger</span>
             </div>
             <div className="px-3.5 divide-y divide-gray-100">
+              {tx.customer && (
+                <DetailRow label="Client">
+                  <span className="font-medium">
+                    {tx.customer.name}
+                    {tx.customer.email ? ` · ${tx.customer.email}` : ''}
+                  </span>
+                </DetailRow>
+              )}
               <DetailRow
                 label={
                   isIncoming
@@ -793,7 +808,7 @@ export default function TransactionDetailContent({
 
         {/* Compact Secondary Actions Below Receipt */}
         <div className="mt-3.5 rounded-xl bg-white px-4 py-3 border border-gray-200 flex flex-wrap items-center justify-between gap-2 print:hidden">
-          {tx.status === 'pending' && (
+          {!viewerIsTeam && tx.status === 'pending' && (
             <button
               type="button"
               onClick={cancelPayment}
@@ -808,7 +823,7 @@ export default function TransactionDetailContent({
               {cancelling ? 'Checking…' : 'Cancel pending'}
             </button>
           )}
-          {(tx.status === 'cancelled' || tx.status === 'failed') && (
+          {!viewerIsTeam && (tx.status === 'cancelled' || tx.status === 'failed') && (
             <Link
               href={`/dashboard/wallet?fund=${tx.amount}`}
               className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:underline"
@@ -817,7 +832,7 @@ export default function TransactionDetailContent({
               Try again
             </Link>
           )}
-          {tx.status === 'completed' && isIncoming && (
+          {!viewerIsTeam && tx.status === 'completed' && isIncoming && (
             <Link
               href="/dashboard/wallet"
               className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:underline"
@@ -835,13 +850,23 @@ export default function TransactionDetailContent({
               Full booking
             </Link>
           )}
-          <Link
-            href="/dashboard/support"
-            className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-[#7B2D8E] ml-auto"
-          >
-            <LifeBuoy className="h-3.5 w-3.5" />
-            Support
-          </Link>
+          {viewerIsTeam ? (
+            <Link
+              href="/staff/money"
+              className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-[#7B2D8E] ml-auto"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Staff Console
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/support"
+              className="inline-flex h-8 items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-[#7B2D8E] ml-auto"
+            >
+              <LifeBuoy className="h-3.5 w-3.5" />
+              Support
+            </Link>
+          )}
         </div>
       </main>
 

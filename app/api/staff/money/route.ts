@@ -18,9 +18,24 @@ import { requireAdminOrStaff } from "@/lib/auth"
  * fragment composition, so we branch on `tab` with explicit query
  * variants. They all map onto the same response row shape.
  */
+async function ensureExpensesTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS salon_expenses (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      category TEXT NOT NULL,
+      description TEXT NOT NULL,
+      amount NUMERIC NOT NULL,
+      recorded_by TEXT,
+      receipt_url TEXT,
+      paid_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `
+}
+
 export async function GET(req: Request) {
   try {
     await requireAdminOrStaff()
+    await ensureExpensesTable()
 
     const url = new URL(req.url)
     const limitRaw = Number(url.searchParams.get("limit") ?? 25)
@@ -49,12 +64,17 @@ export async function GET(req: Request) {
     const available = Math.max(totalIn - txnOut - expenseTotal, 0)
 
     // ---- Virtual account from salon_settings ----------------------
-    const settingsRows = (await sql`
-      SELECT virtual_account_bank, virtual_account_name, virtual_account_number,
-             default_branch_label
-      FROM salon_settings WHERE id = 'singleton' LIMIT 1
-    `) as any[]
-    const s = settingsRows[0] ?? {}
+    let s: Record<string, any> = {}
+    try {
+      const settingsRows = (await sql`
+        SELECT virtual_account_bank, virtual_account_name, virtual_account_number,
+               default_branch_label
+        FROM salon_settings WHERE id = 'singleton' LIMIT 1
+      `) as any[]
+      s = settingsRows[0] ?? {}
+    } catch {
+      s = {}
+    }
     const virtualAccount = {
       bankName: s.virtual_account_bank || "Wema Bank",
       accountName: s.virtual_account_name || "Dermaspace Operations",
@@ -66,6 +86,8 @@ export async function GET(req: Request) {
     let items: Array<{
       id: string
       reference: string | null
+      bookingReference: string | null
+      metadataType: string | null
       type: string
       status: string
       amount: number
@@ -74,6 +96,29 @@ export async function GET(req: Request) {
       createdAt: string
     }> = []
     let total = 0
+
+    const mapTxRow = (r: any, fallbackDesc: string) => {
+      const meta = (r.metadata ?? {}) as Record<string, any>
+      return {
+        id: String(r.id),
+        reference: r.reference ? String(r.reference) : null,
+        bookingReference:
+          typeof meta.booking_reference === "string" && meta.booking_reference.trim()
+            ? meta.booking_reference.trim()
+            : null,
+        metadataType:
+          typeof meta.type === "string" && meta.type.trim() ? meta.type.trim() : null,
+        type: String(r.type),
+        status: String(r.status),
+        amount: Number(r.amount ?? 0),
+        paymentMethod: r.payment_method ? String(r.payment_method) : null,
+        description:
+          r.description ||
+          [r.first_name, r.last_name].filter(Boolean).join(" ").trim() ||
+          fallbackDesc,
+        createdAt: String(r.created_at),
+      }
+    }
 
     if (tab === "expense") {
       const rows = (await sql`
@@ -87,19 +132,21 @@ export async function GET(req: Request) {
       const totalRow = (await sql`SELECT COUNT(*)::int AS total FROM salon_expenses`) as any[]
       total = Number(totalRow[0]?.total ?? 0)
       items = rows.map((r) => ({
-        id: r.id,
+        id: String(r.id),
         reference: null,
+        bookingReference: null,
+        metadataType: null,
         type: "expense",
         status: "completed",
         amount: Number(r.amount ?? 0),
         paymentMethod: r.category,
         description: r.description,
-        createdAt: r.paid_at,
+        createdAt: String(r.paid_at),
       }))
     } else if (tab === "payments") {
       const rows = (await sql`
         SELECT t.id, t.reference, t.type, t.status, t.amount,
-               t.payment_method, t.description, t.created_at,
+               t.payment_method, t.description, t.metadata, t.created_at,
                u.first_name, u.last_name
         FROM transactions t
         LEFT JOIN users u ON u.id = t.user_id
@@ -111,25 +158,13 @@ export async function GET(req: Request) {
         SELECT COUNT(*)::int AS total FROM transactions WHERE payment_method = 'paystack'
       `) as any[]
       total = Number(totalRow[0]?.total ?? 0)
-      items = rows.map((r) => ({
-        id: r.id,
-        reference: r.reference,
-        type: r.type,
-        status: r.status,
-        amount: Number(r.amount ?? 0),
-        paymentMethod: r.payment_method,
-        description:
-          r.description ||
-          [r.first_name, r.last_name].filter(Boolean).join(" ").trim() ||
-          "Paystack payment",
-        createdAt: r.created_at,
-      }))
+      items = rows.map((r) => mapTxRow(r, "Paystack payment"))
     } else if (tab === "finance") {
       // Finance is the full ledger excluding pending — useful for
       // reconciliation / month-end accounting.
       const rows = (await sql`
         SELECT t.id, t.reference, t.type, t.status, t.amount,
-               t.payment_method, t.description, t.created_at,
+               t.payment_method, t.description, t.metadata, t.created_at,
                u.first_name, u.last_name
         FROM transactions t
         LEFT JOIN users u ON u.id = t.user_id
@@ -141,23 +176,11 @@ export async function GET(req: Request) {
         SELECT COUNT(*)::int AS total FROM transactions WHERE status = 'completed'
       `) as any[]
       total = Number(totalRow[0]?.total ?? 0)
-      items = rows.map((r) => ({
-        id: r.id,
-        reference: r.reference,
-        type: r.type,
-        status: r.status,
-        amount: Number(r.amount ?? 0),
-        paymentMethod: r.payment_method,
-        description:
-          r.description ||
-          [r.first_name, r.last_name].filter(Boolean).join(" ").trim() ||
-          "Transaction",
-        createdAt: r.created_at,
-      }))
+      items = rows.map((r) => mapTxRow(r, "Transaction"))
     } else {
       const rows = (await sql`
         SELECT t.id, t.reference, t.type, t.status, t.amount,
-               t.payment_method, t.description, t.created_at,
+               t.payment_method, t.description, t.metadata, t.created_at,
                u.first_name, u.last_name
         FROM transactions t
         LEFT JOIN users u ON u.id = t.user_id
@@ -166,19 +189,7 @@ export async function GET(req: Request) {
       `) as any[]
       const totalRow = (await sql`SELECT COUNT(*)::int AS total FROM transactions`) as any[]
       total = Number(totalRow[0]?.total ?? 0)
-      items = rows.map((r) => ({
-        id: r.id,
-        reference: r.reference,
-        type: r.type,
-        status: r.status,
-        amount: Number(r.amount ?? 0),
-        paymentMethod: r.payment_method,
-        description:
-          r.description ||
-          [r.first_name, r.last_name].filter(Boolean).join(" ").trim() ||
-          "Transaction",
-        createdAt: r.created_at,
-      }))
+      items = rows.map((r) => mapTxRow(r, "Transaction"))
     }
 
     return NextResponse.json({
@@ -203,7 +214,7 @@ export async function GET(req: Request) {
 }
 
 /**
- * POST /api/staff/money/expense (also exposed at /api/staff/money?action=expense)
+ * POST /api/staff/money
  *
  * Records an operating expense. Body:
  *   { category: string, description: string, amount: number, receiptUrl?: string }
@@ -211,6 +222,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const user = await requireAdminOrStaff()
+    await ensureExpensesTable()
     const body = await req.json().catch(() => ({}))
     const category = String(body.category || "").trim()
     const description = String(body.description || "").trim()

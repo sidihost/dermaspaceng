@@ -92,8 +92,8 @@ export default async function BookingResumePage({
 // ---------------------------------------------------------------------------
 function ExpiredScreen() {
   return (
-    <main className="min-h-[80vh] grid place-items-center px-4 py-12 bg-gradient-to-b from-[#FBF9FC] to-white">
-      <div className="w-full max-w-md rounded-3xl border border-gray-100 bg-white p-7 sm:p-8 shadow-[0_24px_60px_-30px_rgba(91,33,116,0.25)] text-center">
+    <main className="min-h-[80vh] grid place-items-center px-4 py-12 bg-[#FBF9FC]">
+      <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-7 sm:p-8 text-center">
         <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-amber-50 text-amber-600">
           <AlertTriangle className="h-6 w-6" aria-hidden="true" />
         </div>
@@ -119,15 +119,15 @@ function ExpiredScreen() {
 
 function CancelledScreen({ reference }: { reference: string }) {
   return (
-    <main className="min-h-[80vh] grid place-items-center px-4 py-12 bg-gradient-to-b from-[#FBF9FC] to-white">
-      <div className="w-full max-w-md rounded-3xl border border-gray-100 bg-white p-7 sm:p-8 shadow-[0_24px_60px_-30px_rgba(91,33,116,0.25)] text-center">
+    <main className="min-h-[80vh] grid place-items-center px-4 py-12 bg-[#FBF9FC]">
+      <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-7 sm:p-8 text-center">
         <h1 className="text-[19px] font-semibold tracking-tight text-gray-900">
           This booking was cancelled
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-gray-500">
           Booking{' '}
           <span className="font-mono text-[#7B2D8E]">{reference}</span> is no
-          longer available. We\u2019d love to see you — pick a new slot below.
+          longer available. We&apos;d love to see you — pick a new slot below.
         </p>
         <Link
           href="/booking"

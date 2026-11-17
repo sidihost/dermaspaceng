@@ -461,13 +461,13 @@ export default function DashboardPage() {
                 ichafu) so users see themselves immediately. */}
             <div className="flex items-center justify-center mb-5">
               <div className="flex -space-x-4">
-                <span className="w-20 h-20 rounded-full border-[3px] border-white shadow-md overflow-hidden">
+                <span className="w-20 h-20 rounded-full border-[3px] border-white overflow-hidden">
                   <img src="/avatars/tour-1.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
-                <span className="w-24 h-24 rounded-full border-[3px] border-white shadow-lg overflow-hidden ring-2 ring-[#7B2D8E]/30 relative z-[1]">
+                <span className="w-24 h-24 rounded-full border-[3px] border-white overflow-hidden ring-2 ring-[#7B2D8E]/30 relative z-[1]">
                   <img src="/avatars/tour-2.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
-                <span className="w-20 h-20 rounded-full border-[3px] border-white shadow-md overflow-hidden">
+                <span className="w-20 h-20 rounded-full border-[3px] border-white overflow-hidden">
                   <img src="/avatars/tour-3.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
               </div>
@@ -718,7 +718,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 href="/booking"
-                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 lg:px-5 lg:py-2.5 bg-[#7B2D8E] text-white text-[13px] lg:text-sm font-medium lg:font-semibold rounded-lg lg:rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0 lg:shadow-sm"
+                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 lg:px-5 lg:py-2.5 bg-[#7B2D8E] text-white text-[13px] lg:text-sm font-medium lg:font-semibold rounded-lg lg:rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0"
               >
                 <Calendar className="w-4 h-4" />
                 Book appointment
@@ -839,14 +839,14 @@ export default function DashboardPage() {
                   {/* Stats Grid — tighter padding + tighter inner
                       gap so three small cards fit on a phone without
                       pushing the rest of the dashboard down. */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 md:gap-3">
-                    <div className="bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
-                      <div className="flex items-center gap-2.5 mb-1.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-2.5">
+                    <div className="bg-white rounded-xl border border-gray-100 p-2.5 md:p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-4 h-4 text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">0</p>
+                          <p className="text-base md:text-lg font-bold text-gray-900 leading-tight">0</p>
                           <p className="text-[11px] text-gray-500 leading-tight">Upcoming</p>
                         </div>
                       </div>
@@ -855,13 +855,13 @@ export default function DashboardPage() {
                       </Link>
                     </div>
                     
-                    <div className="bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
-                      <div className="flex items-center gap-2.5 mb-1.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Star className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                    <div className="bg-white rounded-xl border border-gray-100 p-2.5 md:p-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Star className="w-4 h-4 text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">0</p>
+                          <p className="text-base md:text-lg font-bold text-gray-900 leading-tight">0</p>
                           <p className="text-[11px] text-gray-500 leading-tight">Points</p>
                         </div>
                       </div>
@@ -870,14 +870,6 @@ export default function DashboardPage() {
                       </Link>
                     </div>
                     
-                    {/* Member stat tile — flips between
-                        "Standard / Upgrade" and the actual tier name
-                        ("Silver Member" / "Gold Member" /
-                        "Platinum Member") for active subscribers.
-                        Active members get the Crown icon and a wallet
-                        link; everyone else sees the upgrade CTA so
-                        non-members always have a one-tap path into
-                        the marketing page. */}
                     {(() => {
                       const tier = user?.membership?.tier
                       const status = user?.membership?.status
@@ -886,17 +878,17 @@ export default function DashboardPage() {
                         ? tier.charAt(0).toUpperCase() + tier.slice(1)
                         : 'Standard'
                       return (
-                        <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
-                          <div className="flex items-center gap-2.5 mb-1.5">
-                            <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                        <div className="col-span-2 sm:col-span-1 bg-white rounded-xl border border-gray-100 p-2.5 md:p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
                               {isActive ? (
-                                <Crown className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                                <Crown className="w-4 h-4 text-[#7B2D8E]" />
                               ) : (
-                                <Gift className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                                <Gift className="w-4 h-4 text-[#7B2D8E]" />
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                              <p className="text-base md:text-lg font-bold text-gray-900 leading-tight">
                                 {tierLabel}
                               </p>
                               <p className="text-[11px] text-gray-500 leading-tight">
@@ -941,7 +933,7 @@ export default function DashboardPage() {
                       >
                         {supportUnread > 0 && (
                           <span
-                            className="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold shadow-sm"
+                            className="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold"
                             aria-label={`${supportUnread} new admin ${supportUnread === 1 ? 'reply' : 'replies'}`}
                           >
                             {supportUnread > 9 ? '9+' : supportUnread}
@@ -1362,7 +1354,7 @@ function FavoritesList({
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="favorite-remove-title"
-            className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl border border-gray-100 shadow-xl mx-0 sm:mx-4 p-5"
+            className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl border border-gray-100 mx-0 sm:mx-4 p-5"
           >
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center shrink-0">

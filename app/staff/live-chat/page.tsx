@@ -15,6 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import {
@@ -30,11 +31,10 @@ import {
   Phone,
   Headphones,
   AlertCircle,
-  // Sparkles intentionally removed — see system-bubble + topic-banner
-  // comments below. We're dropping every sparkle / star glyph from
-  // the dashboard.
+  Receipt,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getReceiptHref } from '@/lib/receipt-access'
 
 const fetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((r) => {
@@ -622,6 +622,29 @@ function ConversationColumn({
     )
   }
 
+  if (sessionQuery.error) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 min-h-[420px] flex items-center justify-center">
+        <div className="text-center px-6 space-y-2">
+          <AlertCircle className="w-6 h-6 text-[#7B2D8E] mx-auto" />
+          <p className="text-[14px] font-semibold text-gray-900">
+            Could not load conversation
+          </p>
+          <p className="text-[12px] text-gray-500 max-w-xs mx-auto">
+            This session may have been closed or you may not have permission to view it.
+          </p>
+          <button
+            type="button"
+            onClick={() => sessionQuery.mutate()}
+            className="mt-2 inline-flex items-center rounded-full bg-[#7B2D8E] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#5A1D6A]"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (sessionQuery.isLoading || !session) {
     return (
       <div className="bg-white rounded-2xl border border-gray-100 min-h-[420px] flex items-center justify-center">
@@ -797,7 +820,7 @@ function StatusPill({ status }: { status: FullSession['status'] }) {
     },
     active: {
       label: 'Active',
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      className: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25',
     },
     closed: {
       label: 'Closed',
@@ -948,11 +971,13 @@ function CustomerContextPanel({
     wallet: { formatted: string }
     transactions: Array<{
       id: number
+      reference?: string | null
       type: string
       amount: number
       status: string
       payment_method: string | null
       description: string | null
+      metadata?: { booking_reference?: string; type?: string } | null
       created_at: string
     }>
     bookings: Array<{
@@ -1015,49 +1040,67 @@ function CustomerContextPanel({
             {c.transactions.length === 0 ? (
               <SubSectionEmpty label="No transactions on file." />
             ) : (
-              c.transactions.slice(0, 5).map((tx) => (
-                <div
-                  key={tx.id}
-                  className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-gray-800 truncate">
-                      {tx.description || tx.type}
-                    </p>
-                    <p className="text-[10px] text-gray-400">
-                      {tx.payment_method || tx.type} ·{' '}
-                      {new Date(tx.created_at).toLocaleDateString('en-NG', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className={cn(
-                        'text-[12px] font-semibold tabular-nums',
-                        tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
-                          ? 'text-rose-600'
-                          : 'text-gray-900',
-                      )}
-                    >
-                      ₦{Math.round(Number(tx.amount)).toLocaleString()}
-                    </p>
-                    <p
-                      className={cn(
-                        'text-[9px] uppercase tracking-wider font-semibold',
-                        tx.status === 'success' || tx.status === 'completed'
-                          ? 'text-emerald-600'
-                          : tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
+              c.transactions.slice(0, 5).map((tx) => {
+                const receiptHref = getReceiptHref({
+                  reference: tx.reference,
+                  bookingReference: tx.metadata?.booking_reference,
+                  metadataType: tx.metadata?.type,
+                })
+                return (
+                  <div
+                    key={tx.id}
+                    className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium text-gray-800 truncate">
+                        {tx.description || tx.type}
+                      </p>
+                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        <span>
+                          {tx.payment_method || tx.type} ·{' '}
+                          {new Date(tx.created_at).toLocaleDateString('en-NG', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </span>
+                        {receiptHref && (
+                          <Link
+                            href={receiptHref}
+                            className="inline-flex items-center gap-0.5 font-semibold text-[#7B2D8E] hover:underline"
+                          >
+                            <Receipt className="w-2.5 h-2.5" />
+                            Receipt
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={cn(
+                          'text-[12px] font-semibold tabular-nums',
+                          tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
                             ? 'text-rose-600'
-                            : 'text-amber-600',
-                      )}
-                    >
-                      {tx.status}
-                    </p>
+                            : 'text-gray-900',
+                        )}
+                      >
+                        ₦{Math.round(Number(tx.amount)).toLocaleString()}
+                      </p>
+                      <p
+                        className={cn(
+                          'text-[9px] uppercase tracking-wider font-semibold',
+                          tx.status === 'success' || tx.status === 'completed'
+                            ? 'text-[#7B2D8E]'
+                            : tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
+                              ? 'text-rose-600'
+                              : 'text-amber-600',
+                        )}
+                      >
+                        {tx.status}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </SubSection>
 
@@ -1071,9 +1114,12 @@ function CustomerContextPanel({
                   className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
                 >
                   <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-gray-800 truncate">
+                    <Link
+                      href={`/booking/${encodeURIComponent(b.booking_reference)}`}
+                      className="text-[12px] font-medium text-[#7B2D8E] hover:underline truncate block"
+                    >
                       {b.booking_reference}
-                    </p>
+                    </Link>
                     <p className="text-[10px] text-gray-400 truncate">
                       {b.location_name} ·{' '}
                       {new Date(b.appointment_date).toLocaleDateString('en-NG', {
@@ -1082,9 +1128,17 @@ function CustomerContextPanel({
                       })}
                     </p>
                   </div>
-                  <span className="text-[9px] uppercase tracking-wider font-semibold text-gray-500">
-                    {b.status}
-                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="text-[9px] uppercase tracking-wider font-semibold text-gray-500 block">
+                      {b.status}
+                    </span>
+                    <Link
+                      href={`/booking/${encodeURIComponent(b.booking_reference)}`}
+                      className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
+                    >
+                      Receipt
+                    </Link>
+                  </div>
                 </div>
               ))
             )}
@@ -1359,7 +1413,7 @@ function PreviewCard({
           <p className="text-[12px] font-semibold text-gray-900 truncate">
             {name}
           </p>
-          <p className="text-[10px] text-emerald-600">Online</p>
+          <p className="text-[10px] text-[#7B2D8E] font-medium">Online</p>
         </div>
       </div>
     </div>

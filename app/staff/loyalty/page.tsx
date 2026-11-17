@@ -3,19 +3,7 @@
 /**
  * /staff/loyalty
  *
- * Loyalty & Promos screen — mirrors the Splice page in our purple
- * brand palette.
- *
- * Layout, top to bottom:
- *   1. Tabs (Loyalty | Promos).
- *   2. Header row with Points Settings + Edit Loyalty Program actions.
- *   3. Two-column grid:
- *        a. Programme status card + the rich loyalty card promo.
- *        b. Redemption rate (donut) + Top service callout.
- *   4. Top members table (search + filter + paginator + rows).
- *
- * Promos tab is a placeholder until we ship the promo schema; the
- * empty state matches the rest of the staff console.
+ * Loyalty & Promos screen — in Dermaspace's purple brand palette.
  */
 
 import { useState } from "react"
@@ -37,17 +25,24 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  Save,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
 import { safeFetcher } from "@/lib/safe-fetcher"
 import { DataLoadError } from "@/components/shared/data-load-error"
 
-// Throw-on-non-OK fetcher so SWR's `error` slot fires when
-// /api/staff/loyalty returns 401/403/500. The previous bare-JSON
-// fetcher silently turned a server error into an empty members
-// table with no diagnostic.
 const fetcher = (url: string) => safeFetcher(url, { cache: "no-store" })
 
 interface LoyaltyData {
@@ -56,6 +51,7 @@ interface LoyaltyData {
     rewardLabel: string
     rewardThreshold: number
     rewardPercent: number
+    pointsPerNaira?: number
     cardTitle: string
     brandSubtitle: string
   }
@@ -63,7 +59,7 @@ interface LoyaltyData {
     totalIssued: number
     totalRedeemed: number
     redemptionRate: number
-    topService: string
+    topService: string | null
   }
   members: {
     id: string
@@ -84,11 +80,27 @@ const naira = (n: number) =>
   }).format(n)
 
 export default function StaffLoyaltyPage() {
+  const notify = useNotify()
   const [tab, setTab] = useState<"loyalty" | "promos">("loyalty")
   const [search, setSearch] = useState("")
+  const [memberFilter, setMemberFilter] = useState<"all" | "max_discount" | "high_spend">("all")
+  const [filterOpen, setFilterOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [sortDesc, setSortDesc] = useState(true)
   const pageSize = 25
+
+  const [pointsOpen, setPointsOpen] = useState(false)
+  const [pointsPerNairaInput, setPointsPerNairaInput] = useState("0.01")
+  const [editOpen, setEditOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [programForm, setProgramForm] = useState({
+    active: true,
+    rewardLabel: "10% off",
+    rewardPercent: "10",
+    rewardThreshold: "100000",
+    cardTitle: "LOYALTY CARD",
+    brandSubtitle: "powered by Dermaspace",
+  })
 
   const { data, error, isLoading, mutate } = useSWR<{ success: boolean } & LoyaltyData>(
     "/api/staff/loyalty",
@@ -100,15 +112,110 @@ export default function StaffLoyaltyPage() {
   const stats = data?.stats
   const members = data?.members ?? []
 
-  const filtered = members.filter((m) =>
-    search ? m.name.toLowerCase().includes(search.toLowerCase()) : true
-  )
+  const filtered = members.filter((m) => {
+    const matchesSearch = search
+      ? m.name.toLowerCase().includes(search.toLowerCase()) ||
+        m.email.toLowerCase().includes(search.toLowerCase())
+      : true
+    if (!matchesSearch) return false
+    if (memberFilter === "max_discount") {
+      const targetPct = program?.rewardPercent ?? 10
+      return m.discountValue >= targetPct
+    }
+    if (memberFilter === "high_spend") {
+      const threshold = program?.rewardThreshold ?? 100_000
+      return m.spendValue >= threshold
+    }
+    return true
+  })
+
   const sorted = [...filtered].sort((a, b) =>
     sortDesc ? b.discountValue - a.discountValue : a.discountValue - b.discountValue
   )
   const start = (page - 1) * pageSize
   const visible = sorted.slice(start, start + pageSize)
   const lastPage = Math.max(1, Math.ceil(sorted.length / pageSize))
+
+  const openPointsDialog = () => {
+    setPointsPerNairaInput(String(program?.pointsPerNaira ?? 0.01))
+    setPointsOpen(true)
+  }
+
+  const openEditDialog = () => {
+    setProgramForm({
+      active: program?.active ?? true,
+      rewardLabel: program?.rewardLabel ?? "10% off",
+      rewardPercent: String(program?.rewardPercent ?? 10),
+      rewardThreshold: String(program?.rewardThreshold ?? 100000),
+      cardTitle: program?.cardTitle ?? "LOYALTY CARD",
+      brandSubtitle: program?.brandSubtitle ?? "powered by Dermaspace",
+    })
+    setEditOpen(true)
+  }
+
+  const handleSavePoints = async () => {
+    const val = Number(pointsPerNairaInput)
+    if (!Number.isFinite(val) || val <= 0) {
+      notify.error("Invalid ratio", "Enter a positive points-per-Naira value (e.g. 0.01 = 1 pt per ₦100).")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch("/api/staff/loyalty", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pointsPerNaira: val }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        notify.error("Update failed", json?.error || `HTTP ${res.status}`)
+        return
+      }
+      notify.success("Points updated", "Loyalty earning rate saved.")
+      setPointsOpen(false)
+      mutate()
+    } catch {
+      notify.error("Network error", "Could not save points settings.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveProgram = async () => {
+    const rewardPercent = Number(programForm.rewardPercent)
+    const rewardThreshold = Number(programForm.rewardThreshold)
+    if (!programForm.rewardLabel.trim() || !Number.isFinite(rewardPercent) || rewardPercent <= 0 || !Number.isFinite(rewardThreshold) || rewardThreshold <= 0) {
+      notify.error("Invalid details", "Check reward label, percentage, and spend threshold.")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch("/api/staff/loyalty", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          active: programForm.active,
+          rewardLabel: programForm.rewardLabel.trim(),
+          rewardPercent,
+          rewardThreshold,
+          cardTitle: programForm.cardTitle.trim() || "LOYALTY CARD",
+          brandSubtitle: programForm.brandSubtitle.trim() || "powered by Dermaspace",
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        notify.error("Update failed", json?.error || `HTTP ${res.status}`)
+        return
+      }
+      notify.success("Program updated", "Loyalty configuration saved.")
+      setEditOpen(false)
+      mutate()
+    } catch {
+      notify.error("Network error", "Could not update loyalty program.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -126,7 +233,7 @@ export default function StaffLoyaltyPage() {
             className={cn(
               "px-4 py-1.5 text-sm font-medium rounded-full transition-colors capitalize",
               tab === t
-                ? "bg-white text-gray-900 shadow-sm"
+                ? "bg-white text-gray-900"
                 : "text-gray-500 hover:text-gray-700"
             )}
           >
@@ -135,10 +242,6 @@ export default function StaffLoyaltyPage() {
         ))}
       </div>
 
-      {/* When the loyalty API fails outright, replace the whole
-          dashboard body with a single explanatory tile. The page
-          still renders the header + tabs above so the operator can
-          retry without losing context. */}
       {error && !data && tab === "loyalty" ? (
         <DataLoadError
           title="Could not load loyalty programme"
@@ -149,11 +252,6 @@ export default function StaffLoyaltyPage() {
         <PromosEmptyState />
       ) : (
         <>
-          {/* Compact summary strip — programme state + the two primary
-              actions all live in one card so the page leads with
-              meaningful info rather than a redundant "Loyalty list"
-              label sat above empty space. On phones the actions wrap
-              under the status; on tablet+ they sit inline. */}
           <div className="rounded-2xl border border-gray-100 bg-white p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3 min-w-0">
@@ -189,15 +287,19 @@ export default function StaffLoyaltyPage() {
               </div>
               <div className="flex items-center gap-2 sm:flex-shrink-0">
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
+                  onClick={openPointsDialog}
                   className="gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] flex-1 sm:flex-initial justify-center"
                 >
                   <SettingsIcon className="h-3.5 w-3.5" />
                   Points
                 </Button>
                 <Button
+                  type="button"
                   size="sm"
+                  onClick={openEditDialog}
                   className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white flex-1 sm:flex-initial justify-center"
                 >
                   Edit program
@@ -206,9 +308,6 @@ export default function StaffLoyaltyPage() {
             </div>
           </div>
 
-          {/* KPI strip — three real numbers up top so the operator can
-              read the state of the programme at a glance before
-              scrolling into the membership table. */}
           <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <KpiTile
               label="Redemption"
@@ -228,10 +327,6 @@ export default function StaffLoyaltyPage() {
             />
           </div>
 
-          {/* Detail grid: redemption donut + the brand card. Order is
-              flipped on lg so the donut sits to the left of the visual
-              card on desktop. On mobile the donut leads because the
-              data answer is more useful than the marketing art. */}
           <div className="grid gap-4 lg:grid-cols-5">
             <div className="lg:col-span-2">
               <RedemptionCard
@@ -259,7 +354,7 @@ export default function StaffLoyaltyPage() {
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     type="search"
-                    placeholder="Search by name, date"
+                    placeholder="Search by name or email"
                     className="h-10 pl-9 border-gray-200 focus-visible:ring-[#7B2D8E]/30"
                     value={search}
                     onChange={(e) => {
@@ -269,8 +364,13 @@ export default function StaffLoyaltyPage() {
                   />
                 </div>
                 <Button
+                  type="button"
                   variant="outline"
-                  className="gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]"
+                  onClick={() => setFilterOpen((v) => !v)}
+                  className={cn(
+                    "gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]",
+                    (filterOpen || memberFilter !== "all") && "border-[#7B2D8E] text-[#7B2D8E] bg-[#7B2D8E]/5"
+                  )}
                 >
                   <Filter className="h-4 w-4" />
                   Filter
@@ -286,7 +386,7 @@ export default function StaffLoyaltyPage() {
                   <ChevronLeft className="h-4 w-4 text-gray-500" />
                 </button>
                 <span className="text-xs text-gray-700 px-1 tabular-nums">
-                  {start + 1}-{Math.min(start + pageSize, sorted.length)}
+                  {sorted.length === 0 ? "0-0" : `${start + 1}-${Math.min(start + pageSize, sorted.length)}`}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
@@ -298,6 +398,35 @@ export default function StaffLoyaltyPage() {
                 </button>
               </div>
             </div>
+
+            {filterOpen && (
+              <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-[#FBF9FC] px-4 py-2.5">
+                {(
+                  [
+                    { id: "all", label: "All members" },
+                    { id: "max_discount", label: "Max reward unlocked" },
+                    { id: "high_spend", label: "Above threshold" },
+                  ] as const
+                ).map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => {
+                      setMemberFilter(f.id)
+                      setPage(1)
+                    }}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                      memberFilter === f.id
+                        ? "bg-[#7B2D8E] text-white"
+                        : "bg-white border border-gray-200 text-gray-600 hover:text-[#7B2D8E]"
+                    )}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="px-4 py-3 border-b border-gray-100 bg-gray-50/50">
               <p className="text-sm font-semibold text-gray-700">Top members</p>
@@ -327,9 +456,11 @@ export default function StaffLoyaltyPage() {
               </div>
             ) : visible.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-                <p className="text-sm font-semibold text-gray-900">No members yet</p>
+                <p className="text-sm font-semibold text-gray-900">No members match</p>
                 <p className="mt-1 text-xs text-gray-500">
-                  Loyalty members will appear here as customers spend.
+                  {members.length === 0
+                    ? "Loyalty members will appear here as customers spend."
+                    : "Try clearing your search or filter."}
                 </p>
               </div>
             ) : (
@@ -350,8 +481,6 @@ export default function StaffLoyaltyPage() {
                       </span>
                       <p className="truncate text-sm font-medium text-gray-900">{m.name}</p>
                     </div>
-                    {/* Mobile: 3 metric chips share the row beneath the name.
-                        The sm: layout falls back to the original 12-col split. */}
                     <div className="col-span-4 sm:col-span-3 min-w-0">
                       <p className="text-[10px] text-gray-500 uppercase tracking-wider sm:hidden">
                         Spend
@@ -383,6 +512,128 @@ export default function StaffLoyaltyPage() {
           </section>
         </>
       )}
+
+      {/* Points Settings Dialog */}
+      <Dialog open={pointsOpen} onOpenChange={setPointsOpen}>
+        <DialogContent className="max-w-md border-gray-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>Points earning rate</DialogTitle>
+            <DialogDescription>
+              Set how many loyalty points customers earn per Naira spent (e.g. 0.01 = 1 point per ₦100).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="points-per-naira">Points per Naira</Label>
+            <Input
+              id="points-per-naira"
+              type="number"
+              step="0.001"
+              min="0.001"
+              value={pointsPerNairaInput}
+              onChange={(e) => setPointsPerNairaInput(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPointsOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSavePoints}
+              disabled={saving}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white gap-1.5"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Save rate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Loyalty Program Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md border-gray-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>Edit loyalty program</DialogTitle>
+            <DialogDescription>
+              Update reward tiers, threshold, and card branding.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2.5 text-sm">
+              <span className="font-medium text-gray-900">Programme active</span>
+              <input
+                type="checkbox"
+                checked={programForm.active}
+                onChange={(e) => setProgramForm((f) => ({ ...f, active: e.target.checked }))}
+                className="h-4 w-4 accent-[#7B2D8E]"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="reward-label">Reward label</Label>
+                <Input
+                  id="reward-label"
+                  value={programForm.rewardLabel}
+                  onChange={(e) => setProgramForm((f) => ({ ...f, rewardLabel: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="reward-percent">Reward %</Label>
+                <Input
+                  id="reward-percent"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={programForm.rewardPercent}
+                  onChange={(e) => setProgramForm((f) => ({ ...f, rewardPercent: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="reward-threshold">Spend threshold (NGN)</Label>
+              <Input
+                id="reward-threshold"
+                type="number"
+                min={1000}
+                step={1000}
+                value={programForm.rewardThreshold}
+                onChange={(e) => setProgramForm((f) => ({ ...f, rewardThreshold: e.target.value }))}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="card-title">Card title</Label>
+                <Input
+                  id="card-title"
+                  value={programForm.cardTitle}
+                  onChange={(e) => setProgramForm((f) => ({ ...f, cardTitle: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="brand-subtitle">Subtitle</Label>
+                <Input
+                  id="brand-subtitle"
+                  value={programForm.brandSubtitle}
+                  onChange={(e) => setProgramForm((f) => ({ ...f, brandSubtitle: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProgram}
+              disabled={saving}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white gap-1.5"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -398,33 +649,11 @@ function LoyaltyCardArt({
   rewardLabel: string
   threshold: number
 }) {
-  // The whole card lives in a `relative` wrapper with `overflow-hidden`
-  // so the decorative circles never bleed outside the rounded edges.
-  // `min-w-0` on inner flex children keeps long Dermaspace labels from
-  // pushing the right cluster off-screen on a 360px phone — the
-  // earlier version cut off "Dermaspace" → "Dermaspa" because the
-  // right cluster had no flex-shrink protection. Padding stepped down
-  // on mobile (p-5) so the inner content has more room without
-  // shrinking the card itself; aspect ratio relaxed on phones (16/11)
-  // so the reward number doesn't crash into the threshold sub-line.
   return (
     <div className="relative overflow-hidden rounded-3xl bg-[#7B2D8E] p-5 sm:p-7 lg:p-8 text-white aspect-[16/11] sm:aspect-[16/10]">
-      {/* Decorative grid + circles */}
-      <div className="absolute inset-0 opacity-30">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)`,
-            backgroundSize: "28px 28px",
-          }}
-        />
-      </div>
-      <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-white/[0.04]" aria-hidden />
-      <div className="absolute -bottom-20 -left-12 h-64 w-64 rounded-full bg-white/[0.04]" aria-hidden />
+      <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-white/[0.06]" aria-hidden />
+      <div className="absolute -bottom-20 -left-12 h-64 w-64 rounded-full bg-white/[0.06]" aria-hidden />
 
-      {/* Top row — left title is allowed to shrink/truncate, right
-          brand cluster never shrinks (flex-shrink-0) so the
-          "DERMASPACE" wordmark and subtitle always render in full. */}
       <div className="relative z-10 flex items-start justify-between gap-3">
         <p className="text-[10.5px] sm:text-[11px] font-semibold tracking-[0.18em] sm:tracking-[0.24em] uppercase text-white/80 truncate min-w-0">
           {title}
@@ -439,8 +668,6 @@ function LoyaltyCardArt({
         </div>
       </div>
 
-      {/* Reward — slight bump on phones too, but still scales cleanly
-          to the larger sm/md sizes when there's room. */}
       <div className="relative z-10 mt-5 sm:mt-10">
         <p className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-none">
           {rewardLabel}
@@ -462,9 +689,6 @@ function RedemptionCard({
   issued: number
   redeemed: number
 }) {
-  // Two-slice pie. We deliberately keep both colours inside the brand
-  // family — solid purple for redeemed, light gray for un-redeemed —
-  // so the donut doesn't read as a "system status" widget.
   const pieData = [
     { name: "Redeemed", value: rate, fill: "#7B2D8E" },
     { name: "Remaining", value: Math.max(0, 100 - rate), fill: "#E5E7EB" },
@@ -518,13 +742,6 @@ function RedemptionCard({
   )
 }
 
-/**
- * Compact KPI tile — a single number with a small label and an
- * optional hint underneath. We keep these intentionally flat (one
- * hairline border, no shadow) so the row reads as data instead of
- * decoration. `truncate` is opt-in because the "Top service" cell
- * is the only one that can hold long copy.
- */
 function KpiTile({
   label,
   value,
@@ -537,13 +754,13 @@ function KpiTile({
   truncate?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white px-3 py-3 min-w-0">
-      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
+    <div className="rounded-xl border border-gray-100 bg-white px-3 py-2.5 min-w-0">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 text-lg sm:text-xl font-bold text-gray-900 tabular-nums",
+          "mt-0.5 text-base sm:text-lg font-bold text-gray-900 tabular-nums",
           truncate && "truncate"
         )}
         title={truncate ? value : undefined}
@@ -551,7 +768,7 @@ function KpiTile({
         {value}
       </p>
       {hint && (
-        <p className="text-[11px] text-gray-500 mt-0.5 truncate">{hint}</p>
+        <p className="text-[10.5px] text-gray-500 mt-0.5 truncate">{hint}</p>
       )}
     </div>
   )
@@ -565,13 +782,12 @@ function PromosEmptyState() {
       </div>
       <p className="mt-3 text-sm font-semibold text-gray-900">No promos yet</p>
       <p className="mt-1 text-xs text-gray-500 max-w-sm mx-auto">
-        Promos let you run time-bound campaigns alongside loyalty. The
-        promo schema lands in a future release — your loyalty programme
+        Promos let you run time-bound campaigns alongside loyalty. Your loyalty programme
         keeps running in the meantime.
       </p>
       <div className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E]">
         <CheckCircle2 className="h-4 w-4" />
-        Coming soon
+        Active loyalty rewards enabled
       </div>
     </div>
   )

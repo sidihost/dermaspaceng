@@ -56,6 +56,15 @@ import {
   ReceiptCrownBand,
   ReceiptTearDivider,
 } from '@/components/receipt/receipt-chrome'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { isTeamMember } from '@/lib/receipt-access'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -71,6 +80,7 @@ const formatNaira = (kobo: number) =>
 
 interface Booking {
   id: string
+  user_id?: string | null
   booking_reference: string
   location_name: string
   location_address: string | null
@@ -121,20 +131,21 @@ export default function BookingDetailPage({
     revalidateOnFocus: false,
   })
 
+  const { data: meData } = useSWR<{
+    user?: { id: string; role?: string | null }
+  }>('/api/auth/me', fetcher, { revalidateOnFocus: false })
+
   const [cancelling, setCancelling] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
 
   const booking = data?.booking
+  const viewerRole = meData?.user?.role
+  const isViewerTeam =
+    isTeamMember(viewerRole) &&
+    (!booking?.user_id || String(meData?.user?.id) !== String(booking.user_id))
 
-  // We piggy-back on the existing review endpoint to know whether
-  // the customer has already submitted feedback for this booking. The
-  // value is fed into the journey tracker so the final "Rated" node
-  // lights up after the review is saved — and it stays in sync if
-  // the customer edits or removes the review later. We deliberately
-  // skip this fetch until the booking is actually completed, both
-  // because the endpoint is gated by booking ownership and to avoid
-  // a needless round-trip on every receipt view.
   const reviewKey =
     booking && booking.status === 'completed'
       ? `/api/bookings/${encodeURIComponent(booking.booking_reference)}/review`
@@ -146,7 +157,7 @@ export default function BookingDetailPage({
 
   const onCancel = async () => {
     if (!booking) return
-    if (!confirm('Cancel this appointment? Wallet payments are refunded automatically.')) return
+    setCancelConfirmOpen(false)
     setCancelling(true)
     setCancelError(null)
     try {
@@ -566,35 +577,47 @@ export default function BookingDetailPage({
           </footer>
         </article>
 
-        <BookingReviewSection bookingReference={booking.booking_reference} />
+        {!isViewerTeam && <BookingReviewSection bookingReference={booking.booking_reference} />}
 
         {/* Secondary actions */}
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 print:hidden">
-          <a
-            href="tel:+2349061836625"
-            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
-          >
-            <Phone className="h-3.5 w-3.5" />
-            Call studio
-          </a>
-          {isCancellable ? (
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={cancelling}
-              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] disabled:opacity-50"
-            >
-              {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
-              Cancel appointment
-            </button>
-          ) : (
+          {isViewerTeam ? (
             <Link
-              href="/booking"
+              href={`/staff/appointments/${encodeURIComponent(booking.id)}`}
               className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-[#7B2D8E] px-3 text-xs font-semibold text-white hover:bg-[#5A1D6A]"
             >
-              Book another visit
+              Staff Console
               <ChevronRight className="h-3.5 w-3.5" />
             </Link>
+          ) : (
+            <>
+              <a
+                href="tel:+2349061836625"
+                className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                Call studio
+              </a>
+              {isCancellable ? (
+                <button
+                  type="button"
+                  onClick={() => setCancelConfirmOpen(true)}
+                  disabled={cancelling}
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] disabled:opacity-50"
+                >
+                  {cancelling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
+                  Cancel appointment
+                </button>
+              ) : (
+                <Link
+                  href="/booking"
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-[#7B2D8E] px-3 text-xs font-semibold text-white hover:bg-[#5A1D6A]"
+                >
+                  Book another visit
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </>
           )}
         </div>
 
@@ -606,15 +629,51 @@ export default function BookingDetailPage({
         ) : null}
 
         <p className="mt-4 text-center text-[11px] text-gray-500 print:hidden">
-          <Link href="/dashboard" className="font-semibold text-[#7B2D8E] hover:underline">
-            View all bookings
-          </Link>
-          {' · '}
-          <Link href="/contact" className="hover:underline">
-            Contact support
-          </Link>
+          {isViewerTeam ? (
+            <Link href="/staff" className="font-semibold text-[#7B2D8E] hover:underline">
+              Back to Staff Appointments
+            </Link>
+          ) : (
+            <>
+              <Link href="/dashboard" className="font-semibold text-[#7B2D8E] hover:underline">
+                View all bookings
+              </Link>
+              {' · '}
+              <Link href="/contact" className="hover:underline">
+                Contact support
+              </Link>
+            </>
+          )}
         </p>
       </section>
+
+      <Dialog open={cancelConfirmOpen} onOpenChange={setCancelConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel this appointment?</DialogTitle>
+            <DialogDescription>
+              Wallet payments are refunded automatically back to your DermaspaceNG Wallet.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setCancelConfirmOpen(false)}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-gray-200 px-3.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Keep appointment
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={cancelling}
+              className="inline-flex h-9 items-center justify-center rounded-lg bg-[#7B2D8E] px-3.5 text-xs font-semibold text-white hover:bg-[#5A1D6A] disabled:opacity-50"
+            >
+              {cancelling ? 'Cancelling…' : 'Confirm cancel'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="print:hidden">
         <Footer />

@@ -38,8 +38,21 @@ import {
   ThumbsUp,
   ThumbsDown,
   MessageSquareQuote,
+  ExternalLink,
+  Pencil,
+  Save,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useNotify } from "@/components/shared/notify"
 
 interface StaffReview {
@@ -68,7 +81,7 @@ interface StaffBooking {
   total_price_kobo: number
   notes: string | null
   can_edit: boolean
-  access_role: "assigned" | "granted"
+  access_role: "assigned" | "granted" | "readonly"
   services: Array<{
     categoryName: string | null
     treatmentName: string
@@ -114,8 +127,19 @@ export default function StaffAppointmentDetailPage({
     { revalidateOnFocus: false },
   )
   const [updating, setUpdating] = React.useState(false)
+  const [noShowOpen, setNoShowOpen] = React.useState(false)
+  const [cancelOpen, setCancelOpen] = React.useState(false)
+  const [cancelReason, setCancelReason] = React.useState("")
+  const [editingNotes, setEditingNotes] = React.useState(false)
+  const [notesDraft, setNotesDraft] = React.useState("")
 
   const booking = data?.booking
+
+  React.useEffect(() => {
+    if (booking) {
+      setNotesDraft(booking.notes ?? "")
+    }
+  }, [booking])
 
   async function patch(action: string, payload: Record<string, unknown> = {}) {
     if (!booking) return
@@ -183,19 +207,14 @@ export default function StaffAppointmentDetailPage({
       </button>
 
       {/* Hero — booking reference, appointment headline, status pill */}
-      <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_28px_-12px_rgba(123,45,142,0.18)]">
-        {/* Brand wash band behind the header */}
-        <div
-          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#7B2D8E]/[0.07] to-transparent"
-          aria-hidden
-        />
+      <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white">
         <div className="absolute inset-y-0 left-0 w-1.5 bg-[#7B2D8E]" aria-hidden />
         <div className="relative p-5 sm:p-7">
           <div className="flex items-start gap-4 sm:gap-5">
             {/* Real customer avatar — falls back to brand-purple initials
                 for walk-ins or seeded accounts that haven't picked a
                 portrait yet. */}
-            <span className="flex h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#7B2D8E] text-xl font-bold uppercase text-white shadow-[0_8px_20px_-6px_rgba(123,45,142,0.6)] ring-4 ring-white">
+            <span className="flex h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#7B2D8E] text-xl font-bold uppercase text-white ring-2 ring-[#7B2D8E]/15">
               {booking.customer_avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -239,41 +258,56 @@ export default function StaffAppointmentDetailPage({
             </div>
           </div>
 
-          <div className="mt-5 flex items-center gap-2 flex-wrap border-t border-gray-100 pt-4">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
-                booking.status === "confirmed"
-                  ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
-                  : booking.status === "completed"
-                    ? "bg-[#7B2D8E] text-white ring-[#7B2D8E]"
-                    : booking.status === "cancelled" || booking.status === "no_show"
-                      ? "bg-rose-50 text-rose-700 ring-rose-200"
-                      : "bg-amber-50 text-amber-700 ring-amber-200"
-              }`}
-            >
+          <div className="mt-5 flex items-center justify-between gap-2 flex-wrap border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${
-                  booking.status === "completed" ? "bg-white" : "bg-current"
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                  booking.status === "confirmed"
+                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
+                    : booking.status === "completed"
+                      ? "bg-[#7B2D8E] text-white ring-[#7B2D8E]"
+                      : booking.status === "cancelled" || booking.status === "no_show"
+                        ? "bg-rose-50 text-rose-700 ring-rose-200"
+                        : "bg-amber-50 text-amber-700 ring-amber-200"
                 }`}
-                aria-hidden
-              />
-              {booking.status}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
-                booking.payment_status === "paid"
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                  : "bg-gray-50 text-gray-600 ring-gray-200"
-              }`}
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-              {booking.payment_status}
-            </span>
-            {booking.access_role === "granted" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-2 py-1 text-[10.5px] font-semibold uppercase tracking-wider">
-                shared
+              >
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${
+                    booking.status === "completed" ? "bg-white" : "bg-current"
+                  }`}
+                  aria-hidden
+                />
+                {booking.status}
               </span>
-            )}
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                  booking.payment_status === "paid"
+                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
+                    : "bg-gray-50 text-gray-600 ring-gray-200"
+                }`}
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+                {booking.payment_status}
+              </span>
+              {booking.access_role === "granted" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-2 py-1 text-[10.5px] font-semibold uppercase tracking-wider">
+                  Shared
+                </span>
+              )}
+              {booking.access_role === "readonly" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-2 py-1 text-[10.5px] font-semibold uppercase tracking-wider">
+                  View only
+                </span>
+              )}
+            </div>
+            <Link
+              href={`/booking/${encodeURIComponent(booking.booking_reference)}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-white px-3 py-1.5 text-xs font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              Official Receipt
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           </div>
         </div>
       </section>
@@ -282,7 +316,7 @@ export default function StaffAppointmentDetailPage({
         {/* Left column */}
         <div className="space-y-5">
           {/* Customer */}
-          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
             <SectionHeader icon={<User className="w-4 h-4" />} title="Customer" />
             <div className="mt-4 grid sm:grid-cols-2 gap-3">
               <Field icon={<User className="w-4 h-4" />} label="Name" value={booking.customer_name} />
@@ -305,7 +339,7 @@ export default function StaffAppointmentDetailPage({
           </section>
 
           {/* Services */}
-          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
             <SectionHeader icon={<Receipt className="w-4 h-4" />} title="Services" />
             <ul className="mt-4 space-y-2">
               {booking.services.map((s, i) => (
@@ -346,12 +380,68 @@ export default function StaffAppointmentDetailPage({
           </section>
 
           {/* Notes */}
-          {booking.notes && (
-            <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-              <SectionHeader icon={<StickyNote className="w-4 h-4" />} title="Notes" />
-              <p className="mt-4 rounded-xl bg-[#FBF9FC] border border-gray-100 p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                {booking.notes}
-              </p>
+          {(booking.notes || booking.can_edit) && (
+            <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <SectionHeader icon={<StickyNote className="w-4 h-4" />} title="Notes" />
+                {booking.can_edit && !editingNotes && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setNotesDraft(booking.notes ?? "")
+                      setEditingNotes(true)
+                    }}
+                    className="gap-1.5 border-gray-200 text-xs"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    {booking.notes ? "Edit" : "Add note"}
+                  </Button>
+                )}
+              </div>
+              {editingNotes ? (
+                <div className="mt-4 space-y-3">
+                  <Textarea
+                    value={notesDraft}
+                    onChange={(e) => setNotesDraft(e.target.value)}
+                    rows={4}
+                    maxLength={5000}
+                    placeholder="Preparation notes, skin sensitivities, room requests..."
+                    className="border-gray-200 focus-visible:ring-[#7B2D8E]/30"
+                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingNotes(false)}
+                      disabled={updating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={updating}
+                      onClick={async () => {
+                        await patch("set_notes", { notes: notesDraft })
+                        setEditingNotes(false)
+                      }}
+                      className="gap-1.5 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
+                    >
+                      {updating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      Save notes
+                    </Button>
+                  </div>
+                </div>
+              ) : booking.notes ? (
+                <p className="mt-4 rounded-xl bg-[#FBF9FC] border border-gray-100 p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  {booking.notes}
+                </p>
+              ) : (
+                <p className="mt-3 text-xs text-gray-500">No appointment notes added yet.</p>
+              )}
             </section>
           )}
 
@@ -377,7 +467,7 @@ export default function StaffAppointmentDetailPage({
 
         {/* Right column — actions */}
         <div className="space-y-5 lg:sticky lg:top-5 lg:self-start">
-          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
             <SectionHeader
               icon={<ShieldCheck className="w-4 h-4" />}
               title={booking.can_edit ? "Status" : "Access"}
@@ -390,7 +480,7 @@ export default function StaffAppointmentDetailPage({
 
             {!booking.can_edit ? (
               <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2.5 text-[12.5px] text-gray-600">
-                Read-only — you can prepare for the visit but cannot change
+                Read-only — you can prepare for the visit and view the receipt, but cannot change
                 status, payment or notes.
               </div>
             ) : isTerminal ? (
@@ -419,10 +509,7 @@ export default function StaffAppointmentDetailPage({
                   Mark completed
                 </Button>
                 <Button
-                  onClick={() => {
-                    if (!confirm("Mark as no-show?")) return
-                    patch("set_status", { status: "no_show" })
-                  }}
+                  onClick={() => setNoShowOpen(true)}
                   disabled={updating}
                   variant="outline"
                   className="w-full justify-start gap-2 border-amber-300 text-amber-800 hover:bg-amber-50"
@@ -432,9 +519,8 @@ export default function StaffAppointmentDetailPage({
                 </Button>
                 <Button
                   onClick={() => {
-                    const reason = prompt("Cancellation reason (optional)") || ""
-                    if (!confirm("Cancel this booking?")) return
-                    patch("set_status", { status: "cancelled", reason })
+                    setCancelReason("")
+                    setCancelOpen(true)
                   }}
                   disabled={updating}
                   variant="outline"
@@ -447,7 +533,7 @@ export default function StaffAppointmentDetailPage({
             )}
           </section>
 
-          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
             <SectionHeader icon={<Wallet className="w-4 h-4" />} title="Payment" />
             <div className="mt-4 rounded-xl bg-[#7B2D8E]/[0.06] p-4 ring-1 ring-[#7B2D8E]/10">
               <p className="text-[10.5px] font-bold uppercase tracking-wider text-[#7B2D8E]/70">
@@ -462,7 +548,7 @@ export default function StaffAppointmentDetailPage({
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
                   booking.payment_status === "paid"
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25"
                     : "bg-gray-50 text-gray-600 ring-gray-200"
                 }`}
               >
@@ -470,9 +556,44 @@ export default function StaffAppointmentDetailPage({
                 {booking.payment_status}
               </span>
             </div>
+            {booking.can_edit && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {booking.payment_status !== "paid" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={updating}
+                    onClick={() => patch("set_payment_status", { payment_status: "paid" })}
+                    className="border-[#7B2D8E]/30 text-[#7B2D8E] hover:bg-[#7B2D8E]/5 text-xs"
+                  >
+                    Mark paid
+                  </Button>
+                )}
+                {booking.payment_status !== "unpaid" && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={updating}
+                    onClick={() => patch("set_payment_status", { payment_status: "unpaid" })}
+                    className="border-gray-200 text-gray-700 hover:bg-gray-50 text-xs"
+                  >
+                    Mark unpaid
+                  </Button>
+                )}
+              </div>
+            )}
+            <Link
+              href={`/booking/${encodeURIComponent(booking.booking_reference)}`}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+            >
+              <Receipt className="h-3.5 w-3.5" />
+              View customer receipt
+            </Link>
           </section>
 
-          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
             <SectionHeader icon={<Calendar className="w-4 h-4" />} title="When" />
             <div className="mt-4 space-y-3">
               <Field
@@ -489,6 +610,74 @@ export default function StaffAppointmentDetailPage({
           </section>
         </div>
       </div>
+
+      {/* No-show confirmation dialog */}
+      <Dialog open={noShowOpen} onOpenChange={setNoShowOpen}>
+        <DialogContent className="max-w-md border-gray-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>Mark as no-show?</DialogTitle>
+            <DialogDescription>
+              This marks {booking.customer_name}&apos;s appointment ({booking.booking_reference}) as a no-show and notifies the client.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoShowOpen(false)} disabled={updating}>
+              Keep booking
+            </Button>
+            <Button
+              disabled={updating}
+              onClick={async () => {
+                await patch("set_status", { status: "no_show" })
+                setNoShowOpen(false)
+              }}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
+            >
+              {updating ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Confirm no-show
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel booking dialog */}
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent className="max-w-md border-gray-200 bg-white">
+          <DialogHeader>
+            <DialogTitle>Cancel booking</DialogTitle>
+            <DialogDescription>
+              Cancel {booking.customer_name}&apos;s appointment ({booking.booking_reference}). The customer will receive a cancellation notice.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="staff-cancel-reason">Cancellation reason (optional)</Label>
+            <Textarea
+              id="staff-cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              maxLength={500}
+              placeholder="e.g. Client called to reschedule..."
+              className="border-gray-200 focus-visible:ring-[#7B2D8E]/30"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={updating}>
+              Keep booking
+            </Button>
+            <Button
+              disabled={updating}
+              onClick={async () => {
+                await patch("set_status", { status: "cancelled", reason: cancelReason.trim() })
+                setCancelOpen(false)
+              }}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {updating ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Confirm cancellation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -544,7 +733,7 @@ function CustomerReviewCard({ review }: { review: StaffReview }) {
     year: "numeric",
   })
   return (
-    <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <section className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <SectionHeader

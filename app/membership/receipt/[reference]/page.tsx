@@ -112,8 +112,8 @@ export default async function MembershipReceiptPage({
   // admin can open anyone&apos;s. We compare numbers-with-numbers using
   // String() because user.id is a string and tx.user_id is a number.
   const isOwner = String(tx.user_id) === String(user.id)
-  const isAdmin = user.role === 'admin'
-  if (!isOwner && !isAdmin) notFound()
+  const isTeam = user.role === 'admin' || user.role === 'staff'
+  if (!isOwner && !isTeam) notFound()
 
   // STAGE 5 - hydrate the buyer + invoice for the receipt body.
   const buyerRows = await sql<UserRow[]>`
@@ -193,6 +193,7 @@ export default async function MembershipReceiptPage({
       }}
       paymentMethod={paymentMethod}
       invoiceNumber={invoice?.invoice_number || null}
+      isTeamViewer={!isOwner && isTeam}
     />
   )
 }

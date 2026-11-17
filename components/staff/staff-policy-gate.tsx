@@ -94,9 +94,9 @@ export function StaffPolicyGate() {
       aria-label="Staff acknowledgement"
     >
       <div className="w-full sm:max-w-md">
-        <div className="relative w-full bg-white rounded-t-3xl sm:rounded-3xl border border-gray-100 shadow-[0_24px_60px_-20px_rgba(123,45,142,0.35)] overflow-hidden">
+        <div className="relative w-full bg-white rounded-t-3xl sm:rounded-3xl border border-gray-200 overflow-hidden">
           {/* Brand-tinted header */}
-          <div className="px-5 pt-5 pb-3 bg-gradient-to-b from-[#7B2D8E]/[0.08] to-transparent">
+          <div className="px-5 pt-5 pb-3 bg-[#F7F2FA] border-b border-[#7B2D8E]/10">
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
               Staff acknowledgement

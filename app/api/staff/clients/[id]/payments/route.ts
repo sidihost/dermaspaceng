@@ -45,7 +45,7 @@ export async function GET(
     //    (DECIMAL) in this table, so multiply by 100 to hand the UI
     //    kobo (it divides by 100 for display).
     const txRows = (await sql`
-      SELECT id, type, status, amount, reference, paystack_reference,
+      SELECT id, type, status, amount, payment_method, reference, paystack_reference,
              description, metadata, created_at
       FROM transactions
       WHERE user_id = ${clientId}
@@ -78,6 +78,12 @@ export async function GET(
         amount: Math.round(Number(r.amount ?? 0) * 100),
         description: r.description || "Transaction",
         reference: r.reference || undefined,
+        booking_reference:
+          typeof meta.booking_reference === "string" && meta.booking_reference.trim()
+            ? meta.booking_reference.trim()
+            : undefined,
+        metadata_type:
+          typeof meta.type === "string" && meta.type.trim() ? meta.type.trim() : undefined,
         created_at: String(r.created_at),
         status: (r.status as string | undefined) || "completed",
         payment_method: (r.payment_method as string | undefined) || undefined,
@@ -111,6 +117,8 @@ export async function GET(
           amount: Number(b.total_price_kobo ?? 0),
           description: `Booking payment ${b.booking_reference}`,
           reference: b.payment_reference || b.booking_reference || undefined,
+          booking_reference: b.booking_reference || undefined,
+          metadata_type: "booking",
           created_at: String(b.created_at),
           status: b.payment_status === "pending" ? "pending" : "completed",
           payment_method: b.payment_method || undefined,

@@ -20,8 +20,8 @@ export async function GET(
   try {
     const user = await getCurrentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (user.role !== 'admin')
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (user.role !== 'admin' && user.role !== 'staff')
+      return NextResponse.json({ error: 'Staff or admin access required' }, { status: 403 })
 
     const { id } = await params
     const rows = await sql`

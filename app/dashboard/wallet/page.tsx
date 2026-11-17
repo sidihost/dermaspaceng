@@ -469,34 +469,34 @@ function WalletDashboardContent() {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="min-w-0 rounded-2xl bg-white border border-gray-200 p-3.5 sm:p-4">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-[#F7F2FA] border border-[#7B2D8E]/15 flex-shrink-0">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#7B2D8E]" />
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5 mb-4 sm:mb-5">
+            <div className="min-w-0 rounded-xl bg-white border border-gray-200 p-2.5 sm:p-3.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F7F2FA] border border-[#7B2D8E]/15 flex-shrink-0">
+                  <TrendingUp className="h-4 w-4 text-[#7B2D8E]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 truncate">Total Funded</p>
-                  <p className="text-base sm:text-lg font-bold text-gray-900 truncate tabular-nums">
+                  <p className="text-[11px] text-gray-500 truncate">Total Funded</p>
+                  <p className="text-sm sm:text-base font-bold text-gray-900 truncate tabular-nums">
                     {formatWalletCurrency(totalCredits, wallet?.currency || 'NGN')}
                   </p>
-                  <p className="text-[11px] text-gray-400 truncate">
+                  <p className="text-[10.5px] text-gray-400 truncate">
                     {fundedCount} {fundedCount === 1 ? 'deposit' : 'deposits'}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="min-w-0 rounded-2xl bg-white border border-gray-200 p-3.5 sm:p-4">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gray-100 border border-gray-200/80 flex-shrink-0">
-                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700" />
+            <div className="min-w-0 rounded-xl bg-white border border-gray-200 p-2.5 sm:p-3.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 border border-gray-200/80 flex-shrink-0">
+                  <TrendingDown className="h-4 w-4 text-gray-700" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-500 truncate">Total Spent</p>
-                  <p className="text-base sm:text-lg font-bold text-gray-900 truncate tabular-nums">
+                  <p className="text-[11px] text-gray-500 truncate">Total Spent</p>
+                  <p className="text-sm sm:text-base font-bold text-gray-900 truncate tabular-nums">
                     {formatWalletCurrency(totalDebits, wallet?.currency || 'NGN')}
                   </p>
-                  <p className="text-[11px] text-gray-400 truncate">
+                  <p className="text-[10.5px] text-gray-400 truncate">
                     {spentCount} {spentCount === 1 ? 'payment' : 'payments'}
                   </p>
                 </div>

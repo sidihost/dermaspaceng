@@ -876,6 +876,12 @@ function ScheduleCard({
         >
           {payment.label}
         </span>
+        <Link
+          href={`/booking/${encodeURIComponent(booking.booking_reference)}`}
+          className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
+        >
+          Receipt
+        </Link>
       </div>
 
       {/* Status transition popover */}
@@ -886,7 +892,7 @@ function ScheduleCard({
             onClick={() => setMenuOpen(false)}
             aria-hidden
           />
-          <div className="absolute right-3 top-12 z-40 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-sm">
+          <div className="absolute right-3 top-12 z-40 w-44 rounded-lg border border-gray-200 bg-white py-1">
             <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
               Update status
             </p>

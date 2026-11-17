@@ -54,6 +54,7 @@ interface ReceiptClientProps {
   }
   paymentMethod: string
   invoiceNumber: string | null
+  isTeamViewer?: boolean
 }
 
 function formatNaira(amount: number): string {
@@ -100,6 +101,7 @@ export default function ReceiptClient({
   buyer,
   paymentMethod,
   invoiceNumber,
+  isTeamViewer = false,
 }: ReceiptClientProps) {
   const [downloadingPdf, setDownloadingPdf] = useState(false)
   const [downloadingImage, setDownloadingImage] = useState(false)
@@ -169,11 +171,11 @@ export default function ReceiptClient({
       <div className="max-w-lg mx-auto px-4">
         <div className="no-print flex flex-wrap items-center justify-between gap-2 mb-3.5">
           <Link
-            href="/dashboard"
+            href={isTeamViewer ? '/staff/money' : '/dashboard'}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Dashboard
+            {isTeamViewer ? 'Back to Staff' : 'Dashboard'}
           </Link>
           <ReceiptActionButtons
             onDownloadPdf={handleDownloadPdf}
@@ -411,18 +413,18 @@ export default function ReceiptClient({
 
         <div className="no-print mt-4 flex flex-wrap items-center justify-center gap-2">
           <Link
-            href="/dashboard"
+            href={isTeamViewer ? '/staff' : '/dashboard'}
             className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 bg-[#7B2D8E] text-white font-semibold rounded-lg text-xs hover:bg-[#5A1D6A] transition-colors"
           >
-            Dashboard
+            {isTeamViewer ? 'Staff Console' : 'Dashboard'}
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
           <Link
-            href="/dashboard/transactions"
+            href={isTeamViewer ? '/staff/money' : '/dashboard/transactions'}
             className="inline-flex h-8 items-center justify-center gap-1.5 px-3.5 bg-white text-[#7B2D8E] border border-[#7B2D8E]/30 font-semibold rounded-lg text-xs hover:bg-[#F7F2FA] transition-colors"
           >
             <ReceiptIcon className="w-3.5 h-3.5" />
-            All Transactions
+            {isTeamViewer ? 'Money & Ledger' : 'All Transactions'}
           </Link>
         </div>
       </div>

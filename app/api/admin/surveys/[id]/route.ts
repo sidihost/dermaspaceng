@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdminOrStaff } from '@/lib/auth'
 
 /**
- * Admin survey detail API.
+ * Survey detail API.
  *
- * Backs /admin/surveys/[id] — the dedicated page that replaces the old
- * centered modal. We pull the single row joined against the users
- * table so the detail page can show who submitted it (if logged in).
+ * Backs /admin/surveys/[id] and staff survey inspection. Pulls the single
+ * row joined against the users table so the detail page can show who submitted it.
  */
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -16,7 +15,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin()
+    await requireAdminOrStaff()
     const { id } = await params
     const rows = await sql`
       SELECT sr.*, u.first_name, u.last_name
@@ -32,6 +31,7 @@ export async function GET(
   } catch (error) {
     console.error('Get survey detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch survey'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const status = message.startsWith('Unauthorized') ? 403 : 500
+    return NextResponse.json({ error: message }, { status })
   }
 }

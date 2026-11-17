@@ -19,7 +19,7 @@ export default async function StaffLayout({
 
   // Check if user is authenticated and is staff or admin
   if (!user) {
-    redirect("/login")
+    redirect("/signin")
   }
 
   if (user.role !== "staff" && user.role !== "admin") {

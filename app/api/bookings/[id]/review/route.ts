@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { getBookingByReference, getBookingById } from '@/lib/booking'
 import { notifyUser } from '@/lib/notifications'
+import { isTeamMember } from '@/lib/receipt-access'
 
 // GET  /api/bookings/[id]/review
 // POST /api/bookings/[id]/review
@@ -66,16 +67,20 @@ export async function GET(
       return NextResponse.json({ error: 'Sign in required.' }, { status: 401 })
     }
     const { id } = await params
+    const scopeUserId = isTeamMember(user.role) ? undefined : user.id
     const booking = id.startsWith('DS-')
-      ? await getBookingByReference(id, user.id)
-      : await getBookingById(id, user.id)
+      ? await getBookingByReference(id, scopeUserId)
+      : await getBookingById(id, scopeUserId)
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found.' }, { status: 404 })
     }
+    const isOwner = Boolean(booking.user_id && String(booking.user_id) === String(user.id))
     const review = await loadReview(booking.id)
     return NextResponse.json({
       review,
-      canReview: booking.status === 'completed',
+      canReview: booking.status === 'completed' && isOwner,
+      isOwner,
+      viewerRole: user.role,
       bookingStatus: booking.status,
     })
   } catch (err) {

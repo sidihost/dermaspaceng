@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/auth'
+import { getCurrentUser, getUserById } from '@/lib/auth'
 import { getTransactionByReference, formatCurrency } from '@/lib/wallet'
 import { query } from '@/lib/db'
 import { ensureGiftCardSchema } from '@/lib/gift-cards'
+import { canAccessReceipt, isTeamMember } from '@/lib/receipt-access'
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/wallet/transactions/[reference]
 // Returns a single transaction (by our reference OR Paystack's),
-// strictly scoped to the signed-in user. Powers the payment status
-// page, transaction detail sheet, and full receipt page.
+// accessible to the transaction owner as well as staff/admin for
+// receipt verification and client support.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ reference: string }> },
@@ -27,9 +28,22 @@ export async function GET(
 
     const tx = await getTransactionByReference(reference)
 
-    // Never leak another user's transaction through reference guessing.
-    if (!tx || String(tx.user_id) !== String(user.id)) {
+    // Never leak another user's transaction to unrelated customers.
+    if (!tx || !canAccessReceipt(user, tx.user_id)) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
+    }
+
+    const viewerIsTeam = isTeamMember(user.role) && String(tx.user_id) !== String(user.id)
+    let customer: { id: string; name: string; email: string } | null = null
+    if (viewerIsTeam && tx.user_id) {
+      const txOwner = await getUserById(String(tx.user_id))
+      if (txOwner) {
+        customer = {
+          id: txOwner.id,
+          name: `${txOwner.first_name} ${txOwner.last_name}`.trim() || txOwner.email,
+          email: txOwner.email,
+        }
+      }
     }
 
     const amount = Number(tx.amount) || 0
@@ -65,11 +79,11 @@ export async function GET(
       console.error('Attach invoice to transaction error:', invError)
     }
 
-    // If this payment funded an appointment, attach the booking so the
-    // receipt page can show the real service, date, and time.
+    // If this payment funded an appointment, attach the booking using the
+    // transaction owner's user_id so staff/admin also see full appointment details.
     let booking = null
     try {
-      if (uniqueRefs.length > 0) {
+      if (uniqueRefs.length > 0 && tx.user_id) {
         const bookingResult = await query<{
           id: string
           booking_reference: string
@@ -87,7 +101,7 @@ export async function GET(
             WHERE user_id = $1 AND payment_reference = ANY($2)
             ORDER BY created_at DESC
             LIMIT 1`,
-          [String(user.id), uniqueRefs],
+          [String(tx.user_id), uniqueRefs],
         )
         const row = bookingResult.rows[0]
         if (row) {
@@ -183,6 +197,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
+      viewerIsTeam,
       transaction: {
         ...tx,
         amount,
@@ -190,6 +205,7 @@ export async function GET(
         invoice,
         booking,
         giftCard,
+        customer,
       },
     })
   } catch (error) {

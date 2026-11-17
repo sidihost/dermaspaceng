@@ -88,6 +88,11 @@ export interface TransactionDetail {
    *  the shared DS_ payment reference). Lets receipt surfaces show
    *  the real service, date, and time. */
   booking?: TransactionBooking | null
+  customer?: {
+    id: string
+    name: string
+    email: string
+  } | null
 }
 
 export interface TransactionBooking {

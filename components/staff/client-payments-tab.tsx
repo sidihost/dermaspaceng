@@ -12,9 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import Link from 'next/link'
 import { useNotify } from '@/components/shared/notify'
-import { Loader2, RotateCw, AlertCircle, TrendingDown, XCircle } from 'lucide-react'
+import { Loader2, RotateCw, AlertCircle, TrendingDown, XCircle, Receipt } from 'lucide-react'
 import { naira } from '@/lib/format'
+import { getReceiptHref } from '@/lib/receipt-access'
 
 interface PaymentRecord {
   id: string
@@ -22,6 +24,8 @@ interface PaymentRecord {
   amount: number // in kobo
   description: string
   reference?: string
+  booking_reference?: string
+  metadata_type?: string
   created_at: string
   status?: 'pending' | 'completed' | 'failed' | 'cancelled' | 'refunded' | string
   payment_method?: string
@@ -259,34 +263,54 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
                     {naira(payment.amount / 100)}
                   </p>
 
-                  {isPending && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setCancelReason('')
-                        setCancelTarget(payment)
-                      }}
-                      className="mt-2 h-7 px-2.5 text-xs border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 gap-1"
-                    >
-                      <XCircle className="h-3 w-3" />
-                      Cancel
-                    </Button>
-                  )}
+                  <div className="mt-2 flex items-center justify-end gap-1.5 flex-wrap">
+                    {(() => {
+                      const receiptHref = getReceiptHref({
+                        reference: payment.reference || payment.paystack_reference,
+                        bookingReference: payment.booking_reference,
+                        metadataType: payment.metadata_type,
+                      })
+                      if (!receiptHref) return null
+                      return (
+                        <Link
+                          href={receiptHref}
+                          className="inline-flex h-7 items-center gap-1 rounded-md border border-[#7B2D8E]/25 bg-[#F7F2FA] px-2 text-xs font-medium text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white transition-colors"
+                        >
+                          <Receipt className="h-3 w-3" />
+                          Receipt
+                        </Link>
+                      )
+                    })()}
 
-                  {!isPending &&
-                    payment.type === 'booking_charge' &&
-                    payment.paystack_reference &&
-                    payment.paystack_status !== 'refunded' && (
+                    {isPending && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        onClick={() => setRefundTarget(payment)}
-                        className="mt-2 h-7 text-xs text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                        onClick={() => {
+                          setCancelReason('')
+                          setCancelTarget(payment)
+                        }}
+                        className="h-7 px-2.5 text-xs border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800 gap-1"
                       >
-                        Refund
+                        <XCircle className="h-3 w-3" />
+                        Cancel
                       </Button>
                     )}
+
+                    {!isPending &&
+                      payment.type === 'booking_charge' &&
+                      payment.paystack_reference &&
+                      payment.paystack_status !== 'refunded' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setRefundTarget(payment)}
+                          className="h-7 text-xs text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                        >
+                          Refund
+                        </Button>
+                      )}
+                  </div>
                 </div>
               </div>
             </div>

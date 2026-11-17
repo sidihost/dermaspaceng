@@ -30,7 +30,7 @@ export default async function StaffServicesPage() {
   // catalogue perm here. Anyone without it gets bounced to the staff
   // home rather than seeing a perpetual "loading…" because every API
   // call would 401.
-  if (!user) redirect('/login')
+  if (!user) redirect('/signin')
   if (user.role === 'admin') {
     // Admins should be using /admin/services; redirect them so they
     // get the full admin chrome instead of the staff sidebar.

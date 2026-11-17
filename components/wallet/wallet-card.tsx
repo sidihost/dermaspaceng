@@ -13,9 +13,6 @@ import {
   Gift,
   Calendar,
   ChevronRight,
-  Leaf,
-  Flower2,
-  Droplets,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FundWalletModal } from './fund-wallet-modal'
@@ -23,6 +20,7 @@ import { cn } from '@/lib/utils'
 import {
   formatPaymentChannel,
   formatWalletCurrency,
+  formatWalletDisplayName,
   parseTransactionSummary,
 } from '@/lib/wallet-ui'
 
@@ -81,7 +79,7 @@ export function WalletCard({
   const [showBalance, setShowBalance] = useState(true)
   const [fundModalOpen, setFundModalOpen] = useState(false)
 
-  const firstName = userName?.trim().split(' ')[0]
+  const walletTitle = formatWalletDisplayName(userName)
   const parsedLast = lastTransaction
     ? parseTransactionSummary(lastTransaction.description, lastTransaction.type)
     : null
@@ -90,9 +88,9 @@ export function WalletCard({
 
   const lastTransactionFooter = lastTransaction && parsedLast && (
     <div className="w-full space-y-2">
-      <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-white/75">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-[11px] font-medium text-white/75">
         <span className="whitespace-nowrap">Last transaction</span>
-        <span className="whitespace-nowrap truncate">
+        <span className="truncate max-w-full">
           {lastTransaction.date}
           {lastTransaction.paymentMethod
             ? ` · ${formatPaymentChannel(lastTransaction.paymentMethod)}`
@@ -108,12 +106,12 @@ export function WalletCard({
           />
         </div>
 
-        <p className="min-w-0 flex-1 text-left text-[13.5px] sm:text-[15px] font-semibold text-white truncate">
+        <p className="min-w-0 flex-1 text-left text-[13px] sm:text-[15px] font-semibold text-white leading-snug line-clamp-2 sm:truncate">
           {parsedLast.title}
         </p>
 
         <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-[13.5px] sm:text-base font-bold text-white tabular-nums whitespace-nowrap">
+          <span className="text-[13px] sm:text-base font-bold text-white tabular-nums whitespace-nowrap">
             {showBalance
               ? `${isIncomingLast ? '+' : '−'}${formatWalletCurrency(lastTransaction.amount, currency)}`
               : '••••••'}
@@ -140,63 +138,38 @@ export function WalletCard({
           className,
         )}
       >
-        {/* Botanical luxury-spa geometric motifs (flat hairline vectors, no gradients or shadows) */}
+        {/* Flat concentric hairline rings — no gradients, no shadows */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden"
         >
-          {/* Serene concentric spa stone rings top-right */}
-          <div className="absolute -top-20 -right-16 h-60 w-60 sm:h-72 sm:w-72 rounded-full border border-white/10" />
-          <div className="absolute -top-10 -right-6 h-40 w-40 sm:h-48 sm:w-48 rounded-full border border-white/10" />
+          <div className="absolute -top-20 -right-16 h-56 w-56 sm:h-72 sm:w-72 rounded-full border border-white/10" />
+          <div className="absolute -top-10 -right-6 h-36 w-36 sm:h-48 sm:w-48 rounded-full border border-white/10" />
           <div className="absolute top-2 right-6 h-24 w-24 rounded-full bg-white/[0.04]" />
-
-          {/* Botanical lotus / leaf watermark bottom-right */}
-          <Flower2
-            className="absolute right-5 bottom-16 h-28 w-28 sm:h-32 sm:w-32 text-white/[0.06] rotate-12"
-            strokeWidth={1}
-          />
-          <Leaf
-            className="absolute -left-5 bottom-10 h-20 w-20 text-white/[0.05] -rotate-12"
-            strokeWidth={1}
-          />
         </div>
 
         {/* Upper Card Body */}
-        <div className="relative z-10 p-5 sm:p-6 md:p-7 text-white">
-          {/* Top Spa Ritual Eyebrow Strip */}
-          <div className="flex items-center justify-between gap-2 pb-4 mb-4 border-b border-white/15">
-            <div className="flex items-center gap-2 min-w-0">
-              <Leaf className="h-3.5 w-3.5 text-white/80 flex-shrink-0" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85 truncate">
-                Dermaspace Wellness Pass
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/75 flex-shrink-0">
-              <Droplets className="h-3.5 w-3.5 text-white/75" />
-              <span>Esthetic &amp; Spa</span>
-            </div>
-          </div>
-
+        <div className="relative z-10 p-4 sm:p-6 md:p-7 text-white">
           {/* Header Row */}
-          <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-white/10 border border-white/20 flex-shrink-0">
-                <Flower2 className="h-5 w-5 text-white" strokeWidth={1.75} />
+          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/10 border border-white/20 flex-shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5 text-white" strokeWidth={1.75} />
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm sm:text-base font-semibold text-white truncate">
-                  {firstName ? `${firstName}'s Spa Wallet` : 'Dermaspace Wallet'}
+              <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
+                <p className="text-sm sm:text-base font-semibold text-white">
+                  {walletTitle}
                 </p>
-                <p className="text-xs text-white/75 truncate">
-                  Treatments, rituals &amp; gift credits &middot; {currency}
-                </p>
+                <span className="inline-flex items-center rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-white/90 uppercase">
+                  {currency}
+                </span>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => setShowBalance((prev) => !prev)}
-              className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 border border-white/20 text-white transition-colors hover:bg-white/20 active:scale-95 flex-shrink-0 cursor-pointer"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-white/10 border border-white/20 text-white transition-colors hover:bg-white/20 active:scale-95 flex-shrink-0 cursor-pointer"
               aria-label={showBalance ? 'Hide balance' : 'Show balance'}
             >
               {showBalance ? (
@@ -208,9 +181,9 @@ export function WalletCard({
           </div>
 
           {/* Balance + Primary Action */}
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3.5 sm:gap-5">
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70 mb-1.5">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/75 mb-1">
                 Available Balance
               </p>
               <AnimatePresence mode="wait">
@@ -220,10 +193,10 @@ export function WalletCard({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
                   transition={{ duration: 0.16 }}
-                  className="min-h-[2.5rem] sm:min-h-[3rem] flex items-center"
+                  className="min-h-[2.25rem] sm:min-h-[2.75rem] flex items-center"
                 >
                   {showBalance ? (
-                    <p className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight break-words tabular-nums text-white">
+                    <p className="text-3xl sm:text-4xl font-bold tracking-tight break-words tabular-nums text-white">
                       {formatWalletCurrency(balance, currency)}
                     </p>
                   ) : (
@@ -246,7 +219,7 @@ export function WalletCard({
             <Button
               type="button"
               onClick={() => setFundModalOpen(true)}
-              className="w-full md:w-auto h-12 px-6 gap-2 bg-white text-[#7B2D8E] hover:bg-[#F8F2FA] font-semibold text-sm sm:text-base rounded-xl border border-white transition-colors active:scale-[0.98] flex-shrink-0 cursor-pointer"
+              className="w-full sm:w-auto h-11 px-5 gap-2 bg-white text-[#7B2D8E] hover:bg-[#F8F2FA] font-semibold text-sm rounded-xl border border-white transition-colors active:scale-[0.98] flex-shrink-0 cursor-pointer"
               size="lg"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
@@ -256,29 +229,21 @@ export function WalletCard({
         </div>
 
         {/* Seamless Edge-to-Edge Last Transaction Footer */}
-        {lastTransaction && parsedLast ? (
+        {lastTransaction && parsedLast && (
           onInspectLastTransaction ? (
             <button
               type="button"
               onClick={onInspectLastTransaction}
-              className="relative z-10 block w-full bg-[#5A1D6A] border-t border-white/15 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4 transition-colors hover:bg-[#4B1659] cursor-pointer"
+              className="relative z-10 block w-full bg-[#5A1D6A] border-t border-white/15 px-4 sm:px-6 md:px-7 py-3 sm:py-3.5 transition-colors hover:bg-[#4B1659] cursor-pointer"
               aria-label={`Inspect last transaction: ${parsedLast.title}`}
             >
               {lastTransactionFooter}
             </button>
           ) : (
-            <div className="relative z-10 w-full bg-[#5A1D6A] border-t border-white/15 px-4 sm:px-6 md:px-7 py-3.5 sm:py-4">
+            <div className="relative z-10 w-full bg-[#5A1D6A] border-t border-white/15 px-4 sm:px-6 md:px-7 py-3 sm:py-3.5">
               {lastTransactionFooter}
             </div>
           )
-        ) : (
-          <div className="relative z-10 flex items-center justify-between gap-2 w-full bg-[#5A1D6A] border-t border-white/15 px-4 sm:px-6 md:px-7 py-3.5 text-xs text-white/80">
-            <span className="inline-flex items-center gap-1.5">
-              <Leaf className="h-3.5 w-3.5 text-white/75" />
-              Ready for your next treatment
-            </span>
-            <span className="text-white/70">Fund wallet to get started</span>
-          </div>
         )}
       </motion.div>
 

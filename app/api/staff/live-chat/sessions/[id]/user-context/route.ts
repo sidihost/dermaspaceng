@@ -103,7 +103,7 @@ export async function GET(_req: Request, { params }: Params) {
   let transactions: unknown[] = []
   try {
     transactions = await sql`
-      SELECT id, type, amount, status, payment_method, description, created_at
+      SELECT id, reference, type, amount, status, payment_method, description, metadata, created_at
         FROM transactions
        WHERE user_id = ${userId}
        ORDER BY created_at DESC

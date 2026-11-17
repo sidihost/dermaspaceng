@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -395,10 +396,10 @@ export default function StaffConsultationsPage() {
                         size="sm"
                         className="gap-1 border-gray-200"
                       >
-                        <a href={`/staff/consultations/${c.id}`}>
+                        <Link href={`/staff/consultations/${c.id}`}>
                           <Eye className="h-3.5 w-3.5" />
                           View
-                        </a>
+                        </Link>
                       </Button>
                       {c.status === "pending" && (
                         <Button
@@ -406,10 +407,10 @@ export default function StaffConsultationsPage() {
                           size="sm"
                           className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                         >
-                          <a href={`/staff/consultations/${c.id}`}>
+                          <Link href={`/staff/consultations/${c.id}`}>
                             <MailOpen className="h-3.5 w-3.5" />
                             Action
-                          </a>
+                          </Link>
                         </Button>
                       )}
                     </div>

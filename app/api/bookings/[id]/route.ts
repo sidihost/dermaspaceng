@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getBookingByReference, getBookingById } from '@/lib/booking'
+import { isTeamMember } from '@/lib/receipt-access'
 
 // GET /api/bookings/[id]
 //
 // `[id]` is *either* the database UUID or the human-readable
-// `DS-XXXXXX` reference, so we accept both. Customers paste the
-// reference into the URL bar from their email; the dashboard uses
-// the UUID. We try reference first because that's what users see.
-//
-// Auth-gated by ownership — admins should use the admin endpoints.
+// `DS-XXXXXX` reference, so we accept both. Customers see their own
+// bookings; staff and admin can also view any booking and its receipt.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -20,12 +18,13 @@ export async function GET(
       return NextResponse.json({ error: 'Sign in required.' }, { status: 401 })
     }
     const { id } = await params
+    const scopeUserId = isTeamMember(user.role) ? undefined : user.id
 
     let booking = null
     if (id.startsWith('DS-')) {
-      booking = await getBookingByReference(id, user.id)
+      booking = await getBookingByReference(id, scopeUserId)
     } else {
-      booking = await getBookingById(id, user.id)
+      booking = await getBookingById(id, scopeUserId)
     }
     if (!booking) {
       return NextResponse.json({ error: 'Booking not found.' }, { status: 404 })

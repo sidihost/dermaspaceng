@@ -20,6 +20,7 @@ import { sql } from '@/lib/db'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { notifyUser } from '@/lib/notifications'
 import { sendBookingCompletedEmail, sendBookingCancellation } from '@/lib/email'
+import { resolveStaffBookingAccessRole } from '@/lib/receipt-access'
 
 interface AccessRow {
   is_admin: boolean
@@ -160,7 +161,11 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
     total_price_kobo: Number(row.total_price_kobo),
     notes: row.notes,
     can_edit: access.can_edit,
-    access_role: isAssigned ? ('assigned' as const) : ('granted' as const),
+    access_role: resolveStaffBookingAccessRole({
+      isAssigned,
+      isAdmin,
+      hasGrant,
+    }),
     services: services.map((s) => ({
       categoryName: s.category_name,
       treatmentName: s.treatment_name,

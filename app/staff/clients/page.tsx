@@ -15,7 +15,8 @@
  *   - Status / stat colours stay inside the brand purple family.
  */
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import useSWR from "swr"
 import {
   Search,
@@ -33,10 +34,13 @@ import {
   AlertTriangle,
   Mail,
   Send,
+  Plus,
+  ExternalLink,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -372,12 +376,99 @@ function ClientDetailDrawer({
   const [sendingEmail, setSendingEmail] = useState(false)
   const [emailSubject, setEmailSubject] = useState("")
   const [emailMessage, setEmailMessage] = useState("")
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [notesLoading, setNotesLoading] = useState(false)
+  const [notesError, setNotesError] = useState<string | null>(null)
+  const [savedNotes, setSavedNotes] = useState<
+    Array<{ id: string; note: string; authorName: string; createdAt: string }>
+  >([])
+  const [bookingNotes, setBookingNotes] = useState<
+    Array<{ id: string; bookingReference: string; note: string; createdAt: string }>
+  >([])
+  const [newNoteText, setNewNoteText] = useState("")
+  const [savingNote, setSavingNote] = useState(false)
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null)
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     phone: "",
     dateOfBirth: "",
   })
+
+  const loadClientNotes = useCallback(async () => {
+    setNotesLoading(true)
+    setNotesError(null)
+    try {
+      const res = await fetch(`/api/staff/clients/${clientId}/notes`, { cache: "no-store" })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.success) {
+        setNotesError(j?.error || `HTTP ${res.status}`)
+        return
+      }
+      setSavedNotes(j.notes ?? [])
+      setBookingNotes(j.bookingNotes ?? [])
+    } catch {
+      setNotesError("Could not load notes.")
+    } finally {
+      setNotesLoading(false)
+    }
+  }, [clientId])
+
+  useEffect(() => {
+    if (notesOpen) {
+      loadClientNotes()
+    }
+  }, [notesOpen, loadClientNotes])
+
+  const handleAddNote = async () => {
+    const trimmed = newNoteText.trim()
+    if (!trimmed) return
+    setSavingNote(true)
+    try {
+      const res = await fetch(`/api/staff/clients/${clientId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: trimmed }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.success) {
+        notify.error("Could not save note", j?.error || `HTTP ${res.status}`)
+        return
+      }
+      setNewNoteText("")
+      if (j.note) {
+        setSavedNotes((prev) => [j.note, ...prev])
+      } else {
+        loadClientNotes()
+      }
+      notify.success("Note saved", "Added to client care record.")
+    } catch {
+      notify.error("Network error", "Could not save note.")
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
+  const handleDeleteNote = async (noteId: string) => {
+    setDeletingNoteId(noteId)
+    try {
+      const res = await fetch(
+        `/api/staff/clients/${clientId}/notes?noteId=${encodeURIComponent(noteId)}`,
+        { method: "DELETE" },
+      )
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.success) {
+        notify.error("Delete failed", j?.error || `HTTP ${res.status}`)
+        return
+      }
+      setSavedNotes((prev) => prev.filter((n) => n.id !== noteId))
+      notify.success("Deleted", "Note removed.")
+    } catch {
+      notify.error("Network error", "Could not delete note.")
+    } finally {
+      setDeletingNoteId(null)
+    }
+  }
 
   const openEdit = () => {
     if (!client) return
@@ -606,7 +697,7 @@ function ClientDetailDrawer({
             />
 
             {/* Lifetime stats */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <StatBigCard
                 icon={Receipt}
                 label="Total transactions"
@@ -617,12 +708,16 @@ function ClientDetailDrawer({
                 label="Total points"
                 value={String(client.stats.loyaltyPoints)}
               />
-              <button className="rounded-2xl border border-gray-100 p-4 text-left hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/[0.03] transition-colors">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                  <StickyNote className="h-4 w-4" />
+              <button
+                type="button"
+                onClick={() => setNotesOpen(true)}
+                className="rounded-xl border border-gray-100 p-2.5 sm:p-3 text-left hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/[0.03] transition-colors"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                  <StickyNote className="h-3.5 w-3.5" />
                 </span>
-                <p className="mt-3 text-xs font-medium text-gray-500">Notes</p>
-                <p className="text-sm font-semibold text-[#7B2D8E] underline-offset-2 underline">
+                <p className="mt-2 text-[11px] font-medium text-gray-500">Notes</p>
+                <p className="text-xs font-semibold text-[#7B2D8E] underline-offset-2 underline">
                   View notes
                 </p>
               </button>
@@ -822,6 +917,135 @@ function ClientDetailDrawer({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Client notes dialog */}
+      <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto border-gray-200 bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="h-4 w-4 text-[#7B2D8E]" />
+              Client notes
+            </DialogTitle>
+            <DialogDescription>
+              Care notes and booking preferences for{" "}
+              {client ? [client.firstName, client.lastName].filter(Boolean).join(" ") || client.email : "client"}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-care-note">Add care note</Label>
+              <Textarea
+                id="client-care-note"
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Skin sensitivities, preferred therapist, allergies..."
+                className="border-gray-200 focus-visible:ring-[#7B2D8E]/30"
+              />
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!newNoteText.trim() || savingNote}
+                  onClick={handleAddNote}
+                  className="gap-1.5 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
+                >
+                  {savingNote ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Add note
+                </Button>
+              </div>
+            </div>
+
+            {notesError && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                {notesError}
+              </div>
+            )}
+
+            {notesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                    Staff care notes ({savedNotes.length})
+                  </p>
+                  {savedNotes.length === 0 ? (
+                    <p className="text-xs text-gray-500 rounded-xl border border-dashed border-gray-200 p-4 text-center">
+                      No staff care notes recorded yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {savedNotes.map((n) => (
+                        <li
+                          key={n.id}
+                          className="rounded-xl border border-gray-100 bg-[#FBF9FC] p-3 flex items-start justify-between gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-gray-800 whitespace-pre-wrap">{n.note}</p>
+                            <p className="mt-1 text-[11px] text-gray-500">
+                              {n.authorName} · {formatDate(n.createdAt)}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteNote(n.id)}
+                            disabled={deletingNoteId === n.id}
+                            aria-label="Delete note"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-white"
+                          >
+                            {deletingNoteId === n.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {bookingNotes.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                      Booking notes ({bookingNotes.length})
+                    </p>
+                    <ul className="space-y-2">
+                      {bookingNotes.map((b) => (
+                        <li
+                          key={b.id}
+                          className="rounded-xl border border-gray-100 bg-white p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-mono text-[11px] font-semibold text-[#7B2D8E]">
+                              {b.bookingReference}
+                            </span>
+                            <Link
+                              href={`/booking/${encodeURIComponent(b.bookingReference)}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7B2D8E] hover:underline"
+                            >
+                              Receipt <ExternalLink className="h-3 w-3" />
+                            </Link>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-700 whitespace-pre-wrap">{b.note}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -847,7 +1071,7 @@ function StatPill({
   return (
     <div
       className={cn(
-        "rounded-xl px-3 py-3",
+        "rounded-xl px-2.5 py-2",
         tone === "purple"
           ? "bg-[#7B2D8E]/10"
           : "bg-gray-50"
@@ -855,13 +1079,13 @@ function StatPill({
     >
       <p
         className={cn(
-          "text-xl font-bold tabular-nums",
+          "text-base font-bold tabular-nums leading-tight",
           tone === "purple" ? "text-[#7B2D8E]" : "text-gray-900"
         )}
       >
         {value}
       </p>
-      <p className="text-[10.5px] text-gray-500 uppercase tracking-wider mt-0.5">{label}</p>
+      <p className="text-[10px] text-gray-500 uppercase tracking-wider mt-0.5">{label}</p>
     </div>
   )
 }
@@ -876,12 +1100,12 @@ function StatBigCard({
   value: string
 }) {
   return (
-    <div className="rounded-2xl border border-gray-100 p-4">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-        <Icon className="h-4 w-4" />
+    <div className="rounded-xl border border-gray-100 p-2.5 sm:p-3">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+        <Icon className="h-3.5 w-3.5" />
       </span>
-      <p className="mt-3 text-xs font-medium text-gray-500 truncate">{label}</p>
-      <p className="text-sm font-semibold text-gray-900 truncate">{value}</p>
+      <p className="mt-2 text-[11px] font-medium text-gray-500 truncate">{label}</p>
+      <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{value}</p>
     </div>
   )
 }

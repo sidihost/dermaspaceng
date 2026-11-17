@@ -170,3 +170,9 @@ export function computeWalletStats(transactions: WalletTransactionItem[]): {
 
   return { totalFunded, totalSpent, fundedCount, spentCount }
 }
+
+export function formatWalletDisplayName(userName?: string | null): string {
+  const trimmed = userName?.trim()
+  return trimmed ? 'DermaspaceNG Wallet' : 'Your Wallet'
+}
+

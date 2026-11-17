@@ -23,6 +23,7 @@ import {
   Headset,
   Lightbulb,
   QrCode,
+  Wallet,
   X,
 } from "lucide-react"
 import { useState, useEffect } from "react"
@@ -69,6 +70,7 @@ const navItems = [
   { title: "Clients", href: "/staff/clients", icon: Users },
   { title: "Loyalty & Promos", href: "/staff/loyalty", icon: BadgePercent },
   { title: "Reports", href: "/staff/reports", icon: BarChart3 },
+  { title: "Money", href: "/staff/money", icon: Wallet },
   { title: "Gift Card Requests", href: "/staff/gift-cards", icon: Gift },
   { title: "Verify Gift Card", href: "/gift-cards/verify", icon: QrCode },
   { title: "Complaints", href: "/staff/complaints", icon: MessageSquare },

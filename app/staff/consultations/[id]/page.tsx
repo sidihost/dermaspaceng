@@ -67,7 +67,7 @@ const fetcher = (u: string) =>
 const STATUS: Record<string, { cls: string; label: string }> = {
   pending: { cls: "bg-amber-50 text-amber-700 ring-amber-200", label: "Pending" },
   confirmed: {
-    cls: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25",
     label: "Confirmed",
   },
   completed: {

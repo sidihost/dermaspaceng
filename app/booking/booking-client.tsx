@@ -656,21 +656,6 @@ export default function BookingClient() {
         className="relative overflow-hidden bg-[#7B2D8E] text-white"
         aria-labelledby="booking-hero-title"
       >
-        {/* Wide directional sheen + a centered radial glow. The
-            radial focuses light behind the title so the eye lands
-            there immediately; the linear sheen keeps the rest of
-            the bar from looking dead-flat. Both are pure white
-            transparency so the brand color stays the only hue. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0)_35%,rgba(255,255,255,0)_65%,rgba(255,255,255,0.08)_100%)]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_120%_at_50%_50%,rgba(255,255,255,0.14),rgba(255,255,255,0)_70%)]"
-        />
-        {/* Hairline highlights on both edges — top is barely there
-            on purpose, bottom matches the previous bar. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10"
@@ -680,12 +665,9 @@ export default function BookingClient() {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/15"
         />
         <div className="relative mx-auto flex max-w-3xl items-center justify-center gap-2.5 px-4 py-2.5 sm:py-3">
-          {/* Left hairline + dot. The hairline fades into the
-              dot via a CSS mask so the line "ends" softly instead
-              of butting against the punctuation. */}
           <span
             aria-hidden
-            className="hidden h-px flex-1 max-w-[80px] bg-white/25 [mask-image:linear-gradient(to_right,transparent,#fff_55%,#fff)] sm:block"
+            className="hidden h-px flex-1 max-w-[80px] bg-white/25 sm:block"
           />
           <span
             aria-hidden
@@ -718,7 +700,7 @@ export default function BookingClient() {
           />
           <span
             aria-hidden
-            className="hidden h-px flex-1 max-w-[80px] bg-white/25 [mask-image:linear-gradient(to_left,transparent,#fff_55%,#fff)] sm:block"
+            className="hidden h-px flex-1 max-w-[80px] bg-white/25 sm:block"
           />
         </div>
       </section>
@@ -918,7 +900,7 @@ export default function BookingClient() {
                 type="button"
                 onClick={goNext}
                 disabled={!canAdvance}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 Continue
                 <ArrowRight className="h-4 w-4" />
@@ -928,7 +910,7 @@ export default function BookingClient() {
                 type="button"
                 onClick={onSubmit}
                 disabled={!canAdvance || submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
