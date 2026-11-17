@@ -36,6 +36,7 @@ import {
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import PageLoader from '@/components/shared/page-loader'
+import { parseTransactionSummary } from '@/lib/wallet-ui'
 
 interface Transaction {
   id: number
@@ -302,7 +303,7 @@ export default function TransactionsContent() {
                     onClick={() => setFilter(key)}
                     className={`inline-flex items-center gap-2 px-3.5 h-9 rounded-full text-[13px] font-semibold whitespace-nowrap transition-colors ${
                       active
-                        ? 'bg-white text-[#7B2D8E] shadow-sm'
+                        ? 'bg-white text-[#7B2D8E] border border-[#7B2D8E]/20'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
@@ -402,13 +403,8 @@ function TransactionRow({ tx }: { tx: Transaction }) {
   const status = statusBadge(tx.status)
   const StatusIcon = status?.Icon
 
-  const description =
-    tx.description ||
-    (tx.type === 'credit'
-      ? 'Wallet funding'
-      : tx.type === 'refund'
-        ? 'Refund'
-        : 'Payment')
+  const parsed = parseTransactionSummary(tx.description, tx.type, reference)
+  const description = parsed.title
 
   const rowInner = (
     <div className="flex items-start sm:items-center gap-2.5 sm:gap-4 min-w-0 max-w-full">
@@ -435,6 +431,14 @@ function TransactionRow({ tx }: { tx: Transaction }) {
                 ? 'Card'
                 : tx.payment_method.replace('_', ' ')}
             </span>
+            {parsed.referenceTag && (
+              <>
+                <span aria-hidden="true" className="hidden sm:inline">&middot;</span>
+                <span className="hidden sm:inline font-mono text-[11px] text-gray-400 truncate max-w-[170px]">
+                  {parsed.referenceTag}
+                </span>
+              </>
+            )}
             {StatusIcon && status && (
               <>
                 <span aria-hidden="true">&middot;</span>

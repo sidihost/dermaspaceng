@@ -130,9 +130,9 @@ export function FundWalletModal({
         
         <div className="space-y-6">
           {/* Current Balance */}
-          <div className="rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 p-4">
-            <p className="text-sm text-muted-foreground">Current Balance</p>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(currentBalance)}</p>
+          <div className="rounded-xl bg-[#F7F2FA] border border-[#7B2D8E]/15 p-4">
+            <p className="text-sm text-gray-600">Current Balance</p>
+            <p className="text-2xl font-bold text-gray-900 tabular-nums">{formatCurrency(currentBalance)}</p>
           </div>
           
           {/* Amount Selection */}

@@ -14,19 +14,23 @@ import {
   Settings, 
   TrendingUp, 
   TrendingDown,
-  Receipt,
   CheckCircle,
   XCircle,
   AlertCircle,
-  Plus,
   Wallet,
   ShieldCheck,
   Droplets,
   Flower2,
-  Heart
+  ArrowRight,
+  History
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import PageLoader from '@/components/shared/page-loader'
+import {
+  computeWalletStats,
+  formatWalletCurrency,
+  formatWalletTransactionDate,
+} from '@/lib/wallet-ui'
 
 interface Wallet {
   id: number
@@ -73,6 +77,7 @@ function WalletDashboardContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [settings, setSettings] = useState<WalletSettings | null>(null)
   const [fundModalOpen, setFundModalOpen] = useState(false)
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
   const [userName, setUserName] = useState<string>('')
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning'
@@ -227,14 +232,9 @@ function WalletDashboardContent() {
   }
 
   // Calculate stats
-  const totalCredits = transactions
-    .filter(t => t.type === 'credit' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0)
-  
-  const totalDebits = transactions
-    .filter(t => t.type === 'debit' && t.status === 'completed')
-    .reduce((sum, t) => sum + t.amount, 0)
-  
+  const { totalFunded: totalCredits, totalSpent: totalDebits, fundedCount, spentCount } =
+    computeWalletStats(transactions)
+
   const lastTransaction = transactions[0]
 
   // New user onboarding screen — premium, brand-forward
@@ -244,7 +244,7 @@ function WalletDashboardContent() {
       <div className="relative min-h-screen bg-white flex items-center justify-center px-4 py-10">
         <div className="relative w-full max-w-md">
           {/* Card */}
-          <div className="relative rounded-[28px] bg-white border border-gray-100 shadow-sm p-7 sm:p-10 text-center">
+          <div className="relative rounded-[28px] bg-white border border-gray-200 p-7 sm:p-10 text-center">
             {/* Icon cluster with orbiting rings */}
             <div className="relative mx-auto mb-7 h-28 w-28 sm:h-32 sm:w-32">
               {/* Outer rotating ring */}
@@ -386,11 +386,11 @@ function WalletDashboardContent() {
             exit={{ opacity: 0, y: -20 }}
             className="fixed top-20 left-1/2 z-50 -translate-x-1/2 w-max max-w-[calc(100vw-2rem)]"
           >
-            <div className={`flex items-center gap-3 rounded-lg px-4 py-3 shadow-lg ${
+            <div className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
               notification.type === 'success' 
-                ? 'bg-[#7B2D8E]/10 text-[#5A1D6A] border border-[#7B2D8E]/20'
+                ? 'bg-[#F7F2FA] text-[#5A1D6A] border border-[#7B2D8E]/25'
                 : notification.type === 'error'
-                  ? 'bg-[#7B2D8E]/5 text-[#7B2D8E] border border-[#7B2D8E]/20'
+                  ? 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/25'
                   : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
             }`}>
               {notification.type === 'success' && <CheckCircle className="h-5 w-5 text-[#7B2D8E] flex-shrink-0" />}
@@ -411,31 +411,35 @@ function WalletDashboardContent() {
       <div className="py-6 md:py-8 px-4">
         <div className="max-w-4xl mx-auto min-w-0">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-5 sm:mb-6">
             <div className="flex items-center gap-3 min-w-0">
               <Link 
                 href="/dashboard"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-[#F7F2FA] hover:border-[#7B2D8E]/30 transition-colors flex-shrink-0"
+                aria-label="Back to dashboard"
               >
                 <ArrowLeft className="h-5 w-5 text-gray-900" />
               </Link>
               <div className="min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">My Wallet</h1>
-                <p className="text-xs sm:text-sm text-gray-500 truncate">Manage your Dermaspace balance</p>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">
+                  <span className="sm:hidden">NGN Balance</span>
+                  <span className="hidden sm:inline">Manage your Dermaspace balance</span>
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 ml-auto sm:ml-0">
-              <Button 
-                onClick={() => setFundModalOpen(true)}
-                className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-sm"
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Link
+                href="/dashboard/transactions"
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white border border-gray-200 px-3 sm:px-3.5 text-xs sm:text-sm font-medium text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors whitespace-nowrap"
               >
-                <Plus className="h-4 w-4" />
-                <span className="hidden xs:inline">Fund Wallet</span>
-                <span className="xs:hidden">Fund</span>
-              </Button>
-              <Link href="/dashboard/settings?tab=wallet">
-                <Button variant="outline" size="icon" title="Wallet Settings" className="border-gray-200">
-                  <Settings className="h-5 w-5 text-gray-600" />
+                <History className="h-4 w-4" />
+                <span className="hidden sm:inline">All history</span>
+                <span className="sm:hidden">History</span>
+              </Link>
+              <Link href="/dashboard/settings?tab=wallet" aria-label="Wallet Settings">
+                <Button variant="outline" size="icon" title="Wallet Settings" className="h-11 w-11 rounded-xl border-gray-200 bg-white hover:bg-[#F7F2FA] hover:border-[#7B2D8E]/30">
+                  <Settings className="h-4 w-4 text-gray-700" />
                 </Button>
               </Link>
             </div>
@@ -448,41 +452,52 @@ function WalletDashboardContent() {
               currency={wallet.currency}
               userName={userName}
               lastTransaction={lastTransaction ? {
-                type: lastTransaction.type === 'refund' ? 'credit' : lastTransaction.type,
+                type: lastTransaction.type,
                 amount: lastTransaction.amount,
-                date: new Date(lastTransaction.created_at).toLocaleDateString('en-NG', {
-                  month: 'short',
-                  day: 'numeric'
-                })
+                date: formatWalletTransactionDate(lastTransaction.created_at),
+                description: lastTransaction.description,
+                paymentMethod: lastTransaction.payment_method,
+                status: lastTransaction.status,
               } : undefined}
-              className="mb-6"
+              onInspectLastTransaction={
+                lastTransaction
+                  ? () => setSelectedTransaction(lastTransaction)
+                  : undefined
+              }
+              className="mb-4 sm:mb-6"
             />
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-            <div className="min-w-0 rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#7B2D8E]/10 flex-shrink-0">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div className="min-w-0 rounded-2xl bg-white border border-gray-200 p-3.5 sm:p-4">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-[#F7F2FA] border border-[#7B2D8E]/15 flex-shrink-0">
                   <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#7B2D8E]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500 truncate">Total Funded</p>
-                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate tabular-nums">
-                    {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalCredits)}
+                  <p className="text-xs text-gray-500 truncate">Total Funded</p>
+                  <p className="text-base sm:text-lg font-bold text-gray-900 truncate tabular-nums">
+                    {formatWalletCurrency(totalCredits, wallet?.currency || 'NGN')}
+                  </p>
+                  <p className="text-[11px] text-gray-400 truncate">
+                    {fundedCount} {fundedCount === 1 ? 'deposit' : 'deposits'}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="min-w-0 rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-red-100 flex-shrink-0">
-                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+            <div className="min-w-0 rounded-2xl bg-white border border-gray-200 p-3.5 sm:p-4">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-gray-100 border border-gray-200/80 flex-shrink-0">
+                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-700" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm text-gray-500 truncate">Total Spent</p>
-                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate tabular-nums">
-                    {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)}
+                  <p className="text-xs text-gray-500 truncate">Total Spent</p>
+                  <p className="text-base sm:text-lg font-bold text-gray-900 truncate tabular-nums">
+                    {formatWalletCurrency(totalDebits, wallet?.currency || 'NGN')}
+                  </p>
+                  <p className="text-[11px] text-gray-400 truncate">
+                    {spentCount} {spentCount === 1 ? 'payment' : 'payments'}
                   </p>
                 </div>
               </div>
@@ -491,11 +506,11 @@ function WalletDashboardContent() {
 
           {/* Budget Progress (if set) */}
           {settings?.monthly_budget && (
-            <div className="rounded-xl bg-white border border-gray-200 p-4 mb-6">
+            <div className="rounded-2xl bg-white border border-gray-200 p-4 mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
                 <h3 className="font-semibold text-gray-900">Monthly Budget</h3>
-                <span className="text-xs sm:text-sm text-gray-500">
-                  {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)} / {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(settings.monthly_budget)}
+                <span className="text-xs sm:text-sm text-gray-500 tabular-nums">
+                  {formatWalletCurrency(totalDebits)} / {formatWalletCurrency(settings.monthly_budget)}
                 </span>
               </div>
               <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
@@ -504,7 +519,7 @@ function WalletDashboardContent() {
                     (totalDebits / settings.monthly_budget) >= 0.9 
                       ? 'bg-red-500' 
                       : (totalDebits / settings.monthly_budget) >= 0.75 
-                        ? 'bg-yellow-500' 
+                        ? 'bg-amber-500' 
                         : 'bg-[#7B2D8E]'
                   }`}
                   style={{ width: `${Math.min((totalDebits / settings.monthly_budget) * 100, 100)}%` }}
@@ -517,16 +532,25 @@ function WalletDashboardContent() {
           )}
 
           {/* Recent Transactions */}
-          <div className="min-w-0 overflow-hidden rounded-xl bg-white border border-gray-200 p-3.5 sm:p-4 md:p-6">
-            <div className="flex items-center justify-between gap-2 min-w-0 mb-4">
+          <div className="min-w-0 overflow-hidden rounded-2xl bg-white border border-gray-200">
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3.5 sm:py-4 border-b border-gray-100 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="flex h-5 w-5 items-center justify-center text-[#7B2D8E] font-bold text-sm flex-shrink-0">₦</span>
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#F7F2FA] text-[#7B2D8E] font-bold text-xs flex-shrink-0">₦</span>
                 <h2 className="font-semibold text-gray-900 truncate">Recent Transactions</h2>
+                {transactions.length > 0 && (
+                  <span className="hidden sm:inline text-xs text-gray-400 tabular-nums whitespace-nowrap">
+                    &middot; {transactions.length}
+                  </span>
+                )}
               </div>
               {transactions.length > 0 && (
-                <span className="text-xs sm:text-sm text-gray-500 whitespace-nowrap flex-shrink-0">
-                  {transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'}
-                </span>
+                <Link
+                  href="/dashboard/transactions"
+                  className="inline-flex items-center gap-1 text-xs sm:text-sm font-medium text-[#7B2D8E] hover:text-[#5A1D6A] whitespace-nowrap flex-shrink-0"
+                >
+                  <span>View all</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
               )}
             </div>
             
@@ -535,6 +559,8 @@ function WalletDashboardContent() {
               showLoadMore={transactions.length >= 10}
               onLoadMore={loadMoreTransactions}
               emptyMessage="No transactions yet"
+              selectedTransaction={selectedTransaction}
+              onSelectTransaction={setSelectedTransaction}
             />
           </div>
         </div>

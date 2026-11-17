@@ -1,28 +1,33 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { 
-  ArrowDownLeft, 
-  ArrowUpRight, 
-  RotateCcw, 
+import {
+  ArrowDownLeft,
+  ArrowUpRight,
+  RotateCcw,
   Wallet,
   Gift,
   Calendar,
   CreditCard,
   AlertCircle,
-  CheckCircle,
+  CheckCircle2,
   Clock,
   XCircle,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   TransactionDetailSheet,
   type TransactionDetail,
 } from './transaction-detail-sheet'
+import {
+  formatPaymentChannel,
+  formatWalletCurrency,
+  formatWalletTransactionDate,
+  parseTransactionSummary,
+} from '@/lib/wallet-ui'
 
-interface Transaction {
+export interface Transaction {
   id: number | string
   type: 'credit' | 'debit' | 'refund'
   amount: number
@@ -45,6 +50,8 @@ interface TransactionListProps {
   onLoadMore?: () => void
   isLoading?: boolean
   emptyMessage?: string
+  selectedTransaction?: Transaction | null
+  onSelectTransaction?: (tx: Transaction | null) => void
 }
 
 export function TransactionList({
@@ -53,44 +60,40 @@ export function TransactionList({
   onLoadMore,
   isLoading,
   emptyMessage = 'No transactions yet',
+  selectedTransaction,
+  onSelectTransaction,
 }: TransactionListProps) {
-  const [selected, setSelected] = useState<Transaction | null>(null)
-  const [detailOpen, setDetailOpen] = useState(false)
+  const [internalSelected, setInternalSelected] = useState<Transaction | null>(
+    null,
+  )
+  const [internalOpen, setInternalOpen] = useState(false)
+
+  const isControlled = onSelectTransaction !== undefined
+  const activeTransaction = isControlled ? selectedTransaction ?? null : internalSelected
+  const isSheetOpen = isControlled ? Boolean(selectedTransaction) : internalOpen
 
   const openDetail = (transaction: Transaction) => {
-    setSelected(transaction)
-    setDetailOpen(true)
-  }
-
-  const formatCurrency = (value: number, currency: string = 'NGN') => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value)
-  }
-  
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) {
-      return date.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
-    } else if (diffDays === 1) {
-      return 'Yesterday'
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString('en-NG', { weekday: 'short' })
+    if (isControlled) {
+      onSelectTransaction(transaction)
     } else {
-      return date.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })
+      setInternalSelected(transaction)
+      setInternalOpen(true)
     }
   }
-  
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      if (isControlled) {
+        onSelectTransaction(null)
+      } else {
+        setInternalOpen(false)
+      }
+    }
+  }
+
   const getTransactionIcon = (type: string, description: string | null) => {
     const lowerDesc = description?.toLowerCase() || ''
-    
+
     if (lowerDesc.includes('wallet funding')) {
       return <Wallet className="h-5 w-5" />
     }
@@ -100,7 +103,7 @@ export function TransactionList({
     if (lowerDesc.includes('booking') || lowerDesc.includes('appointment')) {
       return <Calendar className="h-5 w-5" />
     }
-    
+
     switch (type) {
       case 'credit':
         return <ArrowDownLeft className="h-5 w-5" />
@@ -112,165 +115,205 @@ export function TransactionList({
         return <CreditCard className="h-5 w-5" />
     }
   }
-  
-  const getStatusIcon = (status: string) => {
+
+  const getStatusMeta = (status: Transaction['status']) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-[#7B2D8E]" />
+        return {
+          label: 'Completed',
+          icon: <CheckCircle2 className="h-3.5 w-3.5 text-[#7B2D8E]" />,
+          textColor: 'text-[#7B2D8E]',
+        }
       case 'pending':
-        return <Clock className="h-4 w-4 text-amber-500" />
+        return {
+          label: 'Pending',
+          icon: <Clock className="h-3.5 w-3.5 text-amber-600" />,
+          textColor: 'text-amber-700',
+        }
       case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />
+        return {
+          label: 'Failed',
+          icon: <XCircle className="h-3.5 w-3.5 text-red-600" />,
+          textColor: 'text-red-600',
+        }
       case 'cancelled':
-        return <AlertCircle className="h-4 w-4 text-muted-foreground" />
-      default:
-        return null
+        return {
+          label: 'Cancelled',
+          icon: <AlertCircle className="h-3.5 w-3.5 text-gray-500" />,
+          textColor: 'text-gray-500',
+        }
     }
   }
-  
-  const getStatusTextColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-[#7B2D8E]'
-      case 'pending':
-        return 'text-amber-600'
-      case 'failed':
-        return 'text-red-600'
-      case 'cancelled':
-        return 'text-muted-foreground'
-      default:
-        return 'text-muted-foreground'
-    }
-  }
-  
-  // Credits/refunds use the brand purple (not green) so the wallet
-  // stays on the Dermaspace palette. Debits stay neutral dark.
+
   const getTypeStyles = (type: string) => {
     switch (type) {
       case 'credit':
       case 'refund':
         return {
-          icon: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
+          icon: 'bg-[#F7F2FA] text-[#7B2D8E] border border-[#7B2D8E]/15',
           amount: 'text-[#7B2D8E]',
           prefix: '+',
         }
       case 'debit':
         return {
-          icon: 'bg-muted text-foreground',
-          amount: 'text-foreground',
-          prefix: '-',
+          icon: 'bg-gray-100 text-gray-700 border border-gray-200/70',
+          amount: 'text-gray-900',
+          prefix: '−',
         }
       default:
         return {
-          icon: 'bg-muted text-muted-foreground',
-          amount: 'text-foreground',
+          icon: 'bg-gray-100 text-gray-600 border border-gray-200/70',
+          amount: 'text-gray-900',
           prefix: '',
         }
     }
   }
-  
+
   if (transactions.length === 0 && !isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-          <Wallet className="h-8 w-8 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F7F2FA] border border-[#7B2D8E]/15">
+          <Wallet className="h-7 w-7 text-[#7B2D8E]" />
         </div>
-        <h3 className="mt-4 text-lg font-semibold text-foreground">{emptyMessage}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Your transactions will appear here once you start using your wallet.
+        <h3 className="mt-4 text-base font-semibold text-gray-900">
+          {emptyMessage}
+        </h3>
+        <p className="mt-1.5 text-sm text-gray-500 max-w-xs">
+          Your transactions will appear here once you fund or use your wallet.
         </p>
       </div>
     )
   }
-  
+
   return (
-    <div className="space-y-2">
-      {transactions.map((transaction, index) => {
-        const styles = getTypeStyles(transaction.type)
-        const title =
-          transaction.description ||
-          `${transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)} Transaction`
-        
-        return (
-          <motion.div
-            key={transaction.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="min-w-0 max-w-full"
-          >
-            <button
-              type="button"
-              onClick={() => openDetail(transaction)}
-              className="w-full max-w-full min-w-0 overflow-hidden text-left flex items-start sm:items-center gap-2.5 sm:gap-4 rounded-lg border bg-card p-3 sm:p-4 transition-colors hover:bg-muted/50 cursor-pointer"
-            >
-              {/* Icon */}
-              <div className={cn('flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full flex-shrink-0 mt-0.5 sm:mt-0', styles.icon)}>
-                {getTransactionIcon(transaction.type, transaction.description)}
-              </div>
-              
-              {/* Details + Amount */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2 sm:gap-3 min-w-0">
-                  <p className="flex-1 min-w-0 text-sm sm:text-base font-medium text-foreground leading-snug break-words [overflow-wrap:anywhere]">
-                    {title}
-                  </p>
-                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
-                    <span className={cn('text-sm sm:text-base font-semibold tabular-nums whitespace-nowrap', styles.amount)}>
-                      {styles.prefix}{transaction.formattedAmount || formatCurrency(transaction.amount, transaction.currency)}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0" />
-                  </div>
+    <div>
+      <ul className="divide-y divide-gray-100">
+        {transactions.map((transaction) => {
+          const styles = getTypeStyles(transaction.type)
+          const statusMeta = getStatusMeta(transaction.status)
+          const parsed = parseTransactionSummary(
+            transaction.description,
+            transaction.type,
+            transaction.payment_reference || transaction.reference,
+          )
+          const displayDate =
+            transaction.formattedDate ||
+            formatWalletTransactionDate(transaction.created_at)
+
+          return (
+            <li key={transaction.id} className="min-w-0 max-w-full">
+              <button
+                type="button"
+                onClick={() => openDetail(transaction)}
+                className="w-full min-w-0 px-4 sm:px-5 py-3.5 sm:py-4 text-left flex items-center gap-3 sm:gap-4 transition-colors hover:bg-[#F7F2FA]/60 active:bg-[#F7F2FA] cursor-pointer"
+                aria-label={`View transaction ${parsed.title}`}
+              >
+                {/* Leading Icon */}
+                <div
+                  className={cn(
+                    'flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl flex-shrink-0',
+                    styles.icon,
+                  )}
+                >
+                  {getTransactionIcon(transaction.type, transaction.description)}
                 </div>
 
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 sm:gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="capitalize truncate">{transaction.payment_method.replace('_', ' ')}</span>
-                    <span aria-hidden="true">&bull;</span>
-                    <span className="whitespace-nowrap">{transaction.formattedDate || formatDate(transaction.created_at)}</span>
+                {/* Title & Metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3 min-w-0">
+                    <p className="flex-1 min-w-0 text-sm sm:text-[15px] font-semibold text-gray-900 leading-snug break-words">
+                      {parsed.title}
+                    </p>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <span
+                        className={cn(
+                          'text-sm sm:text-[15px] font-bold tabular-nums whitespace-nowrap',
+                          styles.amount,
+                        )}
+                      >
+                        {styles.prefix}
+                        {transaction.formattedAmount ||
+                          formatWalletCurrency(
+                            transaction.amount,
+                            transaction.currency,
+                          )}
+                      </span>
+                      <ChevronRight
+                        className="h-4 w-4 text-gray-400 flex-shrink-0"
+                        aria-hidden="true"
+                      />
+                    </div>
                   </div>
-                  <div className={cn('inline-flex items-center gap-1 capitalize font-medium whitespace-nowrap flex-shrink-0', getStatusTextColor(transaction.status))}>
-                    {getStatusIcon(transaction.status)}
-                    <span>{transaction.status}</span>
+
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-gray-500 min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
+                      <span className="truncate">
+                        {formatPaymentChannel(transaction.payment_method)}
+                      </span>
+                      <span aria-hidden="true">&middot;</span>
+                      <span className="whitespace-nowrap">{displayDate}</span>
+                      {parsed.referenceTag && (
+                        <>
+                          <span aria-hidden="true" className="hidden sm:inline">
+                            &middot;
+                          </span>
+                          <span className="hidden sm:inline font-mono text-[11px] text-gray-400 truncate max-w-[170px]">
+                            {parsed.referenceTag}
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 font-medium whitespace-nowrap flex-shrink-0',
+                        statusMeta.textColor,
+                      )}
+                    >
+                      {statusMeta.icon}
+                      <span>{statusMeta.label}</span>
+                    </span>
                   </div>
                 </div>
-              </div>
-            </button>
-          </motion.div>
-        )
-      })}
-      
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+
       {/* Loading State */}
       {isLoading && (
-        <div className="space-y-2">
+        <div className="divide-y divide-gray-100">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-3 sm:gap-4 rounded-lg border bg-card p-3.5 sm:p-4">
-              <div className="h-10 w-10 sm:h-12 sm:w-12 animate-pulse rounded-full bg-muted flex-shrink-0" />
+            <div key={i} className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4">
+              <div className="h-10 w-10 sm:h-11 sm:w-11 animate-pulse rounded-xl bg-gray-100 flex-shrink-0" />
               <div className="flex-1 space-y-2">
-                <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-2/3 animate-pulse rounded bg-gray-100" />
+                <div className="h-3 w-1/2 animate-pulse rounded bg-gray-100" />
               </div>
-              <div className="h-5 w-20 animate-pulse rounded bg-muted flex-shrink-0" />
+              <div className="h-4 w-20 animate-pulse rounded bg-gray-100 flex-shrink-0" />
             </div>
           ))}
         </div>
       )}
-      
+
       {/* Load More */}
       {showLoadMore && !isLoading && (
-        <button
-          type="button"
-          onClick={onLoadMore}
-          className="w-full rounded-lg border border-dashed border-border py-3 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-        >
-          Load More Transactions
-        </button>
+        <div className="border-t border-gray-100 p-3 sm:p-4">
+          <button
+            type="button"
+            onClick={onLoadMore}
+            className="w-full rounded-xl border border-gray-200 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] cursor-pointer"
+          >
+            Load more transactions
+          </button>
+        </div>
       )}
 
       <TransactionDetailSheet
-        transaction={selected as TransactionDetail | null}
-        open={detailOpen}
-        onOpenChange={setDetailOpen}
+        transaction={activeTransaction as TransactionDetail | null}
+        open={isSheetOpen}
+        onOpenChange={handleOpenChange}
       />
     </div>
   )
