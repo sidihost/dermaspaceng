@@ -164,6 +164,30 @@ export async function logoutAndRedirect(redirectTo: string = '/'): Promise<void>
  * Errors are swallowed deliberately: a failed network call must never
  * leave the user stranded on a "logging out" screen forever.
  */
+async function cleanupPushSubscriptionOnLogout(): Promise<void> {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+  try {
+    const reg = await navigator.serviceWorker.getRegistration()
+    const sub = await reg?.pushManager?.getSubscription().catch(() => null)
+    if (!sub) return
+    await Promise.race([
+      Promise.allSettled([
+        fetch('/api/push/unsubscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          keepalive: true,
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        }),
+        sub.unsubscribe(),
+      ]),
+      new Promise((resolve) => setTimeout(resolve, 400)),
+    ])
+  } catch {
+    /* best-effort cleanup */
+  }
+}
+
 export async function performLogout(redirectTo: string = '/'): Promise<void> {
   // The logout page is deliberately visible for a short moment. Clear local
   // auth state first so a slow network request cannot preserve a stale user
@@ -174,6 +198,8 @@ export async function performLogout(redirectTo: string = '/'): Promise<void> {
   } catch {
     /* browser globals unavailable — continue with the server logout */
   }
+
+  await cleanupPushSubscriptionOnLogout()
 
   try {
     await fetch('/api/auth/logout', {

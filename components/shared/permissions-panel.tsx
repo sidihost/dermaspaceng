@@ -49,18 +49,21 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return out
 }
 
-export async function syncBrowserPushSubscription(): Promise<void> {
-  if (typeof window === 'undefined') return
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+export async function syncBrowserPushSubscription(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
   try {
-    const res = await fetch('/api/push/vapid-public-key', { cache: 'no-store' })
-    if (!res.ok) return
+    const res = await fetch('/api/push/vapid-public-key', {
+      cache: 'no-store',
+      credentials: 'include',
+    })
+    if (!res.ok) return false
     const { publicKey, previewBlocked } = (await res.json()) as {
       publicKey?: string | null
       previewBlocked?: boolean
     }
-    if (previewBlocked || !publicKey) return
+    if (previewBlocked || !publicKey) return false
     const reg = await navigator.serviceWorker.ready
     const existing = await reg.pushManager.getSubscription()
     const sub =
@@ -69,13 +72,16 @@ export async function syncBrowserPushSubscription(): Promise<void> {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
       }))
-    await fetch('/api/push/subscribe', {
+    const subRes = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ subscription: sub.toJSON() }),
     })
+    return subRes.ok
   } catch {
     /* non-critical — push may not be configured in dev */
+    return false
   }
 }
 

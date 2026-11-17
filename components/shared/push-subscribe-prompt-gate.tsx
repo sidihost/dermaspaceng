@@ -17,11 +17,15 @@ import { shouldEnablePushPrompt } from '@/lib/push-prompt-helpers'
 import { syncBrowserPushSubscription } from './permissions-panel'
 import { PushSubscribePrompt } from './push-subscribe-prompt'
 
-const fetcher = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null))
+const fetcher = async (u: string) => {
+  const r = await fetch(u, { credentials: 'include', cache: 'no-store' })
+  if (!r.ok) return null
+  return r.json()
+}
 
 export function PushSubscribePromptGate() {
   const pathname = usePathname() ?? ''
-  const { data } = useSWR<{ user?: { id: string; role?: string } | null } | null>(
+  const { data, mutate } = useSWR<{ user?: { id: string; role?: string } | null } | null>(
     '/api/auth/me',
     fetcher,
     { revalidateOnFocus: false },
@@ -31,13 +35,30 @@ export function PushSubscribePromptGate() {
   const role = data?.user?.role
 
   React.useEffect(() => {
+    const onLogout = () => {
+      void mutate(null, { revalidate: false })
+    }
+    const onUserUpdated = () => {
+      void mutate()
+    }
+    window.addEventListener('auth-logout', onLogout)
+    window.addEventListener('user-updated', onUserUpdated)
+    return () => {
+      window.removeEventListener('auth-logout', onLogout)
+      window.removeEventListener('user-updated', onUserUpdated)
+    }
+  }, [mutate])
+
+  React.useEffect(() => {
     if (!isSignedIn || !pushEnabled) return
+    if (role === 'admin' || role === 'staff') return
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
     void syncBrowserPushSubscription()
-  }, [isSignedIn, pushEnabled])
+  }, [isSignedIn, pushEnabled, role])
 
   const enabled = shouldEnablePushPrompt({
     pathname,
+    isSignedIn,
     role,
     pushFlagEnabled: pushEnabled,
   })

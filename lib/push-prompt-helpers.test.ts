@@ -27,36 +27,85 @@ test('isPushPromptRouteAllowed blocks admin, staff, auth, and status routes', ()
   assert.equal(isPushPromptRouteAllowed('/maintenance'), false)
 })
 
-test('shouldEnablePushPrompt respects feature flag, route, and operator role', () => {
+test('shouldEnablePushPrompt respects auth state, feature flag, route, and operator role', () => {
   assert.equal(
-    shouldEnablePushPrompt({ pathname: '/', role: null, pushFlagEnabled: true }),
+    shouldEnablePushPrompt({
+      pathname: '/',
+      isSignedIn: false,
+      role: null,
+      pushFlagEnabled: true,
+    }),
+    false,
+  )
+  assert.equal(
+    shouldEnablePushPrompt({
+      pathname: '/services',
+      isSignedIn: false,
+      role: 'user',
+      pushFlagEnabled: true,
+    }),
+    false,
+  )
+  assert.equal(
+    shouldEnablePushPrompt({
+      pathname: '/',
+      isSignedIn: true,
+      role: null,
+      pushFlagEnabled: true,
+    }),
     true,
   )
   assert.equal(
-    shouldEnablePushPrompt({ pathname: '/services', role: 'user', pushFlagEnabled: true }),
+    shouldEnablePushPrompt({
+      pathname: '/services',
+      isSignedIn: true,
+      role: 'user',
+      pushFlagEnabled: true,
+    }),
     true,
   )
   assert.equal(
-    shouldEnablePushPrompt({ pathname: '/', role: 'admin', pushFlagEnabled: true }),
+    shouldEnablePushPrompt({
+      pathname: '/',
+      isSignedIn: true,
+      role: 'admin',
+      pushFlagEnabled: true,
+    }),
     false,
   )
   assert.equal(
-    shouldEnablePushPrompt({ pathname: '/', role: 'staff', pushFlagEnabled: true }),
+    shouldEnablePushPrompt({
+      pathname: '/',
+      isSignedIn: true,
+      role: 'staff',
+      pushFlagEnabled: true,
+    }),
     false,
   )
   assert.equal(
-    shouldEnablePushPrompt({ pathname: '/admin', role: 'user', pushFlagEnabled: true }),
+    shouldEnablePushPrompt({
+      pathname: '/admin',
+      isSignedIn: true,
+      role: 'user',
+      pushFlagEnabled: true,
+    }),
     false,
   )
   assert.equal(
-    shouldEnablePushPrompt({ pathname: '/', role: 'user', pushFlagEnabled: false }),
+    shouldEnablePushPrompt({
+      pathname: '/',
+      isSignedIn: true,
+      role: 'user',
+      pushFlagEnabled: false,
+    }),
     false,
   )
 })
 
-test('evaluatePushPromptEligibility allows default permission even without VAPID key configured', () => {
+test('evaluatePushPromptEligibility allows signed-in user with default permission even without VAPID key configured', () => {
   const res = evaluatePushPromptEligibility({
     supported: true,
+    isSignedIn: true,
     originAllowed: true,
     isPreviewHost: false,
     enabled: true,
@@ -73,9 +122,10 @@ test('evaluatePushPromptEligibility allows default permission even without VAPID
   assert.equal(res.canWebPushSubscribe, false)
 })
 
-test('evaluatePushPromptEligibility marks canWebPushSubscribe true when VAPID key is present', () => {
+test('evaluatePushPromptEligibility marks canWebPushSubscribe true when signed-in and VAPID key is present', () => {
   const res = evaluatePushPromptEligibility({
     supported: true,
+    isSignedIn: true,
     originAllowed: true,
     isPreviewHost: false,
     enabled: true,
@@ -92,9 +142,10 @@ test('evaluatePushPromptEligibility marks canWebPushSubscribe true when VAPID ke
   assert.equal(res.canWebPushSubscribe, true)
 })
 
-test('evaluatePushPromptEligibility blocks dismissed, preview, unsettled cookies, granted, denied, or subscribed', () => {
+test('evaluatePushPromptEligibility blocks unauthenticated, dismissed, preview, unsettled cookies, granted, denied, or subscribed', () => {
   const base = {
     supported: true,
+    isSignedIn: true,
     originAllowed: true,
     isPreviewHost: false,
     enabled: true,
@@ -106,6 +157,11 @@ test('evaluatePushPromptEligibility blocks dismissed, preview, unsettled cookies
     vapidPublicKey: 'key',
     hasExistingSubscription: false,
   }
+
+  const unauth = evaluatePushPromptEligibility({ ...base, isSignedIn: false })
+  assert.equal(unauth.show, false)
+  assert.equal(unauth.reason, 'unauthenticated')
+  assert.equal(unauth.canWebPushSubscribe, false)
 
   assert.equal(
     evaluatePushPromptEligibility({ ...base, isPreviewHost: true }).show,

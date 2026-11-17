@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getCurrentUser } from '@/lib/auth'
 import { getPublicVapidKey, isPushConfigured } from '@/lib/push'
 import {
   isPreviewDeploymentEnv,
@@ -9,6 +10,11 @@ import {
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  const user = await getCurrentUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const origin = request.headers.get('origin')
   const referer = request.headers.get('referer')
   const host = request.headers.get('host')

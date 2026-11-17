@@ -65,6 +65,10 @@ export function PushSubscribePrompt({
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
+    if (!enabled || !isSignedIn) {
+      setShow(false)
+      return
+    }
 
     const hasNotificationApi = 'Notification' in window
     const hasSwApi = 'serviceWorker' in navigator
@@ -106,6 +110,7 @@ export function PushSubscribePrompt({
 
     const preCheck = evaluatePushPromptEligibility({
       supported: hasNotificationApi,
+      isSignedIn,
       originAllowed,
       isPreviewHost,
       enabled,
@@ -132,7 +137,14 @@ export function PushSubscribePrompt({
       let publicKey: string | null = null
       let previewBlockedByApi = false
       try {
-        const res = await fetch('/api/push/vapid-public-key', { cache: 'no-store' })
+        const res = await fetch('/api/push/vapid-public-key', {
+          cache: 'no-store',
+          credentials: 'include',
+        })
+        if (res.status === 401) {
+          if (!cancelled) setShow(false)
+          return
+        }
         if (res.ok) {
           const json = (await res.json()) as {
             publicKey?: string | null
@@ -162,6 +174,7 @@ export function PushSubscribePrompt({
 
       const decision = evaluatePushPromptEligibility({
         supported: hasNotificationApi,
+        isSignedIn,
         originAllowed,
         isPreviewHost,
         enabled,
@@ -184,10 +197,13 @@ export function PushSubscribePrompt({
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [enabled, cookieSettled])
+  }, [enabled, isSignedIn, cookieSettled])
 
   async function handleEnable() {
-    if (busy || typeof Notification === 'undefined') return
+    if (busy || !isSignedIn || typeof Notification === 'undefined') {
+      if (!isSignedIn) setShow(false)
+      return
+    }
     setBusy(true)
     try {
       const perm = await Notification.requestPermission()
@@ -203,7 +219,6 @@ export function PushSubscribePrompt({
 
       if (
         vapidKey &&
-        isSignedIn &&
         'serviceWorker' in navigator &&
         'PushManager' in window
       ) {
@@ -216,13 +231,34 @@ export function PushSubscribePrompt({
               userVisibleOnly: true,
               applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
             }))
-          await fetch('/api/push/subscribe', {
+          const subRes = await fetch('/api/push/subscribe', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ subscription: sub.toJSON() }),
           })
+          if (!subRes.ok) {
+            setShow(false)
+            if (subRes.status === 401) {
+              notify.error(
+                'Sign in required',
+                'Please sign in to enable booking notifications.',
+              )
+            } else {
+              notify.error(
+                'Could not enable notifications',
+                'Please try again from your notification settings.',
+              )
+            }
+            return
+          }
         } catch {
-          /* permission is granted — gate effect will re-sync when ready */
+          setShow(false)
+          notify.error(
+            'Could not enable notifications',
+            'Please try again from your notification settings.',
+          )
+          return
         }
       }
 

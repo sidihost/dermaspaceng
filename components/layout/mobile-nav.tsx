@@ -142,7 +142,7 @@ export default function MobileNav() {
   //   - listens for the cross-component `user-updated` event so an
   //     avatar change in /dashboard/settings updates this slot
   //     immediately without a page refresh.
-  const { user: authUser, isLoading: authLoading } = useAuth()
+  const { user: authUser } = useAuth()
 
   // Adapter — keep the rest of this file's `user` references working
   // with the same shape the local UserData interface had. The hook
@@ -162,11 +162,6 @@ export default function MobileNav() {
         gender: authUser.gender ?? null,
       }
     : null
-  // `authChecked` used to mean "the network round-trip completed".
-  // With the localStorage cache, "checked" simply means we've moved
-  // past the initial loading moment — which is true any time SWR
-  // isn't actively waiting for first data.
-  const authChecked = !authLoading
 
   // Lock body scroll while any of the sheets are open so the
   // content underneath doesn't "peek" on overscroll. We use the
@@ -318,15 +313,11 @@ export default function MobileNav() {
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
   if (isHiddenPage) return null
 
-  // We deliberately do NOT gate the whole nav on `authChecked` any
-  // more. The previous behaviour — `if (!authChecked) return null` —
-  // meant the entire bottom nav stayed invisible until the cookie
-  // round-trip to `/api/auth/me` finished, which on slow Lagos
-  // connections looked like the nav was "loading" for 1–2 seconds
-  // every page load. We now render the nav skeleton immediately and
-  // only the profile slot waits for `authChecked` to flip — that
-  // slot reserves a fixed-size placeholder so the nav layout
-  // doesn't shift when the avatar arrives.
+  // Render the bottom nav and its Sign in / Profile slot immediately
+  // without waiting for `/api/auth/me` to settle over the network:
+  // signed-in visitors hydrate from the localStorage cache right after
+  // mount, and signed-out visitors get an instant Sign in button on
+  // first paint.
 
   const closeAll = () => {
     setShowServices(false)
@@ -964,23 +955,10 @@ export default function MobileNav() {
               <span className={`text-[10px] font-medium ${isActive('/booking') ? 'text-white' : 'text-white/70'}`}>Book</span>
             </Link>
 
-            {/* Profile slot — three states:
-                • auth still loading → fixed-size invisible placeholder
-                  so the row doesn't reflow when the avatar arrives.
+            {/* Profile slot — two states (no network-blocking placeholder):
                 • signed in → avatar with brand-purple ring.
-                • signed out → Sign in glyph.
-                The placeholder branch is what lets us render the
-                rest of the nav immediately on first paint without
-                waiting for `/api/auth/me` to resolve. */}
-            {!authChecked ? (
-              <span
-                aria-hidden="true"
-                className="flex flex-col items-center gap-1 py-1 px-2 opacity-0 pointer-events-none"
-              >
-                <span className="w-7 h-7 rounded-full" />
-                <span className="text-[10px] font-medium">&nbsp;</span>
-              </span>
-            ) : authChecked && user ? (
+                • signed out / initial paint → Sign in glyph immediately. */}
+            {user ? (
               <button
                 type="button"
                 onClick={() => { setShowServices(false); setShowProfile(true) }}

@@ -35,9 +35,11 @@ export function isPushPromptRouteAllowed(
 
 export function shouldEnablePushPrompt(params: {
   pathname: string | null | undefined
+  isSignedIn: boolean
   role?: string | null
   pushFlagEnabled: boolean
 }): boolean {
+  if (!params.isSignedIn) return false
   if (!isPushPromptRouteAllowed(params.pathname)) return false
   if (params.role === 'admin' || params.role === 'staff') return false
   return Boolean(params.pushFlagEnabled)
@@ -45,6 +47,7 @@ export function shouldEnablePushPrompt(params: {
 
 export interface PushEligibilityInput {
   supported: boolean
+  isSignedIn: boolean
   originAllowed: boolean
   isPreviewHost: boolean
   enabled: boolean
@@ -61,6 +64,7 @@ export interface PushEligibilityDecision {
   show: boolean
   reason:
     | 'eligible'
+    | 'unauthenticated'
     | 'unsupported'
     | 'preview-or-disallowed-origin'
     | 'disabled-by-gate'
@@ -75,6 +79,9 @@ export interface PushEligibilityDecision {
 export function evaluatePushPromptEligibility(
   input: PushEligibilityInput,
 ): PushEligibilityDecision {
+  if (!input.isSignedIn) {
+    return { show: false, reason: 'unauthenticated', canWebPushSubscribe: false }
+  }
   if (!input.supported) {
     return { show: false, reason: 'unsupported', canWebPushSubscribe: false }
   }
