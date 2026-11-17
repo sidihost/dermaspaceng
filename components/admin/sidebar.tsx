@@ -30,6 +30,7 @@ import {
   Mail,
   Lightbulb,
   Building2,
+  Headphones,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -114,10 +115,7 @@ const adminNavItems: NavItem[] = [
   // (which the rest of the app already uses for live chat and
   // conversations).
   { href: '/admin/complaints', icon: LifeBuoy, label: 'Tickets', badge: null, group: 'main' },
-  // Live Chat oversight has been retired from the admin surface — the
-  // workflow lives entirely in /admin/complaints (tickets) and the
-  // staff-side queue. Keeping the row out of the rail prevents the
-  // admin from landing on a half-deprecated control panel.
+  { href: '/admin/live-chat', icon: Headphones, label: 'Live Chat', badge: null, group: 'main' },
   { href: '/admin/feedback', icon: ClipboardList, label: 'Feedback', badge: null, group: 'main' },
   // Feature Requests — the ideas clients submit on the public board at
   // /feature-requests. Lives in the "main" group alongside Feedback
@@ -222,18 +220,30 @@ const BASELINE_PREFIX = 'admin:badgeBaseline:'
 // baseline would suppress today's genuinely-new signup (max(0, 1-5) = 0).
 const DATED_SURFACES = new Set(['users', 'newsletter'])
 
+// In-memory mirror hydrated from /api/admin/badges/seen + localStorage so
+// clearing browser cache/site storage does not resurrect stale badge counts.
+const memoryBaselines = new Map<string, { count: number; date?: string }>()
+const lastSyncedBaselines = new Map<string, string>()
+
+type ServerBaselinesResponse = {
+  baselines: Record<string, { count: number; date?: string }>
+}
+
+const seenBaselinesFetcher = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((res) => {
+    if (!res.ok) throw new Error('seen baselines failed')
+    return res.json() as Promise<ServerBaselinesResponse>
+  })
+
 function todayStamp(): string {
   return new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
 }
 
-function readBaseline(surface: string): number {
+function readLocalBaseline(surface: string): number {
   if (typeof window === 'undefined') return 0
   try {
     const raw = window.localStorage.getItem(BASELINE_PREFIX + surface)
     if (!raw) return 0
-    // Dated format: "YYYY-MM-DD:count". Only honour it if the stamp is
-    // today; a stale stamp means the daily counter has since reset, so
-    // the baseline no longer applies and we fall back to 0.
     if (raw.includes(':')) {
       const [stamp, countPart] = raw.split(':')
       if (stamp !== todayStamp()) return 0
@@ -247,13 +257,35 @@ function readBaseline(surface: string): number {
   }
 }
 
+function readMemoryBaseline(surface: string): number {
+  const rec = memoryBaselines.get(surface)
+  if (!rec) return 0
+  if (DATED_SURFACES.has(surface) && rec.date !== todayStamp()) return 0
+  return rec.count
+}
+
+function readBaseline(surface: string): number {
+  return Math.max(readLocalBaseline(surface), readMemoryBaseline(surface))
+}
+
+function writeLocalBaseline(surface: string, count: number, date?: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    const value = DATED_SURFACES.has(surface)
+      ? `${date || todayStamp()}:${count}`
+      : String(count)
+    window.localStorage.setItem(BASELINE_PREFIX + surface, value)
+  } catch {
+    /* localStorage can be disabled */
+  }
+}
+
 /**
  * Wipe the baseline so the badge displays the full server count again.
- * Currently unused by the sidebar but exported for symmetry with
- * `markSurfaceSeen`. Useful if we ever want a "show me everything
- * again" reset gesture in settings.
  */
 export function resetSurfaceBaseline(surface: string): void {
+  memoryBaselines.delete(surface)
+  lastSyncedBaselines.delete(surface)
   if (typeof window === 'undefined') return
   try {
     window.localStorage.removeItem(BASELINE_PREFIX + surface)
@@ -263,31 +295,37 @@ export function resetSurfaceBaseline(surface: string): void {
 }
 
 /**
- * Mark a surface "seen" — sets the baseline to the current count so
- * the sidebar pill drops to zero. Called from each admin list page's
- * client component on mount.
+ * Mark a surface "seen" — sets the baseline to the current count in both
+ * localStorage and server preferences so the sidebar pill drops to zero
+ * and stays zero even if the browser cache is cleared.
  */
 export function markSurfaceSeen(surface: string, currentCount: number): void {
   if (typeof window === 'undefined') return
-  try {
-    const safe = Math.max(0, currentCount)
-    // Dated surfaces (per-day counters) store the day alongside the count
-    // so readBaseline can discard a stale baseline after midnight.
-    const value = DATED_SURFACES.has(surface)
-      ? `${todayStamp()}:${safe}`
-      : String(safe)
-    window.localStorage.setItem(BASELINE_PREFIX + surface, value)
-    // Notify any other tabs / the sidebar in the same tab so its
-    // displayed count refreshes immediately rather than waiting for
-    // the next 30s SWR poll.
-    window.dispatchEvent(
-      new CustomEvent('admin:badge-seen', {
-        detail: { surface, count: currentCount },
-      }),
-    )
-  } catch {
-    /* localStorage can be disabled (private mode) — fall through */
-  }
+  const safe = Math.max(0, Math.floor(Number(currentCount) || 0))
+  const date = DATED_SURFACES.has(surface) ? todayStamp() : undefined
+
+  memoryBaselines.set(surface, { count: safe, ...(date ? { date } : {}) })
+  writeLocalBaseline(surface, safe, date)
+
+  window.dispatchEvent(
+    new CustomEvent('admin:badge-seen', {
+      detail: { surface, count: safe },
+    }),
+  )
+
+  const syncKey = `${safe}:${date || ''}`
+  if (lastSyncedBaselines.get(surface) === syncKey) return
+  lastSyncedBaselines.set(surface, syncKey)
+
+  void fetch('/api/admin/badges/seen', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    keepalive: true,
+    body: JSON.stringify({ surface, count: safe, ...(date ? { date } : {}) }),
+  }).catch(() => {
+    lastSyncedBaselines.delete(surface)
+  })
 }
 
 /**
@@ -402,23 +440,44 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
       shouldRetryOnError: false,
     },
   )
-  const openComplaints = statsData?.stats.complaints.open ?? 0
+  const { data: seenData } = useSWR(
+    userRole === 'admin' ? '/api/admin/badges/seen' : null,
+    seenBaselinesFetcher,
+    {
+      revalidateOnFocus: true,
+      shouldRetryOnError: false,
+    },
+  )
+
   const pendingConsultations = statsData?.stats.consultations.pending ?? 0
   const waitingLiveChats = statsData?.stats.liveChat?.waiting ?? 0
   const newUsersToday = statsData?.stats.users?.todayNew ?? 0
   const pendingBookings = statsData?.stats.bookings?.pending ?? 0
-  // New live counts for the Tickets / Feedback sidebar rows. Both
-  // fields are optional in the response so legacy environments
-  // (older stats endpoint) cleanly read as 0 with no badge.
   const openTickets = statsData?.stats.tickets?.open ?? 0
   const newFeedback = statsData?.stats.feedback?.new ?? 0
   const newNewsletterToday = statsData?.stats.newsletter?.todayNew ?? 0
 
-  // Tick — bumped whenever the admin visits a surface so the Google /
-  // Vercel-style "seen" baselines re-read from localStorage. Without
-  // this hook the badge would only refresh on the next 30s SWR poll
-  // and clearing the badge would feel laggy.
   const [seenTick, setSeenTick] = useState(0)
+
+  // Hydrate server-backed seen baselines so clearing browser cache does not
+  // resurrect cleared sidebar badges.
+  useEffect(() => {
+    const serverBaselines = seenData?.baselines
+    if (!serverBaselines) return
+    let changed = false
+    const today = todayStamp()
+    for (const [surface, rec] of Object.entries(serverBaselines)) {
+      if (DATED_SURFACES.has(surface) && rec.date !== today) continue
+      const existing = memoryBaselines.get(surface)
+      if (!existing || existing.count < rec.count || existing.date !== rec.date) {
+        memoryBaselines.set(surface, { count: rec.count, date: rec.date })
+        writeLocalBaseline(surface, rec.count, rec.date)
+        changed = true
+      }
+    }
+    if (changed) setSeenTick((t) => t + 1)
+  }, [seenData])
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     const handler = () => setSeenTick((t) => t + 1)
@@ -429,22 +488,8 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
       window.removeEventListener('storage', handler)
     }
   }, [])
-  // Re-evaluate baselines on every render that depends on the tick.
-  // We touch the variable so eslint doesn't flag it as unused.
   void seenTick
 
-  // Map an admin nav href → live count, with the per-surface "seen"
-  // baseline subtracted so badges clear after the admin opens the
-  // page. We keep `max(0, ...)` to avoid negative counts when items
-  // are resolved off-page (e.g. another admin closes a complaint
-  // while you're on a different tab).
-  //
-  // Note: /admin/complaints in this build serves the "Tickets" row
-  // in the sidebar (the label was renamed but the URL stayed for
-  // backwards-compatibility). We drive its count off the dedicated
-  // tickets.open counter rather than the unified complaints.open
-  // tally so the chip stays meaningful even when the underlying
-  // contact_messages queue is empty.
   const getCount = (href: string): number => {
     if (href === '/admin/complaints')
       return Math.max(0, openTickets - readBaseline('tickets'))
@@ -463,11 +508,16 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
     return 0
   }
 
-  // Total unread across all surfaces — used for the mobile top-bar
-  // hamburger so admins on phones (where the rail is hidden) still
-  // see an at-a-glance "you have 3 things to look at" cue.
+  // Total unseen attention across all badged sidebar items (respects seen
+  // baselines so clearing a queue clears the mobile hamburger dot too).
   const totalAttentionCount =
-    openComplaints + pendingConsultations + waitingLiveChats + newUsersToday + newNewsletterToday
+    getCount('/admin/complaints') +
+    getCount('/admin/consultations') +
+    getCount('/admin/live-chat') +
+    getCount('/admin/users') +
+    getCount('/admin/bookings') +
+    getCount('/admin/feedback') +
+    getCount('/admin/newsletter')
 
   // Close the mobile menu whenever the route changes. The previous
   // implementation relied on an onClick on every Link — fine, but fragile.

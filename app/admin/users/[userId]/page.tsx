@@ -16,6 +16,7 @@ import {
 import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
 import { IdentityAuditPanel } from '@/components/admin/identity-audit-panel'
 import { useNotify } from '@/components/shared/notify'
+import { isPlaceholderEmail } from '@/lib/auth-onboarding'
 
 interface UserDetail {
   id: string
@@ -283,6 +284,11 @@ export default function AdminUserDetailPage() {
     email_verified: false,
   })
   const [editError, setEditError] = useState('')
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [sendingEmail, setSendingEmail] = useState(false)
 
   const fetchUser = useCallback(async () => {
     setLoading(true)
@@ -549,6 +555,38 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  const handleSendEmail = async () => {
+    if (!emailSubject.trim() || !emailMessage.trim()) {
+      setEmailError('Please enter both a subject and a message.')
+      return
+    }
+    setSendingEmail(true)
+    setEmailError('')
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: emailSubject.trim(),
+          message: emailMessage.trim(),
+        }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setEmailError(body?.error || 'Could not send email.')
+        return
+      }
+      setEmailOpen(false)
+      setEmailSubject('')
+      setEmailMessage('')
+      notify.success('Email sent', `Delivered to ${body.sentTo || data?.user?.email || 'client'}.`)
+    } catch (err) {
+      setEmailError(err instanceof Error ? err.message : 'Could not send email.')
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -644,18 +682,10 @@ export default function AdminUserDetailPage() {
           (mailto/tel + WhatsApp deep link) so the admin can reach
           out without leaving the page. */}
       <section className="relative rounded-2xl border border-gray-200 bg-white overflow-hidden">
-        <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B3DB0] to-[#7B2D8E]" aria-hidden="true" />
-        <div className="absolute inset-x-0 top-1 h-40 bg-gradient-to-b from-[#7B2D8E]/[0.05] to-transparent pointer-events-none" aria-hidden="true" />
+        <div className="h-1 bg-[#7B2D8E]" aria-hidden="true" />
         <div className="relative p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
           <div className="flex items-start gap-4">
-            {/* Avatar — renders the user's uploaded portrait when one
-                exists; falls back to brand-purple initials. We dropped
-                the heavy drop-shadow per design feedback (the card
-                already has its own depth via the brand strip + radial
-                wash) and the green emerald "active" pip in favour of
-                a quieter brand-purple status dot, so the page reads
-                as fully on-palette. */}
             <div className="relative flex-shrink-0">
               {user.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -665,7 +695,7 @@ export default function AdminUserDetailPage() {
                   className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl object-cover ring-1 ring-[#7B2D8E]/15 bg-[#7B2D8E]/5"
                 />
               ) : (
-                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center">
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
                   <span className="text-xl sm:text-[22px] font-semibold text-white">{initials || 'U'}</span>
                 </div>
               )}
@@ -865,6 +895,21 @@ export default function AdminUserDetailPage() {
               <Pencil className="w-4 h-4" />
               Edit profile
             </button>
+            {user.email && !isPlaceholderEmail(user.email) && (
+              <button
+                disabled={acting}
+                onClick={() => {
+                  setEmailSubject('')
+                  setEmailMessage('')
+                  setEmailError('')
+                  setEmailOpen(true)
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 text-sm font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
+              >
+                <Mail className="w-4 h-4" />
+                Email client
+              </button>
+            )}
             {/* Resend verification — only when the email is still
                 unverified. Re-issues a fresh OTP and emails it with a
                 button to /verify-email so the customer can finish. */}
@@ -1101,12 +1146,27 @@ export default function AdminUserDetailPage() {
         />
       )}
 
+      {emailOpen && (
+        <SendEmailModal
+          recipientName={`${user.first_name} ${user.last_name}`.trim() || user.email}
+          recipientEmail={user.email}
+          subject={emailSubject}
+          message={emailMessage}
+          onSubjectChange={setEmailSubject}
+          onMessageChange={setEmailMessage}
+          error={emailError}
+          sending={sendingEmail}
+          onConfirm={handleSendEmail}
+          onCancel={() => setEmailOpen(false)}
+        />
+      )}
+
       {/* Archive confirmation — recoverable. We spell out exactly what
           archiving does (hidden + signed out + blocked, data kept) and
           collect an optional reason that shows up on the archived banner. */}
       {archivePrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 sm:p-6 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-red-100">
                 <Archive className="h-5 w-5 text-red-600" />
@@ -1595,7 +1655,7 @@ export default function AdminUserDetailPage() {
         <section
           className={`lg:col-span-2 rounded-2xl border p-5 sm:p-6 ${
             wallet
-              ? 'border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.04] to-white'
+              ? 'border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.03]'
               : 'border-gray-200 bg-white'
           }`}
         >
@@ -2157,7 +2217,7 @@ function StatCell({ label, value, accent = false }: { label: string; value: stri
     <div
       className={`rounded-xl border px-3 py-2.5 transition-colors ${
         accent
-          ? 'border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.06] to-white'
+          ? 'border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04]'
           : 'border-gray-100 bg-gray-50/60'
       }`}
     >
@@ -2287,7 +2347,7 @@ function ImpersonateModal({
       />
 
       {/* Dialog body */}
-      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white shadow-xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white">
         <div className="p-5">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
@@ -2420,7 +2480,7 @@ function EditProfileModal({
         className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]"
       />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white shadow-xl">
+      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white">
         <div className="p-5">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
@@ -2570,4 +2630,135 @@ type EditProfileModalProps = {
     username: string
     email_verified: boolean
   }
+}
+
+function SendEmailModal({
+  recipientName,
+  recipientEmail,
+  subject,
+  message,
+  onSubjectChange,
+  onMessageChange,
+  error,
+  sending,
+  onConfirm,
+  onCancel,
+}: {
+  recipientName: string
+  recipientEmail: string
+  subject: string
+  message: string
+  onSubjectChange: (value: string) => void
+  onMessageChange: (value: string) => void
+  error: string
+  sending: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !sending) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [sending, onCancel])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="send-email-title"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => {
+          if (!sending) onCancel()
+        }}
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]"
+      />
+
+      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white">
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+              <Mail className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2
+                id="send-email-title"
+                className="text-base font-semibold text-gray-900"
+              >
+                Email {recipientName}
+              </h2>
+              <p className="mt-0.5 text-[12px] text-gray-500 truncate">
+                To: {recipientEmail} · Dermaspace transactional layout
+              </p>
+            </div>
+          </div>
+
+          <label className="block mt-4">
+            <span className="text-[11px] font-medium text-gray-600">Subject</span>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => onSubjectChange(e.target.value)}
+              maxLength={200}
+              placeholder="e.g. Update on your upcoming Dermaspace visit"
+              className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:outline-none"
+            />
+          </label>
+
+          <label className="block mt-3">
+            <span className="text-[11px] font-medium text-gray-600">Message</span>
+            <textarea
+              value={message}
+              onChange={(e) => onMessageChange(e.target.value)}
+              rows={5}
+              maxLength={10000}
+              placeholder="Write your message..."
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:outline-none resize-y"
+            />
+          </label>
+
+          {error && (
+            <p className="mt-2.5 flex items-center gap-1.5 text-xs text-rose-600">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={sending}
+              onClick={onCancel}
+              className="inline-flex items-center px-3.5 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={sending || !subject.trim() || !message.trim()}
+              onClick={onConfirm}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {sending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              Send email
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { Send, Phone, Mail, MessageSquare, Check } from 'lucide-react'
+import { Send, Phone, Mail, MessageSquare, Check, Headphones } from 'lucide-react'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
 import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
 
@@ -131,8 +131,29 @@ export default function SupportTab({ user }: SupportTabProps) {
           fill the row instead of leaving a gap where WhatsApp used
           to be. */}
       <div
-        className={`grid grid-cols-1 ${liveChatEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}
+        className={`grid grid-cols-1 ${liveChatEnabled ? 'sm:grid-cols-2 lg:grid-cols-4' : 'sm:grid-cols-2'} gap-3`}
       >
+        {liveChatEnabled && (
+          <button
+            type="button"
+            onClick={() =>
+              window.dispatchEvent(
+                new CustomEvent('openLiveChat', {
+                  detail: { topic: 'General Support' },
+                }),
+              )
+            }
+            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-left"
+          >
+            <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center shrink-0">
+              <Headphones className="w-5 h-5 text-[#7B2D8E]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Live Chat</p>
+              <p className="text-xs text-gray-500">Talk to front desk</p>
+            </div>
+          </button>
+        )}
         {liveChatEnabled && (
           <a
             href="https://wa.me/+2349061836625"
@@ -140,7 +161,7 @@ export default function SupportTab({ user }: SupportTabProps) {
             rel="noopener noreferrer"
             className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"
           >
-            <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center shrink-0">
               <WhatsAppIcon className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div>

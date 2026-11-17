@@ -11,14 +11,10 @@ import {
   ArrowUpRight, ArrowDownRight, UserCog,
   ChevronRight, Activity, Inbox, LayoutGrid,
   TrendingUp, Clock, CheckCircle2, Bell,
-  Wallet, Mail,
+  Wallet, Mail, Headphones, Cake, CreditCard,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
-// New "operational" section — revenue, staff perf, platform health,
-// security log. Self-contained client component that fetches its
-// own data from /api/admin/ops, so the existing /api/admin/stats
-// payload doesn't have to balloon.
 import { AdminOpsOverview } from '@/components/admin/ops-overview'
 import { OperationsPanel } from '@/components/admin/operations-panel'
 
@@ -29,7 +25,36 @@ interface Stats {
   giftCards: { total: number; pending: number; totalValue: number }
   surveys: { total: number; avgRating: number; thisWeek: number }
   staff: { total: number }
+  liveChat?: { waiting: number; active: number }
   bookings?: { pending: number; upcoming: number }
+  pendingTransactions?: { count: number; totalAmount: number }
+  birthdaysToday?: Array<{
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+  }>
+  todayBookings?: {
+    count: number
+    items: Array<{
+      id: string
+      bookingReference: string
+      appointmentTime: string
+      locationName: string
+      customerName: string
+      status: string
+    }>
+  }
+  recentStaffActivity?: Array<{
+    id: string
+    staffId: string
+    actorName: string
+    actorRole: string
+    actionType: string
+    entityType: string
+    description: string
+    createdAt: string
+  }>
   newsletter?: {
     total: number
     active: number
@@ -312,6 +337,24 @@ export default function AdminDashboard() {
             sub: string
             icon: typeof Inbox
           }[] = []
+          if ((stats?.liveChat?.waiting ?? 0) > 0) {
+            items.push({
+              label: 'Live chats waiting',
+              count: stats!.liveChat!.waiting,
+              href: '/admin/live-chat',
+              sub: 'Customers waiting in queue right now',
+              icon: Headphones,
+            })
+          }
+          if ((stats?.pendingTransactions?.count ?? 0) > 0) {
+            items.push({
+              label: 'Pending payments',
+              count: stats!.pendingTransactions!.count,
+              href: '/admin/transactions?status=pending',
+              sub: `${formatNaira(stats!.pendingTransactions!.totalAmount)} awaiting verification or cancel`,
+              icon: CreditCard,
+            })
+          }
           if ((stats?.complaints.open ?? 0) > 0) {
             items.push({
               label: 'Open support tickets',
@@ -340,13 +383,6 @@ export default function AdminDashboard() {
             })
           }
 
-          // Success card and action cards now share the same shell —
-          // same rounded-2xl radius, same padding (p-3.5 sm:p-4),
-          // same brand-purple left accent bar, same white background
-          // and hairline border. The team flagged that the success
-          // and action variants felt like two different components;
-          // they should read as the same module flipping between
-          // "all clear" and "items waiting" modes.
           if (items.length === 0) {
             return (
               <div className="relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 overflow-hidden">
@@ -371,7 +407,7 @@ export default function AdminDashboard() {
                       You&apos;re all caught up
                     </p>
                     <p className="text-[11.5px] text-gray-500 mt-0.5 leading-relaxed">
-                      No pending consultations, complaints or gift-card
+                      No waiting chats, pending payments, consultations, complaints or gift-card
                       requests. Have a great day.
                     </p>
                   </div>
@@ -386,7 +422,7 @@ export default function AdminDashboard() {
                 <Link
                   key={it.label}
                   href={it.href}
-                  className="group relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all overflow-hidden"
+                  className="group relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/40 transition-colors overflow-hidden"
                 >
                   <span
                     className="absolute inset-y-0 left-0 w-1 bg-[#7B2D8E] rounded-l-2xl"
@@ -421,6 +457,178 @@ export default function AdminDashboard() {
         })()}
       </section>
 
+      {/* Today at the spa — operational snapshot */}
+      <section>
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+            <h2 className="text-sm font-semibold text-gray-900">
+              Today at the spa
+            </h2>
+          </div>
+          <Link
+            href="/admin/bookings"
+            className="text-xs font-medium text-[#7B2D8E] hover:underline inline-flex items-center gap-1"
+          >
+            Full schedule
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+          {/* Card 1: Today's appointments */}
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Today&apos;s appointments
+                </h3>
+              </div>
+              <span className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                {stats?.todayBookings?.count ?? 0}
+              </span>
+            </div>
+            <div className="p-3.5 flex-1">
+              {!stats?.todayBookings?.items || stats.todayBookings.items.length === 0 ? (
+                <p className="text-xs text-gray-400 py-6 text-center">
+                  No bookings scheduled for today yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {stats.todayBookings.items.map((b) => (
+                    <li key={b.id} className="py-2 first:pt-0 last:pb-0 flex items-center justify-between gap-2 text-xs">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{b.customerName}</p>
+                        <p className="text-[11px] text-gray-500 truncate">
+                          {b.appointmentTime} · {b.locationName}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/admin/bookings/${b.id}`}
+                        className="shrink-0 text-[11px] font-medium text-[#7B2D8E] hover:underline"
+                      >
+                        View
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* Card 2: Pending payments & Birthdays today */}
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Cake className="w-4 h-4 text-[#7B2D8E]" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Birthdays &amp; Payments
+                </h3>
+              </div>
+              <Link
+                href="/admin/transactions?status=pending"
+                className="text-[11px] font-semibold text-[#7B2D8E] hover:underline"
+              >
+                {stats?.pendingTransactions?.count ?? 0} pending
+              </Link>
+            </div>
+            <div className="p-3.5 space-y-3 flex-1">
+              <Link
+                href="/admin/transactions?status=pending"
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 hover:border-[#7B2D8E]/30 transition-colors"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-900">
+                    Pending transactions
+                  </p>
+                  <p className="text-[11px] text-gray-500">
+                    {formatNaira(stats?.pendingTransactions?.totalAmount ?? 0)} open across {stats?.pendingTransactions?.count ?? 0} item(s)
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+              </Link>
+
+              <div>
+                <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                  Birthdays today ({stats?.birthdaysToday?.length ?? 0})
+                </p>
+                {!stats?.birthdaysToday || stats.birthdaysToday.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-2">
+                    No client birthdays today.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {stats.birthdaysToday.slice(0, 3).map((b) => (
+                      <li key={b.id} className="flex items-center justify-between gap-2 text-xs">
+                        <span className="truncate text-gray-800 font-medium">
+                          {b.firstName} {b.lastName}
+                        </span>
+                        <Link
+                          href={`/admin/users/${b.id}`}
+                          className="shrink-0 text-[11px] font-medium text-[#7B2D8E] hover:underline"
+                        >
+                          Message
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Recent staff activity */}
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <UserCog className="w-4 h-4 text-[#7B2D8E]" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Recent staff activity
+                </h3>
+              </div>
+              <Link
+                href="/admin/activity?role=staff"
+                className="text-[11px] font-semibold text-[#7B2D8E] hover:underline"
+              >
+                All activity
+              </Link>
+            </div>
+            <div className="p-3.5 flex-1">
+              {!stats?.recentStaffActivity || stats.recentStaffActivity.length === 0 ? (
+                <p className="text-xs text-gray-400 py-6 text-center">
+                  No recent staff activity recorded yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {stats.recentStaffActivity.map((act) => (
+                    <li key={act.id} className="py-2 first:pt-0 last:pb-0 text-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link
+                          href={`/admin/staff/${act.staffId}`}
+                          className="font-semibold text-gray-900 hover:text-[#7B2D8E] truncate"
+                        >
+                          {act.actorName}
+                        </Link>
+                        <span className="text-[10px] text-gray-400 shrink-0 tabular-nums">
+                          {new Date(act.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                        {act.description || act.actionType}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Stats Grid */}
       <section>
         <div className="flex items-end justify-between mb-3 sm:mb-4">
@@ -447,7 +655,7 @@ export default function AdminDashboard() {
             <Link
               key={stat.label}
               href={stat.href}
-              className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/30 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:ring-offset-2"
+              className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/30 transition-colors focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:ring-offset-2"
             >
               {/* Hover accent */}
               <div className="absolute inset-x-0 top-0 h-0.5 bg-[#7B2D8E] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
@@ -525,12 +733,6 @@ export default function AdminDashboard() {
                 data={charts?.userTrend ?? []}
                 margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
-                <defs>
-                  <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#7B2D8E" stopOpacity={0.32} />
-                    <stop offset="100%" stopColor="#7B2D8E" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="#F3F4F6"
@@ -560,7 +762,6 @@ export default function AdminDashboard() {
                     borderRadius: 10,
                     border: '1px solid #E5E7EB',
                     fontSize: 12,
-                    boxShadow: '0 10px 25px -5px rgba(123,45,142,0.1)',
                   }}
                   labelFormatter={(value) =>
                     new Date(value).toLocaleDateString('en-US', {
@@ -575,7 +776,8 @@ export default function AdminDashboard() {
                   dataKey="count"
                   stroke="#7B2D8E"
                   strokeWidth={2.5}
-                  fill="url(#userGradient)"
+                  fill="#7B2D8E"
+                  fillOpacity={0.08}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -740,7 +942,6 @@ export default function AdminDashboard() {
                       borderRadius: 10,
                       border: '1px solid #E5E7EB',
                       fontSize: 12,
-                      boxShadow: '0 10px 25px -5px rgba(123,45,142,0.1)',
                     }}
                   />
                   <Bar dataKey="gross" fill="#E5D6EB" radius={[4, 4, 0, 0]} />
@@ -898,7 +1099,7 @@ export default function AdminDashboard() {
             <Link
               key={action.label}
               href={action.href}
-              className="group relative overflow-hidden flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all"
+              className="group relative overflow-hidden flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 transition-colors"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 group-hover:bg-[#7B2D8E] flex items-center justify-center flex-shrink-0 transition-colors">

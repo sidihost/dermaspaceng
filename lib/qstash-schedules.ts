@@ -49,13 +49,12 @@ export const QSTASH_SCHEDULES: QStashScheduleConfig[] = [
   {
     id: 'birthday-wishes',
     path: '/api/cron/birthday-wishes',
-    // 07:00 Africa/Lagos — early enough to land before most users start
-    // their day, late enough that we're not pinging anyone at 3 AM if
-    // QStash retries.
-    cron: '0 6 * * *',
+    // 00:00 (12:00 AM) Africa/Lagos (UTC+1, no DST) — lands right at
+    // midnight as the user's birthday begins.
+    cron: '0 23 * * *',
     label: 'Birthday wishes',
     description:
-      'Daily — emails every active user whose date_of_birth matches today (Africa/Lagos). Idempotent via users.last_birthday_email_sent_at.',
+      'Daily at 12:00 AM (Africa/Lagos) — emails every active user whose date_of_birth matches today. Idempotent via users.last_birthday_email_sent_at.',
   },
   {
     id: 'security-reminders',

@@ -55,10 +55,15 @@ type Tab = 'live' | 'history' | 'performance'
 interface SessionRow {
   id: string
   status: 'waiting' | 'active' | 'closed' | 'abandoned'
-  user_id: string
+  user_id: string | null
   user_first_name: string | null
   user_last_name: string | null
   user_email: string | null
+  is_guest?: boolean
+  guest_name?: string | null
+  guest_email?: string | null
+  guest_phone?: string | null
+  visitor_location?: string | null
   staff_id: string | null
   staff_first_name: string | null
   staff_last_name: string | null
@@ -279,11 +284,40 @@ function TranscriptDrawer({
   // Composer state.
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [confirmEnd, setConfirmEnd] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   const status = data?.session?.status
   const liveStatus = status === 'waiting' || status === 'active'
+
+  const endSession = async () => {
+    if (closing) return
+    setClosing(true)
+    setConfirmEnd(false)
+    setSendError(null)
+    try {
+      const res = await fetch(sessionUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'close' }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not close session.')
+      }
+      await Promise.all([
+        swrMutate(sessionUrl),
+        swrMutate('/api/admin/live-chat/sessions?status=open'),
+      ])
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to end session.')
+    } finally {
+      setClosing(false)
+    }
+  }
 
   const sendMessage = async () => {
     const text = draft.trim()
@@ -371,14 +405,46 @@ function TranscriptDrawer({
               </p>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {liveStatus && (
+              confirmEnd ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={endSession}
+                    disabled={closing}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-600 text-white hover:bg-rose-700"
+                  >
+                    {closing ? 'Ending…' : 'Confirm'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmEnd(false)}
+                    disabled={closing}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmEnd(true)}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:text-rose-600 hover:border-rose-200 transition-colors"
+                >
+                  End chat
+                </button>
+              )
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         {data?.session ? (

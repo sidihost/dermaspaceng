@@ -4,21 +4,12 @@ import {
   closeSession,
   getSessionById,
   rateSession,
+  skipSessionRating,
 } from '@/lib/live-chat'
 import {
   authoriseSessionAccess,
   clearGuestChatCookieOnResponse,
 } from '@/lib/live-chat-guest'
-
-// ---------------------------------------------------------------------------
-// GET / PATCH on a single live-chat session, restricted to the OWNING
-// party — either the logged-in customer or the guest browser holding
-// the matching guest-chat cookie.
-//
-// PATCH accepts:
-//   { action: 'close' }                              → user ends the chat
-//   { action: 'rate', service, staff, comment? }     → user submits rating
-// ---------------------------------------------------------------------------
 
 interface Params {
   params: Promise<{ id: string }>
@@ -61,9 +52,15 @@ export async function PATCH(req: Request, { params }: Params) {
   if (body.action === 'close') {
     await closeSession(id, 'user')
     const response = NextResponse.json({ success: true })
-    // If a guest closed their own chat, retire the cookie so a fresh
-    // pre-chat form is shown the next time they hit the site instead
-    // of trying to reattach to a closed session.
+    if (role === 'guest') {
+      clearGuestChatCookieOnResponse(response)
+    }
+    return response
+  }
+
+  if (body.action === 'skip_rating') {
+    await skipSessionRating(id)
+    const response = NextResponse.json({ success: true })
     if (role === 'guest') {
       clearGuestChatCookieOnResponse(response)
     }
@@ -86,7 +83,11 @@ export async function PATCH(req: Request, { params }: Params) {
     const comment =
       typeof body.comment === 'string' ? body.comment.slice(0, 500) : null
     await rateSession(id, service, staff, comment)
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
+    if (role === 'guest') {
+      clearGuestChatCookieOnResponse(response)
+    }
+    return response
   }
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })

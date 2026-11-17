@@ -1,23 +1,5 @@
 'use client'
 
-/**
- * Admin → Staff profile.
- *
- * The "everything-about-this-staff-member" view. The staff list links
- * here so an admin can:
- *   • see who they are at a glance (avatar, role, status pill)
- *   • understand their workload (assignments + replies counts)
- *   • see CSAT — the average ticket review rating customers have left
- *     on tickets this staff member handled, plus a recent ticket list
- *     with the star rating attached to each
- *   • take action — Suspend / Reactivate, promote/demote
- *
- * Data is owned by /api/admin/staff/[userId] (read) and the existing
- * /api/admin/users PUT handler (write — toggle_active, change_role).
- * Everything is brand-purple per the design rules; we never let
- * status colour leak into the chrome.
- */
-
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -41,7 +23,18 @@ import {
   Loader2,
   AlertCircle,
   CalendarDays,
+  Activity,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { useNotify } from '@/components/shared/notify'
 
 interface StaffUser {
   id: string
@@ -95,10 +88,23 @@ interface TicketRow {
   reply_count: number
 }
 
+interface ActivityRow {
+  id: string
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  description: string | null
+  created_at: string
+  user_id: string | null
+  user_first_name: string | null
+  user_last_name: string | null
+}
+
 interface ApiResponse {
   user: StaffUser
   performance: Performance
   tickets: TicketRow[]
+  activities?: ActivityRow[]
 }
 
 const TICKET_STATUS_PILL: Record<string, string> = {
@@ -117,6 +123,21 @@ function formatDate(d?: string | null) {
   })
 }
 
+function formatRelativeTime(d: string): string {
+  const diffMs = Date.now() - new Date(d).getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return formatDate(d)
+}
+
+function formatActionLabel(s: string | null | undefined): string {
+  if (!s) return 'Action'
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
 function StarRating({
   rating,
   size = 'sm',
@@ -124,8 +145,6 @@ function StarRating({
   rating: number
   size?: 'xs' | 'sm'
 }) {
-  // Reusable compact star renderer. Ratings on this page are display-
-  // only — the input variant lives in components/support/ticket-review-prompt.
   const dim = size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'
   return (
     <span className="inline-flex items-center gap-0.5 text-[#7B2D8E]" aria-label={`${rating} out of 5 stars`}>
@@ -144,11 +163,19 @@ function StarRating({
 export default function StaffProfilePage() {
   const params = useParams()
   const userId = params.userId as string
+  const notify = useNotify()
 
   const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{
+    action: 'toggle_active' | 'change_role'
+    value: unknown
+    title: string
+    description: string
+    confirmLabel: string
+  } | null>(null)
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -170,9 +197,6 @@ export default function StaffProfilePage() {
     fetchProfile()
   }, [fetchProfile])
 
-  // Reuse the existing /api/admin/users PUT handler (toggle_active,
-  // change_role) so we don't duplicate the suspension session-cleanup
-  // logic that endpoint already runs.
   const handleAction = async (action: string, value: unknown) => {
     setActing(true)
     try {
@@ -181,9 +205,18 @@ export default function StaffProfilePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, action, value }),
       })
-      if (res.ok) await fetchProfile()
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        notify.error(json.error || 'Failed to update staff account')
+        return
+      }
+      notify.success('Staff account updated')
+      await fetchProfile()
+    } catch {
+      notify.error('Could not reach server')
     } finally {
       setActing(false)
+      setConfirmAction(null)
     }
   }
 
@@ -213,7 +246,7 @@ export default function StaffProfilePage() {
     )
   }
 
-  const { user, performance, tickets } = data
+  const { user, performance, tickets, activities = [] } = data
   const initials = `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}`.toUpperCase()
   const fullName = `${user.first_name} ${user.last_name}`.trim() || user.email || 'Staff member'
 
@@ -230,7 +263,7 @@ export default function StaffProfilePage() {
         <div>
           <h1 className="text-base font-semibold text-gray-900">Staff profile</h1>
           <p className="text-xs text-gray-500">
-            Performance, ratings and account controls
+            Performance, activity log, ratings and account controls
           </p>
         </div>
       </div>
@@ -248,7 +281,7 @@ export default function StaffProfilePage() {
                 className="w-16 h-16 rounded-2xl object-cover ring-1 ring-[#7B2D8E]/15"
               />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
                 <span className="text-lg font-semibold text-white">{initials || 'DS'}</span>
               </div>
             )}
@@ -323,11 +356,15 @@ export default function StaffProfilePage() {
             {user.is_active ? (
               <button
                 disabled={acting}
-                onClick={() => {
-                  if (confirm(`Suspend ${fullName}? They will be signed out and locked out until reactivated.`)) {
-                    handleAction('toggle_active', false)
-                  }
-                }}
+                onClick={() =>
+                  setConfirmAction({
+                    action: 'toggle_active',
+                    value: false,
+                    title: `Suspend ${fullName}?`,
+                    description: 'They will be signed out immediately and locked out until reactivated.',
+                    confirmLabel: 'Suspend account',
+                  })
+                }
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <ShieldOff className="w-3.5 h-3.5" />
@@ -346,7 +383,15 @@ export default function StaffProfilePage() {
             {user.role === 'staff' ? (
               <button
                 disabled={acting}
-                onClick={() => handleAction('change_role', 'admin')}
+                onClick={() =>
+                  setConfirmAction({
+                    action: 'change_role',
+                    value: 'admin',
+                    title: `Promote ${fullName} to admin?`,
+                    description: 'Admins receive elevated permissions across the console.',
+                    confirmLabel: 'Promote to admin',
+                  })
+                }
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-xs font-medium hover:bg-[#5A1D6A] disabled:opacity-50"
               >
                 Promote to admin
@@ -354,11 +399,15 @@ export default function StaffProfilePage() {
             ) : (
               <button
                 disabled={acting || user.is_super_admin}
-                onClick={() => {
-                  if (confirm(`Demote ${fullName} from admin to staff?`)) {
-                    handleAction('change_role', 'staff')
-                  }
-                }}
+                onClick={() =>
+                  setConfirmAction({
+                    action: 'change_role',
+                    value: 'staff',
+                    title: `Demote ${fullName} to staff?`,
+                    description: 'Their admin access will be revoked while retaining staff tools.',
+                    confirmLabel: 'Demote to staff',
+                  })
+                }
                 title={user.is_super_admin ? 'Super admins cannot be demoted from this screen' : undefined}
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -371,7 +420,6 @@ export default function StaffProfilePage() {
 
       {/* CSAT + KPI strip */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Average ticket rating */}
         <div className="rounded-2xl border border-gray-100 bg-white p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 mb-2">
             Avg ticket rating
@@ -410,7 +458,6 @@ export default function StaffProfilePage() {
           )}
         </div>
 
-        {/* Replies & assignments */}
         <div className="rounded-2xl border border-gray-100 bg-white p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 mb-2">
             Activity
@@ -439,7 +486,6 @@ export default function StaffProfilePage() {
           </div>
         </div>
 
-        {/* Live chat */}
         <div className="rounded-2xl border border-gray-100 bg-white p-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 mb-2">
             Live chat
@@ -474,6 +520,72 @@ export default function StaffProfilePage() {
             </p>
           )}
         </div>
+      </div>
+
+      {/* Recent staff activity log */}
+      <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Recent activity log</h3>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Latest actions recorded by {user.first_name || 'this staff member'} across clients, live chats, emails, and payments.
+            </p>
+          </div>
+          <Link
+            href="/admin/activity"
+            className="text-xs font-medium text-[#7B2D8E] hover:underline whitespace-nowrap"
+          >
+            View full log
+          </Link>
+        </div>
+        {activities.length === 0 ? (
+          <div className="text-center py-10">
+            <Activity className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-xs text-gray-500">No recorded actions yet.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {activities.map((act) => {
+              const clientName = [act.user_first_name, act.user_last_name]
+                .filter(Boolean)
+                .join(' ')
+                .trim()
+              return (
+                <li
+                  key={act.id}
+                  className="px-4 py-3 flex items-start justify-between gap-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded-full">
+                        {formatActionLabel(act.action)}
+                      </span>
+                      {act.entity_type && (
+                        <span className="text-[11px] text-gray-500 capitalize">
+                          {act.entity_type.replace('_', ' ')}
+                        </span>
+                      )}
+                      {clientName && act.user_id && (
+                        <Link
+                          href={`/admin/users/${act.user_id}`}
+                          className="text-[11px] font-medium text-gray-700 hover:text-[#7B2D8E] hover:underline"
+                        >
+                          · {clientName}
+                        </Link>
+                      )}
+                    </div>
+                    {act.description && (
+                      <p className="text-xs text-gray-600 mt-1">{act.description}</p>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-gray-400 whitespace-nowrap tabular-nums">
+                    {formatRelativeTime(act.created_at)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </div>
 
       {/* Recent tickets handled */}
@@ -557,6 +669,38 @@ export default function StaffProfilePage() {
           </ul>
         )}
       </div>
+
+      {/* In-page confirmation modal (replaces browser confirm()) */}
+      <Dialog open={!!confirmAction} onOpenChange={(o) => !o && !acting && setConfirmAction(null)}>
+        <DialogContent className="sm:max-w-md border border-gray-200">
+          <DialogHeader>
+            <DialogTitle>{confirmAction?.title}</DialogTitle>
+            <DialogDescription>{confirmAction?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={acting}
+              onClick={() => setConfirmAction(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={acting}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
+              onClick={() => {
+                if (confirmAction) {
+                  void handleAction(confirmAction.action, confirmAction.value)
+                }
+              }}
+            >
+              {acting ? 'Working…' : confirmAction?.confirmLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

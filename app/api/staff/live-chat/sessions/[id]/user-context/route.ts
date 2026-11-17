@@ -49,6 +49,31 @@ export async function GET(_req: Request, { params }: Params) {
   }
 
   const userId = session.user_id
+  if (!userId) {
+    const parts = (session.guest_name || 'Guest').trim().split(/\s+/)
+    return NextResponse.json({
+      isGuest: true,
+      user: {
+        id: null,
+        firstName: parts[0] || 'Guest',
+        lastName: parts.slice(1).join(' '),
+        email: session.guest_email || 'Guest visitor',
+        phone: session.guest_phone || null,
+        avatarUrl: null,
+        memberSince: session.created_at,
+        emailVerified: false,
+        isActive: true,
+      },
+      wallet: {
+        balance: 0,
+        currency: 'NGN',
+        formatted: '₦0',
+      },
+      transactions: [],
+      bookings: [],
+      tickets: [],
+    })
+  }
 
   const userRows = await sql`
     SELECT id, first_name, last_name, email, phone, avatar_url, created_at,

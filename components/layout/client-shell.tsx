@@ -69,13 +69,14 @@ const ChristmasAnimation = dynamic(
   { ssr: false, loading: () => null },
 )
 
+const LiveChatOverlay = dynamic(
+  () => import('@/components/shared/live-chat-overlay'),
+  { ssr: false, loading: () => null },
+)
+
 export default function ClientShell() {
-  // Admin kill-switch — when an operator toggles "Derma AI chat"
-  // OFF in /admin/features, the floating launcher disappears
-  // site-wide on the next 30s SWR poll. Defaults to TRUE so the
-  // assistant never hides during the brief pre-hydration window
-  // (see `useFeatureFlag` doc comment for the safety rationale).
   const aiEnabled = useFeatureFlag('ai_chat')
+  const liveChatEnabled = useFeatureFlag('live_chat')
   return (
     <>
       <RootErrorBoundary label="christmas-animation">
@@ -84,50 +85,21 @@ export default function ClientShell() {
       <RootErrorBoundary label="ambient-music">
         <AmbientMusic />
       </RootErrorBoundary>
-      {/* Birthday greeting — renders null for everyone except users
-          whose DOB matches today. Shows a dismissible banner +
-          confetti burst once per calendar day. */}
       <RootErrorBoundary label="birthday">
         <BirthdayCelebration />
       </RootErrorBoundary>
-      {/* Derma AI — the floating assistant is mounted globally so it
-          follows signed-in members across every customer surface
-          (dashboard, services, booking, wallet, etc.). It self-gates
-          on auth and hides itself on admin/staff/auth pages.
-          NOTE: deliberately NOT wrapped in a `RootErrorBoundary`
-          here. DermaAIMount internally wraps the heavy chat panel
-          (the only piece that can realistically throw — speech
-          APIs, streaming, IndexedDB, etc.) in its own boundary.
-          Wrapping the entire mount here was the bug users kept
-          reporting as "the Derma AI launcher icon isn't even
-          showing anymore" — when the inner panel threw, the OUTER
-          boundary tripped and hid the launcher with it. With only
-          the inner boundary in place, the launcher button (which
-          has zero risky deps) stays visible and the user can tap
-          again or refresh. */}
       {aiEnabled && <DermaAIMount />}
-      {/* Legal acceptance gate — global so a signed-in user with a
-          stale legal version is prompted immediately, no matter
-          which route they land on after sign-in. The gate
-          self-excludes on /signin, /signup, the legal pages
-          themselves, and the admin/staff consoles (see
-          `components/legal/legal-acceptance-gate.tsx`). When the
-          user is already up-to-date or signed out, the gate
-          simply renders null. */}
+      {liveChatEnabled && (
+        <RootErrorBoundary label="live-chat">
+          <LiveChatOverlay />
+        </RootErrorBoundary>
+      )}
       <RootErrorBoundary label="legal-gate">
         <LegalAcceptanceGate />
       </RootErrorBoundary>
-      {/* Shake your phone anywhere on the site to jump straight to
-          the feedback form. Replaces the old "Haptic feedback"
-          toggle in Derma AI settings — the gesture itself is the
-          feature. The component is pure side-effect and renders
-          null. */}
       <RootErrorBoundary label="shake-to-feedback">
         <ShakeToFeedback />
       </RootErrorBoundary>
-      {/* Impersonation banner — pinned to the top of every page when an
-          admin is signed in as a customer. Renders null otherwise so
-          regular customer / admin sessions never see it. */}
       <RootErrorBoundary label="impersonation-banner">
         <ImpersonationBanner />
       </RootErrorBoundary>

@@ -18,12 +18,25 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url)
   const raw = url.searchParams.get('status') || 'all'
-  const valid: LiveChatStatus[] = ['waiting', 'active', 'closed', 'abandoned']
-  const filter =
-    raw === 'all' || (valid as readonly string[]).includes(raw)
-      ? (raw as 'all' | LiveChatStatus)
-      : 'all'
+  const valid: Array<'all' | 'open' | LiveChatStatus> = [
+    'all',
+    'open',
+    'waiting',
+    'active',
+    'closed',
+    'abandoned',
+  ]
+  const filter = (valid as readonly string[]).includes(raw)
+    ? (raw as 'all' | 'open' | LiveChatStatus)
+    : 'all'
 
-  const sessions = await getAllSessions(filter)
+  const rawDays = url.searchParams.get('days')
+  const parsedDays = rawDays ? Number(rawDays) : undefined
+  const days =
+    typeof parsedDays === 'number' && Number.isFinite(parsedDays) && parsedDays > 0
+      ? parsedDays
+      : undefined
+
+  const sessions = await getAllSessions(filter, days)
   return NextResponse.json({ sessions })
 }

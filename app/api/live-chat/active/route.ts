@@ -4,27 +4,13 @@ import { getCurrentUser } from '@/lib/auth'
 import {
   avatarUrlForSlug,
   getOpenSessionForUser,
+  getRecentUnratedSessionForUser,
   getSessionById,
   staffDisplayName,
   type LiveChatSession,
 } from '@/lib/live-chat'
 import { readGuestChatCookie } from '@/lib/live-chat-guest'
 
-// ---------------------------------------------------------------------------
-// GET /api/live-chat/active
-// ---------------------------------------------------------------------------
-// Returns the user's CURRENT live-chat session (if any) plus the assigned
-// staff member's display name and avatar so the widget can render the
-// "Sarah joined the chat" header without a second round-trip.
-// Polled every few seconds by the floating live-chat overlay.
-//
-// Two resolution paths:
-//   1. Logged-in customer  — look up by user_id (most recent open).
-//   2. Anonymous visitor   — read the guest cookie and look up by id;
-//      verify the session has NO user_id (i.e. is a guest row), and
-//      that the row is still open (waiting/active), otherwise return
-//      `{ session: null }` so the overlay re-shows the pre-chat form.
-// ---------------------------------------------------------------------------
 export async function GET() {
   const user = await getCurrentUser()
 
@@ -32,19 +18,20 @@ export async function GET() {
   let isGuest = false
 
   if (user) {
-    session = await getOpenSessionForUser(user.id)
+    session = (await getOpenSessionForUser(user.id)) ?? (await getRecentUnratedSessionForUser(user.id))
   } else {
     const guestSessionId = await readGuestChatCookie()
     if (guestSessionId) {
       const candidate = await getSessionById(guestSessionId)
-      // Defence in depth: only honour the cookie if the row is genuinely
-      // a guest row (user_id IS NULL). If a malicious visitor stole a
-      // logged-in customer's session UUID and stamped it in their own
-      // cookie we'd otherwise hand them that customer's transcript.
+      const recentlyClosedUnrated =
+        candidate?.status === 'closed' &&
+        !candidate.rated_at &&
+        !!candidate.closed_at &&
+        Date.now() - new Date(candidate.closed_at).getTime() <= 30 * 60 * 1000
       if (
         candidate &&
         candidate.user_id === null &&
-        (candidate.status === 'waiting' || candidate.status === 'active')
+        (candidate.status === 'waiting' || candidate.status === 'active' || recentlyClosedUnrated)
       ) {
         session = candidate
         isGuest = true

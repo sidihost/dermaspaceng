@@ -10,18 +10,7 @@ import {
   avatarUrlForSlug,
   addMessage,
 } from '@/lib/live-chat'
-
-// ---------------------------------------------------------------------------
-// Staff-side single session endpoint. Returns enough metadata for the
-// conversation panel to render the customer header AND drive the "Accept",
-// "Close chat" actions.
-//
-// PATCH actions:
-//   { action: 'accept' }  → assign to caller, status → active, drop a
-//                            "Sarah joined the chat" system message.
-//   { action: 'close' }   → close the session. Admins can close anyone's,
-//                            staff can only close one assigned to them.
-// ---------------------------------------------------------------------------
+import { logStaffActivity } from '@/lib/activity-log'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -37,19 +26,11 @@ export async function GET(_req: Request, { params }: Params) {
 
   const { id } = await params
 
-  // Critical: LEFT JOIN — never INNER JOIN — on `users` for the customer.
-  // Guest sessions (created via the pre-chat form) have `user_id IS NULL`
-  // and therefore have no matching `users` row. An INNER JOIN here makes
-  // every guest session 404 when staff click it from the queue, even
-  // though the queue itself lists them (the queue uses LEFT JOIN). The
-  // COALESCE / split_part pattern below mirrors `getStaffQueue` so the
-  // staff console renders one unified "name + email" header regardless
-  // of whether the customer is signed in.
   const rows = await sql`
     SELECT s.*,
            COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
            COALESCE(u.last_name,
-                    NULLIF(regexp_replace(s.guest_name, '^\S+\s*', ''), ''),
+                    NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
                     '')                                                                 AS user_last_name,
            COALESCE(u.email, s.guest_email)                                             AS user_email,
            COALESCE(u.phone, s.guest_phone)                                             AS user_phone,
@@ -72,8 +53,6 @@ export async function GET(_req: Request, { params }: Params) {
 
   const r = rows[0] as Record<string, unknown>
 
-  // Staff can only see waiting sessions (anyone may pick up) and ones
-  // assigned to them. Admins see everything.
   if (user.role !== 'admin') {
     const assigned = r.assigned_staff_id as string | null
     const status = r.status as string
@@ -150,10 +129,14 @@ export async function PATCH(req: Request, { params }: Params) {
       user.id,
       `${user.first_name} ${user.last_name}`.trim(),
     )
-    await acceptSession(id, user.id)
+    const accepted = await acceptSession(id, user.id)
+    if (!accepted) {
+      return NextResponse.json(
+        { error: 'This chat has already been picked up.' },
+        { status: 409 },
+      )
+    }
 
-    // Drop a "Sarah joined the chat" system message so the user sees the
-    // handoff in their thread without us having to wire a separate event.
     const profileRows = await sql`
       SELECT display_name, avatar_slug FROM staff_profiles WHERE user_id = ${user.id}
     `
@@ -163,11 +146,18 @@ export async function PATCH(req: Request, { params }: Params) {
       last_name: user.last_name,
     })
     await addMessage(id, 'system', null, `${dn} joined the chat`)
+    await logStaffActivity({
+      staffId: user.id,
+      userId: session.user_id,
+      actionType: 'live_chat_accepted',
+      entityType: 'live_chat_session',
+      entityId: id,
+      description: `Accepted live chat session${session.guest_name ? ` with ${session.guest_name}` : ''}`,
+    })
     return NextResponse.json({ success: true })
   }
 
   if (body.action === 'close') {
-    // Staff can only close their own active chats; admins can close any.
     if (
       user.role !== 'admin' &&
       session.assigned_staff_id !== user.id
@@ -176,11 +166,6 @@ export async function PATCH(req: Request, { params }: Params) {
     }
     await closeSession(id, user.role === 'admin' ? 'admin' : 'staff')
 
-    // Insert a "{Staff} left the chat" handoff event BEFORE the generic
-    // "Chat ended" terminal so the transcript reads naturally — the
-    // departure is rendered with the staff member's avatar / name in
-    // the user-facing overlay (see MessageBubble's system event styling),
-    // which matches what Namecheap and Intercom do when a rep drops.
     if (session.assigned_staff_id) {
       const profileRows = await sql`
         SELECT u.first_name, u.last_name, sp.display_name
@@ -202,6 +187,14 @@ export async function PATCH(req: Request, { params }: Params) {
       }
     }
     await addMessage(id, 'system', null, 'Chat ended')
+    await logStaffActivity({
+      staffId: user.id,
+      userId: session.user_id,
+      actionType: 'live_chat_closed',
+      entityType: 'live_chat_session',
+      entityId: id,
+      description: `Ended live chat session${session.guest_name ? ` with ${session.guest_name}` : ''}`,
+    })
     return NextResponse.json({ success: true })
   }
 

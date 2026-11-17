@@ -2770,6 +2770,7 @@ export async function sendBirthdayEmail(data: {
   firstName: string
 }): Promise<boolean> {
   const name = data.firstName?.trim() || 'there'
+  const safeName = escapeHtml(name)
   const bookingUrl = `${PUBLIC_ORIGIN}/booking`
 
   const content = `
@@ -2778,7 +2779,7 @@ export async function sendBirthdayEmail(data: {
     <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 40px 24px; text-align: center; margin: 0 0 24px;">
       <div style="font-size: 48px; line-height: 1; margin: 0 0 12px;">&#127874;</div>
       <h1 style="margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #ffffff; line-height: 1.2;">
-        Happy Birthday, ${name}!
+        Happy Birthday, ${safeName}!
       </h1>
       <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.9); line-height: 1.5;">
         From everyone at Dermaspace &mdash; with love.
@@ -2786,7 +2787,7 @@ export async function sendBirthdayEmail(data: {
     </div>
 
     <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
-      Hi ${name},
+      Hi ${safeName},
     </p>
 
     <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
@@ -2830,7 +2831,10 @@ export async function sendBirthdayEmail(data: {
   return sendEmail({
     to: data.email,
     subject: `Happy Birthday, ${name}! A little something from Dermaspace`,
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content, {
+      preheader: `Happy Birthday, ${name}! Come celebrate with us at Dermaspace this month.`,
+      eyebrow: 'Happy Birthday',
+    }),
   })
 }
 
@@ -4075,6 +4079,69 @@ export async function sendGiftCardToRecipient(data: {
     html: getEmailTemplate(content, {
       preheader: `${data.senderName || 'Someone special'} gifted you ${formattedAmount} to enjoy at Dermaspace.`,
       eyebrow: 'Your gift card',
+    }),
+  })
+}
+
+/**
+ * Direct message sent to a customer from an admin or staff member using
+ * Dermaspace's flat, full-bleed transactional shell (no gradients/shadows).
+ */
+export async function sendDirectUserEmail(data: {
+  email: string
+  recipientName: string
+  subject: string
+  message: string
+  senderName?: string | null
+  senderRole?: 'admin' | 'staff'
+}): Promise<boolean> {
+  const safeName = escapeHtml(data.recipientName?.trim() || 'there')
+  const safeSubject = escapeHtml(data.subject.trim())
+  const safeSender = escapeHtml(data.senderName?.trim() || 'Dermaspace Care Team')
+  const roleLabel = data.senderRole === 'staff' ? 'Dermaspace Specialist' : 'Dermaspace Team'
+
+  const paragraphs = data.message
+    .trim()
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map(
+      (block) =>
+        `<p style="margin: 0 0 14px; font-size: 15px; color: #1c1e21; line-height: 1.65;">${escapeHtml(block).replace(/\n/g, '<br />')}</p>`,
+    )
+    .join('')
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      ${safeSubject}
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <div style="margin: 0 0 20px;">
+      ${paragraphs}
+    </div>
+
+    <div style="border-top: 1px solid #ece5f0; padding-top: 16px; margin-top: 20px;">
+      <p style="margin: 0; font-size: 14px; font-weight: 600; color: #1c1e21;">
+        ${safeSender}
+      </p>
+      <p style="margin: 2px 0 0; font-size: 13px; color: #666;">
+        ${roleLabel} &middot; Dermaspace Esthetic &amp; Wellness Centre
+      </p>
+    </div>
+  `
+
+  const cleanPreheader = data.message.trim().replace(/\s+/g, ' ').slice(0, 120)
+
+  return sendEmail({
+    to: data.email,
+    subject: data.subject.trim(),
+    html: getEmailTemplate(content, {
+      preheader: cleanPreheader,
+      eyebrow: 'Message from Dermaspace',
     }),
   })
 }

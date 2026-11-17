@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     await requireAdmin()
     const sp = request.nextUrl.searchParams
     const event = (sp.get('event') || 'all').trim()
+    const roleRaw = (sp.get('role') || 'all').trim().toLowerCase()
+    const roleFilter = ['staff', 'admin', 'user'].includes(roleRaw) ? roleRaw : null
     const q = (sp.get('q') || '').trim()
     const page = Math.max(1, parseInt(sp.get('page') || '1'))
     const limitRaw = parseInt(sp.get('limit') || '50')
@@ -59,6 +61,7 @@ export async function GET(request: NextRequest) {
       FROM auth_audit_chain a
       LEFT JOIN users u ON u.id = a.user_id
       WHERE (${eventFilter}::text IS NULL OR a.event_type = ${eventFilter})
+        AND (${roleFilter}::text IS NULL OR u.role = ${roleFilter})
         AND (
           ${like}::text IS NULL
           OR LOWER(COALESCE(u.email, '')) LIKE ${like}
@@ -75,6 +78,7 @@ export async function GET(request: NextRequest) {
       FROM auth_audit_chain a
       LEFT JOIN users u ON u.id = a.user_id
       WHERE (${eventFilter}::text IS NULL OR a.event_type = ${eventFilter})
+        AND (${roleFilter}::text IS NULL OR u.role = ${roleFilter})
         AND (
           ${like}::text IS NULL
           OR LOWER(COALESCE(u.email, '')) LIKE ${like}

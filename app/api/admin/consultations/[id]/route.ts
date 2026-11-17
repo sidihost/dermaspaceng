@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { getAdminPermissions } from '@/lib/admin-permissions'
+import { invalidateAfterQueueWrite } from '@/lib/stats-cache'
 
 /**
  * Admin consultation detail API.
@@ -105,6 +106,7 @@ export async function DELETE(
     } catch {
       /* logging never blocks */
     }
+    await invalidateAfterQueueWrite()
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('Delete consultation error:', error)

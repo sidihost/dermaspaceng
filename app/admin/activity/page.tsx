@@ -1,13 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { ChevronRight as ChevronRightIcon } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Activity,
   Search,
@@ -24,6 +18,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronRight as ChevronRightIcon,
   KeyRound,
   ShieldAlert,
   LogIn,
@@ -32,20 +27,35 @@ import {
   Smartphone,
   Monitor,
   ShieldCheck,
+  Mail,
+  CreditCard,
+  Headphones,
 } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 interface ActivityItem {
   id: string
-  actor_id: string
+  actor_id: string | null
+  staff_id?: string | null
   actor_name: string
   actor_role: string
   action: string
   action_raw?: string
   entity_type: string
-  entity_id: string
+  entity_id: string | null
   details: string
   created_at: string
+}
+
+interface StaffMemberOption {
+  id: string
+  name: string
+  role: string
 }
 
 interface LoginItem {
@@ -68,23 +78,23 @@ const actionIcons: Record<string, React.ReactNode> = {
   view: <Eye className="h-4 w-4" />,
   reply: <MessageSquare className="h-4 w-4" />,
   status_change: <RefreshCw className="h-4 w-4" />,
+  email: <Mail className="h-4 w-4" />,
+  payment: <CreditCard className="h-4 w-4" />,
 }
 
 const entityIcons: Record<string, React.ReactNode> = {
   user: <User className="h-4 w-4" />,
   gift_card: <Gift className="h-4 w-4" />,
   complaint: <MessageSquare className="h-4 w-4" />,
+  ticket: <MessageSquare className="h-4 w-4" />,
   consultation: <Calendar className="h-4 w-4" />,
+  booking: <Calendar className="h-4 w-4" />,
   survey: <FileText className="h-4 w-4" />,
+  transaction: <CreditCard className="h-4 w-4" />,
+  email: <Mail className="h-4 w-4" />,
+  live_chat: <Headphones className="h-4 w-4" />,
 }
 
-// Monochrome brand palette only. Hierarchy is conveyed by INTENSITY,
-// not hue (mirrors the admin booking-detail pills):
-//   • strong solid fill (#7B2D8E on white text) → primary positive
-//     actions (create / reply)
-//   • soft brand tint → routine actions (update / status change)
-//   • neutral gray → low-signal events (view)
-//   • dark-purple ghost outline (#5A1D6A) → destructive (delete)
 const actionColors: Record<string, string> = {
   create: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
   update: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
@@ -92,17 +102,10 @@ const actionColors: Record<string, string> = {
   view: "bg-gray-50 text-gray-500 border-gray-200",
   reply: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
   status_change: "bg-[#7B2D8E]/[0.06] text-[#7B2D8E] border-[#7B2D8E]/20",
+  email: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25",
+  payment: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25",
 }
 
-// Brand-only palette for login event types — purple intensity carries
-// the meaning so the surface never introduces non-brand hues:
-//   • successful sign-in → strong brand fill (the headline event)
-//   • sign-up / 2FA enabled → soft brand tint (positive growth)
-//   • role change → mid brand tint (notable security event)
-//   • password events → faint brand tint (routine security)
-//   • logout → neutral gray (low signal)
-//   • failed attempt / 2FA disabled → dark-purple ghost outline so
-//     risk states still read distinct without alarmist reds.
 const loginEventColors: Record<string, string> = {
   signin: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
   signin_failed: "bg-white text-[#5A1D6A] border-[#5A1D6A]/35",
@@ -164,12 +167,11 @@ export default function ActivityLogPage() {
             Activity Log
           </h1>
           <p className="mt-1 text-muted-foreground">
-            Track every action across the platform and every authentication event.
+            Monitor staff and admin actions across the platform and every authentication event.
           </p>
         </div>
       </div>
 
-      {/* Tab pills — same vocabulary as the staff console for consistency. */}
       <div className="flex items-center gap-2" role="tablist">
         <button
           role="tab"
@@ -183,7 +185,7 @@ export default function ActivityLogPage() {
           )}
         >
           <Activity className="h-3.5 w-3.5" />
-          Staff actions
+          Staff &amp; team actions
         </button>
         <button
           role="tab"
@@ -206,37 +208,37 @@ export default function ActivityLogPage() {
   )
 }
 
-// ────────────────────────────────────────────────────────────────────
-// Actions panel — staff/admin actions across bookings, complaints, etc.
-// ────────────────────────────────────────────────────────────────────
-
 function ActionsPanel() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [staffMembers, setStaffMembers] = useState<StaffMemberOption[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
+  const [filterRole, setFilterRole] = useState("all")
+  const [filterStaff, setFilterStaff] = useState("all")
   const [filterAction, setFilterAction] = useState("all")
   const [filterEntity, setFilterEntity] = useState("all")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  useEffect(() => {
-    fetchActivities()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filterAction, filterEntity])
-
-  const fetchActivities = async () => {
+  const fetchActivities = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: "20",
+        limit: "25",
+        ...(filterRole !== "all" && { role: filterRole }),
+        ...(filterStaff !== "all" && { staff_id: filterStaff }),
         ...(filterAction !== "all" && { action: filterAction }),
         ...(filterEntity !== "all" && { entity_type: filterEntity }),
+        ...(search.trim() ? { q: search.trim() } : {}),
       })
-      const res = await fetch(`/api/admin/activity?${params}`)
+      const res = await fetch(`/api/admin/activity?${params}`, { cache: "no-store" })
       const data = await res.json()
       if (res.ok) {
         setActivities(data.activities || [])
+        if (Array.isArray(data.staffMembers)) {
+          setStaffMembers(data.staffMembers)
+        }
         setTotalPages(data.pagination?.totalPages || data.totalPages || 1)
       }
     } catch (error) {
@@ -244,24 +246,43 @@ function ActionsPanel() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, filterRole, filterStaff, filterAction, filterEntity, search])
 
-  const filteredActivities = activities.filter((a) => {
-    if (!search) return true
-    const s = search.toLowerCase()
-    return (
-      a.actor_name?.toLowerCase().includes(s) ||
-      a.action?.toLowerCase().includes(s) ||
-      a.action_raw?.toLowerCase().includes(s) ||
-      a.entity_type?.toLowerCase().includes(s) ||
-      a.details?.toLowerCase().includes(s)
-    )
-  })
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchActivities()
+    }, search ? 250 : 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchActivities, search])
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={fetchActivities} className="gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {[
+            { id: "all", label: "All team" },
+            { id: "staff", label: "Staff only" },
+            { id: "admin", label: "Admins only" },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                setFilterRole(opt.id)
+                setPage(1)
+              }}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium border transition-colors",
+                filterRole === opt.id
+                  ? "bg-[#7B2D8E] text-white border-[#7B2D8E]"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <Button variant="outline" onClick={() => void fetchActivities()} className="gap-2">
           <RefreshCw className="h-4 w-4" />
           Refresh
         </Button>
@@ -269,19 +290,48 @@ function ActionsPanel() {
 
       <Card className="border-border/50">
         <CardContent className="p-4">
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex flex-col gap-3 lg:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search activities..."
+                placeholder="Search by staff name, action, or details..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
                 className="pl-9"
               />
             </div>
-            <div className="flex gap-2">
-              <Select value={filterAction} onValueChange={setFilterAction}>
-                <SelectTrigger className="w-full sm:w-[160px]">
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={filterStaff}
+                onValueChange={(v) => {
+                  setFilterStaff(v)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[175px]">
+                  <User className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All team members</SelectItem>
+                  {staffMembers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name} ({m.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filterAction}
+                onValueChange={(v) => {
+                  setFilterAction(v)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[155px]">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Action" />
                 </SelectTrigger>
@@ -292,18 +342,29 @@ function ActionsPanel() {
                   <SelectItem value="delete">Delete</SelectItem>
                   <SelectItem value="reply">Reply</SelectItem>
                   <SelectItem value="status_change">Status change</SelectItem>
+                  <SelectItem value="email">Email sent</SelectItem>
+                  <SelectItem value="payment">Payment / Refund</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={filterEntity} onValueChange={setFilterEntity}>
-                <SelectTrigger className="w-full sm:w-[160px]">
+              <Select
+                value={filterEntity}
+                onValueChange={(v) => {
+                  setFilterEntity(v)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[155px]">
                   <SelectValue placeholder="Entity" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="user">Users</SelectItem>
                   <SelectItem value="booking">Bookings</SelectItem>
+                  <SelectItem value="transaction">Transactions</SelectItem>
+                  <SelectItem value="live_chat">Live chat</SelectItem>
                   <SelectItem value="gift_card">Gift cards</SelectItem>
                   <SelectItem value="complaint">Complaints</SelectItem>
+                  <SelectItem value="ticket">Tickets</SelectItem>
                   <SelectItem value="consultation">Consultations</SelectItem>
                   <SelectItem value="survey">Surveys</SelectItem>
                 </SelectContent>
@@ -320,8 +381,8 @@ function ActionsPanel() {
             Recent activity
           </CardTitle>
           <CardDescription>
-            Showing {filteredActivities.length}{" "}
-            {filteredActivities.length === 1 ? "entry" : "entries"}
+            Showing {activities.length}{" "}
+            {activities.length === 1 ? "entry" : "entries"}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -329,70 +390,85 @@ function ActionsPanel() {
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : filteredActivities.length === 0 ? (
+          ) : activities.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Activity className="h-12 w-12 text-muted-foreground/50" />
               <p className="mt-4 text-lg font-medium text-muted-foreground">
-                No activity yet
+                No activity matches these filters
               </p>
               <p className="text-sm text-muted-foreground/70">
-                Actions will appear here as staff use the platform.
+                Staff and admin actions appear here automatically as they work.
               </p>
             </div>
           ) : (
             <ul className="divide-y divide-border/50">
-              {filteredActivities.map((a, idx) => (
-                <li
-                  key={a.id}
-                  className="flex items-start gap-4 p-4 transition-colors hover:bg-muted/30"
-                >
-                  <div className="relative flex flex-col items-center">
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full border",
-                        actionColors[a.action] ||
-                          "bg-gray-100 text-gray-600 border-gray-200",
+              {activities.map((a, idx) => {
+                const isTeamActor =
+                  (a.actor_role === "staff" || a.actor_role === "admin") &&
+                  Boolean(a.staff_id || a.actor_id)
+                const profileId = a.staff_id || a.actor_id
+                return (
+                  <li
+                    key={a.id}
+                    className="flex items-start gap-4 p-4 transition-colors hover:bg-muted/30"
+                  >
+                    <div className="relative flex flex-col items-center">
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-full border",
+                          actionColors[a.action] ||
+                            "bg-gray-100 text-gray-600 border-gray-200",
+                        )}
+                      >
+                        {actionIcons[a.action] || <Activity className="h-4 w-4" />}
+                      </div>
+                      {idx < activities.length - 1 && (
+                        <div className="absolute top-10 h-full w-px bg-border/50" />
                       )}
-                    >
-                      {actionIcons[a.action] || <Activity className="h-4 w-4" />}
                     </div>
-                    {idx < filteredActivities.length - 1 && (
-                      <div className="absolute top-10 h-full w-px bg-border/50" />
-                    )}
-                  </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-foreground">
-                        {a.actor_name || "System"}
-                      </span>
-                      <Badge variant="outline" className="text-xs">
-                        {a.actor_role || "system"}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      <span className="font-medium text-foreground/80">
-                        {formatLabel(a.action_raw || a.action)}
-                      </span>{" "}
-                      <span className="inline-flex items-center gap-1">
-                        {entityIcons[a.entity_type]}
-                        {formatLabel(a.entity_type)}
-                      </span>
-                    </p>
-                    {a.details && (
-                      <p className="mt-2 rounded-md bg-muted/50 p-2 text-sm text-muted-foreground">
-                        {a.details}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isTeamActor && profileId ? (
+                          <Link
+                            href={`/admin/staff/${profileId}`}
+                            className="font-medium text-foreground hover:text-[#7B2D8E] hover:underline"
+                          >
+                            {a.actor_name || "Staff"}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-foreground">
+                            {a.actor_name || "System"}
+                          </span>
+                        )}
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {a.actor_role || "system"}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground/80">
+                          {formatLabel(a.action_raw || a.action)}
+                        </span>{" "}
+                        <span className="inline-flex items-center gap-1">
+                          {entityIcons[a.entity_type]}
+                          {formatLabel(a.entity_type)}
+                        </span>
                       </p>
-                    )}
-                  </div>
+                      {a.details && (
+                        <p className="mt-2 rounded-md bg-muted/50 p-2 text-sm text-muted-foreground">
+                          {a.details}
+                        </p>
+                      )}
+                    </div>
 
-                  <div className="shrink-0 text-right">
-                    <span className="text-sm text-muted-foreground">
-                      {formatRelative(a.created_at)}
-                    </span>
-                  </div>
-                </li>
-              ))}
+                    <div className="shrink-0 text-right">
+                      <span className="text-sm text-muted-foreground">
+                        {formatRelative(a.created_at)}
+                      </span>
+                    </div>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </CardContent>
@@ -427,15 +503,12 @@ function ActionsPanel() {
   )
 }
 
-// ────────────────────────────────────────────────────────────────────
-// Logins panel — pulls from the tamper-evident auth audit chain.
-// ────────────────────────────────────────────────────────────────────
-
 function LoginsPanel() {
   const [logins, setLogins] = useState<LoginItem[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [eventFilter, setEventFilter] = useState("all")
+  const [roleFilter, setRoleFilter] = useState("all")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [stats, setStats] = useState({
@@ -446,9 +519,9 @@ function LoginsPanel() {
   })
 
   useEffect(() => {
-    fetchLogins()
+    void fetchLogins()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, eventFilter])
+  }, [page, eventFilter, roleFilter])
 
   const fetchLogins = async () => {
     setLoading(true)
@@ -457,6 +530,7 @@ function LoginsPanel() {
         page: page.toString(),
         limit: "30",
         event: eventFilter,
+        role: roleFilter,
         ...(search ? { q: search } : {}),
       })
       const res = await fetch(`/api/admin/activity/logins?${params}`)
@@ -475,7 +549,6 @@ function LoginsPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatTile label="Sign-ins · 24h" value={stats.signins24h} icon={LogIn} tone="purple" />
         <StatTile label="Unique · 24h" value={stats.unique24h} icon={User} tone="muted" />
@@ -495,7 +568,7 @@ function LoginsPanel() {
               onSubmit={(e) => {
                 e.preventDefault()
                 setPage(1)
-                fetchLogins()
+                void fetchLogins()
               }}
               className="relative flex-1"
             >
@@ -507,7 +580,24 @@ function LoginsPanel() {
                 className="pl-9"
               />
             </form>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={roleFilter}
+                onValueChange={(v) => {
+                  setRoleFilter(v)
+                  setPage(1)
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All roles</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">Customers</SelectItem>
+                </SelectContent>
+              </Select>
               <Select
                 value={eventFilter}
                 onValueChange={(v) => {
@@ -536,7 +626,7 @@ function LoginsPanel() {
                 variant="outline"
                 onClick={() => {
                   setPage(1)
-                  fetchLogins()
+                  void fetchLogins()
                 }}
                 className="gap-2"
               >
@@ -552,7 +642,7 @@ function LoginsPanel() {
         <CardHeader className="border-b border-border/50">
           <CardTitle className="flex items-center gap-2 text-lg">
             <LogIn className="h-5 w-5 text-[#7B2D8E]" />
-            Login & auth events
+            Login &amp; auth events
           </CardTitle>
           <CardDescription>
             Pulled from the tamper-evident auth ledger. Showing {logins.length}{" "}
@@ -586,75 +676,75 @@ function LoginsPanel() {
                 const newDevice = (l.eventData as any)?.newDevice
                 return (
                   <li key={l.id}>
-                   <Link
-                    href={`/admin/activity/${l.id}`}
-                    className="flex items-start gap-4 p-4 transition-colors hover:bg-muted/30"
-                   >
-                    <div
-                      className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full border flex-shrink-0",
-                        tone,
-                      )}
+                    <Link
+                      href={`/admin/activity/${l.id}`}
+                      className="flex items-start gap-4 p-4 transition-colors hover:bg-muted/30"
                     >
-                      {icon}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-foreground truncate">
-                          {l.userName}
-                        </span>
-                        {l.userRole && (
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {l.userRole}
-                          </Badge>
+                      <div
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-full border flex-shrink-0",
+                          tone,
                         )}
-                        <Badge
-                          className={cn(
-                            "text-xs border",
-                            loginEventColors[l.eventType] ||
-                              "bg-gray-100 text-gray-600 border-gray-200",
-                          )}
-                        >
-                          {formatLabel(l.eventType)}
-                        </Badge>
-                        {newDevice && (
-                          <Badge className="text-xs border bg-[#5A1D6A]/10 text-[#5A1D6A] border-[#5A1D6A]/25">
-                            New device
-                          </Badge>
-                        )}
+                      >
+                        {icon}
                       </div>
-                      {l.userEmail && (
-                        <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                          {l.userEmail}
-                        </p>
-                      )}
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <device.Icon className="h-3 w-3" />
-                          {device.label}
-                        </span>
-                        {l.ipAddress && (
-                          <span className="inline-flex items-center gap-1 font-mono">
-                            <Globe className="h-3 w-3" />
-                            {l.ipAddress}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-foreground truncate">
+                            {l.userName}
                           </span>
+                          {l.userRole && (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {l.userRole}
+                            </Badge>
+                          )}
+                          <Badge
+                            className={cn(
+                              "text-xs border",
+                              loginEventColors[l.eventType] ||
+                                "bg-gray-100 text-gray-600 border-gray-200",
+                            )}
+                          >
+                            {formatLabel(l.eventType)}
+                          </Badge>
+                          {newDevice && (
+                            <Badge className="text-xs border bg-[#5A1D6A]/10 text-[#5A1D6A] border-[#5A1D6A]/25">
+                              New device
+                            </Badge>
+                          )}
+                        </div>
+                        {l.userEmail && (
+                          <p className="mt-0.5 text-xs text-muted-foreground truncate">
+                            {l.userEmail}
+                          </p>
+                        )}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <device.Icon className="h-3 w-3" />
+                            {device.label}
+                          </span>
+                          {l.ipAddress && (
+                            <span className="inline-flex items-center gap-1 font-mono">
+                              <Globe className="h-3 w-3" />
+                              {l.ipAddress}
+                            </span>
+                          )}
+                        </div>
+                        {l.userAgent && (
+                          <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
+                            {l.userAgent}
+                          </p>
                         )}
                       </div>
-                      {l.userAgent && (
-                        <p className="mt-1 truncate text-[11px] text-muted-foreground/80">
-                          {l.userAgent}
-                        </p>
-                      )}
-                    </div>
 
-                    <div className="shrink-0 text-right flex items-center gap-1.5">
-                      <span className="text-sm text-muted-foreground whitespace-nowrap">
-                        {formatRelative(l.createdAt)}
-                      </span>
-                      <ChevronRightIcon className="h-4 w-4 text-muted-foreground/40" />
-                    </div>
-                   </Link>
+                      <div className="shrink-0 text-right flex items-center gap-1.5">
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {formatRelative(l.createdAt)}
+                        </span>
+                        <ChevronRightIcon className="h-4 w-4 text-muted-foreground/40" />
+                      </div>
+                    </Link>
                   </li>
                 )
               })}
@@ -703,9 +793,6 @@ function StatTile({
   icon: React.ComponentType<{ className?: string }>
   tone: "purple" | "rose" | "emerald" | "muted"
 }) {
-  // Brand-only icon tiles. "purple" is the strong primary fill for the
-  // headline metric; the others are purple intensities (dark-purple for
-  // the risk/failed metric) so the row stays monochrome on-brand.
   const palette = {
     purple: "bg-[#7B2D8E] text-white",
     rose: "bg-[#5A1D6A]/12 text-[#5A1D6A]",
@@ -713,7 +800,7 @@ function StatTile({
     muted: "bg-gray-100 text-gray-500",
   }[tone]
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between gap-2">
         <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", palette)}>
           <Icon className="h-4 w-4" />

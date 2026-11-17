@@ -362,6 +362,134 @@ async function computeAdminStats() {
       // renders an empty state in that case.
     }
 
+    // Pending transactions awaiting verification / reconciliation / cancel
+    let pendingTxCount = 0
+    let pendingTxAmount = 0
+    try {
+      const pendingTxRows = await sql`
+        SELECT
+          COUNT(*)::int AS count,
+          COALESCE(SUM(amount), 0)::bigint AS total_amount
+        FROM transactions
+        WHERE status = 'pending'
+      `
+      pendingTxCount = Number(pendingTxRows[0]?.count) || 0
+      pendingTxAmount = Number(pendingTxRows[0]?.total_amount) || 0
+    } catch {
+      /* transactions table missing — keep zeroes */
+    }
+
+    // Active members celebrating their birthday today (Africa/Lagos)
+    let birthdaysToday: Array<{
+      id: string
+      firstName: string
+      lastName: string
+      email: string
+    }> = []
+    try {
+      const bdayRows = await sql`
+        SELECT id, first_name, last_name, email
+        FROM users
+        WHERE date_of_birth IS NOT NULL
+          AND COALESCE(is_active, true) = true
+          AND EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+          AND EXTRACT(DAY FROM date_of_birth) = EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+        ORDER BY first_name ASC
+        LIMIT 10
+      `
+      birthdaysToday = bdayRows.map((r) => ({
+        id: String(r.id),
+        firstName: String(r.first_name || ''),
+        lastName: String(r.last_name || ''),
+        email: String(r.email || ''),
+      }))
+    } catch {
+      /* users.date_of_birth query error — leave empty */
+    }
+
+    // Today's appointments in Africa/Lagos
+    let todayBookingsCount = 0
+    let todayBookingsItems: Array<{
+      id: string
+      bookingReference: string
+      appointmentTime: string
+      locationName: string
+      customerName: string
+      status: string
+    }> = []
+    try {
+      const todayCountRows = await sql`
+        SELECT COUNT(*)::int AS total
+        FROM bookings
+        WHERE appointment_date = (NOW() AT TIME ZONE 'Africa/Lagos')::date
+          AND status IN ('pending', 'confirmed')
+      `
+      todayBookingsCount = Number(todayCountRows[0]?.total) || 0
+
+      const todayRows = await sql`
+        SELECT id, booking_reference, appointment_time, location_name, customer_name, status
+        FROM bookings
+        WHERE appointment_date = (NOW() AT TIME ZONE 'Africa/Lagos')::date
+          AND status IN ('pending', 'confirmed')
+        ORDER BY appointment_time ASC
+        LIMIT 5
+      `
+      todayBookingsItems = todayRows.map((r) => ({
+        id: String(r.id),
+        bookingReference: String(r.booking_reference || ''),
+        appointmentTime: String(r.appointment_time || ''),
+        locationName: String(r.location_name || ''),
+        customerName: String(r.customer_name || ''),
+        status: String(r.status || 'pending'),
+      }))
+    } catch {
+      /* bookings table missing — keep empty */
+    }
+
+    // Latest staff actions from activity_log
+    let recentStaffActivity: Array<{
+      id: string
+      staffId: string
+      actorName: string
+      actorRole: string
+      actionType: string
+      entityType: string
+      description: string
+      createdAt: string
+    }> = []
+    try {
+      const actRows = await sql`
+        SELECT
+          al.id,
+          al.staff_id,
+          TRIM(COALESCE(s.first_name, '') || ' ' || COALESCE(s.last_name, '')) AS actor_name,
+          COALESCE(s.role, 'staff') AS actor_role,
+          COALESCE(al.action_type, al.action, 'action') AS action_type,
+          COALESCE(al.entity_type, 'record') AS entity_type,
+          COALESCE(al.description, al.details, '') AS description,
+          al.created_at
+        FROM activity_log al
+        LEFT JOIN users s ON s.id = al.staff_id
+        WHERE al.staff_id IS NOT NULL
+        ORDER BY al.created_at DESC
+        LIMIT 5
+      `
+      recentStaffActivity = actRows.map((r) => ({
+        id: String(r.id),
+        staffId: String(r.staff_id),
+        actorName: String(r.actor_name || '').trim() || 'Team member',
+        actorRole: String(r.actor_role || 'staff'),
+        actionType: String(r.action_type || 'action'),
+        entityType: String(r.entity_type || 'record'),
+        description: String(r.description || ''),
+        createdAt: r.created_at
+          ? new Date(r.created_at as string).toISOString()
+          : new Date().toISOString(),
+      }))
+    } catch {
+      /* activity_log missing or variant — leave empty */
+    }
+
     // Calculate user growth percentage
     const users = usersResult[0]
     const userGrowth = users.last_month > 0 
@@ -407,15 +535,9 @@ async function computeAdminStats() {
           pending: bookingsPending,
           upcoming: bookingsUpcoming,
         },
-        // Distinct ticket counter — the sidebar drives a dedicated
-        // Tickets badge off this, separate from the unified
-        // `complaints.open` tally that also includes contact_messages.
         tickets: {
           open: ticketsOpen,
         },
-        // Feedback inbox counters. `new` is the "untriaged" pile that
-        // the sidebar badge should display; `unactioned` is broader
-        // and surfaced for any future "all open" summary tile.
         feedback: {
           new: feedbackNew,
           unactioned: feedbackUnactioned,
@@ -427,6 +549,16 @@ async function computeAdminStats() {
           todayNew: newsletterTodayNew,
           recentSubscribers: recentNewsletterSubscribers,
         },
+        pendingTransactions: {
+          count: pendingTxCount,
+          totalAmount: pendingTxAmount,
+        },
+        birthdaysToday,
+        todayBookings: {
+          count: todayBookingsCount,
+          items: todayBookingsItems,
+        },
+        recentStaffActivity,
       },
       revenue: salesSummary,
       charts: {

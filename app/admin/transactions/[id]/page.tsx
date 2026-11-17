@@ -24,6 +24,7 @@ import {
   RotateCcw, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useNotify } from '@/components/shared/notify'
 
 interface Transaction {
   id: string | number
@@ -70,12 +71,16 @@ const typeMeta: Record<string, { color: string; prefix: string; Icon: typeof Arr
 export default function TransactionDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const notify = useNotify()
   const [tx, setTx] = useState<Transaction | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
   const [rechecking, setRechecking] = useState(false)
   const [recheckMsg, setRecheckMsg] = useState<string | null>(null)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
 
   const load = async () => {
     if (!id) return
@@ -151,6 +156,40 @@ export default function TransactionDetailPage() {
       setRecheckMsg(e instanceof Error ? e.message : 'Re-check failed')
     } finally {
       setRechecking(false)
+    }
+  }
+
+  const handleCancelPayment = async () => {
+    if (!id) return
+    setCancelling(true)
+    try {
+      const res = await fetch(`/api/admin/transactions/${id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: cancelReason.trim() || undefined }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not cancel payment')
+
+      setCancelOpen(false)
+      setCancelReason('')
+      await load()
+
+      if (data.credited) {
+        notify.success(
+          'Payment completed',
+          data.message || 'Paystack reported success so the payment was finalized instead of cancelled.',
+        )
+      } else {
+        notify.success(
+          'Payment cancelled',
+          'The pending transaction has been cancelled and the customer notified.',
+        )
+      }
+    } catch (e) {
+      notify.error('Cancel failed', e instanceof Error ? e.message : 'Could not cancel payment')
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -237,27 +276,45 @@ export default function TransactionDetailPage() {
         </div>
       </div>
 
-      {/* Pending re-check action */}
-      {tx.status === 'pending' && (tx.payment_method === 'paystack' || tx.payment_method === 'bank_transfer') && (
+      {/* Pending triage actions */}
+      {tx.status === 'pending' && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-2.5">
             <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-semibold text-amber-800">This payment is still pending</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Re-check it directly with Paystack to confirm, fail, or cancel it now.
+                {tx.payment_method === 'paystack' || tx.payment_method === 'bank_transfer'
+                  ? 'Re-check it directly with Paystack or cancel it cleanly if the customer abandoned checkout.'
+                  : 'Cancel this pending payment if it will no longer be completed.'}
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={recheck}
-            disabled={rechecking}
-            className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-60 whitespace-nowrap"
-          >
-            {rechecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {rechecking ? 'Checking…' : 'Re-check with Paystack'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+            {(tx.payment_method === 'paystack' || tx.payment_method === 'bank_transfer') && (
+              <button
+                type="button"
+                onClick={recheck}
+                disabled={rechecking || cancelling}
+                className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-60 whitespace-nowrap"
+              >
+                {rechecking ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {rechecking ? 'Checking…' : 'Re-check with Paystack'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setCancelReason('')
+                setCancelOpen(true)
+              }}
+              disabled={rechecking || cancelling}
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-lg border border-rose-200 bg-white text-rose-700 text-sm font-medium hover:bg-rose-50 disabled:opacity-60 whitespace-nowrap"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancel payment
+            </button>
+          </div>
         </div>
       )}
       {recheckMsg && (
@@ -353,6 +410,65 @@ export default function TransactionDetailPage() {
         <div className="rounded-2xl bg-rose-50 border border-rose-200 p-5">
           <p className="text-xs font-semibold text-rose-700 uppercase tracking-wide">Error</p>
           <p className="text-sm text-rose-700 mt-1 leading-relaxed">{tx.error_message}</p>
+        </div>
+      )}
+
+      {cancelOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-tx-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-rose-50 text-rose-600 flex-shrink-0">
+                <XCircle className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <h2 id="cancel-tx-title" className="text-base font-semibold text-gray-900">
+                  Cancel pending payment?
+                </h2>
+                <p className="mt-1 text-xs text-gray-600 leading-relaxed">
+                  {(tx.payment_method === 'paystack' || tx.payment_method === 'bank_transfer')
+                    ? 'We will verify with Paystack first. If the payment succeeded, it will be completed instead; otherwise this pending charge will be marked cancelled and the client will be emailed.'
+                    : 'This pending payment will be marked cancelled and the customer will receive a confirmation notice.'}
+                </p>
+              </div>
+            </div>
+
+            <label className="block mt-4">
+              <span className="text-xs font-medium text-gray-600">Reason (optional)</span>
+              <input
+                type="text"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                maxLength={300}
+                placeholder="e.g. Abandoned checkout / customer paid in cash"
+                className="mt-1 w-full h-9 px-3 text-sm rounded-lg border border-gray-200 bg-white focus:border-[#7B2D8E] focus:outline-none"
+              />
+            </label>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={() => setCancelOpen(false)}
+                className="px-3.5 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Keep pending
+              </button>
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={handleCancelPayment}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700 disabled:opacity-60"
+              >
+                {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                Confirm cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

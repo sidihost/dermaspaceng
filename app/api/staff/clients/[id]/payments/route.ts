@@ -79,22 +79,24 @@ export async function GET(
         description: r.description || "Transaction",
         reference: r.reference || undefined,
         created_at: String(r.created_at),
+        status: (r.status as string | undefined) || "completed",
+        payment_method: (r.payment_method as string | undefined) || undefined,
         paystack_reference: r.paystack_reference || undefined,
         paystack_status: r.status === "refunded" ? "refunded" : undefined,
       }
     })
 
-    // 2. Legacy paid bookings not represented in the ledger. These are
-    //    card bookings confirmed before we started writing the debit
-    //    row. We key the de-dupe on the booking's payment_reference so
-    //    a booking that DOES have a ledger row isn't listed twice.
+    // 2. Legacy paid or pending bookings not represented in the ledger.
+    //    We key the de-dupe on the booking's payment_reference so a booking
+    //    that DOES have a ledger row isn't listed twice.
     try {
       const bookingRows = (await sql`
         SELECT id, booking_reference, payment_reference, payment_method,
-               payment_status, total_price_kobo, created_at
+               payment_status, status AS booking_status, total_price_kobo, created_at
         FROM bookings
         WHERE user_id = ${clientId}
-          AND payment_status = 'paid'
+          AND payment_status IN ('paid', 'pending')
+          AND COALESCE(status, '') <> 'cancelled'
         ORDER BY created_at DESC
         LIMIT 200
       `) as any[]
@@ -110,6 +112,8 @@ export async function GET(
           description: `Booking payment ${b.booking_reference}`,
           reference: b.payment_reference || b.booking_reference || undefined,
           created_at: String(b.created_at),
+          status: b.payment_status === "pending" ? "pending" : "completed",
+          payment_method: b.payment_method || undefined,
           paystack_reference:
             b.payment_method === "paystack"
               ? b.payment_reference || undefined

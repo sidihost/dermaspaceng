@@ -1,4 +1,5 @@
 import { sql } from '@/lib/db'
+import { invalidateAdminStats } from '@/lib/stats-cache'
 
 // ---------------------------------------------------------------------------
 // Live chat helpers
@@ -34,6 +35,7 @@ export interface LiveChatSession {
   guest_name: string | null
   guest_email: string | null
   guest_phone: string | null
+  visitor_location?: string | null
 }
 
 export interface LiveChatMessage {
@@ -114,7 +116,7 @@ export async function touchStaffPresence(userId: string, status: 'online' | 'off
 // ---------------------------------------------------------------------------
 
 // Find the user's most recent OPEN (waiting / active) session. We keep at
-// most one open session per user — when they ask the AI to connect again
+// most one open session per user — when they ask to connect again
 // we return the existing row.
 export async function getOpenSessionForUser(userId: string): Promise<LiveChatSession | null> {
   const rows = await sql`
@@ -122,6 +124,22 @@ export async function getOpenSessionForUser(userId: string): Promise<LiveChatSes
      WHERE user_id = ${userId}
        AND status IN ('waiting', 'active')
      ORDER BY created_at DESC
+     LIMIT 1
+  `
+  return (rows[0] as LiveChatSession) || null
+}
+
+// Find a recently closed (last 30 minutes) session that hasn't been rated
+// or skipped yet so the customer overlay prompts for post-chat feedback even
+// if a staff member closed the session from their console.
+export async function getRecentUnratedSessionForUser(userId: string): Promise<LiveChatSession | null> {
+  const rows = await sql`
+    SELECT * FROM live_chat_sessions
+     WHERE user_id = ${userId}
+       AND status = 'closed'
+       AND rated_at IS NULL
+       AND closed_at >= NOW() - INTERVAL '30 minutes'
+     ORDER BY closed_at DESC
      LIMIT 1
   `
   return (rows[0] as LiveChatSession) || null
@@ -148,10 +166,6 @@ export async function escalateToHuman(
   `
   const session = rows[0] as LiveChatSession
 
-  // Drop a system message so the conversation thread reads from the very
-  // top, even before any human joins. Phrasing matches the Namecheap-style
-  // empty state — friendly, present-tense, sets expectation that a real
-  // person is incoming.
   await sql`
     INSERT INTO live_chat_messages (session_id, sender_role, body)
     VALUES (
@@ -161,17 +175,11 @@ export async function escalateToHuman(
     )
   `
 
+  await invalidateAdminStats().catch(() => {})
   return session
 }
 
-// Create a session for an anonymous visitor. The pre-chat form is
-// industry-standard for a reason — without name/email/phone the staff
-// member has zero signal about who they're talking to AND we have no
-// way to follow up by email if the visitor leaves the page mid-thread.
-// We intentionally do NOT try to reuse an existing guest session here:
-// each visit through the pre-chat form is a fresh conversation and
-// guests don't have an account to anchor a "find my open chat" query
-// against (the cookie path handles continuity within a single session).
+// Create a session for an anonymous visitor.
 export async function escalateAsGuest(input: {
   name: string
   email: string
@@ -199,13 +207,11 @@ export async function escalateAsGuest(input: {
     )
   `
 
+  await invalidateAdminStats().catch(() => {})
   return session
 }
 
-// Returns whether THIS call performed the accept. If two staff race to
-// click "Accept", only one row will match (status = 'waiting'); the
-// other gets `false` so the route layer can return a clean 409 instead
-// of silently dropping a duplicate "joined the chat" system message.
+// Returns whether THIS call performed the accept.
 export async function acceptSession(sessionId: string, staffId: string): Promise<boolean> {
   const rows = await sql`
     UPDATE live_chat_sessions
@@ -217,6 +223,9 @@ export async function acceptSession(sessionId: string, staffId: string): Promise
        AND status = 'waiting'
      RETURNING id
   `
+  if (rows.length > 0) {
+    await invalidateAdminStats().catch(() => {})
+  }
   return rows.length > 0
 }
 
@@ -230,6 +239,7 @@ export async function closeSession(sessionId: string, closedBy: 'user' | 'staff'
      WHERE id = ${sessionId}
        AND status IN ('waiting', 'active')
   `
+  await invalidateAdminStats().catch(() => {})
 }
 
 export async function addMessage(
@@ -243,6 +253,20 @@ export async function addMessage(
     VALUES (${sessionId}, ${senderRole}, ${senderId}, ${body})
     RETURNING *
   `
+  if (senderRole === 'staff') {
+    await sql`
+      UPDATE live_chat_sessions
+         SET last_activity_at = NOW(),
+             first_reply_at = COALESCE(first_reply_at, NOW())
+       WHERE id = ${sessionId}
+    `
+  } else {
+    await sql`
+      UPDATE live_chat_sessions
+         SET last_activity_at = NOW()
+       WHERE id = ${sessionId}
+    `
+  }
   return rows[0] as LiveChatMessage
 }
 
@@ -299,16 +323,19 @@ export async function rateSession(
   `
 }
 
+export async function skipSessionRating(sessionId: string) {
+  await sql`
+    UPDATE live_chat_sessions
+       SET rated_at = COALESCE(rated_at, NOW())
+     WHERE id = ${sessionId}
+  `
+}
+
 // ---------------------------------------------------------------------------
 // Queue & oversight helpers
 // ---------------------------------------------------------------------------
 
 export interface QueueItem extends LiveChatSession {
-  // For logged-in customers these come from the `users` table; for
-  // guests we synthesise them from the pre-chat form so the staff
-  // queue UI can render a single "name + avatar" cell without caring
-  // which kind of session it's looking at. `is_guest` lets the UI
-  // tag the row when it wants to surface that distinction.
   user_first_name: string
   user_last_name: string
   user_avatar_url: string | null
@@ -322,9 +349,6 @@ export async function getStaffQueue(staffId: string): Promise<{
   waiting: QueueItem[]
   mine: QueueItem[]
 }> {
-  // LEFT JOIN users — `user_id` is nullable (guest sessions have no
-  // matching users row). We project pre-chat form values via COALESCE
-  // so downstream consumers always have something to render.
   const waiting = await sql`
     SELECT s.*,
            COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
@@ -376,60 +400,145 @@ export interface AdminOversightItem extends LiveChatSession {
   user_first_name: string
   user_last_name: string
   user_email: string
+  user_phone: string | null
   user_avatar_url: string | null
   is_guest: boolean
+  staff_id: string | null
   staff_first_name: string | null
   staff_last_name: string | null
   staff_avatar_slug: string | null
+  staff_avatar_url: string | null
+  rating: number | null
+  last_message_at: string | null
+  unread_for_staff: number
+  staff_response_seconds: number | null
+  resolution_seconds: number | null
   message_count: number
-  // visitor_location is inherited from LiveChatSession
 }
 
-export async function getAllSessions(filter: 'all' | LiveChatStatus = 'all'): Promise<AdminOversightItem[]> {
-  // Same LEFT JOIN treatment as `getStaffQueue` — guest sessions
-  // (user_id IS NULL) must still appear in the admin oversight list.
-  const rows = filter === 'all'
-    ? await sql`
-        SELECT s.*,
-               COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest') AS user_first_name,
-               COALESCE(u.last_name,
-                        NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
-                        '')                                                       AS user_last_name,
-               COALESCE(u.email, s.guest_email)                                   AS user_email,
-               u.avatar_url                                                       AS user_avatar_url,
-               (s.user_id IS NULL)                                                AS is_guest,
-               st.first_name as staff_first_name, st.last_name as staff_last_name,
-               sp.avatar_slug as staff_avatar_slug,
-               (SELECT COUNT(*) FROM live_chat_messages m WHERE m.session_id = s.id)::int
-                 AS message_count
-          FROM live_chat_sessions s
-          LEFT JOIN users u ON u.id = s.user_id
-          LEFT JOIN users st ON st.id = s.assigned_staff_id
-          LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
-         ORDER BY s.last_activity_at DESC
-         LIMIT 100
-      `
-    : await sql`
-        SELECT s.*,
-               COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest') AS user_first_name,
-               COALESCE(u.last_name,
-                        NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
-                        '')                                                       AS user_last_name,
-               COALESCE(u.email, s.guest_email)                                   AS user_email,
-               u.avatar_url                                                       AS user_avatar_url,
-               (s.user_id IS NULL)                                                AS is_guest,
-               st.first_name as staff_first_name, st.last_name as staff_last_name,
-               sp.avatar_slug as staff_avatar_slug,
-               (SELECT COUNT(*) FROM live_chat_messages m WHERE m.session_id = s.id)::int
-                 AS message_count
-          FROM live_chat_sessions s
-          LEFT JOIN users u ON u.id = s.user_id
-          LEFT JOIN users st ON st.id = s.assigned_staff_id
-          LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
-         WHERE s.status = ${filter}
-         ORDER BY s.last_activity_at DESC
-         LIMIT 100
-      `
+export async function getAllSessions(
+  filter: 'all' | 'open' | LiveChatStatus = 'all',
+  days?: number,
+): Promise<AdminOversightItem[]> {
+  const safeDays =
+    typeof days === 'number' && Number.isFinite(days) && days > 0
+      ? Math.min(Math.floor(days), 365)
+      : null
+
+  const rows =
+    filter === 'open'
+      ? await sql`
+          SELECT s.*,
+                 s.assigned_staff_id                                                   AS staff_id,
+                 COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')     AS user_first_name,
+                 COALESCE(u.last_name,
+                          NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
+                          '')                                                           AS user_last_name,
+                 COALESCE(u.email, s.guest_email)                                      AS user_email,
+                 COALESCE(u.phone, s.guest_phone)                                      AS user_phone,
+                 u.avatar_url                                                          AS user_avatar_url,
+                 (s.user_id IS NULL)                                                   AS is_guest,
+                 st.first_name                                                         AS staff_first_name,
+                 st.last_name                                                          AS staff_last_name,
+                 sp.avatar_slug                                                        AS staff_avatar_slug,
+                 CASE WHEN sp.avatar_slug IS NOT NULL
+                      THEN '/avatars/' || sp.avatar_slug || '.jpg'
+                      ELSE NULL END                                                    AS staff_avatar_url,
+                 s.service_rating                                                      AS rating,
+                 s.last_activity_at                                                    AS last_message_at,
+                 (SELECT COUNT(*) FROM live_chat_messages m
+                    WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+                   AS unread_for_staff,
+                 EXTRACT(EPOCH FROM (s.first_reply_at - COALESCE(s.accepted_at, s.escalated_at)))::float
+                   AS staff_response_seconds,
+                 EXTRACT(EPOCH FROM (s.closed_at - s.escalated_at))::float
+                   AS resolution_seconds,
+                 (SELECT COUNT(*) FROM live_chat_messages m WHERE m.session_id = s.id)::int
+                   AS message_count
+            FROM live_chat_sessions s
+            LEFT JOIN users u ON u.id = s.user_id
+            LEFT JOIN users st ON st.id = s.assigned_staff_id
+            LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+           WHERE s.status IN ('waiting', 'active')
+           ORDER BY
+             CASE WHEN s.status = 'waiting' THEN 0 ELSE 1 END ASC,
+             s.last_activity_at DESC
+           LIMIT 100
+        `
+      : filter === 'all'
+        ? await sql`
+            SELECT s.*,
+                   s.assigned_staff_id                                                   AS staff_id,
+                   COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')     AS user_first_name,
+                   COALESCE(u.last_name,
+                            NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
+                            '')                                                           AS user_last_name,
+                   COALESCE(u.email, s.guest_email)                                      AS user_email,
+                   COALESCE(u.phone, s.guest_phone)                                      AS user_phone,
+                   u.avatar_url                                                          AS user_avatar_url,
+                   (s.user_id IS NULL)                                                   AS is_guest,
+                   st.first_name                                                         AS staff_first_name,
+                   st.last_name                                                          AS staff_last_name,
+                   sp.avatar_slug                                                        AS staff_avatar_slug,
+                   CASE WHEN sp.avatar_slug IS NOT NULL
+                        THEN '/avatars/' || sp.avatar_slug || '.jpg'
+                        ELSE NULL END                                                    AS staff_avatar_url,
+                   s.service_rating                                                      AS rating,
+                   s.last_activity_at                                                    AS last_message_at,
+                   (SELECT COUNT(*) FROM live_chat_messages m
+                      WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+                     AS unread_for_staff,
+                   EXTRACT(EPOCH FROM (s.first_reply_at - COALESCE(s.accepted_at, s.escalated_at)))::float
+                     AS staff_response_seconds,
+                   EXTRACT(EPOCH FROM (s.closed_at - s.escalated_at))::float
+                     AS resolution_seconds,
+                   (SELECT COUNT(*) FROM live_chat_messages m WHERE m.session_id = s.id)::int
+                     AS message_count
+              FROM live_chat_sessions s
+              LEFT JOIN users u ON u.id = s.user_id
+              LEFT JOIN users st ON st.id = s.assigned_staff_id
+              LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+             WHERE (${safeDays}::int IS NULL OR s.created_at >= NOW() - make_interval(days => COALESCE(${safeDays}::int, 30)))
+             ORDER BY s.last_activity_at DESC
+             LIMIT 100
+          `
+        : await sql`
+            SELECT s.*,
+                   s.assigned_staff_id                                                   AS staff_id,
+                   COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')     AS user_first_name,
+                   COALESCE(u.last_name,
+                            NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
+                            '')                                                           AS user_last_name,
+                   COALESCE(u.email, s.guest_email)                                      AS user_email,
+                   COALESCE(u.phone, s.guest_phone)                                      AS user_phone,
+                   u.avatar_url                                                          AS user_avatar_url,
+                   (s.user_id IS NULL)                                                   AS is_guest,
+                   st.first_name                                                         AS staff_first_name,
+                   st.last_name                                                          AS staff_last_name,
+                   sp.avatar_slug                                                        AS staff_avatar_slug,
+                   CASE WHEN sp.avatar_slug IS NOT NULL
+                        THEN '/avatars/' || sp.avatar_slug || '.jpg'
+                        ELSE NULL END                                                    AS staff_avatar_url,
+                   s.service_rating                                                      AS rating,
+                   s.last_activity_at                                                    AS last_message_at,
+                   (SELECT COUNT(*) FROM live_chat_messages m
+                      WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+                     AS unread_for_staff,
+                   EXTRACT(EPOCH FROM (s.first_reply_at - COALESCE(s.accepted_at, s.escalated_at)))::float
+                     AS staff_response_seconds,
+                   EXTRACT(EPOCH FROM (s.closed_at - s.escalated_at))::float
+                     AS resolution_seconds,
+                   (SELECT COUNT(*) FROM live_chat_messages m WHERE m.session_id = s.id)::int
+                     AS message_count
+              FROM live_chat_sessions s
+              LEFT JOIN users u ON u.id = s.user_id
+              LEFT JOIN users st ON st.id = s.assigned_staff_id
+              LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+             WHERE s.status = ${filter}
+               AND (${safeDays}::int IS NULL OR s.created_at >= NOW() - make_interval(days => COALESCE(${safeDays}::int, 30)))
+             ORDER BY s.last_activity_at DESC
+             LIMIT 100
+          `
   return rows as AdminOversightItem[]
 }
 
@@ -438,62 +547,103 @@ export interface StaffPerformanceRow {
   first_name: string
   last_name: string
   avatar_slug: string | null
+  avatar_url: string | null
   status: string | null
+  handled: number
+  active_now: number
   total_chats: number
   active_chats: number
   closed_chats: number
   avg_accept_seconds: number | null
   avg_response_seconds: number | null
+  avg_resolution_seconds: number | null
   avg_handle_seconds: number | null
   avg_service_rating: number | null
   avg_staff_rating: number | null
+  avg_rating: number | null
   rated_count: number
+  ratings_count: number
 }
 
-export async function getStaffPerformance(): Promise<StaffPerformanceRow[]> {
+export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRow[]> {
+  const safeDays =
+    typeof days === 'number' && Number.isFinite(days) && days > 0
+      ? Math.min(Math.floor(days), 365)
+      : 30
+
   const rows = await sql`
     SELECT
       u.id            AS staff_id,
       u.first_name    AS first_name,
       u.last_name     AS last_name,
       sp.avatar_slug  AS avatar_slug,
+      CASE WHEN sp.avatar_slug IS NOT NULL
+           THEN '/avatars/' || sp.avatar_slug || '.jpg'
+           ELSE u.avatar_url END                                                       AS avatar_url,
       sp.status       AS status,
+      COUNT(s.id)::int                                                                 AS handled,
+      COUNT(s.id) FILTER (WHERE s.status = 'active')::int                              AS active_now,
       COUNT(s.id)::int                                                                 AS total_chats,
       COUNT(s.id) FILTER (WHERE s.status = 'active')::int                              AS active_chats,
       COUNT(s.id) FILTER (WHERE s.status = 'closed')::int                              AS closed_chats,
       AVG(EXTRACT(EPOCH FROM (s.accepted_at - s.escalated_at)))::float                 AS avg_accept_seconds,
-      AVG(EXTRACT(EPOCH FROM (s.first_reply_at - s.accepted_at)))::float               AS avg_response_seconds,
+      AVG(EXTRACT(EPOCH FROM (s.first_reply_at - COALESCE(s.accepted_at, s.escalated_at))))::float AS avg_response_seconds,
+      AVG(EXTRACT(EPOCH FROM (s.closed_at - s.escalated_at)))::float                   AS avg_resolution_seconds,
       AVG(EXTRACT(EPOCH FROM (s.closed_at - s.accepted_at)))::float                    AS avg_handle_seconds,
       AVG(s.service_rating)::float                                                     AS avg_service_rating,
       AVG(s.staff_rating)::float                                                       AS avg_staff_rating,
-      COUNT(s.id) FILTER (WHERE s.staff_rating IS NOT NULL)::int                       AS rated_count
+      AVG(s.staff_rating)::float                                                       AS avg_rating,
+      COUNT(s.id) FILTER (WHERE s.staff_rating IS NOT NULL)::int                       AS rated_count,
+      COUNT(s.id) FILTER (WHERE s.staff_rating IS NOT NULL)::int                       AS ratings_count
     FROM users u
     LEFT JOIN staff_profiles sp ON sp.user_id = u.id
-    LEFT JOIN live_chat_sessions s ON s.assigned_staff_id = u.id
+    LEFT JOIN live_chat_sessions s
+      ON s.assigned_staff_id = u.id
+     AND s.created_at >= NOW() - make_interval(days => ${safeDays})
    WHERE u.role IN ('staff', 'admin')
-   GROUP BY u.id, sp.avatar_slug, sp.status
-   ORDER BY total_chats DESC
+   GROUP BY u.id, u.avatar_url, sp.avatar_slug, sp.status
+   ORDER BY handled DESC, u.first_name ASC
   `
   return rows as StaffPerformanceRow[]
 }
 
+export interface FullSessionMessage extends LiveChatMessage {
+  sender_first_name: string | null
+  sender_last_name: string | null
+}
+
 export interface FullSessionView {
   session: AdminOversightItem
-  messages: LiveChatMessage[]
+  messages: FullSessionMessage[]
 }
 
 export async function getFullSessionView(sessionId: string): Promise<FullSessionView | null> {
   const sessions = await sql`
     SELECT s.*,
-           COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest') AS user_first_name,
+           s.assigned_staff_id                                                   AS staff_id,
+           COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')     AS user_first_name,
            COALESCE(u.last_name,
                     NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
-                    '')                                                       AS user_last_name,
-           COALESCE(u.email, s.guest_email)                                   AS user_email,
-           u.avatar_url                                                       AS user_avatar_url,
-           (s.user_id IS NULL)                                                AS is_guest,
-           st.first_name as staff_first_name, st.last_name as staff_last_name,
-           sp.avatar_slug as staff_avatar_slug,
+                    '')                                                           AS user_last_name,
+           COALESCE(u.email, s.guest_email)                                      AS user_email,
+           COALESCE(u.phone, s.guest_phone)                                      AS user_phone,
+           u.avatar_url                                                          AS user_avatar_url,
+           (s.user_id IS NULL)                                                   AS is_guest,
+           st.first_name                                                         AS staff_first_name,
+           st.last_name                                                          AS staff_last_name,
+           sp.avatar_slug                                                        AS staff_avatar_slug,
+           CASE WHEN sp.avatar_slug IS NOT NULL
+                THEN '/avatars/' || sp.avatar_slug || '.jpg'
+                ELSE NULL END                                                    AS staff_avatar_url,
+           s.service_rating                                                      AS rating,
+           s.last_activity_at                                                    AS last_message_at,
+           (SELECT COUNT(*) FROM live_chat_messages m
+              WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+             AS unread_for_staff,
+           EXTRACT(EPOCH FROM (s.first_reply_at - COALESCE(s.accepted_at, s.escalated_at)))::float
+             AS staff_response_seconds,
+           EXTRACT(EPOCH FROM (s.closed_at - s.escalated_at))::float
+             AS resolution_seconds,
            (SELECT COUNT(*) FROM live_chat_messages m WHERE m.session_id = s.id)::int
              AS message_count
       FROM live_chat_sessions s
@@ -504,11 +654,30 @@ export async function getFullSessionView(sessionId: string): Promise<FullSession
   `
   if (sessions.length === 0) return null
 
-  const messages = await getMessages(sessionId)
+  const messages = await sql`
+    SELECT m.*,
+           CASE
+             WHEN m.sender_role = 'user' THEN COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')
+             WHEN m.sender_role = 'staff' THEN COALESCE(NULLIF(TRIM(sp.display_name), ''), u.first_name, 'Rep')
+             ELSE NULL
+           END AS sender_first_name,
+           CASE
+             WHEN m.sender_role = 'user' THEN COALESCE(u.last_name, '')
+             WHEN m.sender_role = 'staff' AND NULLIF(TRIM(sp.display_name), '') IS NOT NULL THEN NULL
+             WHEN m.sender_role = 'staff' THEN u.last_name
+             ELSE NULL
+           END AS sender_last_name
+      FROM live_chat_messages m
+      JOIN live_chat_sessions s ON s.id = m.session_id
+      LEFT JOIN users u ON u.id = m.sender_id
+      LEFT JOIN staff_profiles sp ON sp.user_id = m.sender_id AND m.sender_role = 'staff'
+     WHERE m.session_id = ${sessionId}
+     ORDER BY m.created_at ASC
+  `
 
   return {
     session: sessions[0] as AdminOversightItem,
-    messages,
+    messages: messages as FullSessionMessage[],
   }
 }
 

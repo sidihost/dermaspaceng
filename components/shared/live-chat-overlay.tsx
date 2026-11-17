@@ -142,6 +142,8 @@ export default function LiveChatOverlay() {
 
   // Rating sheet state (shown after the chat closes if not yet rated).
   const [showRating, setShowRating] = useState(false)
+  const [ratingSessionId, setRatingSessionId] = useState<string | null>(null)
+  const [ratingStaffName, setRatingStaffName] = useState<string | undefined>(undefined)
   const [serviceRating, setServiceRating] = useState(0)
   const [staffRating, setStaffRating] = useState(0)
   const [comment, setComment] = useState('')
@@ -155,8 +157,6 @@ export default function LiveChatOverlay() {
   const status = active?.session?.status || null
 
   // Brief "Connected" celebration shown right after a staff member accepts.
-  // Driven off a waiting -> active transition so the user always sees it,
-  // independent of clock skew or stale `accepted_at` values.
   const [showConnected, setShowConnected] = useState(false)
   useEffect(() => {
     const prev = prevStatusRef.current
@@ -169,8 +169,6 @@ export default function LiveChatOverlay() {
   }, [status])
 
   // ---- Active session polling -------------------------------------------
-  // Bursty when expanded (every 3s) so accept/close transitions feel snappy;
-  // calmer when collapsed (every 8s) to keep the overhead invisible.
   useEffect(() => {
     if (blocked) return
     let cancelled = false
@@ -181,9 +179,9 @@ export default function LiveChatOverlay() {
         const json = (await res.json()) as ActiveSessionPayload
         if (cancelled) return
         setActive(json)
-        // Auto-prompt the rating sheet when the session closes and hasn't
-        // been rated yet.
         if (json.session?.status === 'closed' && !json.session.ratedAt) {
+          setRatingSessionId(json.session.id)
+          setRatingStaffName(json.staff?.displayName)
           setShowRating(true)
           setExpanded(false)
         }
@@ -305,16 +303,15 @@ export default function LiveChatOverlay() {
       const detail = (event as CustomEvent<{ topic?: string }>).detail || {}
       if (detail.topic) setGuestTopic(detail.topic)
 
-      // If we're already tracking a live session, just expand it.
-      if (active?.session) {
+      // Only expand immediately if an OPEN (waiting/active) session exists.
+      if (
+        active?.session &&
+        (active.session.status === 'waiting' || active.session.status === 'active')
+      ) {
         setExpanded(true)
         return
       }
 
-      // Probe the server: if we're logged in this returns success and
-      // the next /active poll will pick the session up; if we're a
-      // guest the server signals `guestFormRequired` and we render
-      // the inline form.
       try {
         const res = await fetch('/api/live-chat/request', {
           method: 'POST',
@@ -323,6 +320,21 @@ export default function LiveChatOverlay() {
           body: JSON.stringify({ topic: detail.topic || null }),
         })
         if (res.ok) {
+          setShowRating(false)
+          setRatingDone(false)
+          setRatingSessionId(null)
+          setMessages([])
+          lastFetchedRef.current = null
+          try {
+            const a = await fetch('/api/live-chat/active', {
+              credentials: 'include',
+            })
+            if (a.ok) {
+              setActive((await a.json()) as ActiveSessionPayload)
+            }
+          } catch {
+            /* interval poll will catch it if transient */
+          }
           setExpanded(true)
           return
         }
@@ -333,8 +345,6 @@ export default function LiveChatOverlay() {
           setShowGuestForm(true)
         }
       } catch {
-        // Network — fall back to showing the form anyway so the user
-        // isn't stranded; the form's own submit will retry.
         setShowGuestForm(true)
       }
     }
@@ -378,6 +388,8 @@ export default function LiveChatOverlay() {
   // ---- End the chat ---------------------------------------------------
   const endChat = useCallback(async () => {
     if (!sessionId) return
+    setRatingSessionId(sessionId)
+    setRatingStaffName(active?.staff?.displayName)
     try {
       await fetch(`/api/live-chat/sessions/${sessionId}`, {
         method: 'PATCH',
@@ -390,18 +402,19 @@ export default function LiveChatOverlay() {
     }
     setExpanded(false)
     setShowRating(true)
-  }, [sessionId])
+  }, [sessionId, active?.staff?.displayName])
 
   // ---- Submit a rating ------------------------------------------------
   const submitRating = useCallback(async () => {
-    if (!sessionId) return
+    const targetSessionId = ratingSessionId || sessionId
+    if (!targetSessionId) return
     if (serviceRating < 1 || staffRating < 1) {
       setError('Please rate both the service and the representative.')
       return
     }
     setSavingRating(true)
     try {
-      await fetch(`/api/live-chat/sessions/${sessionId}`, {
+      await fetch(`/api/live-chat/sessions/${targetSessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -413,13 +426,14 @@ export default function LiveChatOverlay() {
         }),
       })
       setRatingDone(true)
-      // Clear local state so the overlay disappears on the next poll.
       setActive(null)
       setMessages([])
       setDraft('')
       lastFetchedRef.current = null
       setTimeout(() => {
         setShowRating(false)
+        setRatingSessionId(null)
+        setRatingStaffName(undefined)
         setRatingDone(false)
         setServiceRating(0)
         setStaffRating(0)
@@ -430,7 +444,30 @@ export default function LiveChatOverlay() {
     } finally {
       setSavingRating(false)
     }
-  }, [sessionId, serviceRating, staffRating, comment])
+  }, [ratingSessionId, sessionId, serviceRating, staffRating, comment])
+
+  const skipRating = useCallback(async () => {
+    const targetSessionId = ratingSessionId || sessionId
+    setShowRating(false)
+    setRatingSessionId(null)
+    setRatingStaffName(undefined)
+    setActive(null)
+    setMessages([])
+    setDraft('')
+    lastFetchedRef.current = null
+    if (targetSessionId) {
+      try {
+        await fetch(`/api/live-chat/sessions/${targetSessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ action: 'skip_rating' }),
+        })
+      } catch {
+        /* best effort */
+      }
+    }
+  }, [ratingSessionId, sessionId])
 
   // ---- Submit the guest pre-chat form -----------------------------------
   // POSTs the form to /api/live-chat/request which (a) creates a fresh
@@ -497,11 +534,11 @@ export default function LiveChatOverlay() {
   // Banner — collapsed state. Shows even on top of Derma AI.
   // -----------------------------------------------------------------------
   const banner =
-    active?.session && !expanded ? (
+    active?.session && !expanded && status !== 'closed' ? (
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[58] w-[min(92vw,360px)] flex items-center gap-3 rounded-full bg-white shadow-lg shadow-[#7B2D8E]/15 ring-1 ring-[#7B2D8E]/15 pl-1.5 pr-4 py-1.5 hover:shadow-xl transition-shadow"
+        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[58] w-[min(92vw,360px)] flex items-center gap-3 rounded-full bg-white border border-[#7B2D8E]/25 pl-1.5 pr-4 py-1.5 hover:border-[#7B2D8E]/45 transition-colors"
       >
         <div className="relative shrink-0">
           {status === 'active' && active.staff ? (
@@ -575,11 +612,8 @@ export default function LiveChatOverlay() {
       comment={comment}
       setComment={setComment}
       onSubmit={submitRating}
-      onSkip={() => {
-        setShowRating(false)
-        setActive(null)
-      }}
-      staffName={active?.staff?.displayName}
+      onSkip={skipRating}
+      staffName={ratingStaffName || active?.staff?.displayName}
       error={error}
     />
   ) : null
@@ -661,7 +695,7 @@ function ExpandedPanel(props: {
         aria-hidden
       />
 
-      <div className="relative w-full md:w-[min(92vw,920px)] h-[88vh] md:h-[min(720px,88vh)] bg-white md:rounded-3xl rounded-t-3xl shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col md:flex-row pointer-events-auto animate-slide-up">
+      <div className="relative w-full md:w-[min(92vw,920px)] h-[88vh] md:h-[min(720px,88vh)] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 overflow-hidden flex flex-col md:flex-row pointer-events-auto animate-slide-up">
         {/* Conversation column */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
@@ -739,7 +773,7 @@ function ExpandedPanel(props: {
           {/* Messages */}
           <div
             ref={scrollerRef}
-            className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gradient-to-b from-[#F8F4FA] via-white to-white"
+            className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#FAF8FC]"
           >
             {messages.length === 0 ? (
               <div className="text-center text-[12px] text-gray-400 py-12">
@@ -899,7 +933,7 @@ function ContextCard({
       href={href}
       target={external ? '_blank' : undefined}
       rel={external ? 'noopener noreferrer' : undefined}
-      className="group flex items-center gap-3 rounded-2xl bg-white border border-gray-100 px-3 py-3 hover:border-[#7B2D8E]/30 hover:shadow-sm transition-all"
+      className="group flex items-center gap-3 rounded-2xl bg-white border border-gray-100 px-3 py-3 hover:border-[#7B2D8E]/30 hover:bg-[#FAF8FC] transition-colors"
     >
       <div className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center shrink-0">
         {icon}
@@ -985,7 +1019,7 @@ function MessageBubble({
             />
           ) : (
             <div
-              className="w-14 h-14 rounded-full bg-gradient-to-br from-[#7B2D8E]/20 to-[#7B2D8E]/5 ring-2 ring-[#7B2D8E]/15 flex items-center justify-center text-[#7B2D8E] font-semibold"
+              className="w-14 h-14 rounded-full bg-[#7B2D8E]/10 ring-2 ring-[#7B2D8E]/15 flex items-center justify-center text-[#7B2D8E] font-semibold"
               aria-hidden
             >
               {name.charAt(0).toUpperCase()}
@@ -1056,7 +1090,7 @@ function MessageBubble({
           <div className="w-7 h-7 rounded-full bg-[#7B2D8E]/10" />
         )}
         <div className="max-w-[80%]">
-          <div className="bg-white border border-gray-100 px-3.5 py-2 rounded-2xl rounded-bl-sm shadow-sm">
+          <div className="bg-white border border-gray-100 px-3.5 py-2 rounded-2xl rounded-bl-sm">
             <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap leading-relaxed">
               {message.body}
             </p>
@@ -1071,7 +1105,7 @@ function MessageBubble({
   return (
     <div className="flex justify-end">
       <div className="max-w-[80%]">
-        <div className="bg-[#7B2D8E] text-white px-3.5 py-2 rounded-2xl rounded-br-sm shadow-sm">
+        <div className="bg-[#7B2D8E] text-white px-3.5 py-2 rounded-2xl rounded-br-sm">
           <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed">
             {message.body}
           </p>
@@ -1122,7 +1156,7 @@ function RatingSheet(props: {
         onClick={onSkip}
         aria-hidden
       />
-      <div className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl shadow-2xl ring-1 ring-black/5 overflow-hidden pointer-events-auto animate-slide-up">
+      <div className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 overflow-hidden pointer-events-auto animate-slide-up">
         {done ? (
           <div className="px-6 py-10 text-center">
             <div className="w-14 h-14 mx-auto rounded-full bg-emerald-50 flex items-center justify-center mb-3">
@@ -1255,13 +1289,13 @@ function GuestPreChatForm({
         aria-hidden
       />
       <div
-        className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl shadow-2xl ring-1 ring-black/5 overflow-hidden pointer-events-auto animate-slide-up"
+        className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 overflow-hidden pointer-events-auto animate-slide-up"
         role="dialog"
         aria-modal="true"
         aria-labelledby="live-chat-prechat-title"
       >
-        {/* Hero — brand-coloured welcome block. */}
-        <div className="relative bg-gradient-to-br from-[#7B2D8E] to-[#5B1F6A] px-6 pt-6 pb-7 text-white">
+        {/* Hero — flat brand-coloured welcome block. */}
+        <div className="relative bg-[#7B2D8E] px-6 pt-6 pb-7 text-white">
           <button
             type="button"
             onClick={onClose}

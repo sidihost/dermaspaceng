@@ -7,6 +7,7 @@ import {
   sendBookingCompletedEmail,
   sendBookingReceipt,
 } from '@/lib/email'
+import { invalidateAfterBookingChange } from '@/lib/stats-cache'
 
 // ---------------------------------------------------------------------------
 // GET    /api/admin/bookings/[id]  → full booking detail (admin scope)
@@ -617,6 +618,10 @@ export async function PATCH(req: Request, { params }: Params) {
     /* activity log failure must not block the mutation */
   }
 
+  await invalidateAfterBookingChange({
+    customerUserId: existing.user_id ?? null,
+    staffUserId: existing.assigned_staff_id ?? null,
+  })
   const updated = await loadFullBooking(existing.id)
   return NextResponse.json({ booking: updated })
 }
@@ -688,6 +693,11 @@ export async function DELETE(req: Request, { params }: Params) {
   await sql`DELETE FROM booking_services WHERE booking_id = ${existing.id}`
   await sql`DELETE FROM staff_booking_access WHERE booking_id = ${existing.id}`
   await sql`DELETE FROM bookings WHERE id = ${existing.id}`
+
+  await invalidateAfterBookingChange({
+    customerUserId: existing.user_id ?? null,
+    staffUserId: existing.assigned_staff_id ?? null,
+  })
 
   return NextResponse.json({ ok: true, deleted: existing.booking_reference })
 }

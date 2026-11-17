@@ -78,6 +78,7 @@ export async function GET(
       ticketRatingAgg,
       liveChatAgg,
       recentTickets,
+      recentActivities,
     ] = await Promise.all([
       // Replies sent — split by surface so the admin can see whether
       // this staff member is mostly chasing tickets vs complaints vs
@@ -174,6 +175,23 @@ export async function GET(
         ORDER BY COALESCE(st.updated_at, st.created_at) DESC
         LIMIT 20
       `, [] as Array<Record<string, unknown>>),
+      safe(() => sql`
+        SELECT
+          al.id,
+          COALESCE(al.action_type, al.action) AS action,
+          al.entity_type,
+          al.entity_id,
+          COALESCE(al.description, al.details) AS description,
+          al.created_at,
+          al.user_id,
+          u.first_name AS user_first_name,
+          u.last_name  AS user_last_name
+        FROM activity_log al
+        LEFT JOIN users u ON u.id = al.user_id
+        WHERE al.staff_id = ${userId}
+        ORDER BY al.created_at DESC
+        LIMIT 25
+      `, [] as Array<Record<string, unknown>>),
     ])
 
     const reply = (replyCounts[0] as { ticket_replies: number; admin_replies: number })
@@ -236,6 +254,7 @@ export async function GET(
         },
       },
       tickets: recentTickets,
+      activities: recentActivities,
     })
   } catch (error) {
     console.error('Get staff profile error:', error)

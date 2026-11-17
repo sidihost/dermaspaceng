@@ -31,6 +31,8 @@ import {
   X,
   Save,
   AlertTriangle,
+  Mail,
+  Send,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,6 +51,7 @@ import { UserAnalyticsCharts } from "@/components/shared/user-analytics-charts"
 import { ClientPaymentsTab } from "@/components/staff/client-payments-tab"
 import { safeFetcher } from "@/lib/safe-fetcher"
 import { DataLoadError } from "@/components/shared/data-load-error"
+import { isPlaceholderEmail } from "@/lib/auth-onboarding"
 
 // `safeFetcher` throws on non-OK responses so SWR's `error` slot
 // fires for 401/403/500 instead of silently decoding the error
@@ -365,6 +368,10 @@ function ClientDetailDrawer({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSubject, setEmailSubject] = useState("")
+  const [emailMessage, setEmailMessage] = useState("")
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -436,6 +443,38 @@ function ClientDetailDrawer({
     }
   }
 
+  const handleSendEmail = async () => {
+    if (!emailSubject.trim() || !emailMessage.trim()) {
+      notify.error("Missing details", "Please enter both a subject and a message.")
+      return
+    }
+    setSendingEmail(true)
+    try {
+      const res = await fetch(`/api/staff/clients/${clientId}/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: emailSubject.trim(),
+          message: emailMessage.trim(),
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.success) {
+        notify.error("Could not send email", j?.error || `HTTP ${res.status}`)
+        return
+      }
+      notify.success("Email sent", `Message delivered to ${j.sentTo || client?.email || "client"}.`)
+      setEmailOpen(false)
+      setEmailSubject("")
+      setEmailMessage("")
+    } catch (err) {
+      console.error("client email failed:", err)
+      notify.error("Network error", "Could not send email.")
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
   return (
     <>
       <div
@@ -490,7 +529,21 @@ function ClientDetailDrawer({
                   <p className="truncate text-xs text-gray-500">{client.email}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!client.email || isPlaceholderEmail(client.email)}
+                  className="gap-1.5 border-[#7B2D8E]/30 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                  onClick={() => {
+                    setEmailSubject("")
+                    setEmailMessage("")
+                    setEmailOpen(true)
+                  }}
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  Email
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -700,6 +753,71 @@ function ClientDetailDrawer({
                 <Trash2 className="h-3.5 w-3.5" />
               )}
               Confirm suspend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Compose email dialog */}
+      <Dialog
+        open={emailOpen}
+        onOpenChange={(open) => {
+          if (!open && !sendingEmail) setEmailOpen(false)
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4 text-[#7B2D8E]" />
+              Email {client ? [client.firstName, client.lastName].filter(Boolean).join(" ") || client.email : "client"}
+            </DialogTitle>
+            <DialogDescription>
+              Sent in the Dermaspace email layout to {client?.email}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="staff-email-subject">Subject</Label>
+              <Input
+                id="staff-email-subject"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="e.g. Follow-up on your facial appointment"
+                maxLength={200}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="staff-email-message">Message</Label>
+              <textarea
+                id="staff-email-message"
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                rows={5}
+                maxLength={10000}
+                placeholder="Write a warm, clear note for the client..."
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none focus:ring-1 focus:ring-[#7B2D8E]/20"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEmailOpen(false)}
+              disabled={sendingEmail}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendEmail}
+              disabled={sendingEmail || !emailSubject.trim() || !emailMessage.trim()}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] gap-1.5"
+            >
+              {sendingEmail ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+              Send email
             </Button>
           </DialogFooter>
         </DialogContent>

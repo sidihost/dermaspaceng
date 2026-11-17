@@ -9,8 +9,9 @@ import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { 
   ArrowLeft, Ticket, Send, Clock, 
   Check, AlertCircle, ChevronRight, Plus, Loader2,
-  Tag, Calendar, Search
+  Tag, Calendar, Search, Headphones
 } from 'lucide-react'
+import { useFeatureFlag } from '@/lib/use-feature-flag'
 import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
 
 interface UserData {
@@ -71,6 +72,7 @@ const PRIORITY_CONFIG = {
 export default function SupportPage() {
   const router = useRouter()
   const captchaRef = useRef<HCaptcha>(null)
+  const liveChatEnabled = useFeatureFlag('live_chat')
   
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
@@ -234,12 +236,28 @@ export default function SupportPage() {
                 Get help or track your tickets
               </p>
             </div>
+            {liveChatEnabled && (
+              <button
+                type="button"
+                onClick={() =>
+                  window.dispatchEvent(
+                    new CustomEvent('openLiveChat', {
+                      detail: { topic: 'Customer Support' },
+                    }),
+                  )
+                }
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-[#7B2D8E]/30 bg-white text-[#7B2D8E] text-[13px] font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+              >
+                <Headphones className="w-4 h-4" />
+                <span className="hidden sm:inline">Live Chat</span>
+              </button>
+            )}
             <button
               onClick={() => {
                 setSubmitSuccess(null)
                 setActiveView('new')
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#7B2D8E] text-white text-[13px] font-medium rounded-xl hover:bg-[#6B2278] transition-colors shadow-[0_1px_2px_rgba(123,45,142,0.18)]"
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#7B2D8E] text-white text-[13px] font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">New Ticket</span>
@@ -326,7 +344,7 @@ export default function SupportPage() {
                   onClick={() => setActiveView('list')}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12.5px] font-medium rounded-lg transition-all ${
                     activeView === 'list'
-                      ? 'bg-white text-[#7B2D8E] shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+                      ? 'bg-white text-[#7B2D8E] border border-gray-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -347,7 +365,7 @@ export default function SupportPage() {
                   }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12.5px] font-medium rounded-lg transition-all ${
                     activeView === 'new'
-                      ? 'bg-white text-[#7B2D8E] shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+                      ? 'bg-white text-[#7B2D8E] border border-gray-200'
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
