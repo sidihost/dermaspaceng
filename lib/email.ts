@@ -2777,12 +2777,15 @@ export async function sendBirthdayEmail(data: {
   const name = data.firstName?.trim() || 'there'
   const safeName = escapeHtml(name)
   const bookingUrl = `${PUBLIC_ORIGIN}/booking`
+  const recapUrl = `${PUBLIC_ORIGIN}/birthday`
 
   const content = `
     <!-- Hero celebratory banner — solid brand colour, no gradients per brand
-         guidelines. Feels like a little card inside the email. -->
-    <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 40px 24px; text-align: center; margin: 0 0 24px;">
-      <div style="font-size: 48px; line-height: 1; margin: 0 0 12px;">&#127874;</div>
+         guidelines. Clean editorial typography, no emojis. -->
+    <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 36px 24px; text-align: center; margin: 0 0 24px;">
+      <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.85);">
+        Happy Birthday
+      </p>
       <h1 style="margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #ffffff; line-height: 1.2;">
         Happy Birthday, ${safeName}!
       </h1>
@@ -2813,14 +2816,18 @@ export async function sendBirthdayEmail(data: {
       </p>
       <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
         Come celebrate with us this month. Book any treatment and our team will
-        have a little surprise waiting for you &mdash; because you shouldn&rsquo;t have to
-        ask for the good stuff on your birthday.
+        have a little surprise waiting for you &mdash; or revisit your Glow Year recap anytime.
       </p>
       <table role="presentation" cellspacing="0" cellpadding="0">
         <tr>
-          <td>
-            <a href="${bookingUrl}" style="display: inline-block; padding: 12px 24px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
+          <td style="padding-right: 10px;">
+            <a href="${bookingUrl}" style="display: inline-block; padding: 12px 22px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
               Book your birthday visit
+            </a>
+          </td>
+          <td>
+            <a href="${recapUrl}" style="display: inline-block; padding: 11px 20px; font-size: 15px; font-weight: 600; color: ${BRAND_COLOR}; text-decoration: none; border: 1px solid ${BRAND_COLOR}; border-radius: 6px;">
+              View your Glow Year
             </a>
           </td>
         </tr>
@@ -2837,7 +2844,7 @@ export async function sendBirthdayEmail(data: {
     to: data.email,
     subject: `Happy Birthday, ${name}! A little something from Dermaspace`,
     html: getEmailTemplate(content, {
-      preheader: `Happy Birthday, ${name}! Come celebrate with us at Dermaspace this month.`,
+      preheader: `Happy Birthday, ${name}! Your Glow Year recap and birthday treat await at Dermaspace.`,
       eyebrow: 'Happy Birthday',
     }),
   })

@@ -65,6 +65,7 @@ const EXCLUDED_PATH_PREFIXES = [
   '/legal',
   '/admin',
   '/staff',
+  '/birthday',
 ]
 
 export function LegalAcceptanceGate() {

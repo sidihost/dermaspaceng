@@ -17,8 +17,9 @@ import { MembershipCard, type MembershipBlock } from '@/components/dashboard/mem
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
-  Package, Flower2, Trash2, Receipt, Crown, Lightbulb
+  Package, Flower2, Trash2, Receipt, Crown, Lightbulb, Cake
 } from 'lucide-react'
+import { isBirthdayTodayLocal } from '@/lib/birthday'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
@@ -88,6 +89,7 @@ export default function DashboardPage() {
     hasSocialAuth?: boolean
     needsProfileCompletion?: boolean
     avatarUrl?: string | null
+    dateOfBirth?: string | null
     gender?: 'male' | 'female' | null
     /** Operator role — drives which avatar pool the picker shows
      *  ("staff" / "admin" -> curated team portraits, otherwise the
@@ -835,6 +837,44 @@ export default function DashboardPage() {
   <>
   {/* Security Reminder */}
   <SecurityReminder />
+
+  {/* Birthday Glow Year card — stays accessible all day even after the
+      floating banner dismisses. Strictly flat white/purple hairline style. */}
+  {isBirthdayTodayLocal(user?.dateOfBirth) && (
+    <div className="bg-white rounded-2xl border border-[#7B2D8E]/25 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+        <div className="w-11 h-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+          <Cake className="w-5 h-5 text-[#7B2D8E]" aria-hidden="true" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7B2D8E]">
+            Happy Birthday, {user?.firstName}
+          </p>
+          <p className="text-sm sm:text-base font-semibold text-gray-900 mt-0.5">
+            Your Glow Year recap is ready to revisit
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Celebrate your self-care milestones and enjoy a complimentary birthday treat on your next visit this month.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+        <Link
+          href="/birthday"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7B2D8E] text-white text-xs sm:text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
+        >
+          Open Glow Year
+          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+        </Link>
+        <Link
+          href="/booking"
+          className="inline-flex items-center px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs sm:text-sm font-semibold hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
+        >
+          Book Visit
+        </Link>
+      </div>
+    </div>
+  )}
   
                   {/* Stats Grid — tighter padding + tighter inner
                       gap so three small cards fit on a phone without

@@ -392,8 +392,19 @@ async function computeAdminStats() {
         FROM users
         WHERE date_of_birth IS NOT NULL
           AND COALESCE(is_active, true) = true
-          AND EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
-          AND EXTRACT(DAY FROM date_of_birth) = EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+          AND (
+            (
+              EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+              AND EXTRACT(DAY FROM date_of_birth) = EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+            )
+            OR (
+              EXTRACT(MONTH FROM date_of_birth) = 2
+              AND EXTRACT(DAY FROM date_of_birth) = 29
+              AND EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos')) = 2
+              AND EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos')) = 28
+              AND EXTRACT(MONTH FROM ((NOW() AT TIME ZONE 'Africa/Lagos') + INTERVAL '1 day')) = 3
+            )
+          )
         ORDER BY first_name ASC
         LIMIT 10
       `

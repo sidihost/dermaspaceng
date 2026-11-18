@@ -28,10 +28,21 @@ async function runJob(): Promise<RunResult> {
     WHERE date_of_birth IS NOT NULL
       AND email_verified = true
       AND COALESCE(is_active, true) = true
-      AND EXTRACT(MONTH FROM date_of_birth)
-            = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
-      AND EXTRACT(DAY FROM date_of_birth)
-            = EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+      AND (
+        (
+          EXTRACT(MONTH FROM date_of_birth)
+                = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+          AND EXTRACT(DAY FROM date_of_birth)
+                = EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos'))
+        )
+        OR (
+          EXTRACT(MONTH FROM date_of_birth) = 2
+          AND EXTRACT(DAY FROM date_of_birth) = 29
+          AND EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos')) = 2
+          AND EXTRACT(DAY FROM (NOW() AT TIME ZONE 'Africa/Lagos')) = 28
+          AND EXTRACT(MONTH FROM ((NOW() AT TIME ZONE 'Africa/Lagos') + INTERVAL '1 day')) = 3
+        )
+      )
       AND (
         last_birthday_email_sent_at IS NULL
         OR last_birthday_email_sent_at

@@ -31,6 +31,7 @@ import {
   getVisibleEmail,
   shouldPromptEmailVerification,
 } from '@/lib/auth-onboarding'
+import { isBirthdayTodayLocal } from '@/lib/birthday'
 
 interface UserData {
   id: string
@@ -1522,6 +1523,14 @@ function SettingsPageContent() {
                           />
                           <p className="text-xs text-gray-400 mt-1">
                             We&apos;ll send a little something on your birthday
+                            {isBirthdayTodayLocal(user?.dateOfBirth) && (
+                              <>
+                                {' '}&mdash;{' '}
+                                <Link href="/birthday" className="font-semibold text-[#7B2D8E] hover:underline">
+                                  Open your Glow Year recap
+                                </Link>
+                              </>
+                            )}
                           </p>
                         </div>
                         <div>
