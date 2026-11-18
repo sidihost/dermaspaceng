@@ -1,27 +1,33 @@
 'use client'
 
 /**
- * BirthdayCelebration
+ * CelebrationBanner (BirthdayCelebration)
  * ---------------------------------------------------------------
- * Signed-in-only birthday banner that triggers once per user per year
- * when their DOB matches today's local calendar date (with Feb 29
- * leap-year support).
+ * Signed-in-only seasonal & milestone banner mounted globally in
+ * ClientShell. Triggers once per user per occasion per year:
+ *   1. Birthday on DOB (highest priority)
+ *   2. Christmas season (Dec 1–26) when admin `/api/festive` is active
+ *   3. New Year season (Dec 31–Jan 7)
  *
  * Design system compliance:
- *   - Crisp white surface with #7B2D8E rail & hairline border (matches NotifyCard)
- *   - Zero gradients, zero drop-shadow blobs, zero Sparkles icons
+ *   - Crisp white surface with #7B2D8E rail & hairline border
+ *   - Zero gradients, zero drop-shadow blobs, zero Sparkles/Zap icons
  *   - Purple + white confetti only
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Cake, X } from 'lucide-react'
-import {
-  BIRTHDAY_CONFETTI_COLORS,
-  getBirthdaySeenKey,
-  isBirthdayTodayLocal,
-} from '@/lib/birthday'
+import { ArrowRight, Cake, Clock, Snowflake, X } from 'lucide-react'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
+import { getLocalCalendarDate } from '@/lib/birthday'
+import {
+  getActiveCelebrationOccasion,
+  getCelebrationBannerCopy,
+  getCelebrationConfettiColors,
+  getNewYearEdition,
+  getSeasonalSeenKey,
+  type CelebrationBannerCopy,
+} from '@/lib/celebrations'
 
 interface MeResponse {
   user?: {
@@ -33,10 +39,14 @@ interface MeResponse {
   }
 }
 
+interface FestiveResponse {
+  enabled?: boolean
+}
+
 const BANNER_TTL_MS = 12000
 
 export default function BirthdayCelebration() {
-  const [firstName, setFirstName] = useState<string | null>(null)
+  const [banner, setBanner] = useState<CelebrationBannerCopy | null>(null)
   const [visible, setVisible] = useState(false)
   const [hoverPaused, setHoverPaused] = useState(false)
 
@@ -46,18 +56,23 @@ export default function BirthdayCelebration() {
 
   const checkAndTrigger = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/me', {
-        credentials: 'include',
-        cache: 'no-store',
-      })
-      if (!res.ok) return
-      const data = (await res.json()) as MeResponse
+      const [meRes, festiveRes] = await Promise.all([
+        fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        }),
+        fetch('/api/festive', {
+          cache: 'no-store',
+        }).catch(() => null),
+      ])
+
+      if (!meRes.ok) return
+      const data = (await meRes.json()) as MeResponse
 
       const userId = data.user?.id
-      const dob = data.user?.dateOfBirth
+      const dob = data.user?.dateOfBirth ?? null
       const name = data.user?.firstName?.trim()
-      if (!dob || !name) return
-      if (!isBirthdayTodayLocal(dob)) return
+      if (!name) return
       if (data.user?.needsProfileCompletion) return
       if (
         data.user?.legalAcceptedVersion !== undefined &&
@@ -66,20 +81,48 @@ export default function BirthdayCelebration() {
         return
       }
 
-      const currentYear = new Date().getFullYear()
-      const seenKey = getBirthdaySeenKey(userId, currentYear)
+      let festiveEnabled = true
+      if (festiveRes && festiveRes.ok) {
+        try {
+          const festiveData = (await festiveRes.json()) as FestiveResponse
+          festiveEnabled = festiveData.enabled !== false
+        } catch {
+          festiveEnabled = true
+        }
+      }
+
+      const now = new Date()
+      const occasion = getActiveCelebrationOccasion({
+        dobIso: dob,
+        festiveEnabled,
+        now,
+      })
+      if (!occasion) return
+
+      const cal = getLocalCalendarDate(now)
+      const celebrationYear =
+        occasion === 'new-year'
+          ? getNewYearEdition(cal).targetYear
+          : cal.year
+      const seenKey = getSeasonalSeenKey(occasion, userId, celebrationYear)
 
       if (typeof window !== 'undefined') {
         try {
           if (window.localStorage.getItem(seenKey) === '1') return
           window.localStorage.setItem(seenKey, '1')
         } catch {
-          // Storage blocked (private mode) — continue showing once this mount
+          // Storage blocked — continue showing once this mount
         }
       }
 
+      const copy = getCelebrationBannerCopy({
+        occasion,
+        firstName: name,
+        now,
+      })
+
       remainingMsRef.current = BANNER_TTL_MS
-      setFirstName(name)
+      setBanner(copy)
       setVisible(true)
 
       if (!confettiFiredRef.current && typeof window !== 'undefined') {
@@ -87,7 +130,7 @@ export default function BirthdayCelebration() {
         try {
           const mod = await import('canvas-confetti')
           const confetti = mod.default
-          const colors = [...BIRTHDAY_CONFETTI_COLORS]
+          const colors = [...getCelebrationConfettiColors(occasion)]
 
           confetti({
             particleCount: 70,
@@ -123,7 +166,6 @@ export default function BirthdayCelebration() {
     }
   }, [])
 
-  // Initial check on mount + listen for profile DOB updates
   useEffect(() => {
     void checkAndTrigger()
 
@@ -136,7 +178,6 @@ export default function BirthdayCelebration() {
     }
   }, [checkAndTrigger])
 
-  // Auto-dismiss timer that pauses when the user hovers/focuses the card
   useEffect(() => {
     if (!visible || hoverPaused) return
     lastTickRef.current = Date.now()
@@ -152,7 +193,7 @@ export default function BirthdayCelebration() {
     }
   }, [visible, hoverPaused])
 
-  if (!visible || !firstName) return null
+  if (!visible || !banner) return null
 
   return (
     <div
@@ -172,32 +213,37 @@ export default function BirthdayCelebration() {
 
           <div className="flex flex-1 items-start gap-3.5 p-4 sm:items-center sm:p-5">
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10">
-              <Cake className="h-5 w-5 text-[#7B2D8E]" aria-hidden="true" />
+              {banner.occasion === 'christmas' ? (
+                <Snowflake className="h-5 w-5 text-[#7B2D8E]" aria-hidden="true" />
+              ) : banner.occasion === 'new-year' ? (
+                <Clock className="h-5 w-5 text-[#7B2D8E]" aria-hidden="true" />
+              ) : (
+                <Cake className="h-5 w-5 text-[#7B2D8E]" aria-hidden="true" />
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
               <p className="truncate font-serif text-base font-bold text-gray-900 sm:text-lg">
-                Happy Birthday, {firstName}!
+                {banner.title}
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-gray-600 sm:text-sm">
-                Your Glow Year recap is ready &mdash; revisit your year of self-care at
-                Dermaspace.
+                {banner.subtitle}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2.5">
                 <Link
-                  href="/birthday"
+                  href={banner.primaryCtaHref}
                   onClick={() => setVisible(false)}
                   className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#5A1D6A] active:scale-[0.98]"
                 >
-                  Open Glow Year
+                  {banner.primaryCtaLabel}
                   <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
                 <Link
-                  href="/booking"
+                  href={banner.secondaryCtaHref}
                   onClick={() => setVisible(false)}
                   className="inline-flex items-center rounded-full border border-gray-200 px-3.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]"
                 >
-                  Book a birthday visit
+                  {banner.secondaryCtaLabel}
                 </Link>
               </div>
             </div>
@@ -205,7 +251,7 @@ export default function BirthdayCelebration() {
             <button
               type="button"
               onClick={() => setVisible(false)}
-              aria-label="Dismiss birthday greeting"
+              aria-label={banner.dismissAriaLabel}
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
               <X className="h-4 w-4" />

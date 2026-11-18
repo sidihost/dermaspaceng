@@ -1,0 +1,54 @@
+import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
+import { getCurrentUser } from '@/lib/auth'
+import { getBirthdayRecapForUser } from '@/lib/birthday-recap'
+import type { RecapPayload } from '@/lib/birthday'
+import CelebrationWrapped from '@/components/celebrations/celebration-wrapped'
+
+export const metadata: Metadata = {
+  title: 'Christmas Glow • Dermaspace',
+  description:
+    'Celebrate the festive season — revisit your year of calm, glow, and self-care rituals at Dermaspace.',
+}
+
+export const dynamic = 'force-dynamic'
+
+/**
+ * /christmas — Holiday Glow Story
+ *
+ * Auth-gated festive recap experience reusing live user + booking metrics
+ * from getBirthdayRecapForUser().
+ */
+export default async function ChristmasCelebrationPage() {
+  const user = await getCurrentUser()
+  if (!user) {
+    redirect('/signin?redirect=/christmas')
+  }
+
+  let recap: RecapPayload
+  try {
+    recap = await getBirthdayRecapForUser(user)
+  } catch {
+    recap = {
+      user: {
+        firstName: user.first_name ?? 'Friend',
+        lastName: user.last_name ?? null,
+      },
+      isBirthdayToday: false,
+      birthday: null,
+      joinedOn: null,
+      daysWithUs: 1,
+      stats: {
+        totalBookings: 0,
+        totalSpentNaira: 0,
+        topTreatment: null,
+        topTreatmentCount: 0,
+        topLocation: null,
+        topLocationCount: 0,
+        busiestMonth: null,
+      },
+    }
+  }
+
+  return <CelebrationWrapped recap={recap} occasion="christmas" />
+}

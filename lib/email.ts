@@ -2850,6 +2850,150 @@ export async function sendBirthdayEmail(data: {
   })
 }
 
+export async function sendChristmasEmail(data: {
+  email: string
+  firstName: string
+  year?: number
+}): Promise<boolean> {
+  const name = data.firstName?.trim() || 'there'
+  const safeName = escapeHtml(name)
+  const year = data.year ?? new Date().getFullYear()
+  const bookingUrl = `${PUBLIC_ORIGIN}/booking`
+  const storyUrl = `${PUBLIC_ORIGIN}/christmas`
+  const giftUrl = `${PUBLIC_ORIGIN}/gift-cards`
+
+  const content = `
+    <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 36px 24px; text-align: center; margin: 0 0 24px;">
+      <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.85);">
+        Season&rsquo;s Greetings &middot; ${year}
+      </p>
+      <h1 style="margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #ffffff; line-height: 1.2;">
+        Merry Christmas, ${safeName}!
+      </h1>
+      <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.9); line-height: 1.5;">
+        Wishing you stillness, warmth, and holiday radiance from Dermaspace.
+      </p>
+    </div>
+
+    <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      As the year draws to a close, everyone at Dermaspace wants to say thank you for making space for yourself with us.
+    </p>
+
+    <div style="border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px;">
+      <p style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: ${BRAND_COLOR}; letter-spacing: 0.5px; text-transform: uppercase;">
+        Your Christmas Glow keepsake
+      </p>
+      <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+        Open your holiday story anytime, unwind with a December session, or send a festive <a href="${giftUrl}" style="color: ${BRAND_COLOR}; font-weight: 600;">Dermaspace gift card</a> to someone special.
+      </p>
+      <table role="presentation" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="padding-right: 10px;">
+            <a href="${storyUrl}" style="display: inline-block; padding: 12px 22px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
+              Open Holiday Story
+            </a>
+          </td>
+          <td>
+            <a href="${bookingUrl}" style="display: inline-block; padding: 11px 20px; font-size: 15px; font-weight: 600; color: ${BRAND_COLOR}; text-decoration: none; border: 1px solid ${BRAND_COLOR}; border-radius: 6px;">
+              Book a holiday visit
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="margin: 0; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Warmest holiday wishes,<br>
+      The Dermaspace family
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Merry Christmas, ${name}! Your Holiday Glow story awaits`,
+    html: getEmailTemplate(content, {
+      preheader: `Merry Christmas, ${name}! Open your Dermaspace Holiday Glow recap.`,
+      eyebrow: 'Merry Christmas',
+    }),
+  })
+}
+
+export async function sendNewYearEmail(data: {
+  email: string
+  firstName: string
+  year?: number
+}): Promise<boolean> {
+  const name = data.firstName?.trim() || 'there'
+  const safeName = escapeHtml(name)
+  const targetYear = data.year ?? new Date().getFullYear()
+  const recapYear = targetYear - 1
+  const bookingUrl = `${PUBLIC_ORIGIN}/booking`
+  const wrapUrl = `${PUBLIC_ORIGIN}/new-year`
+
+  const content = `
+    <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 36px 24px; text-align: center; margin: 0 0 24px;">
+      <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.85);">
+        Hello ${targetYear}
+      </p>
+      <h1 style="margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #ffffff; line-height: 1.2;">
+        Happy New Year, ${safeName}!
+      </h1>
+      <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.9); line-height: 1.5;">
+        Here is to your softest, healthiest skin in ${targetYear}.
+      </p>
+    </div>
+
+    <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      Thank you for trusting Dermaspace throughout ${recapYear}. Your personalised Year in Review is ready whenever you want to look back at your milestones before stepping into ${targetYear}.
+    </p>
+
+    <div style="border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px;">
+      <p style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: ${BRAND_COLOR}; letter-spacing: 0.5px; text-transform: uppercase;">
+        Your ${recapYear} Wrap &amp; ${targetYear} Reset
+      </p>
+      <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+        Open your ${targetYear} New Year Wrap or book your first restorative treatment of the year.
+      </p>
+      <table role="presentation" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="padding-right: 10px;">
+            <a href="${wrapUrl}" style="display: inline-block; padding: 12px 22px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
+              Open ${targetYear} Wrap
+            </a>
+          </td>
+          <td>
+            <a href="${bookingUrl}" style="display: inline-block; padding: 11px 20px; font-size: 15px; font-weight: 600; color: ${BRAND_COLOR}; text-decoration: none; border: 1px solid ${BRAND_COLOR}; border-radius: 6px;">
+              Book your ${targetYear} visit
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="margin: 0; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Wishing you a luminous ${targetYear},<br>
+      The Dermaspace family
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Happy New Year ${targetYear}, ${name}! Your Dermaspace Wrap awaits`,
+    html: getEmailTemplate(content, {
+      preheader: `Happy New Year ${targetYear}, ${name}! Open your ${recapYear} Year in Review at Dermaspace.`,
+      eyebrow: `Happy New Year ${targetYear}`,
+    }),
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Welcome email — fired the moment a brand-new user verifies their email
 // (or, if verification is skipped, immediately after signup). This is
