@@ -22,6 +22,7 @@ import { isSoundMuted, setSoundMuted } from '@/lib/notification-sound'
 import PageLoader from '@/components/shared/page-loader'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
+  broadcastUserUpdated,
   clearCachedUser,
   readCachedUser,
   writeCachedUser,
@@ -522,7 +523,7 @@ function SettingsPageContent() {
           walletRes,
           settingsRes,
         ] = await Promise.all([
-          fetch('/api/auth/me'),
+          fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' }),
           fetch('/api/auth/password').catch(() => null),
           fetch('/api/auth/passkey/list').catch(() => null),
           fetch('/api/auth/2fa/status').catch(() => null),
@@ -537,7 +538,15 @@ function SettingsPageContent() {
         }
         const authData = await authRes.json()
         if (authData.user) {
+          const changed =
+            !cached ||
+            cached.id !== authData.user.id ||
+            cached.avatarUrl !== authData.user.avatarUrl ||
+            cached.role !== authData.user.role
           writeCachedUser(authData.user)
+          if (changed) {
+            broadcastUserUpdated()
+          }
         }
         setUser(authData.user)
         // Initialize profile edit fields

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { delKey, getJson } from '@/lib/redis'
 import { sql } from '@/lib/db'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 
 interface HandoffPayload {
   sessionToken: string
@@ -40,8 +41,17 @@ export async function POST(request: NextRequest) {
     }
 
     const sessions = await sql`
-      SELECT user_id FROM sessions
-      WHERE id = ${payload.sessionToken} AND expires_at > NOW()
+      SELECT
+        s.user_id,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.avatar_url,
+        u.gender,
+        u.username
+      FROM sessions s
+      JOIN users u ON u.id = s.user_id
+      WHERE s.id = ${payload.sessionToken} AND s.expires_at > NOW()
       LIMIT 1
     `
     if (sessions.length === 0) {
@@ -51,8 +61,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const row = sessions[0]
     const res = NextResponse.json(
-      { success: true, redirectTo: payload.redirectTo || '/dashboard' },
+      {
+        success: true,
+        redirectTo: payload.redirectTo || '/dashboard',
+        user: {
+          id: row.user_id,
+          firstName: row.first_name ?? '',
+          lastName: row.last_name ?? '',
+          role: row.role ?? 'user',
+          avatarUrl: row.avatar_url ?? null,
+          gender: row.gender ?? null,
+          username: row.username ?? null,
+        },
+      },
       { headers: { 'Cache-Control': 'no-store' } },
     )
     res.cookies.set(
@@ -60,6 +83,7 @@ export async function POST(request: NextRequest) {
       payload.sessionToken,
       getAuthCookieOptions({ maxAge: 60 * 60 * 24 * 30 }, request),
     )
+    applyAuthUidCookie(res, row.user_id as string, request)
     return res
   } catch (err) {
     console.error('[x-auth] handoff error:', err)

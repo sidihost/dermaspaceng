@@ -5,6 +5,7 @@ import { cached, KEYS } from '@/lib/redis'
 import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { getFestiveState } from '@/lib/feature-flags'
 import { buildSignedCelebrationPath } from '@/lib/celebration-tokens'
+import { applyAuthUidCookie, clearAuthUidCookie } from '@/lib/auth-cache-cookie'
 
 /*
  * /api/auth/me — hydrates the signed-in user for the client.
@@ -98,11 +99,15 @@ interface CachedUserRow {
 
 const NO_STORE = 'private, no-store, max-age=0'
 
-function unauthenticated(error: string, status = 401) {
-  return NextResponse.json(
+function unauthenticated(error: string, status = 401, clearUid = false) {
+  const res = NextResponse.json(
     { error },
     { status, headers: { 'Cache-Control': NO_STORE } },
   )
+  if (clearUid) {
+    clearAuthUidCookie(res)
+  }
+  return res
 }
 
 export async function GET() {
@@ -111,7 +116,7 @@ export async function GET() {
     const sessionId = cookieStore.get('session_id')?.value
 
     if (!sessionId) {
-      return unauthenticated('Not authenticated')
+      return unauthenticated('Not authenticated', 401, true)
     }
 
     // STAGE 1 — live session check. Tiny single-row PK lookup; can't
@@ -123,7 +128,7 @@ export async function GET() {
       LIMIT 1
     `
     if (sessionRows.length === 0) {
-      return unauthenticated('Session expired')
+      return unauthenticated('Session expired', 401, true)
     }
     const userId = sessionRows[0].user_id as string
 
@@ -213,7 +218,7 @@ export async function GET() {
     if (!session) {
       // Defensive — session row pointed at a missing user. Treat as
       // expired so the client clears its state.
-      return unauthenticated('Session expired')
+      return unauthenticated('Session expired', 401, true)
     }
 
     if (session.is_active === false) {
@@ -222,7 +227,7 @@ export async function GET() {
       } catch {
         /* best-effort */
       }
-      return unauthenticated('Account suspended')
+      return unauthenticated('Account suspended', 401, true)
     }
 
     // Re-shape preferences for the response. We keep the legacy
@@ -407,6 +412,7 @@ export async function GET() {
     // would keep showing the signed-in user after logout (and the previous
     // user after switching accounts) until a hard refresh.
     response.headers.set('Cache-Control', NO_STORE)
+    applyAuthUidCookie(response, session.user_id)
     return response
   } catch (error) {
     console.error('Auth check error:', error)

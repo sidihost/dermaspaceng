@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2, ArrowLeft, HelpCircle } from 'lucide-react'
 import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
+import { commitAuthenticatedUser } from '@/lib/auth-cache'
 
 /**
  * Two-Factor Authentication screen.
@@ -133,7 +134,16 @@ function TwoFactorForm() {
       const data = (await res.json()) as {
         error?: string
         code?: string
-        user?: { needsProfileCompletion?: boolean }
+        user?: {
+          id?: string
+          firstName?: string
+          lastName?: string
+          avatarUrl?: string | null
+          role?: 'user' | 'staff' | 'admin'
+          gender?: 'male' | 'female' | null
+          username?: string | null
+          needsProfileCompletion?: boolean
+        }
       }
 
       if (!res.ok) {
@@ -150,6 +160,7 @@ function TwoFactorForm() {
         throw new Error(data.error || 'That code didn\u2019t match. Try again.')
       }
 
+      commitAuthenticatedUser(data.user)
       // Full-page navigation so the freshly-issued session cookie is
       // definitely picked up on the destination route.
       window.location.href = resolvePostAuthRedirect(redirectTo, data.user)

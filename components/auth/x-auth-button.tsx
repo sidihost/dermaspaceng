@@ -3,6 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { formatXError, sanitizeRedirectPath } from '@/lib/x-oauth'
+import {
+  broadcastUserUpdated,
+  clearCachedUser,
+  commitAuthenticatedUser,
+} from '@/lib/auth-cache'
 
 interface XAuthButtonProps {
   mode: 'signin' | 'signup'
@@ -75,6 +80,7 @@ export function XAuthButton({
         /* keep fallback */
       }
 
+      let committedUser = false
       if (data.handoff) {
         try {
           const res = await fetch('/api/auth/x/handoff', {
@@ -84,9 +90,16 @@ export function XAuthButton({
             body: JSON.stringify({ handoff: data.handoff }),
           })
           if (res.ok) {
-            const json = (await res.json()) as { redirectTo?: string }
+            const json = (await res.json()) as {
+              redirectTo?: string
+              user?: Record<string, unknown>
+            }
             if (json.redirectTo) {
               finalRedirect = sanitizeRedirectPath(json.redirectTo, finalRedirect)
+            }
+            if (json.user) {
+              commitAuthenticatedUser(json.user)
+              committedUser = true
             }
           }
         } catch {
@@ -94,7 +107,9 @@ export function XAuthButton({
         }
       }
 
-      window.dispatchEvent(new Event('user-updated'))
+      if (!committedUser) {
+        broadcastUserUpdated()
+      }
       window.location.replace(finalRedirect)
     },
     [closePopup, redirectTo, stopPolling],
@@ -165,6 +180,7 @@ export function XAuthButton({
 
   const handleClick = async () => {
     if (loading) return
+    clearCachedUser()
     onErrorRef.current('')
     setLoading(true)
     completingRef.current = false

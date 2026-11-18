@@ -59,6 +59,46 @@ import { sanitizeAvatarForCache } from './avatar-utils'
 const STORAGE_KEY = 'dermaspace.auth.user.v2'
 const LEGACY_STORAGE_KEYS = ['dermaspace.auth.user.v1'] as const
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+export const AUTH_UID_COOKIE = 'ds_auth_uid'
+
+/**
+ * Extract the non-sensitive `ds_auth_uid` cache-sync user ID from a cookie
+ * header string (`document.cookie` in the browser). Pure function so unit
+ * tests can exercise mismatch/purging logic without DOM globals.
+ */
+export function parseAuthUidCookie(
+  cookieHeader: string | null | undefined,
+): string | null {
+  if (!cookieHeader || typeof cookieHeader !== 'string') return null
+  const parts = cookieHeader.split(';')
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+    const eqIdx = trimmed.indexOf('=')
+    if (eqIdx === -1) continue
+    const name = trimmed.slice(0, eqIdx).trim()
+    if (name !== AUTH_UID_COOKIE) continue
+    const rawVal = trimmed.slice(eqIdx + 1).trim()
+    if (!rawVal) return null
+    try {
+      const decoded = decodeURIComponent(rawVal).trim()
+      return decoded || null
+    } catch {
+      return rawVal || null
+    }
+  }
+  return null
+}
+
+/** Read `ds_auth_uid` from `document.cookie` when running in the browser. */
+export function getCookieAuthUid(): string | null {
+  if (typeof document === 'undefined') return null
+  try {
+    return parseAuthUidCookie(document.cookie)
+  } catch {
+    return null
+  }
+}
 
 /**
  * Display-only fields that are safe to keep in localStorage.
@@ -181,10 +221,51 @@ function pickDisplayFields(
 }
 
 /**
+ * Pure cache envelope validator + UID-mismatch detector. Exported for unit
+ * testing alongside `readCachedUser`.
+ */
+export function resolveValidCachedUser(
+  rawJson: string | null | undefined,
+  cookieAuthUid: string | null | undefined,
+  nowMs: number = Date.now(),
+): { user: CachedAuthUser | null; shouldPurge: boolean } {
+  if (!rawJson) return { user: null, shouldPurge: false }
+  try {
+    const parsed = JSON.parse(rawJson) as Envelope
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !parsed.user ||
+      typeof parsed.savedAt !== 'number'
+    ) {
+      return { user: null, shouldPurge: true }
+    }
+    if (nowMs - parsed.savedAt > MAX_AGE_MS) {
+      return { user: null, shouldPurge: true }
+    }
+    const safe = pickDisplayFields(parsed.user as unknown as Record<string, unknown>)
+    if (!safe) {
+      return { user: null, shouldPurge: true }
+    }
+    // Session-owner mismatch guard: if the server's active `ds_auth_uid`
+    // cookie belongs to a different user (e.g. admin impersonated a client,
+    // or the visitor signed in as another account via OAuth), never expose
+    // the previous account's avatar/role even for a single frame.
+    if (cookieAuthUid && safe.id !== cookieAuthUid) {
+      return { user: null, shouldPurge: true }
+    }
+    return { user: safe, shouldPurge: false }
+  } catch {
+    return { user: null, shouldPurge: true }
+  }
+}
+
+/**
  * Read the cached user, if any. Returns null when:
  *   - we're running on the server
  *   - storage is unavailable (private mode, quota exceeded)
  *   - the entry is missing, malformed, or older than MAX_AGE_MS
+ *   - `ds_auth_uid` cookie points to a different user ID
  *
  * Also opportunistically deletes legacy v1 entries (which contained
  * email/phone) so a returning user's PII is wiped on their next
@@ -193,34 +274,15 @@ function pickDisplayFields(
 export function readCachedUser(): CachedAuthUser | null {
   if (!isBrowser()) return null
   try {
-    // Defense-in-depth: scrub legacy keys that mirrored PII before
-    // the v2 hardening. Cheap, idempotent, runs at most once per
-    // tab (per-key) until the entries are gone.
     for (const legacy of LEGACY_STORAGE_KEYS) {
       try { window.localStorage.removeItem(legacy) } catch { /* ignore */ }
     }
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Envelope
-    if (
-      !parsed ||
-      typeof parsed !== 'object' ||
-      !parsed.user ||
-      typeof parsed.savedAt !== 'number'
-    ) {
-      return null
-    }
-    if (Date.now() - parsed.savedAt > MAX_AGE_MS) {
-      // Drop the entry rather than letting it linger forever. A
-      // 7-day-old cache is almost certainly from a since-expired
-      // session — better to fall through to the network fetch.
+    const { user, shouldPurge } = resolveValidCachedUser(raw, getCookieAuthUid())
+    if (shouldPurge) {
       try { window.localStorage.removeItem(STORAGE_KEY) } catch {}
-      return null
     }
-    // Re-run the whitelist even on read. Defends against a manually
-    // tampered localStorage entry adding an `email` field that some
-    // downstream component might naively trust.
-    return pickDisplayFields(parsed.user as unknown as Record<string, unknown>)
+    return user
   } catch {
     return null
   }
@@ -266,4 +328,29 @@ export function clearCachedUser(): void {
   for (const legacy of LEGACY_STORAGE_KEYS) {
     try { window.localStorage.removeItem(legacy) } catch {}
   }
+}
+
+/**
+ * Notify all mounted `useAuth()` consumers in the current tab that the
+ * signed-in user payload changed (login, account switch, avatar/profile edit).
+ */
+export function broadcastUserUpdated(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.dispatchEvent(new Event('user-updated'))
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Convenience helper for login/impersonation/signup-verification handlers:
+ * writes the safe display fields to localStorage and notifies every mounted
+ * header/nav consumer immediately without waiting for a refresh.
+ */
+export function commitAuthenticatedUser(
+  user: Record<string, unknown> | CachedAuthUser | null | undefined,
+): void {
+  writeCachedUser(user)
+  broadcastUserUpdated()
 }

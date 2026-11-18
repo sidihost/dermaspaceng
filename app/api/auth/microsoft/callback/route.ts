@@ -6,6 +6,8 @@ import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
+import { getAuthCookieOptions } from '@/lib/cookie-options'
 
 interface MicrosoftTokenResponse {
   access_token: string
@@ -242,11 +244,18 @@ export async function GET(request: NextRequest) {
       email: userEmail,
     })
 
-    if (needsProfile) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`)
-    }
+    const destination = needsProfile
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`
+      : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)
+    const redirectResponse = NextResponse.redirect(destination)
+    redirectResponse.cookies.set(
+      'session_id',
+      sessionToken,
+      getAuthCookieOptions({ maxAge: 60 * 60 * 24 * 7 }, request),
+    )
+    applyAuthUidCookie(redirectResponse, userId, request, 60 * 60 * 24 * 7)
+    return redirectResponse
   } catch (err) {
     console.error('Microsoft auth error:', err)
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=auth_failed`)

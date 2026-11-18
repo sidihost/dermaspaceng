@@ -5,6 +5,8 @@ import { sendWelcomeEmail } from '@/lib/email'
 import { verifyOtp } from '@/lib/signup-otp'
 import { createSession } from '@/lib/auth'
 import { appendAuditEvent } from '@/lib/auth-audit'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
+import { getAuthCookieOptions } from '@/lib/cookie-options'
 
 // ---------------------------------------------------------------------------
 // Email verification — OTP flow.
@@ -49,7 +51,7 @@ export async function POST(request: Request) {
     // fields we need to flip verification, send the welcome mail, and
     // mint a session.
     const candidates = (await sql`
-      SELECT id, email, first_name, last_name, email_verified, is_active
+      SELECT id, email, first_name, last_name, role, avatar_url, gender, username, email_verified, is_active
         FROM users
        WHERE email = ${normalizedEmail}
        LIMIT 1
@@ -58,6 +60,10 @@ export async function POST(request: Request) {
       email: string
       first_name: string
       last_name: string
+      role: 'user' | 'staff' | 'admin' | null
+      avatar_url: string | null
+      gender: 'male' | 'female' | null
+      username: string | null
       email_verified: boolean
       is_active: boolean | null
     }>
@@ -132,15 +138,29 @@ export async function POST(request: Request) {
       console.error('verify-email audit append failed:', auditErr)
     }
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
+    const response = NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role || 'user',
+          avatarUrl: user.avatar_url ?? null,
+          gender: user.gender ?? null,
+          username: user.username ?? null,
+        },
       },
-    })
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+    response.cookies.set(
+      'session_id',
+      sessionId,
+      getAuthCookieOptions({ maxAge: 30 * 24 * 60 * 60 }, request),
+    )
+    applyAuthUidCookie(response, user.id, request)
+    return response
   } catch (error) {
     console.error('Email verification error:', error)
     return NextResponse.json(

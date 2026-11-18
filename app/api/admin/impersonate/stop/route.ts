@@ -17,6 +17,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { cookies } from 'next/headers'
+import { applyAuthUidCookie, clearAuthUidCookie } from '@/lib/auth-cache-cookie'
+import { getAuthCookieOptions } from '@/lib/cookie-options'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -62,13 +64,13 @@ export async function POST(_request: NextRequest) {
     // Verify the original admin session still exists and is unexpired.
     // If it isn't, we can't restore — the admin must sign in again.
     const adminSessionRows = await sql`
-      SELECT id, expires_at
+      SELECT id, user_id, expires_at
       FROM sessions
       WHERE id = ${session.impersonator_session_id} AND expires_at > NOW()
       LIMIT 1
     `
     const adminSession = adminSessionRows[0] as
-      | { id: string; expires_at: string }
+      | { id: string; user_id: string; expires_at: string }
       | undefined
 
     // Mark audit row as ended. Best-effort.
@@ -95,27 +97,30 @@ export async function POST(_request: NextRequest) {
       // the admin gets redirected to /signin instead of a half-broken
       // state.
       cookieStore.delete('session_id')
-      return NextResponse.json(
+      const expiredRes = NextResponse.json(
         {
           success: true,
           adminSessionExpired: true,
           message:
             'Impersonation ended, but your admin session expired — please sign in again.',
         },
-        { status: 200 }
+        { status: 200, headers: { 'Cache-Control': 'no-store' } }
       )
+      clearAuthUidCookie(expiredRes, _request)
+      return expiredRes
     }
 
-    // Restore the original admin cookie.
-    cookieStore.set('session_id', adminSession.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      expires: new Date(adminSession.expires_at),
-    })
-
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json(
+      { success: true },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+    response.cookies.set(
+      'session_id',
+      adminSession.id,
+      getAuthCookieOptions({ expires: new Date(adminSession.expires_at) }, _request),
+    )
+    applyAuthUidCookie(response, adminSession.user_id, _request)
+    return response
   } catch (error) {
     console.error('Stop impersonate error:', error)
     const message =

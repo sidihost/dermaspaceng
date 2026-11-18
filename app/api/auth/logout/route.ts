@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { clearAuthUidCookie } from '@/lib/auth-cache-cookie'
 
-export async function POST() {
+export async function POST(request: Request) {
   const cookieStore = await cookies()
   const sessionId = cookieStore.get('session_id')?.value
 
@@ -24,8 +25,9 @@ export async function POST() {
   // Overwrite with the same attributes used to set it plus an immediate
   // expiry; some browsers won't drop a Secure/SameSite cookie otherwise.
   response.cookies.set('session_id', '', {
-    ...getAuthCookieOptions({ maxAge: 0, expires: new Date(0) }),
+    ...getAuthCookieOptions({ maxAge: 0, expires: new Date(0) }, request),
   })
+  clearAuthUidCookie(response, request)
 
   return response
 }

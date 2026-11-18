@@ -31,6 +31,8 @@ import { neon } from '@neondatabase/serverless'
 import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { requireAdmin } from '@/lib/auth'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
+import { getAuthCookieOptions } from '@/lib/cookie-options'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -50,7 +52,7 @@ export async function POST(
     }
 
     const targetRows = await sql`
-      SELECT id, role, is_active, first_name, last_name, email
+      SELECT id, role, is_active, first_name, last_name, email, avatar_url, gender, username
       FROM users WHERE id = ${userId} LIMIT 1
     `
     if (targetRows.length === 0) {
@@ -63,6 +65,9 @@ export async function POST(
       first_name: string
       last_name: string
       email: string
+      avatar_url: string | null
+      gender: 'male' | 'female' | null
+      username: string | null
     }
 
     if (target.role === 'admin') {
@@ -155,15 +160,31 @@ export async function POST(
       expires: expiresAt,
     })
 
-    return NextResponse.json({
-      success: true,
-      target: {
-        id: target.id,
-        first_name: target.first_name,
-        last_name: target.last_name,
-        email: target.email,
+    const response = NextResponse.json(
+      {
+        success: true,
+        target: {
+          id: target.id,
+          firstName: target.first_name,
+          lastName: target.last_name,
+          first_name: target.first_name,
+          last_name: target.last_name,
+          email: target.email,
+          role: target.role,
+          avatarUrl: target.avatar_url ?? null,
+          gender: target.gender ?? null,
+          username: target.username ?? null,
+        },
       },
-    })
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+    response.cookies.set(
+      'session_id',
+      newSessionId,
+      getAuthCookieOptions({ expires: expiresAt }, request),
+    )
+    applyAuthUidCookie(response, target.id, request, 4 * 60 * 60)
+    return response
   } catch (error) {
     console.error('Impersonate error:', error)
     const message =

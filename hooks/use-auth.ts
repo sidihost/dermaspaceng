@@ -6,6 +6,7 @@ import {
   readCachedUser,
   writeCachedUser,
   clearCachedUser,
+  getCookieAuthUid,
 } from '@/lib/auth-cache'
 
 interface UserData {
@@ -135,52 +136,70 @@ export function useAuth(): AuthState {
   }, [])
 
   const cached = hasMounted ? readCachedUser() : null
+  const cookieUid = hasMounted ? getCookieAuthUid() : null
 
   const { data, isLoading, mutate } = useSWR(
     '/api/auth/me',
     fetcher,
     {
-      // Seed SWR with the cached user so consumers see the user
-      // immediately on first render — no flash of "logged out" UI
-      // while we wait for /api/auth/me. SWR will still revalidate
-      // in the background and replace `data` once the network
-      // response lands.
       fallbackData: cached ? { user: cached } : undefined,
-      // Don't refetch every time the tab regains focus — the
-      // 'user-updated' event already covers explicit edits, and
-      // refocus revalidation is what made navigating away and back
-      // feel "loady" before.
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      // 60s within-tab dedupe — prevents the dozen-or-so components
-      // that each call useAuth from each firing their own request.
-      dedupingInterval: 60000,
-      // A single retry is enough for transient 5xx; further retries
-      // just delay the inevitable user-feedback (and chew battery).
+      // 2s dedupe prevents simultaneous mounts (Header, MobileNav, banners)
+      // on the same page from firing duplicate requests while never locking
+      // a newly-logged-in tab onto a stale `{ user: null }` response.
+      dedupingInterval: 2000,
       errorRetryCount: 1,
     }
   )
 
-  // Listen for the cross-component 'user-updated' broadcast so an
-  // avatar change in /dashboard/settings instantly refreshes the
-  // mobile-nav avatar everywhere else, without each surface having
-  // to wire up its own listener.
+  const swrUser: UserData | null = data?.user ?? null
+  const hasUidMismatch = Boolean(
+    hasMounted && cookieUid && swrUser?.id && swrUser.id !== cookieUid,
+  )
+  const hasNewSessionMissingFromSwr = Boolean(
+    hasMounted && cookieUid && data !== undefined && !swrUser,
+  )
+
   useEffect(() => {
-    const onUpdate = () => { void mutate() }
+    if (!hasMounted) return
+    if (hasUidMismatch || hasNewSessionMissingFromSwr) {
+      const freshCached = readCachedUser()
+      void mutate(
+        freshCached ? { user: freshCached } : undefined,
+        { revalidate: true },
+      )
+    }
+  }, [hasMounted, hasUidMismatch, hasNewSessionMissingFromSwr, mutate])
+
+  useEffect(() => {
+    const onUpdate = () => {
+      const freshCached = readCachedUser()
+      if (freshCached) {
+        void mutate(
+          (prev: { user?: UserData | null } | undefined) => ({
+            ...(prev ?? {}),
+            user:
+              prev?.user && prev.user.id === freshCached.id
+                ? ({ ...prev.user, ...freshCached } as UserData)
+                : (freshCached as unknown as UserData),
+          }),
+          { revalidate: true },
+        )
+      } else {
+        void mutate(undefined, { revalidate: true })
+      }
+    }
     const onLogout = () => {
-      // Apply the signed-out state synchronously. Revalidating here would
-      // keep a cached user visible until the server responds with 401.
       void mutate({ user: null }, { revalidate: false })
     }
-    // Another tab signed out (cache key removed) or in — mirror it here.
     const onStorage = (e: StorageEvent) => {
       if (e.key !== null && !e.key.startsWith('dermaspace.auth.user')) return
       if (!readCachedUser()) onLogout()
-      else void mutate()
+      else onUpdate()
     }
-    // Page restored from the back/forward cache: its auth state may be stale.
     const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) void mutate()
+      if (e.persisted) onUpdate()
     }
     window.addEventListener('user-updated', onUpdate)
     window.addEventListener('auth-logout', onLogout)
@@ -194,14 +213,18 @@ export function useAuth(): AuthState {
     }
   }, [mutate])
 
-  const user: UserData | null = data?.user ?? null
+  let user: UserData | null = swrUser
+  if (hasUidMismatch || hasNewSessionMissingFromSwr) {
+    user = cached as unknown as UserData | null
+  } else if (!user && cached && data === undefined) {
+    user = cached as unknown as UserData | null
+  }
 
   return {
     user,
-    // Treat as "loading" only when we have NO data at all — neither
-    // a fresh fetch nor a localStorage fallback. With a cache hit the
-    // user is shown immediately and isLoading is already false.
-    isLoading: isLoading && !data,
+    isLoading:
+      (isLoading && !data && !cached) ||
+      ((hasUidMismatch || hasNewSessionMissingFromSwr) && !user),
     isAuthenticated: !!user,
     mutate,
   }

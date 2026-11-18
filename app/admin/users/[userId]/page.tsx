@@ -17,6 +17,7 @@ import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
 import { IdentityAuditPanel } from '@/components/admin/identity-audit-panel'
 import { useNotify } from '@/components/shared/notify'
 import { isPlaceholderEmail } from '@/lib/auth-onboarding'
+import { clearCachedUser, commitAuthenticatedUser } from '@/lib/auth-cache'
 
 interface UserDetail {
   id: string
@@ -517,6 +518,10 @@ export default function AdminUserDetailPage() {
       if (!res.ok) {
         setImpersonateError(body?.error || 'Could not start impersonation.')
         return
+      }
+      clearCachedUser()
+      if (body?.target) {
+        commitAuthenticatedUser(body.target)
       }
       // Hard navigation so every cookie/auth read picks up the new
       // session — including the global ImpersonationBanner which

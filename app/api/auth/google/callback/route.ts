@@ -6,6 +6,8 @@ import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
+import { getAuthCookieOptions } from '@/lib/cookie-options'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -160,11 +162,18 @@ export async function GET(request: NextRequest) {
       hasSocialAuth: true,
       email: userEmail,
     })
-    if (needsProfile) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`)
-    }
-    
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)
+    const destination = needsProfile
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`
+      : `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`
+
+    const redirectResponse = NextResponse.redirect(destination)
+    redirectResponse.cookies.set(
+      'session_id',
+      sessionToken,
+      getAuthCookieOptions({ maxAge: 60 * 60 * 24 * 7 }, request),
+    )
+    applyAuthUidCookie(redirectResponse, userId, request, 60 * 60 * 24 * 7)
+    return redirectResponse
     
   } catch (error) {
     console.error('Google auth error:', error)

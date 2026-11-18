@@ -18,6 +18,7 @@
 
 import { useEffect, useState } from 'react'
 import { Eye, X, Loader2 } from 'lucide-react'
+import { clearCachedUser } from '@/lib/auth-cache'
 
 interface ImpersonationStatus {
   impersonating: boolean
@@ -60,6 +61,8 @@ export default function ImpersonationBanner() {
         method: 'POST',
       })
       const body = await res.json().catch(() => ({}))
+      clearCachedUser()
+      window.dispatchEvent(new Event('auth-logout'))
       if (body?.adminSessionExpired) {
         window.location.href = '/signin'
         return

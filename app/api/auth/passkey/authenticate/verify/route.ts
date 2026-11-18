@@ -6,6 +6,8 @@ import { createSession } from '@/lib/auth'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { sign } from 'jsonwebtoken'
 import { getSigningSecret } from '@/lib/server-secrets'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
+import { getAuthCookieOptions } from '@/lib/cookie-options'
 
 export async function POST(request: Request) {
   try {
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
 
     // Get user details
     const userResult = await sql`
-      SELECT id, email, first_name, last_name, role, COALESCE(is_active, TRUE) AS is_active
+      SELECT id, email, first_name, last_name, role, avatar_url, gender, username, COALESCE(is_active, TRUE) AS is_active
       FROM users 
       WHERE id = ${result.userId}
     `
@@ -127,16 +129,31 @@ export async function POST(request: Request) {
       email: user.email,
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      user: { 
-        id: user.id, 
-        email: user.email, 
-        firstName: user.first_name,
-        lastName: user.last_name,
-        needsProfileCompletion,
-      }
-    })
+    const response = NextResponse.json(
+      {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role || 'user',
+          avatarUrl: user.avatar_url ?? null,
+          gender:
+            user.gender === 'male' || user.gender === 'female' ? user.gender : null,
+          username: user.username ?? null,
+          needsProfileCompletion,
+        },
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+    response.cookies.set(
+      'session_id',
+      sessionId,
+      getAuthCookieOptions({ maxAge: 30 * 24 * 60 * 60 }, request),
+    )
+    applyAuthUidCookie(response, user.id, request)
+    return response
   } catch (error) {
     console.error('Error verifying authentication:', error)
     return NextResponse.json({ error: 'Failed to verify authentication' }, { status: 500 })

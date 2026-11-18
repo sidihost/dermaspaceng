@@ -38,6 +38,7 @@ import {
   MailX,
   ShieldCheck,
 } from "lucide-react"
+import { commitAuthenticatedUser } from "@/lib/auth-cache"
 
 const BRAND = "#7B2D8E"
 
@@ -121,6 +122,9 @@ function AcceptInviteContent() {
       const data = await res.json()
 
       if (data.success) {
+        if (data.user) {
+          commitAuthenticatedUser(data.user)
+        }
         setStatus("success")
         setTimeout(() => {
           router.push(data.role === "admin" ? "/admin" : "/staff")

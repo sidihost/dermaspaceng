@@ -5,6 +5,7 @@ import { createSession } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
 import { delKey, getJson, invalidateUserMe, setJson } from '@/lib/redis'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAppOrigin, xPlaceholderEmail } from '@/lib/x-oauth'
 import { buildXCallbackHtml } from '@/lib/x-callback-html'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
@@ -354,6 +355,7 @@ export async function GET(request: NextRequest) {
       sessionToken,
       getAuthCookieOptions({ maxAge: 60 * 60 * 24 * 30 }, request),
     )
+    applyAuthUidCookie(res, userId, request)
     return res
   } catch (err) {
     console.error('X auth error:', err)

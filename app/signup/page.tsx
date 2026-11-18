@@ -13,6 +13,7 @@ import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
 import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
+import { clearCachedUser, commitAuthenticatedUser, writeCachedUser } from '@/lib/auth-cache'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -105,6 +106,7 @@ function SignUpForm() {
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
+            writeCachedUser(data.user)
             const target = resolvePostAuthRedirect(redirectTo, data.user)
             setShowToast(true)
             setTimeout(() => {
@@ -313,9 +315,7 @@ function SignUpForm() {
         return
       }
 
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('user-updated'))
-      }
+      commitAuthenticatedUser(data.user)
 
       // Verified + auto-logged-in — confirm email verification before continuing.
       setEmailVerified(true)
@@ -607,6 +607,7 @@ function SignUpForm() {
         <div className="space-y-3">
           <a
             href="/api/auth/google"
+            onClick={() => clearCachedUser()}
             className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -637,6 +638,7 @@ function SignUpForm() {
               handled by /api/auth/microsoft → /api/auth/microsoft/callback. */}
           <a
             href="/api/auth/microsoft"
+            onClick={() => clearCachedUser()}
             className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 23 23" aria-hidden="true">

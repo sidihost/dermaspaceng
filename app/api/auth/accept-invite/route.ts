@@ -3,6 +3,8 @@ import { sql } from "@/lib/db"
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import { v4 as uuidv4 } from "uuid"
+import { applyAuthUidCookie } from "@/lib/auth-cache-cookie"
+import { getAuthCookieOptions } from "@/lib/cookie-options"
 
 /**
  * Accept a staff invitation and create the account + session.
@@ -149,10 +151,29 @@ export async function POST(request: NextRequest) {
       console.warn("activity_log insert failed (non-fatal):", logError)
     }
 
-    return NextResponse.json({
-      success: true,
-      role: invitation.role,
-    })
+    const response = NextResponse.json(
+      {
+        success: true,
+        role: invitation.role,
+        user: {
+          id: userId,
+          firstName,
+          lastName,
+          role: invitation.role,
+          avatarUrl: null,
+          gender: null,
+          username: null,
+        },
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    )
+    response.cookies.set(
+      "session_id",
+      sessionId,
+      getAuthCookieOptions({ expires: expiresAt }, request),
+    )
+    applyAuthUidCookie(response, userId, request)
+    return response
   } catch (error) {
     console.error("Accept invite error:", error)
     const message = error instanceof Error ? error.message : "Unknown error"

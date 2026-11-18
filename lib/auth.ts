@@ -34,6 +34,7 @@ export interface User {
   has_social_auth?: boolean
   avatar_url?: string | null
   gender?: 'male' | 'female' | null
+  username?: string | null
   created_at: Date
 }
 
@@ -201,6 +202,11 @@ export async function authenticateUser(identifier: string, password: string): Pr
         role: user.role || 'user',
         is_active: user.is_active ?? true,
         is_super_admin: user.is_super_admin === true,
+        can_manage_services: user.can_manage_services === true,
+        avatar_url: user.avatar_url ?? null,
+        gender:
+          user.gender === 'male' || user.gender === 'female' ? user.gender : null,
+        username: user.username ?? null,
         created_at: user.created_at
       }, 
       error: null 

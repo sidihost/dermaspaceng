@@ -10,6 +10,7 @@ import PageLoader from '@/components/shared/page-loader'
 import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
 import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
+import { clearCachedUser, commitAuthenticatedUser, writeCachedUser } from '@/lib/auth-cache'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -79,6 +80,7 @@ function SignInForm() {
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
+            writeCachedUser(data.user)
             const target = resolvePostAuthRedirect(redirectTo, data.user)
             setToastSubtitle(
               target === '/complete-profile'
@@ -158,6 +160,7 @@ function SignInForm() {
 
       // Check if 2FA is required - redirect to 2FA page
       if (data.requires2FA) {
+        clearCachedUser()
         const params = new URLSearchParams({
           token: data.partialToken,
           redirect: redirectTo
@@ -166,6 +169,7 @@ function SignInForm() {
         return
       }
 
+      commitAuthenticatedUser(data.user)
       // Use window.location for a full page navigation to ensure cookies are recognized
       window.location.href = resolvePostAuthRedirect(redirectTo, data.user)
     } catch {
@@ -227,6 +231,7 @@ function SignInForm() {
 
       // Check if 2FA is required - redirect to 2FA page
       if (verifyData.requires2FA) {
+        clearCachedUser()
         const params = new URLSearchParams({
           token: verifyData.partialToken,
           redirect: redirectTo
@@ -235,6 +240,7 @@ function SignInForm() {
         return
       }
 
+      commitAuthenticatedUser(verifyData.user)
       // Use window.location for a full page navigation to ensure cookies are recognized
       window.location.href = resolvePostAuthRedirect(redirectTo, verifyData.user)
     } catch (err) {
@@ -323,6 +329,7 @@ function SignInForm() {
         <div className="space-y-3">
           <a
             href="/api/auth/google"
+            onClick={() => clearCachedUser()}
             className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -356,6 +363,7 @@ function SignInForm() {
               accounts via the "common" tenant. */}
           <a
             href="/api/auth/microsoft"
+            onClick={() => clearCachedUser()}
             className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
           >
             <svg className="w-5 h-5" viewBox="0 0 23 23" aria-hidden="true">

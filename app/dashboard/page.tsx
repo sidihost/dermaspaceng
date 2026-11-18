@@ -27,6 +27,7 @@ import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import {
+  broadcastUserUpdated,
   clearCachedUser,
   readCachedUser,
   writeCachedUser,
@@ -160,7 +161,7 @@ export default function DashboardPage() {
     const checkAuth = async () => {
       try {
         const [res, ticketsRes] = await Promise.all([
-          fetch('/api/auth/me'),
+          fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' }),
           fetch('/api/tickets').catch(() => null),
         ])
         if (res.ok) {
@@ -173,7 +174,17 @@ export default function DashboardPage() {
             return
           }
           if (data.user) {
+            const changed =
+              !cached ||
+              cached.id !== data.user.id ||
+              cached.avatarUrl !== data.user.avatarUrl ||
+              cached.role !== data.user.role
             writeCachedUser(data.user)
+            if (changed) {
+              broadcastUserUpdated()
+            }
+          } else {
+            clearCachedUser()
           }
           setUser(data.user)
           setCelebrationLinks(data.celebrationLinks ?? {})

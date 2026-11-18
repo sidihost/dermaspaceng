@@ -30,6 +30,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Eye, EyeOff, X, AlertCircle, Lock } from 'lucide-react'
+import { mutate as globalMutate } from 'swr'
+import { commitAuthenticatedUser } from '@/lib/auth-cache'
 
 interface SignInModalProps {
   /**
@@ -167,8 +169,11 @@ export function SignInModal({
         return
       }
 
-      // Success — let the caller refresh its `/api/auth/me` SWR
-      // cache and re-run whatever action prompted the modal.
+      // Immediately update the client display cache and global SWR
+      // state so persistent chrome (Header / MobileNav) reflects the
+      // new user without waiting for a page reload.
+      commitAuthenticatedUser((json as { user?: Record<string, unknown> }).user)
+      void globalMutate('/api/auth/me')
       onSuccess()
     } catch (err) {
       console.error('signin modal submit failed:', err)
