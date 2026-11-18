@@ -7,8 +7,7 @@ import { createSession, checkNewDevice } from '@/lib/auth'
 import { sendNewDeviceAlert } from '@/lib/email'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { rateLimit } from '@/lib/redis'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+import { getSigningSecret, isValidPublicIpForGeo } from '@/lib/server-secrets'
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +29,9 @@ export async function POST(request: Request) {
     // the user back to /signin to request a fresh 2FA challenge.
     let decoded: { userId: string; email: string; requires2FA: boolean }
     try {
-      decoded = verify(partialToken, JWT_SECRET) as typeof decoded
+      decoded = verify(partialToken, getSigningSecret('2fa-partial'), {
+        algorithms: ['HS256'],
+      }) as typeof decoded
     } catch (err) {
       if (err instanceof TokenExpiredError) {
         return NextResponse.json(
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!decoded.requires2FA) {
+    if (!decoded.requires2FA || typeof decoded.userId !== 'string' || !decoded.userId.trim()) {
       return NextResponse.json({ error: 'Invalid token type' }, { status: 400 })
     }
 
@@ -127,12 +128,14 @@ export async function POST(request: Request) {
     // Send new device alert if needed
     if (isNewDevice) {
       let location = 'Unknown location'
-      try {
-        const geoRes = await fetch(`https://ipapi.co/${ipAddress}/json/`)
-        const geoData = await geoRes.json()
-        location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
-      } catch {
-        // Ignore geo lookup errors
+      if (isValidPublicIpForGeo(ipAddress)) {
+        try {
+          const geoRes = await fetch(`https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`)
+          const geoData = await geoRes.json()
+          location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
+        } catch {
+          // Ignore geo lookup errors
+        }
       }
 
       await sendNewDeviceAlert({

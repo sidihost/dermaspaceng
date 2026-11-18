@@ -2773,11 +2773,29 @@ export async function sendTicketConfirmation(data: {
 export async function sendBirthdayEmail(data: {
   email: string
   firstName: string
+  userId?: string
+  dob?: string | null
+  token?: string
 }): Promise<boolean> {
   const name = data.firstName?.trim() || 'there'
   const safeName = escapeHtml(name)
   const bookingUrl = `${PUBLIC_ORIGIN}/booking`
-  const recapUrl = `${PUBLIC_ORIGIN}/birthday`
+  let resolvedToken = data.token
+  if (!resolvedToken && data.userId && data.dob) {
+    try {
+      const { mintCelebrationToken } = await import('@/lib/celebration-tokens')
+      resolvedToken = mintCelebrationToken({
+        userId: data.userId,
+        occasion: 'birthday',
+        dobIso: data.dob,
+      })
+    } catch {
+      resolvedToken = undefined
+    }
+  }
+  const recapUrl = resolvedToken
+    ? `${PUBLIC_ORIGIN}/birthday?token=${encodeURIComponent(resolvedToken)}`
+    : `${PUBLIC_ORIGIN}/birthday`
 
   const content = `
     <!-- Hero celebratory banner — solid brand colour, no gradients per brand
@@ -2854,12 +2872,28 @@ export async function sendChristmasEmail(data: {
   email: string
   firstName: string
   year?: number
+  userId?: string
+  token?: string
 }): Promise<boolean> {
   const name = data.firstName?.trim() || 'there'
   const safeName = escapeHtml(name)
   const year = data.year ?? new Date().getFullYear()
   const bookingUrl = `${PUBLIC_ORIGIN}/booking`
-  const storyUrl = `${PUBLIC_ORIGIN}/christmas`
+  let resolvedToken = data.token
+  if (!resolvedToken && data.userId) {
+    try {
+      const { mintCelebrationToken } = await import('@/lib/celebration-tokens')
+      resolvedToken = mintCelebrationToken({
+        userId: data.userId,
+        occasion: 'christmas',
+      })
+    } catch {
+      resolvedToken = undefined
+    }
+  }
+  const storyUrl = resolvedToken
+    ? `${PUBLIC_ORIGIN}/christmas?token=${encodeURIComponent(resolvedToken)}`
+    : `${PUBLIC_ORIGIN}/christmas`
   const giftUrl = `${PUBLIC_ORIGIN}/gift-cards`
 
   const content = `
@@ -2926,13 +2960,29 @@ export async function sendNewYearEmail(data: {
   email: string
   firstName: string
   year?: number
+  userId?: string
+  token?: string
 }): Promise<boolean> {
   const name = data.firstName?.trim() || 'there'
   const safeName = escapeHtml(name)
   const targetYear = data.year ?? new Date().getFullYear()
   const recapYear = targetYear - 1
   const bookingUrl = `${PUBLIC_ORIGIN}/booking`
-  const wrapUrl = `${PUBLIC_ORIGIN}/new-year`
+  let resolvedToken = data.token
+  if (!resolvedToken && data.userId) {
+    try {
+      const { mintCelebrationToken } = await import('@/lib/celebration-tokens')
+      resolvedToken = mintCelebrationToken({
+        userId: data.userId,
+        occasion: 'new-year',
+      })
+    } catch {
+      resolvedToken = undefined
+    }
+  }
+  const wrapUrl = resolvedToken
+    ? `${PUBLIC_ORIGIN}/new-year?token=${encodeURIComponent(resolvedToken)}`
+    : `${PUBLIC_ORIGIN}/new-year`
 
   const content = `
     <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 36px 24px; text-align: center; margin: 0 0 24px;">

@@ -12,7 +12,10 @@ import {
   ShieldAlert,
   UserCheck,
 } from 'lucide-react'
-import { APPEAL_MAX_LENGTH, APPEAL_MIN_LENGTH } from '@/lib/suspension-appeals'
+import {
+  APPEAL_MAX_LENGTH,
+  APPEAL_MIN_LENGTH,
+} from '@/lib/suspension-appeal-constants'
 
 type VerifyResponse = {
   valid: boolean

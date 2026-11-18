@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import crypto from 'node:crypto'
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
 import { getCurrentUser } from '@/lib/auth'
 
@@ -11,14 +12,14 @@ const R2 = new S3Client({
   },
 })
 
-const ALLOWED_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/svg+xml',
-]
+const MIME_TO_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/gif': 'gif',
+  'image/webp': 'webp',
+}
 
+const SAFE_FOLDER_RE = /^[a-z0-9_-]{1,32}$/i
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
 
 export async function POST(req: NextRequest) {
@@ -31,15 +32,24 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
     const file = formData.get('file') as File | null
-    const folder = (formData.get('folder') as string) || 'blog'
+    const rawFolder = ((formData.get('folder') as string | null) ?? 'blog').trim()
+
+    if (!SAFE_FOLDER_RE.test(rawFolder)) {
+      return NextResponse.json(
+        { error: 'Invalid upload folder name' },
+        { status: 400 }
+      )
+    }
+    const folder = rawFolder.toLowerCase()
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    const ext = MIME_TO_EXT[file.type]
+    if (!ext) {
       return NextResponse.json(
-        { error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG' },
+        { error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP' },
         { status: 400 }
       )
     }
@@ -52,9 +62,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate unique filename
-    const ext = file.name.split('.').pop() || 'jpg'
     const timestamp = Date.now()
-    const randomId = Math.random().toString(36).substring(2, 10)
+    const randomId = crypto.randomBytes(12).toString('hex')
     const fileName = `${folder}/${timestamp}-${randomId}.${ext}`
 
     // Convert file to buffer

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
+import { timingSafeEqualStrings } from '@/lib/server-secrets'
 import {
   sendTicketConfirmation,
   sendCustomerReplyAlert,
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
     request.nextUrl.searchParams.get('token') ||
     request.headers.get('x-webhook-token') ||
     ''
-  if (provided !== expected) {
+  if (!timingSafeEqualStrings(provided, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

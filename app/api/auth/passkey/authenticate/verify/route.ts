@@ -5,8 +5,7 @@ import { sql } from '@/lib/db'
 import { createSession } from '@/lib/auth'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { sign } from 'jsonwebtoken'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+import { getSigningSecret } from '@/lib/server-secrets'
 
 export async function POST(request: Request) {
   try {
@@ -81,8 +80,8 @@ export async function POST(request: Request) {
       // Return partial auth token for 2FA verification
       const partialToken = sign(
         { userId: user.id, email: user.email, requires2FA: true },
-        JWT_SECRET,
-        { expiresIn: '5m' }
+        getSigningSecret('2fa-partial'),
+        { algorithm: 'HS256', expiresIn: '5m' }
       )
       
       return NextResponse.json({ 

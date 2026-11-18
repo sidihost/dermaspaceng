@@ -19,12 +19,8 @@ import {
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
   Package, Flower2, Trash2, Receipt, Crown, Lightbulb, Cake, Snowflake
 } from 'lucide-react'
-import { isBirthdayTodayLocal, getLocalCalendarDate } from '@/lib/birthday'
-import {
-  getNewYearEdition,
-  isChristmasSeasonLocal,
-  isNewYearSeasonLocal,
-} from '@/lib/celebrations'
+import { getLocalCalendarDate } from '@/lib/birthday'
+import { getNewYearEdition } from '@/lib/celebrations'
 import useSWR from 'swr'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -133,14 +129,14 @@ export default function DashboardPage() {
   // Total unread admin replies across all support tickets (drives the
   // Support badge on the sidebar & the Quick Action card).
   const [supportUnread, setSupportUnread] = useState(0)
-  const { data: festiveData } = useSWR<{ enabled?: boolean }>(
-    '/api/festive',
-    (url: string) => fetch(url, { cache: 'no-store' }).then((r) => r.json()),
-    { revalidateOnFocus: false },
-  )
-  const festiveEnabled = festiveData ? festiveData.enabled !== false : true
-  const showChristmasCard = isChristmasSeasonLocal() && festiveEnabled
-  const showNewYearCard = isNewYearSeasonLocal()
+  const [celebrationLinks, setCelebrationLinks] = useState<{
+    birthday?: string | null
+    christmas?: string | null
+    newYear?: string | null
+  }>({})
+  const showBirthdayCard = Boolean(celebrationLinks.birthday)
+  const showChristmasCard = Boolean(celebrationLinks.christmas)
+  const showNewYearCard = Boolean(celebrationLinks.newYear)
   const newYearEdition = getNewYearEdition(getLocalCalendarDate())
 
   useEffect(() => {
@@ -180,6 +176,7 @@ export default function DashboardPage() {
             writeCachedUser(data.user)
           }
           setUser(data.user)
+          setCelebrationLinks(data.celebrationLinks ?? {})
 
           if (data.preferences) {
             setPreferences(data.preferences)
@@ -855,7 +852,7 @@ export default function DashboardPage() {
 
   {/* Birthday Glow Year card — stays accessible all day even after the
       floating banner dismisses. Strictly flat white/purple hairline style. */}
-  {isBirthdayTodayLocal(user?.dateOfBirth) && (
+  {showBirthdayCard && celebrationLinks.birthday && (
     <div className="bg-white rounded-2xl border border-[#7B2D8E]/25 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="flex items-start sm:items-center gap-3.5 min-w-0">
         <div className="w-11 h-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
@@ -875,7 +872,7 @@ export default function DashboardPage() {
       </div>
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
         <Link
-          href="/birthday"
+          href={celebrationLinks.birthday}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7B2D8E] text-white text-xs sm:text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
         >
           Open Glow Year
@@ -891,7 +888,7 @@ export default function DashboardPage() {
     </div>
   )}
 
-  {showChristmasCard && (
+  {showChristmasCard && celebrationLinks.christmas && (
     <div className="bg-white rounded-2xl border border-[#7B2D8E]/25 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="flex items-start sm:items-center gap-3.5 min-w-0">
         <div className="w-11 h-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
@@ -911,7 +908,7 @@ export default function DashboardPage() {
       </div>
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
         <Link
-          href="/christmas"
+          href={celebrationLinks.christmas}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7B2D8E] text-white text-xs sm:text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
         >
           Open Holiday Story
@@ -927,7 +924,7 @@ export default function DashboardPage() {
     </div>
   )}
 
-  {showNewYearCard && (
+  {showNewYearCard && celebrationLinks.newYear && (
     <div className="bg-white rounded-2xl border border-[#7B2D8E]/25 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div className="flex items-start sm:items-center gap-3.5 min-w-0">
         <div className="w-11 h-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
@@ -947,7 +944,7 @@ export default function DashboardPage() {
       </div>
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
         <Link
-          href="/new-year"
+          href={celebrationLinks.newYear}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#7B2D8E] text-white text-xs sm:text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
         >
           Open {newYearEdition.targetYear} Wrap

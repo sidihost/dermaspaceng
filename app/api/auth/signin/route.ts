@@ -7,8 +7,7 @@ import { sign } from 'jsonwebtoken'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { rateLimit } from '@/lib/redis'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
+import { getSigningSecret, isValidPublicIpForGeo } from '@/lib/server-secrets'
 
 export async function POST(request: Request) {
   try {
@@ -103,8 +102,8 @@ const body = await request.json()
       // User has 2FA enabled, return partial token
       const partialToken = sign(
         { userId: user.id, email: user.email, requires2FA: true },
-        JWT_SECRET,
-        { expiresIn: '5m' }
+        getSigningSecret('2fa-partial'),
+        { algorithm: 'HS256', expiresIn: '5m' }
       )
 
       return NextResponse.json({
@@ -124,14 +123,16 @@ const body = await request.json()
 
     // Send new device alert if needed
     if (isNewDevice) {
-      // Try to get location from IP
+      // Try to get location from IP (strictly validate public IP literal to prevent SSRF)
       let location = 'Unknown location'
-      try {
-        const geoRes = await fetch(`https://ipapi.co/${ipAddress}/json/`)
-        const geoData = await geoRes.json()
-        location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
-      } catch {
-        // Ignore geo lookup errors
+      if (isValidPublicIpForGeo(ipAddress)) {
+        try {
+          const geoRes = await fetch(`https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`)
+          const geoData = await geoRes.json()
+          location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
+        } catch {
+          // Ignore geo lookup errors
+        }
       }
 
       await sendNewDeviceAlert({

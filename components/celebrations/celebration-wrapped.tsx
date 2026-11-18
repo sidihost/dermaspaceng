@@ -195,7 +195,7 @@ export default function CelebrationWrapped({
   const handleShare = useCallback(async () => {
     unlockSong()
     const text = buildCelebrationShareText(occasion, recap)
-    const url = typeof window !== 'undefined' ? window.location.href : ''
+    const url = typeof window !== 'undefined' ? window.location.origin : ''
 
     try {
       if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {

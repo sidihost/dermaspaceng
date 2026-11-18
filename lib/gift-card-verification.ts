@@ -5,6 +5,7 @@ import {
   extractGiftCardCodeFromScan,
   formatGiftCardSerial,
 } from './gift-card-code-helpers'
+import { getSigningSecret } from './server-secrets'
 
 export {
   buildGiftCardVerificationUrl,
@@ -46,7 +47,7 @@ export function getGiftCardSigningSecret(): string {
     process.env.GIFT_CARD_SIGNING_SECRET?.trim() ||
     process.env.JWT_SECRET?.trim() ||
     process.env.AUTH_PEPPER?.trim() ||
-    'dermaspace-gift-card-verification-v1'
+    getSigningSecret('gift-card')
   )
 }
 

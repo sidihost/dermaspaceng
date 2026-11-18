@@ -37,8 +37,7 @@
  */
 
 import { sign, verify } from 'jsonwebtoken'
-
-const SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
+import { getSigningSecret } from './server-secrets'
 
 /** HttpOnly cookie that carries the signed intent. */
 export const DERMA_INTENT_COOKIE = 'derma_intent'
@@ -72,8 +71,8 @@ export interface DermaIntent {
 export function signIntent(payload: Omit<DermaIntent, 'createdAt'>): string {
   return sign(
     { ...payload, createdAt: Date.now() } satisfies DermaIntent,
-    SECRET,
-    { expiresIn: DERMA_INTENT_TTL_SECONDS },
+    getSigningSecret('derma-intent'),
+    { algorithm: 'HS256', expiresIn: DERMA_INTENT_TTL_SECONDS },
   )
 }
 
@@ -82,7 +81,9 @@ export function signIntent(payload: Omit<DermaIntent, 'createdAt'>): string {
 export function verifyIntent(token: string | undefined | null): DermaIntent | null {
   if (!token) return null
   try {
-    const decoded = verify(token, SECRET) as DermaIntent
+    const decoded = verify(token, getSigningSecret('derma-intent'), {
+      algorithms: ['HS256'],
+    }) as DermaIntent
     // Defensive: ensure the shape is what we expect even if an
     // older signing format ever leaks through.
     if (

@@ -1,6 +1,9 @@
-import { createHash } from 'crypto'
 import { sign, verify } from 'jsonwebtoken'
 import { buildEmailUrl } from './email-url'
+import { getSigningSecret } from './server-secrets'
+import { APPEAL_MAX_LENGTH, APPEAL_MIN_LENGTH } from './suspension-appeal-constants'
+
+export { APPEAL_MAX_LENGTH, APPEAL_MIN_LENGTH }
 
 export type AppealStatus = 'pending' | 'approved' | 'rejected'
 export type AppealRole = 'user' | 'staff' | 'admin'
@@ -16,28 +19,9 @@ export interface AppealTokenPayload {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-export const APPEAL_MIN_LENGTH = 15
-export const APPEAL_MAX_LENGTH = 2000
 
 function getAppealSecret(): string {
-  if (process.env.JWT_SECRET) {
-    return process.env.JWT_SECRET
-  }
-  const entropy =
-    process.env.AUTH_PEPPER ||
-    process.env.CRON_SECRET ||
-    process.env.DATABASE_URL ||
-    ''
-  if (entropy) {
-    return createHash('sha256')
-      .update('dermaspace:appeal-token:v1:')
-      .update(entropy)
-      .digest('hex')
-  }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET must be configured in production for appeal tokens')
-  }
-  return 'dermaspace-dev-appeal-secret-not-for-prod'
+  return getSigningSecret('appeal-token')
 }
 
 export function sanitizeEmailSubject(input: unknown, maxLength = 200): string {

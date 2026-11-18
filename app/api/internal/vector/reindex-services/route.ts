@@ -25,9 +25,11 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function POST() {
-  // Throws → 401/403 page in middleware; we don't catch here so the
-  // standard auth redirect flow kicks in.
-  await requireAdmin()
+  try {
+    await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
   try {
     const summary = await reindexServicesCatalog()

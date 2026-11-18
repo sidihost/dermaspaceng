@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { cached, KEYS } from '@/lib/redis'
 import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { getFestiveState } from '@/lib/feature-flags'
+import { buildSignedCelebrationPath } from '@/lib/celebration-tokens'
 
 /*
  * /api/auth/me — hydrates the signed-in user for the client.
@@ -262,6 +264,35 @@ export async function GET() {
     // whether the tour pops up — null/missing rows count as "not seen".
     const avatarIntroDismissed = preferences.length > 0 ? (preferences[0].avatar_intro_dismissed || false) : false
 
+    let festiveEnabled = false
+    try {
+      const festiveState = await getFestiveState()
+      festiveEnabled = festiveState.enabled === true
+    } catch {
+      festiveEnabled = false
+    }
+
+    const now = new Date()
+    const celebrationLinks = {
+      birthday: buildSignedCelebrationPath({
+        occasion: 'birthday',
+        userId: session.user_id,
+        dobIso: session.date_of_birth,
+        now,
+      }),
+      christmas: buildSignedCelebrationPath({
+        occasion: 'christmas',
+        userId: session.user_id,
+        festiveEnabled,
+        now,
+      }),
+      newYear: buildSignedCelebrationPath({
+        occasion: 'new-year',
+        userId: session.user_id,
+        now,
+      }),
+    }
+
     const response = NextResponse.json({
       user: {
         id: session.user_id,
@@ -369,6 +400,7 @@ export async function GET() {
       } : null,
       welcomeDismissed,
       avatarIntroDismissed,
+      celebrationLinks,
     })
 
     // Never let the browser HTTP cache reuse this response: a cached 200

@@ -16,6 +16,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dispatchDueBroadcasts } from '@/lib/broadcast-dispatcher'
 import { verifyQStash } from '@/lib/qstash'
+import { authorizeCronManualGet } from '@/lib/cron-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,12 +41,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (secret) {
-    const auth = request.headers.get('authorization') || ''
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (!(await authorizeCronManualGet(request))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
     const r = await runJob()

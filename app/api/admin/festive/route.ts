@@ -5,6 +5,10 @@ import { getCurrentUser } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+    return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 })
+  }
   const settings = await getChristmasSettings()
   return NextResponse.json({ settings })
 }
@@ -12,8 +16,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser()
-    const isAdminUser = user?.role === 'admin' || user?.role === 'staff' || !process.env.DATABASE_URL
-    if (!isAdminUser) {
+    const isAdminUser =
+      Boolean(user) && (user?.role === 'admin' || user?.role === 'staff')
+    if (!isAdminUser || !user) {
       return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 })
     }
 

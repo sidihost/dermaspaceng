@@ -39,6 +39,11 @@ interface MeResponse {
     needsProfileCompletion?: boolean
     legalAcceptedVersion?: string | null
   }
+  celebrationLinks?: {
+    birthday?: string | null
+    christmas?: string | null
+    newYear?: string | null
+  }
 }
 
 interface FestiveResponse {
@@ -104,6 +109,17 @@ export default function BirthdayCelebration() {
       })
       if (!occasion) return
 
+      const signedHref =
+        occasion === 'birthday'
+          ? data.celebrationLinks?.birthday
+          : occasion === 'christmas'
+            ? data.celebrationLinks?.christmas
+            : data.celebrationLinks?.newYear
+
+      // Fail closed: only surface the banner when the server issued a
+      // matching signed celebration URL for this user & occasion.
+      if (!signedHref) return
+
       const cal = getLocalCalendarDate(now)
       const celebrationYear =
         occasion === 'new-year'
@@ -125,6 +141,7 @@ export default function BirthdayCelebration() {
         firstName: name,
         now,
       })
+      copy.primaryCtaHref = signedHref
 
       remainingMsRef.current = BANNER_TTL_MS
       setBanner(copy)

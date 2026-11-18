@@ -23,7 +23,20 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  await requireAdmin()
-  const status = await getVectorStatus()
-  return NextResponse.json({ ok: true, ...status })
+  try {
+    await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const status = await getVectorStatus()
+    return NextResponse.json({ ok: true, ...status })
+  } catch (err) {
+    console.error("[vector] status check failed:", err)
+    return NextResponse.json(
+      { ok: false, error: "Failed to check vector status" },
+      { status: 500 },
+    )
+  }
 }

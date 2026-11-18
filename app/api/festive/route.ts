@@ -25,8 +25,9 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser()
-    const isAdminUser = user?.role === 'admin' || user?.role === 'staff' || !process.env.DATABASE_URL
-    if (!isAdminUser) {
+    const isAdminUser =
+      Boolean(user) && (user?.role === 'admin' || user?.role === 'staff')
+    if (!isAdminUser || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 

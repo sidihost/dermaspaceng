@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { sendAbandonedPaymentReminder } from '@/lib/wallet-emails'
 import { verifyQStash } from '@/lib/qstash'
+import { authorizeCronManualGet } from '@/lib/cron-auth'
 
 // ---------------------------------------------------------------------------
 // /api/cron/abandoned-payments
@@ -111,11 +112,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    if (process.env.NODE_ENV === 'production' && process.env.CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+  if (!(await authorizeCronManualGet(request))) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   try {
     const r = await runJob()

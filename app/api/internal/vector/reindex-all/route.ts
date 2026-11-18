@@ -38,7 +38,11 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function POST() {
-  await requireAdmin()
+  try {
+    await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
 
   try {
     const services = await reindexServicesCatalog()

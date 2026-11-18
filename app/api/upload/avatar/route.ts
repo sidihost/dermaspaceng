@@ -16,9 +16,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
+    // Validate file type against safe raster image formats (disallow SVG/scriptable MIME types)
+    const ALLOWED_AVATAR_TYPES = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ])
+    if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Allowed: JPEG, PNG, WebP, GIF' },
+        { status: 400 }
+      )
     }
 
     // Validate file size (5MB max)
