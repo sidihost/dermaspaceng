@@ -208,6 +208,41 @@ export function getCelebrationConfettiColors(
   return BIRTHDAY_CONFETTI_COLORS
 }
 
+/**
+ * Only fire birthday celebration effects (confetti bursts & "Happy Birthday"
+ * song) on the member's actual birthday. Off-day visits to /birthday present
+ * a calm "Your Glow Year" recap without birthday celebration animations.
+ * Seasonal routes (/christmas, /new-year) always play their festive effects.
+ */
+export function shouldPlayBirthdayCelebrationEffects(
+  occasion: CelebrationOccasion,
+  isBirthdayToday: boolean,
+): boolean {
+  if (occasion === 'birthday') {
+    return Boolean(isBirthdayToday)
+  }
+  return true
+}
+
+/**
+ * Returns true when the current route is one of the full-screen celebration
+ * story pages (/birthday, /christmas, /new-year) where global banners and
+ * floating snowfall canvases should stay hidden.
+ */
+export function isCelebrationStoryRoute(
+  pathname: string | null | undefined,
+): boolean {
+  if (!pathname) return false
+  return (
+    pathname === '/birthday' ||
+    pathname.startsWith('/birthday/') ||
+    pathname === '/christmas' ||
+    pathname.startsWith('/christmas/') ||
+    pathname === '/new-year' ||
+    pathname.startsWith('/new-year/')
+  )
+}
+
 export function buildCelebrationSlides(
   occasion: CelebrationOccasion,
   recap: RecapPayload,

@@ -55,6 +55,7 @@ import {
   buildCelebrationSlides,
   getCelebrationConfettiColors,
   getCelebrationThemeCopy,
+  shouldPlayBirthdayCelebrationEffects,
   type CelebrationOccasion,
   type OccasionThemeCopy,
 } from '@/lib/celebrations'
@@ -113,9 +114,17 @@ export default function CelebrationWrapped({
 
   const current = slides[index]
   const isEffectivelyPaused = paused || holdPaused
+  const showCelebrationEffects = shouldPlayBirthdayCelebrationEffects(
+    occasion,
+    recap.isBirthdayToday,
+  )
 
-  // Initialize occasion-matched polyphonic Web Audio soundtrack
+  // Initialize occasion-matched polyphonic Web Audio soundtrack only when celebratory effects apply
   useEffect(() => {
+    if (!showCelebrationEffects) {
+      songPlayerRef.current = null
+      return
+    }
     const player = new BirthdaySongPlayer(occasion)
     songPlayerRef.current = player
     const unsubscribe = player.subscribe((next) => setSongState(next))
@@ -126,15 +135,17 @@ export default function CelebrationWrapped({
       player.destroy()
       songPlayerRef.current = null
     }
-  }, [occasion])
+  }, [occasion, showCelebrationEffects])
 
   const unlockSong = useCallback(() => {
+    if (!showCelebrationEffects) return
     void songPlayerRef.current?.unlockFromGesture()
-  }, [])
+  }, [showCelebrationEffects])
 
   const handleToggleSong = useCallback(() => {
+    if (!showCelebrationEffects) return
     void songPlayerRef.current?.toggle()
-  }, [])
+  }, [showCelebrationEffects])
 
   const goPrev = useCallback(() => {
     unlockSong()
@@ -284,8 +295,9 @@ export default function CelebrationWrapped({
     return () => window.removeEventListener('keydown', onKey)
   }, [goNext, goPrev, handleClose, unlockSong])
 
-  // Confetti burst on intro & wish slides — strictly brand purple + white
+  // Confetti burst on intro & wish slides — only when celebratory effects apply (not on non-birthday off-days)
   useEffect(() => {
+    if (!showCelebrationEffects) return
     if (done || !current) return
     if (current.id !== 'intro' && current.id !== 'wish') return
     let cancelled = false
@@ -342,7 +354,7 @@ export default function CelebrationWrapped({
       timers.forEach((t) => window.clearTimeout(t))
       resetFn?.()
     }
-  }, [current, done, occasion])
+  }, [current, done, occasion, showCelebrationEffects])
 
   const clearHoldTimer = () => {
     if (pointerRef.current.holdTimer !== null) {
@@ -413,6 +425,7 @@ export default function CelebrationWrapped({
       <FinishedScreen
         recap={recap}
         theme={theme}
+        showSongControls={showCelebrationEffects}
         shareStatus={shareStatus}
         songState={songState}
         onToggleSong={handleToggleSong}
@@ -436,7 +449,7 @@ export default function CelebrationWrapped({
       <StoryBackdropLines occasion={occasion} />
 
       {/* Top progress bars & controls */}
-      <header className="relative z-30 mx-auto w-full max-w-2xl px-4 pt-3.5 sm:px-6 sm:pt-5">
+      <header className="relative z-30 mx-auto w-full max-w-lg px-4 pt-3 sm:px-5 sm:pt-4">
         <div
           className="flex items-center gap-1.5"
           role="tablist"
@@ -450,9 +463,9 @@ export default function CelebrationWrapped({
               aria-selected={i === index}
               aria-label={`Slide ${i + 1} of ${slides.length}: ${s.label}`}
               onClick={() => goToSlide(i)}
-              className="group relative flex-1 py-1.5 focus:outline-none"
+              className="group relative flex-1 py-1 focus:outline-none"
             >
-              <span className="block h-[3px] w-full overflow-hidden rounded-full bg-white/25 transition-colors group-hover:bg-white/40">
+              <span className="block h-[2.5px] w-full overflow-hidden rounded-full bg-white/25 transition-colors group-hover:bg-white/40">
                 <span
                   ref={i === index ? activeBarRef : undefined}
                   className="block h-full rounded-full bg-white"
@@ -467,11 +480,11 @@ export default function CelebrationWrapped({
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/25 bg-[#5A1D6A]">
-              <DermaspaceEmblem className="h-5 w-5 text-white" />
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/25 bg-[#5A1D6A]">
+              <DermaspaceEmblem className="h-4 w-4 text-white" />
             </span>
             <div className="min-w-0 leading-none">
-              <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+              <p className="truncate text-[10.5px] font-semibold uppercase tracking-[0.18em] text-white">
                 Dermaspace
               </p>
               <p className="mt-0.5 text-[10px] font-medium tracking-[0.12em] text-white/75">
@@ -480,12 +493,14 @@ export default function CelebrationWrapped({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <SongToggleButton
-              state={songState}
-              label={theme.songButtonTitle}
-              onToggle={handleToggleSong}
-            />
+          <div className="flex shrink-0 items-center gap-1.5">
+            {showCelebrationEffects && (
+              <SongToggleButton
+                state={songState}
+                label={theme.songButtonTitle}
+                onToggle={handleToggleSong}
+              />
+            )}
             <button
               type="button"
               onClick={() => {
@@ -493,17 +508,17 @@ export default function CelebrationWrapped({
                 setPaused((p) => !p)
               }}
               aria-label={paused ? 'Resume story' : 'Pause story'}
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
+              className="grid h-8 w-8 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
             >
-              {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
             </button>
             <button
               type="button"
               onClick={handleClose}
               aria-label={theme.closeAriaLabel}
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
+              className="grid h-8 w-8 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
@@ -511,7 +526,7 @@ export default function CelebrationWrapped({
 
       {/* Main interactive stage */}
       <main
-        className="relative z-10 flex flex-1 items-center justify-center px-4 pb-6 pt-3 sm:px-16 sm:pb-8 sm:pt-4"
+        className="relative z-10 flex flex-1 items-center justify-center px-4 py-2 sm:px-14 sm:py-4"
         onPointerDown={onStagePointerDown}
         onPointerUp={onStagePointerUp}
         onPointerCancel={onStagePointerCancel}
@@ -520,21 +535,21 @@ export default function CelebrationWrapped({
           type="button"
           onClick={goPrev}
           aria-label="Previous slide"
-          className="hidden sm:grid absolute left-5 lg:left-10 top-1/2 -translate-y-1/2 z-20 h-11 w-11 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
+          className="hidden sm:grid absolute left-4 lg:left-10 top-1/2 -translate-y-1/2 z-20 h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
 
         <button
           type="button"
           onClick={goNext}
           aria-label={index >= slides.length - 1 ? 'Finish story' : 'Next slide'}
-          className="hidden sm:grid absolute right-5 lg:right-10 top-1/2 -translate-y-1/2 z-20 h-11 w-11 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
+          className="hidden sm:grid absolute right-4 lg:right-10 top-1/2 -translate-y-1/2 z-20 h-10 w-10 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-95"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-4 w-4" />
         </button>
 
-        <div className="relative w-full max-w-[400px] sm:max-w-md">
+        <div className="relative w-full max-w-[336px] sm:max-w-[368px]">
           <AnimatePresence mode="popLayout" initial={false}>
             {current && (
               <motion.div
@@ -591,6 +606,7 @@ export default function CelebrationWrapped({
                   <SlideWish
                     firstName={firstName}
                     theme={theme}
+                    isBirthdayToday={recap.isBirthdayToday}
                     onBook={() => router.push('/booking')}
                     onSecondary={(href) => router.push(href)}
                   />
@@ -602,10 +618,10 @@ export default function CelebrationWrapped({
       </main>
 
       {/* Subtle footer navigation hint */}
-      <footer className="relative z-20 pb-3.5 text-center text-[11px] font-medium tracking-wide text-white/65">
+      <footer className="relative z-20 pb-3 text-center text-[11px] font-medium tracking-wide text-white/65">
         {isEffectivelyPaused
           ? 'Paused'
-          : songState === 'awaiting-gesture'
+          : showCelebrationEffects && songState === 'awaiting-gesture'
             ? `Tap anywhere to play ${theme.songHintLabel} · Hold to pause`
             : 'Tap to continue · Hold to pause'}
       </footer>
@@ -632,7 +648,7 @@ function SongToggleButton({
       onClick={onToggle}
       aria-label={ariaLabel}
       aria-pressed={isPlaying}
-      className={`inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[11px] font-semibold tracking-wide transition-colors active:scale-95 ${
+      className={`inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-[11px] font-semibold tracking-wide transition-colors active:scale-95 ${
         isPlaying
           ? 'border-white bg-white text-[#7B2D8E] hover:bg-[#F5ECFA]'
           : 'border-white/25 bg-[#5A1D6A] text-white hover:bg-white hover:text-[#7B2D8E]'
@@ -724,18 +740,18 @@ function StoryBackdropLines({ occasion }: { occasion: CelebrationOccasion }) {
 
       {occasion === 'christmas' && (
         <g stroke="rgba(255,255,255,0.08)" strokeWidth="1" fill="none">
-          {/* Hanging geometric holiday ornament cords */}
-          <line x1="210" y1="0" x2="210" y2="128" />
-          <circle cx="210" cy="164" r="36" />
-          <circle cx="210" cy="164" r="22" />
-          <line x1="990" y1="0" x2="990" y2="160" />
-          <circle cx="990" cy="200" r="40" />
-          <circle cx="990" cy="200" r="26" />
-          {/* Architectural 8-point winter star hairline cross */}
-          <line x1="600" y1="70" x2="600" y2="120" />
-          <line x1="575" y1="95" x2="625" y2="95" />
-          <line x1="584" y1="79" x2="616" y2="111" />
-          <line x1="616" y1="79" x2="584" y2="111" />
+          {/* Suspended geometric holiday ornaments flanking the stage */}
+          <line x1="190" y1="0" x2="190" y2="148" />
+          <circle cx="190" cy="180" r="32" />
+          <circle cx="190" cy="180" r="18" />
+          <line x1="1010" y1="0" x2="1010" y2="180" />
+          <circle cx="1010" cy="216" r="36" />
+          <circle cx="1010" cy="216" r="22" />
+          {/* Architectural 8-point winter compass star above stage */}
+          <line x1="600" y1="68" x2="600" y2="112" />
+          <line x1="578" y1="90" x2="622" y2="90" />
+          <line x1="585" y1="75" x2="615" y2="105" />
+          <line x1="615" y1="75" x2="585" y2="105" />
         </g>
       )}
 
@@ -757,40 +773,23 @@ function StoryBackdropLines({ occasion }: { occasion: CelebrationOccasion }) {
   )
 }
 
-function CardCornerBrackets({ color = 'rgba(255,255,255,0.28)' }: { color?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 320 400"
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-0 h-full w-full"
-    >
-      <path d="M 16 32 L 16 16 L 32 16" fill="none" stroke={color} strokeWidth="1.25" />
-      <path d="M 288 16 L 304 16 L 304 32" fill="none" stroke={color} strokeWidth="1.25" />
-      <path d="M 16 368 L 16 384 L 32 384" fill="none" stroke={color} strokeWidth="1.25" />
-      <path d="M 288 384 L 304 384 L 304 368" fill="none" stroke={color} strokeWidth="1.25" />
-    </svg>
-  )
-}
-
-function OccasionCornerMotif({ occasion }: { occasion: CelebrationOccasion }) {
+function OccasionHaloMotif({ occasion }: { occasion: CelebrationOccasion }) {
   if (occasion === 'christmas') {
     return (
       <svg
         aria-hidden="true"
-        viewBox="0 0 320 180"
-        className="pointer-events-none absolute inset-x-0 top-0 h-44 w-full"
+        viewBox="0 0 320 156"
+        className="pointer-events-none absolute inset-x-0 top-0 h-36 w-full"
       >
-        <circle cx="160" cy="52" r="72" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
-        <circle cx="160" cy="52" r="102" fill="none" stroke="rgba(255,255,255,0.08)" strokeDasharray="3 5" strokeWidth="1" />
-        {/* Delicate 6-point winter geometric stars framing top left/right */}
-        <g stroke="rgba(255,255,255,0.24)" strokeWidth="1.1" strokeLinecap="round">
-          <line x1="56" y1="36" x2="56" y2="56" />
-          <line x1="47.3" y1="41" x2="64.7" y2="51" />
-          <line x1="64.7" y1="41" x2="47.3" y2="51" />
-          <line x1="264" y1="36" x2="264" y2="56" />
-          <line x1="255.3" y1="41" x2="272.7" y2="51" />
-          <line x1="272.7" y1="41" x2="255.3" y2="51" />
+        <circle cx="160" cy="48" r="56" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1" />
+        <circle cx="160" cy="48" r="84" fill="none" stroke="rgba(255,255,255,0.08)" strokeDasharray="3 5" strokeWidth="1" />
+        <g stroke="rgba(255,255,255,0.22)" strokeWidth="1.1" strokeLinecap="round">
+          <line x1="58" y1="38" x2="58" y2="58" />
+          <line x1="49.3" y1="43" x2="66.7" y2="53" />
+          <line x1="66.7" y1="43" x2="49.3" y2="53" />
+          <line x1="262" y1="38" x2="262" y2="58" />
+          <line x1="253.3" y1="43" x2="270.7" y2="53" />
+          <line x1="270.7" y1="43" x2="253.3" y2="53" />
         </g>
       </svg>
     )
@@ -800,21 +799,21 @@ function OccasionCornerMotif({ occasion }: { occasion: CelebrationOccasion }) {
     const dialTicks = Array.from({ length: 12 }, (_, idx) => {
       const a = (idx * 30 * Math.PI) / 180
       return {
-        x1: (160 + Math.cos(a) * 62).toFixed(2),
-        y1: (52 + Math.sin(a) * 62).toFixed(2),
-        x2: (160 + Math.cos(a) * 72).toFixed(2),
-        y2: (52 + Math.sin(a) * 72).toFixed(2),
+        x1: (160 + Math.cos(a) * 48).toFixed(2),
+        y1: (48 + Math.sin(a) * 48).toFixed(2),
+        x2: (160 + Math.cos(a) * 58).toFixed(2),
+        y2: (48 + Math.sin(a) * 58).toFixed(2),
       }
     })
     return (
       <svg
         aria-hidden="true"
-        viewBox="0 0 320 180"
-        className="pointer-events-none absolute inset-x-0 top-0 h-44 w-full"
+        viewBox="0 0 320 156"
+        className="pointer-events-none absolute inset-x-0 top-0 h-36 w-full"
       >
-        <circle cx="160" cy="52" r="74" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-        <circle cx="160" cy="52" r="106" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-        <g stroke="rgba(255,255,255,0.2)" strokeWidth="1.2">
+        <circle cx="160" cy="48" r="60" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+        <circle cx="160" cy="48" r="88" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+        <g stroke="rgba(255,255,255,0.22)" strokeWidth="1.2">
           {dialTicks.map((t, idx) => (
             <line key={idx} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} />
           ))}
@@ -826,11 +825,11 @@ function OccasionCornerMotif({ occasion }: { occasion: CelebrationOccasion }) {
   return (
     <svg
       aria-hidden="true"
-      viewBox="0 0 320 180"
-      className="pointer-events-none absolute inset-x-0 top-0 h-44 w-full"
+      viewBox="0 0 320 156"
+      className="pointer-events-none absolute inset-x-0 top-0 h-36 w-full"
     >
-      <circle cx="160" cy="52" r="74" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-      <circle cx="160" cy="52" r="106" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+      <circle cx="160" cy="48" r="58" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+      <circle cx="160" cy="48" r="88" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
     </svg>
   )
 }
@@ -867,42 +866,39 @@ function SlideIntro({
   const copy = theme.intro
 
   return (
-    <div className="relative rounded-[28px] border border-white/35 bg-[#5A1D6A] p-2">
-      <div className="relative overflow-hidden rounded-[22px] border border-white/20 bg-[#3E104B] px-6 py-8 text-center sm:px-8 sm:py-9">
-        <CardCornerBrackets />
-        <OccasionCornerMotif occasion={theme.occasion} />
+    <div className="relative overflow-hidden rounded-3xl border border-white/25 bg-[#3E104B] px-5 py-6 text-center sm:px-6 sm:py-7">
+      <OccasionHaloMotif occasion={theme.occasion} />
 
-        <div className="relative flex flex-col items-center">
-          <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-[#7B2D8E]">
-            <DermaspaceEmblem className="h-8 w-8" />
+      <div className="relative flex flex-col items-center">
+        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-[#7B2D8E]">
+          <DermaspaceEmblem className="h-6 w-6" />
+        </div>
+
+        <p className="mt-4 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-white/80">
+          {copy.eyebrow}
+        </p>
+
+        <h1 className="font-serif mt-1.5 text-balance text-3xl font-semibold leading-tight text-white sm:text-4xl">
+          Hi {firstName}!
+        </h1>
+
+        {copy.dateText && (
+          <div className="mt-5 w-full rounded-2xl bg-white px-4 py-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#7B2D8E]">
+              {copy.cardLabel}
+            </p>
+            <p className="font-serif mt-1 text-xl font-bold leading-tight text-[#1a0d1f] tabular-nums sm:text-2xl">
+              {copy.dateText.month} {copy.dateText.day}
+              <sup className="ml-0.5 text-xs align-super">{copy.dateText.suffix}</sup>
+              {copy.dateText.year ? `, ${copy.dateText.year}` : ''}
+            </p>
           </div>
+        )}
 
-          <p className="mt-5 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/80">
-            {copy.eyebrow}
-          </p>
-
-          <h1 className="font-serif mt-2 text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl">
-            Hi {firstName}!
-          </h1>
-
-          {copy.dateText && (
-            <div className="mt-6 w-full rounded-2xl border border-white bg-white px-5 py-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#7B2D8E]">
-                {copy.cardLabel}
-              </p>
-              <p className="font-serif mt-1.5 text-2xl font-bold leading-tight text-[#1a0d1f] tabular-nums sm:text-3xl">
-                {copy.dateText.month} {copy.dateText.day}
-                <sup className="ml-0.5 text-sm align-super">{copy.dateText.suffix}</sup>
-                {copy.dateText.year ? `, ${copy.dateText.year}` : ''}
-              </p>
-            </div>
-          )}
-
-          <div className="mt-6 flex items-center gap-3 text-[11px] font-medium tracking-[0.14em] uppercase text-white/75">
-            <span>{copy.subtitleLead}</span>
-            <span aria-hidden="true">·</span>
-            <span className="font-semibold text-white">{copy.subtitleBrand}</span>
-          </div>
+        <div className="mt-5 flex items-center gap-2.5 text-[10.5px] font-medium uppercase tracking-[0.14em] text-white/75">
+          <span>{copy.subtitleLead}</span>
+          <span aria-hidden="true">·</span>
+          <span className="font-semibold text-white">{copy.subtitleBrand}</span>
         </div>
       </div>
     </div>
@@ -924,56 +920,52 @@ function SlideJoined({
   const dayUnit = daysWithUs === 1 ? 'Day' : 'Days'
 
   return (
-    <div className="relative px-3 py-2">
+    <div className="relative px-2 py-1">
       <motion.div
-        initial={{ rotate: -8, x: -10, opacity: 0 }}
-        animate={{ rotate: -6, x: -10, opacity: 1 }}
+        initial={{ rotate: -6, x: -6, opacity: 0 }}
+        animate={{ rotate: -4, x: -6, opacity: 1 }}
         transition={{ delay: 0.04, duration: 0.22 }}
-        className="absolute inset-x-3 inset-y-2 rounded-[28px] border border-white/30 bg-[#9B4DB0]"
+        className="absolute inset-x-2 inset-y-1 rounded-3xl border border-white/25 bg-[#9B4DB0]"
       />
       <motion.div
-        initial={{ rotate: 8, x: 10, opacity: 0 }}
-        animate={{ rotate: 5, x: 10, opacity: 1 }}
+        initial={{ rotate: 6, x: 6, opacity: 0 }}
+        animate={{ rotate: 3.5, x: 6, opacity: 1 }}
         transition={{ delay: 0.07, duration: 0.22 }}
-        className="absolute inset-x-3 inset-y-2 rounded-[28px] border border-white/25 bg-[#3E104B]"
+        className="absolute inset-x-2 inset-y-1 rounded-3xl border border-white/20 bg-[#3E104B]"
       />
 
-      <div className="relative rounded-[28px] border border-white/35 bg-[#5A1D6A] p-2">
-        <div className="relative overflow-hidden rounded-[22px] border border-white/20 bg-[#5A1D6A] px-6 py-7 sm:px-7 sm:py-8">
-          <CardCornerBrackets />
-
-          <div className="relative flex items-center justify-between gap-3 border-b border-white/15 pb-4">
-            {date ? (
-              <p className="font-serif text-sm font-medium tracking-tight text-white/95 sm:text-base">
-                {date.monthTitle} {date.day}
-                <sup className="ml-0.5 text-[10px] align-super">{date.suffix}</sup>,{' '}
-                {date.year} <span className="mx-1 text-white/45">·</span> You Joined
-              </p>
-            ) : (
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/85">
-                {theme.joined.eyebrowFallback}
-              </p>
-            )}
-            <DermaspaceEmblem className="h-5 w-5 text-white/85" />
-          </div>
-
-          <div className="relative mt-6 flex items-baseline gap-4">
-            <span className="font-serif text-6xl font-bold leading-none tracking-tight text-white tabular-nums sm:text-7xl">
-              {daysWithUs.toLocaleString('en-NG')}
-            </span>
-            <span className="text-xs font-semibold uppercase leading-snug tracking-[0.18em] text-white/85">
-              {dayUnit} of
-              <br />
-              {theme.joined.unitHeadlineSuffix}
-              <br />
-              <span className="font-bold text-white">Dermaspace</span>
-            </span>
-          </div>
-
-          <p className="relative mt-6 max-w-[300px] text-balance text-sm leading-relaxed text-white/90">
-            {theme.joined.description}
-          </p>
+      <div className="relative overflow-hidden rounded-3xl border border-white/30 bg-[#5A1D6A] px-5 py-6 sm:px-6 sm:py-6">
+        <div className="relative flex items-center justify-between gap-3 border-b border-white/15 pb-3.5">
+          {date ? (
+            <p className="font-serif text-xs font-medium tracking-tight text-white/95 sm:text-sm">
+              {date.monthTitle} {date.day}
+              <sup className="ml-0.5 text-[10px] align-super">{date.suffix}</sup>,{' '}
+              {date.year} <span className="mx-1 text-white/45">·</span> You Joined
+            </p>
+          ) : (
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.2em] text-white/85">
+              {theme.joined.eyebrowFallback}
+            </p>
+          )}
+          <DermaspaceEmblem className="h-4 w-4 shrink-0 text-white/85" />
         </div>
+
+        <div className="relative mt-5 flex items-baseline gap-3.5">
+          <span className="font-serif text-5xl font-bold leading-none tracking-tight text-white tabular-nums sm:text-6xl">
+            {daysWithUs.toLocaleString('en-NG')}
+          </span>
+          <span className="text-[11px] font-semibold uppercase leading-snug tracking-[0.16em] text-white/85">
+            {dayUnit} of
+            <br />
+            {theme.joined.unitHeadlineSuffix}
+            <br />
+            <span className="font-bold text-white">Dermaspace</span>
+          </span>
+        </div>
+
+        <p className="relative mt-5 max-w-[290px] text-balance text-[13px] leading-relaxed text-white/90 sm:text-sm">
+          {theme.joined.description}
+        </p>
       </div>
     </div>
   )
@@ -993,95 +985,93 @@ function SlideStats({
   const { totalBookings, totalSpentNaira, busiestMonth } = recap.stats
 
   return (
-    <div className="relative rounded-[28px] border-2 border-white bg-white p-2 text-[#1a0d1f]">
-      <div className="relative overflow-hidden rounded-[22px] border border-[#7B2D8E]/15 bg-white p-6 sm:p-7">
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 240 240"
-          className="pointer-events-none absolute -right-12 -top-12 h-48 w-48"
-        >
-          <circle
-            cx="120"
-            cy="120"
-            r="96"
-            fill="none"
-            stroke="#7B2D8E"
-            strokeOpacity="0.12"
-            strokeWidth="1"
+    <div className="relative overflow-hidden rounded-3xl border border-white bg-white px-5 py-5 text-[#1a0d1f] sm:px-6 sm:py-6">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 240 240"
+        className="pointer-events-none absolute -right-10 -top-10 h-36 w-36"
+      >
+        <circle
+          cx="120"
+          cy="120"
+          r="96"
+          fill="none"
+          stroke="#7B2D8E"
+          strokeOpacity="0.12"
+          strokeWidth="1"
+        />
+        <circle
+          cx="120"
+          cy="120"
+          r="68"
+          fill="none"
+          stroke="#7B2D8E"
+          strokeOpacity="0.14"
+          strokeWidth="1"
+        />
+      </svg>
+
+      <div className="relative">
+        <div className="flex items-center justify-between text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+          <span>{theme.stats.topLeftLabel}</span>
+          <span className="text-[#7B2D8E]/70">{theme.stats.topRightLabel}</span>
+        </div>
+        <h2 className="font-serif mt-1 text-3xl font-bold leading-none tracking-tight text-[#7B2D8E] sm:text-4xl">
+          {theme.stats.headlineLine1}
+          <br />
+          {theme.stats.headlineLine2}
+        </h2>
+
+        <div className="relative mx-auto mt-3.5 grid h-36 place-items-center sm:h-40">
+          <CircularName name={theme.stats.ringLabel(firstName)} />
+          <div className="text-center">
+            <p className="font-serif text-4xl font-bold leading-none tracking-tight text-[#1a0d1f] tabular-nums sm:text-5xl">
+              {totalBookings}
+            </p>
+            <p className="mt-1 text-[11px] font-medium tracking-wide text-gray-600">
+              {totalBookings === 1 ? 'Total Booking' : 'Total Bookings'}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 divide-x divide-gray-200 border-t border-gray-200 pt-3.5">
+          <div className="pr-3">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+              {theme.stats.investedLabel}
+            </p>
+            <p className="font-serif mt-1 text-2xl font-bold leading-none tracking-tight text-[#1a0d1f] tabular-nums sm:text-3xl">
+              ₦{formatNairaCompact(totalSpentNaira)}
+            </p>
+            <p className="mt-1 text-[11px] leading-tight text-gray-500">
+              On your self-care
+            </p>
+          </div>
+          <div className="pl-4">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+              {theme.stats.peakLabel}
+            </p>
+            <p className="font-serif mt-1 text-2xl font-bold leading-none tracking-tight text-[#1a0d1f] sm:text-3xl">
+              {busiestMonth ?? '—'}
+            </p>
+            <p className="mt-1 text-[11px] leading-tight text-gray-500">
+              Most active month
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3.5">
+          <DermaspaceWordmark
+            className="text-[#7B2D8E]"
+            emblemClassName="h-5 w-5"
+            showSubtitle
           />
-          <circle
-            cx="120"
-            cy="120"
-            r="68"
-            fill="none"
-            stroke="#7B2D8E"
-            strokeOpacity="0.14"
-            strokeWidth="1"
-          />
-        </svg>
-
-        <div className="relative">
-          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
-            <span>{theme.stats.topLeftLabel}</span>
-            <span className="text-[#7B2D8E]/70">{theme.stats.topRightLabel}</span>
-          </div>
-          <h2 className="font-serif mt-1.5 text-4xl font-bold leading-none tracking-tight text-[#7B2D8E] sm:text-5xl">
-            {theme.stats.headlineLine1}
-            <br />
-            {theme.stats.headlineLine2}
-          </h2>
-
-          <div className="relative mx-auto mt-5 grid h-44 place-items-center sm:h-48">
-            <CircularName name={theme.stats.ringLabel(firstName)} />
-            <div className="text-center">
-              <p className="font-serif text-5xl font-bold leading-none tracking-tight text-[#1a0d1f] tabular-nums sm:text-6xl">
-                {totalBookings}
-              </p>
-              <p className="mt-1.5 text-xs font-medium tracking-wide text-gray-600">
-                {totalBookings === 1 ? 'Total Booking' : 'Total Bookings'}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-x-5 border-t border-gray-200 pt-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                {theme.stats.investedLabel}
-              </p>
-              <p className="font-serif mt-1.5 text-3xl font-bold leading-none tracking-tight text-[#1a0d1f] tabular-nums sm:text-4xl">
-                ₦{formatNairaCompact(totalSpentNaira)}
-              </p>
-              <p className="mt-1.5 text-[11px] leading-tight text-gray-500">
-                On your self-care
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-                {theme.stats.peakLabel}
-              </p>
-              <p className="font-serif mt-1.5 text-3xl font-bold leading-none tracking-tight text-[#1a0d1f] sm:text-4xl">
-                {busiestMonth ?? '—'}
-              </p>
-              <p className="mt-1.5 text-[11px] leading-tight text-gray-500">
-                Most active month
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
-            <DermaspaceWordmark
-              className="text-[#7B2D8E]"
-              emblemClassName="h-6 w-6"
-              showSubtitle
-            />
-            {theme.occasion === 'christmas' ? (
-              <Snowflake className="h-5 w-5 text-[#7B2D8E]" aria-hidden />
-            ) : theme.occasion === 'new-year' ? (
-              <Clock className="h-5 w-5 text-[#7B2D8E]" aria-hidden />
-            ) : (
-              <Heart className="h-5 w-5 text-[#7B2D8E]" aria-hidden />
-            )}
-          </div>
+          {theme.occasion === 'christmas' ? (
+            <Snowflake className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
+          ) : theme.occasion === 'new-year' ? (
+            <Clock className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
+          ) : (
+            <Heart className="h-4 w-4 text-[#7B2D8E]" aria-hidden />
+          )}
         </div>
       </div>
     </div>
@@ -1096,7 +1086,7 @@ function CircularName({ name }: { name: string }) {
       <circle
         cx="100"
         cy="100"
-        r="74"
+        r="72"
         fill="none"
         stroke="rgba(123, 45, 142, 0.16)"
         strokeWidth="1"
@@ -1104,7 +1094,7 @@ function CircularName({ name }: { name: string }) {
       <defs>
         <path
           id={safeId}
-          d="M 22,100 A 78,78 0 0,1 178,100"
+          d="M 24,100 A 76,76 0 0,1 176,100"
           fill="none"
         />
       </defs>
@@ -1135,39 +1125,35 @@ function SlideTreatment({
   theme: OccasionThemeCopy
 }) {
   return (
-    <div className="relative rounded-[28px] border border-white/35 bg-[#5A1D6A] p-2">
-      <div className="relative overflow-hidden rounded-[22px] border border-white/20 bg-[#3E104B] px-6 py-7 text-center sm:px-7 sm:py-8">
-        <CardCornerBrackets />
+    <div className="relative overflow-hidden rounded-3xl border border-white/25 bg-[#3E104B] px-5 py-6 text-center sm:px-6 sm:py-6">
+      <div className="relative">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.2em] text-white/80">
+          {theme.treatment.eyebrow}
+        </p>
 
-        <div className="relative">
-          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/80">
-            {theme.treatment.eyebrow}
-          </p>
+        <h2 className="font-serif mt-1.5 text-balance text-2xl font-bold leading-tight text-white sm:text-3xl">
+          {name}
+        </h2>
 
-          <h2 className="font-serif mt-2 text-balance text-3xl font-bold leading-tight text-white sm:text-4xl">
-            {name}
-          </h2>
-
-          <div className="mx-auto mt-7 grid h-44 w-44 place-items-center rounded-full border border-white/30 bg-[#5A1D6A] sm:h-48 sm:w-48">
-            <div className="grid h-32 w-32 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-center sm:h-36 sm:w-36">
-              <div>
-                <p className="font-serif text-5xl font-bold leading-none tracking-tight text-[#7B2D8E] tabular-nums sm:text-6xl">
-                  {count}
-                </p>
-                <p className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-600">
-                  {count === 1 ? 'Session' : 'Sessions'}
-                </p>
-              </div>
+        <div className="mx-auto mt-5 grid h-36 w-36 place-items-center rounded-full border border-white/30 bg-[#5A1D6A] sm:h-40 sm:w-40">
+          <div className="grid h-28 w-28 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-center">
+            <div>
+              <p className="font-serif text-4xl font-bold leading-none tracking-tight text-[#7B2D8E] tabular-nums sm:text-5xl">
+                {count}
+              </p>
+              <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-600">
+                {count === 1 ? 'Session' : 'Sessions'}
+              </p>
             </div>
           </div>
+        </div>
 
-          <p className="mx-auto mt-7 max-w-[290px] text-balance text-sm leading-relaxed text-white/90">
-            {theme.treatment.note}
-          </p>
+        <p className="mx-auto mt-5 max-w-[270px] text-balance text-[13px] leading-relaxed text-white/90 sm:text-sm">
+          {theme.treatment.note}
+        </p>
 
-          <div className="mt-6 flex items-center justify-center border-t border-white/15 pt-4">
-            <DermaspaceWordmark className="text-white/90" emblemClassName="h-5 w-5" />
-          </div>
+        <div className="mt-5 flex items-center justify-center border-t border-white/15 pt-3.5">
+          <DermaspaceWordmark className="text-white/90" emblemClassName="h-4 w-4" />
         </div>
       </div>
     </div>
@@ -1186,54 +1172,52 @@ function SlideLocation({
   theme: OccasionThemeCopy
 }) {
   return (
-    <div className="relative rounded-[28px] border border-white/35 bg-[#5A1D6A] p-2">
-      <div className="relative overflow-hidden rounded-[22px] border border-white/20 bg-[#5A1D6A] text-center">
-        <div className="px-6 pt-6 pb-5 sm:px-7 sm:pt-7">
-          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-            <span className="inline-flex items-center gap-1.5">
-              <MapPin className="h-3.5 w-3.5" aria-hidden />
-              Dermaspace · Lagos
-            </span>
-            <DermaspaceEmblem className="h-5 w-5 text-white" />
-          </div>
-
-          <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.22em] text-white/75">
-            {theme.location.eyebrow}
-          </p>
-          <h2 className="font-serif mt-2 text-balance text-3xl font-bold uppercase leading-none tracking-tight text-white sm:text-4xl">
-            {name}
-          </h2>
-
-          <div className="mt-6 inline-flex items-baseline gap-2.5 rounded-2xl border border-white/25 bg-[#3E104B] px-6 py-3.5">
-            <span className="font-serif text-4xl font-bold leading-none text-white tabular-nums">
-              {count}
-            </span>
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/85">
-              {theme.location.visitLabel(count)}
-            </span>
-          </div>
+    <div className="relative overflow-hidden rounded-3xl border border-white/25 bg-[#5A1D6A] text-center">
+      <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+        <div className="flex items-center justify-between text-[10.5px] font-semibold uppercase tracking-[0.18em] text-white/80">
+          <span className="inline-flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5" aria-hidden />
+            Dermaspace · Lagos
+          </span>
+          <DermaspaceEmblem className="h-4 w-4 text-white" />
         </div>
 
-        <div className="relative flex items-center">
-          <span
-            aria-hidden="true"
-            className="-ml-3 h-6 w-6 shrink-0 rounded-full border border-white/25 bg-[#7B2D8E]"
-          />
-          <span className="h-px flex-1 border-t border-dashed border-white/30" />
-          <span
-            aria-hidden="true"
-            className="-mr-3 h-6 w-6 shrink-0 rounded-full border border-white/25 bg-[#7B2D8E]"
-          />
-        </div>
+        <p className="mt-5 text-[10.5px] font-bold uppercase tracking-[0.2em] text-white/75">
+          {theme.location.eyebrow}
+        </p>
+        <h2 className="font-serif mt-1.5 text-balance text-2xl font-bold uppercase leading-none tracking-tight text-white sm:text-3xl">
+          {name}
+        </h2>
 
-        <div className="px-6 pt-4 pb-6 sm:px-7 sm:pb-7">
-          <p className="mx-auto max-w-[300px] text-balance text-sm leading-relaxed text-white/90">
-            {theme.location.note}
-          </p>
-          <p className="mt-4 text-[10px] font-semibold uppercase tracking-[0.22em] text-white/60">
-            {theme.location.passLabel}
-          </p>
+        <div className="mt-5 inline-flex items-baseline gap-2 rounded-2xl border border-white/20 bg-[#3E104B] px-5 py-2.5">
+          <span className="font-serif text-3xl font-bold leading-none text-white tabular-nums">
+            {count}
+          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/85">
+            {theme.location.visitLabel(count)}
+          </span>
         </div>
+      </div>
+
+      <div className="relative flex items-center">
+        <span
+          aria-hidden="true"
+          className="-ml-2.5 h-5 w-5 shrink-0 rounded-full border border-white/25 bg-[#7B2D8E]"
+        />
+        <span className="h-px flex-1 border-t border-dashed border-white/30" />
+        <span
+          aria-hidden="true"
+          className="-mr-2.5 h-5 w-5 shrink-0 rounded-full border border-white/25 bg-[#7B2D8E]"
+        />
+      </div>
+
+      <div className="px-5 pt-3.5 pb-5 sm:px-6 sm:pb-6">
+        <p className="mx-auto max-w-[270px] text-balance text-[13px] leading-relaxed text-white/90 sm:text-sm">
+          {theme.location.note}
+        </p>
+        <p className="mt-3.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+          {theme.location.passLabel}
+        </p>
       </div>
     </div>
   )
@@ -1265,110 +1249,104 @@ function SlideShare({
 
   return (
     <div className="text-center">
-      <h2 className="font-serif text-balance text-3xl font-bold leading-tight text-white sm:text-4xl">
+      <h2 className="font-serif text-balance text-2xl font-bold leading-tight text-white sm:text-3xl">
         {theme.share.headlineLine1}
         <br />
         {theme.share.headlineLine2}
       </h2>
 
-      {/* Fanned Snapchat-style 3-card collector stack */}
-      <div className="relative mx-auto mt-7 flex h-64 w-full max-w-[360px] items-center justify-center sm:h-72 sm:max-w-[420px]">
+      {/* Fanned 3-card collector stack */}
+      <div className="relative mx-auto mt-5 flex h-52 w-full max-w-[310px] items-center justify-center sm:h-56 sm:max-w-[340px]">
         <motion.div
-          initial={{ rotate: -8, x: -66, y: 12, opacity: 0 }}
-          animate={{ rotate: -14, x: -90, y: 12, opacity: 1 }}
+          initial={{ rotate: -8, x: -56, y: 10, opacity: 0 }}
+          animate={{ rotate: -12, x: -72, y: 10, opacity: 1 }}
           transition={{ delay: 0.06, duration: 0.24 }}
-          className="absolute h-48 w-32 rounded-[22px] border-[3px] border-white bg-[#3E104B] p-1.5 sm:h-56 sm:w-36 sm:-translate-x-5"
+          className="absolute flex h-40 w-28 flex-col justify-between rounded-2xl border-2 border-white bg-[#3E104B] p-2.5 text-left sm:h-44 sm:w-32"
         >
-          <div className="flex h-full flex-col justify-between rounded-[14px] border border-white/20 p-2.5 text-left">
-            <div className="w-[48px] sm:w-[60px]">
-              <DermaspaceEmblem className="h-5 w-5 text-white" />
-            </div>
-            <div className="w-[48px] sm:w-[60px]">
-              <p className="font-serif text-2xl font-bold leading-none text-white tabular-nums sm:text-3xl">
-                {recap.daysWithUs}
-              </p>
-              <p className="mt-1 text-[7.5px] font-bold uppercase leading-tight tracking-[0.11em] text-white/85 sm:text-[8px]">
-                Days
-                <br />
-                Glow
-              </p>
-            </div>
-            <p className="w-[48px] text-[8px] font-semibold uppercase tracking-[0.14em] text-white/60 sm:w-[60px]">
-              {theme.share.leftTag}
+          <div className="w-12">
+            <DermaspaceEmblem className="h-4 w-4 text-white" />
+          </div>
+          <div className="w-12">
+            <p className="font-serif text-xl font-bold leading-none text-white tabular-nums sm:text-2xl">
+              {recap.daysWithUs}
+            </p>
+            <p className="mt-1 text-[7.5px] font-bold uppercase leading-tight tracking-[0.11em] text-white/85">
+              Days
+              <br />
+              Glow
             </p>
           </div>
+          <p className="w-12 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/65">
+            {theme.share.leftTag}
+          </p>
         </motion.div>
 
         <motion.div
-          initial={{ rotate: 8, x: 66, y: 12, opacity: 0 }}
-          animate={{ rotate: 14, x: 90, y: 12, opacity: 1 }}
+          initial={{ rotate: 8, x: 56, y: 10, opacity: 0 }}
+          animate={{ rotate: 12, x: 72, y: 10, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.24 }}
-          className="absolute h-48 w-32 rounded-[22px] border-[3px] border-white bg-[#9B4DB0] p-1.5 sm:h-56 sm:w-36 sm:translate-x-5"
+          className="absolute flex h-40 w-28 flex-col items-end justify-between rounded-2xl border-2 border-white bg-[#9B4DB0] p-2.5 text-right sm:h-44 sm:w-32"
         >
-          <div className="flex h-full flex-col items-end justify-between rounded-[14px] border border-white/25 p-2.5 text-right">
-            <div className="flex w-[48px] justify-end sm:w-[60px]">
-              {theme.occasion === 'christmas' ? (
-                <Snowflake className="h-4 w-4 text-white" aria-hidden />
-              ) : theme.occasion === 'new-year' ? (
-                <Clock className="h-4 w-4 text-white" aria-hidden />
-              ) : (
-                <Award className="h-4 w-4 text-white" aria-hidden />
-              )}
-            </div>
-            <div className="w-[48px] sm:w-[60px]">
-              <p className="font-serif text-2xl font-bold leading-none text-white tabular-nums sm:text-3xl">
-                {rightCount}×
-              </p>
-              <p className="mt-1 text-[7.5px] font-bold uppercase leading-tight tracking-[0.11em] text-white sm:text-[8px]">
-                Top
-                <br />
-                {rightHeading}
-              </p>
-            </div>
-            <p className="w-[46px] text-[8px] font-semibold uppercase tracking-[0.14em] text-white/75 sm:w-[58px]">
-              {theme.share.rightTag}
+          <div className="flex w-12 justify-end">
+            {theme.occasion === 'christmas' ? (
+              <Snowflake className="h-4 w-4 text-white" aria-hidden />
+            ) : theme.occasion === 'new-year' ? (
+              <Clock className="h-4 w-4 text-white" aria-hidden />
+            ) : (
+              <Award className="h-4 w-4 text-white" aria-hidden />
+            )}
+          </div>
+          <div className="w-12">
+            <p className="font-serif text-xl font-bold leading-none text-white tabular-nums sm:text-2xl">
+              {rightCount}×
+            </p>
+            <p className="mt-1 text-[7.5px] font-bold uppercase leading-tight tracking-[0.11em] text-white">
+              Top
+              <br />
+              {rightHeading}
             </p>
           </div>
+          <p className="w-12 text-[8px] font-semibold uppercase tracking-[0.12em] text-white/80">
+            {theme.share.rightTag}
+          </p>
         </motion.div>
 
         <motion.div
           initial={{ scale: 0.94, y: 4, opacity: 0 }}
           animate={{ scale: 1, y: -4, opacity: 1 }}
           transition={{ delay: 0.14, duration: 0.24 }}
-          className="relative z-10 h-56 w-40 rounded-[24px] border-[3px] border-white bg-white p-1.5 text-[#1a0d1f] sm:h-64 sm:w-48"
+          className="relative z-10 flex h-48 w-36 flex-col justify-between overflow-hidden rounded-2xl border-2 border-white bg-white p-3 text-center text-[#1a0d1f] sm:h-52 sm:w-40"
         >
-          <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-[16px] border border-[#7B2D8E]/20 bg-white p-3.5 text-center">
-            <div className="flex items-center justify-between gap-2">
-              <DermaspaceEmblem className="h-4 w-4 text-[#7B2D8E]" />
-              <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
-                {theme.share.centerTag}
+          <div className="flex items-center justify-between gap-2">
+            <DermaspaceEmblem className="h-4 w-4 text-[#7B2D8E]" />
+            <span className="text-[8.5px] font-bold uppercase tracking-[0.14em] text-[#7B2D8E]">
+              {theme.share.centerTag}
+            </span>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <div className="grid h-13 w-13 place-items-center rounded-full border border-[#7B2D8E]/25 bg-[#F5ECFA]">
+              <span className="font-serif text-xl font-bold leading-none text-[#7B2D8E] tabular-nums">
+                {recap.stats.totalBookings}
               </span>
             </div>
+            <p className="font-serif mt-2 text-lg font-bold leading-none text-[#1a0d1f]">
+              {theme.share.centerTitle}
+            </p>
+            <p className="mt-1 max-w-full truncate text-[9.5px] font-medium text-gray-600 tabular-nums">
+              {recap.stats.totalBookings}{' '}
+              {recap.stats.totalBookings === 1 ? 'visit' : 'visits'}
+              {recap.stats.totalSpentNaira > 0
+                ? ` · ₦${formatNairaCompact(recap.stats.totalSpentNaira)}`
+                : ''}
+            </p>
+          </div>
 
-            <div className="flex flex-col items-center">
-              <div className="grid h-16 w-16 place-items-center rounded-full border border-[#7B2D8E]/25 bg-[#F5ECFA]">
-                <span className="font-serif text-2xl font-bold leading-none text-[#7B2D8E] tabular-nums">
-                  {recap.stats.totalBookings}
-                </span>
-              </div>
-              <p className="font-serif mt-2.5 text-xl font-bold leading-none text-[#1a0d1f]">
-                {theme.share.centerTitle}
-              </p>
-              <p className="mt-1.5 max-w-full truncate text-[10px] font-medium text-gray-600 tabular-nums">
-                {recap.stats.totalBookings}{' '}
-                {recap.stats.totalBookings === 1 ? 'visit' : 'visits'}
-                {recap.stats.totalSpentNaira > 0
-                  ? ` · ₦${formatNairaCompact(recap.stats.totalSpentNaira)}`
-                  : ''}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between gap-1.5 border-t border-[#7B2D8E]/15 pt-2 text-[9px] font-semibold text-[#7B2D8E]">
-              <span className="truncate">{firstName}</span>
-              <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-[#7B2D8E]/75">
-                Dermaspace
-              </span>
-            </div>
+          <div className="flex items-center justify-between gap-1.5 border-t border-[#7B2D8E]/15 pt-1.5 text-[8.5px] font-semibold text-[#7B2D8E]">
+            <span className="truncate">{firstName}</span>
+            <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-[#7B2D8E]/75">
+              Dermaspace
+            </span>
           </div>
         </motion.div>
       </div>
@@ -1376,7 +1354,7 @@ function SlideShare({
       <button
         type="button"
         onClick={onShare}
-        className="mt-6 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-white bg-white px-6 py-3.5 text-sm font-semibold tracking-wide text-[#7B2D8E] transition-colors hover:bg-[#F5ECFA] active:scale-[0.98]"
+        className="mt-5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold tracking-wide text-[#7B2D8E] transition-colors hover:bg-[#F5ECFA] active:scale-[0.98]"
       >
         {shareStatus === 'copied' || shareStatus === 'shared' ? (
           <>
@@ -1399,71 +1377,71 @@ function SlideShare({
 function SlideWish({
   firstName,
   theme,
+  isBirthdayToday,
   onBook,
   onSecondary,
 }: {
   firstName: string
   theme: OccasionThemeCopy
+  isBirthdayToday: boolean
   onBook: () => void
   onSecondary: (href: string) => void
 }) {
   return (
-    <div className="relative rounded-[28px] border border-white/35 bg-[#5A1D6A] p-2">
-      <div className="relative overflow-hidden rounded-[22px] border border-white/20 bg-[#3E104B] px-6 py-7 text-center sm:px-7 sm:py-8">
-        <CardCornerBrackets />
-
-        <div className="relative">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-[#7B2D8E]">
-            {theme.occasion === 'christmas' ? (
-              <Snowflake className="h-6 w-6" aria-hidden />
-            ) : theme.occasion === 'new-year' ? (
-              <Clock className="h-6 w-6" aria-hidden />
-            ) : (
-              <Gift className="h-6 w-6" aria-hidden />
-            )}
-          </div>
-
-          <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.2em] text-white/80">
-            {theme.wish.eyebrow}
-          </p>
-
-          <h2 className="font-serif mt-2 text-balance text-3xl font-bold leading-tight text-white sm:text-4xl">
-            {theme.wish.headlineTop}
-            <br />
-            <span className="italic">{theme.wish.headlineAccent}</span>
-            <br />
-            {theme.wish.headlineBottom(firstName)}
-          </h2>
-
-          <div className="mx-auto mt-6 rounded-2xl border border-white/20 bg-[#5A1D6A] px-5 py-4 text-left">
-            <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white">
-              <Calendar className="h-3.5 w-3.5" aria-hidden />
-              {theme.wish.boxLabel}
-            </p>
-            <p className="mt-2 text-balance text-sm leading-relaxed text-white/95">
-              {theme.wish.boxBody}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onBook}
-            className="mt-6 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-[#7B2D8E] transition-colors hover:bg-[#F5ECFA] active:scale-[0.98]"
-          >
-            {theme.wish.primaryCta}
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </button>
-
-          {theme.wish.secondaryCta && (
-            <button
-              type="button"
-              onClick={() => onSecondary(theme.wish.secondaryCta!.href)}
-              className="mt-2.5 inline-flex min-h-[42px] w-full items-center justify-center gap-2 rounded-full border border-white/25 bg-[#5A1D6A] px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-[0.98]"
-            >
-              {theme.wish.secondaryCta.label}
-            </button>
+    <div className="relative overflow-hidden rounded-3xl border border-white/25 bg-[#3E104B] px-5 py-5 text-center sm:px-6 sm:py-6">
+      <div className="relative">
+        <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-[#7B2D8E]">
+          {theme.occasion === 'christmas' ? (
+            <Snowflake className="h-5 w-5" aria-hidden />
+          ) : theme.occasion === 'new-year' ? (
+            <Clock className="h-5 w-5" aria-hidden />
+          ) : isBirthdayToday ? (
+            <Gift className="h-5 w-5" aria-hidden />
+          ) : (
+            <Heart className="h-5 w-5" aria-hidden />
           )}
         </div>
+
+        <p className="mt-3.5 text-[10.5px] font-bold uppercase tracking-[0.2em] text-white/80">
+          {theme.wish.eyebrow}
+        </p>
+
+        <h2 className="font-serif mt-1.5 text-balance text-2xl font-bold leading-tight text-white sm:text-[28px]">
+          {theme.wish.headlineTop}
+          <br />
+          <span className="italic">{theme.wish.headlineAccent}</span>
+          <br />
+          {theme.wish.headlineBottom(firstName)}
+        </h2>
+
+        <div className="mx-auto mt-4 rounded-2xl border border-white/15 bg-[#5A1D6A] px-4 py-3.5 text-left">
+          <p className="flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.16em] text-white">
+            <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {theme.wish.boxLabel}
+          </p>
+          <p className="mt-1.5 text-balance text-[13px] leading-relaxed text-white/95">
+            {theme.wish.boxBody}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBook}
+          className="mt-4 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#7B2D8E] transition-colors hover:bg-[#F5ECFA] active:scale-[0.98]"
+        >
+          {theme.wish.primaryCta}
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        </button>
+
+        {theme.wish.secondaryCta && (
+          <button
+            type="button"
+            onClick={() => onSecondary(theme.wish.secondaryCta!.href)}
+            className="mt-2 inline-flex min-h-[38px] w-full items-center justify-center gap-2 rounded-full border border-white/25 bg-[#5A1D6A] px-5 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-[0.98]"
+          >
+            {theme.wish.secondaryCta.label}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -1476,6 +1454,7 @@ function SlideWish({
 function FinishedScreen({
   recap,
   theme,
+  showSongControls,
   shareStatus,
   songState,
   onToggleSong,
@@ -1487,6 +1466,7 @@ function FinishedScreen({
 }: {
   recap: RecapPayload
   theme: OccasionThemeCopy
+  showSongControls: boolean
   shareStatus: 'idle' | 'copied' | 'shared'
   songState: SongPlaybackState
   onToggleSong: () => void
@@ -1506,112 +1486,112 @@ function FinishedScreen({
       <StoryBackdropLines occasion={theme.occasion} />
 
       <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
-        <SongToggleButton
-          state={songState}
-          label={theme.songButtonTitle}
-          onToggle={onToggleSong}
-        />
+        {showSongControls && (
+          <SongToggleButton
+            state={songState}
+            label={theme.songButtonTitle}
+            onToggle={onToggleSong}
+          />
+        )}
         <button
           type="button"
           onClick={onClose}
           aria-label={theme.closeAriaLabel}
-          className="grid h-9 w-9 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E]"
+          className="grid h-8 w-8 place-items-center rounded-full border border-white/25 bg-[#5A1D6A] text-white transition-colors hover:bg-white hover:text-[#7B2D8E]"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <div className="relative z-10 w-full max-w-sm rounded-[28px] border border-white/35 bg-[#5A1D6A] p-2">
-        <div className="relative flex flex-col items-center rounded-[22px] border border-white/20 bg-[#3E104B] px-6 py-7 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-[#7B2D8E]">
-            <DermaspaceEmblem className="h-8 w-8" />
+      <div className="relative z-10 flex w-full max-w-[336px] flex-col items-center rounded-3xl border border-white/25 bg-[#3E104B] px-5 py-6 text-center sm:max-w-[368px] sm:px-6">
+        <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-[#F5ECFA] bg-white text-[#7B2D8E]">
+          <DermaspaceEmblem className="h-6 w-6" />
+        </div>
+
+        <p className="mt-3.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white/75">
+          {theme.finished.eyebrow}
+        </p>
+
+        <h2 className="font-serif mt-1.5 text-balance text-2xl font-bold leading-tight text-white sm:text-[28px]">
+          {theme.finished.headline(firstName)}
+        </h2>
+
+        <p className="mt-2 max-w-[280px] text-balance text-[13px] leading-relaxed text-white/85 sm:text-sm">
+          {theme.finished.body}
+        </p>
+
+        <div className="mt-4 grid w-full grid-cols-2 divide-x divide-white/15 rounded-2xl border border-white/15 bg-[#5A1D6A] py-3">
+          <div className="px-3">
+            <p className="font-serif text-2xl font-bold leading-none text-white tabular-nums">
+              {recap.daysWithUs}
+            </p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/75">
+              Days with us
+            </p>
           </div>
-
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.22em] text-white/75">
-            {theme.finished.eyebrow}
-          </p>
-
-          <h2 className="font-serif mt-2 text-balance text-3xl font-bold leading-tight text-white">
-            {theme.finished.headline(firstName)}
-          </h2>
-
-          <p className="mt-2.5 max-w-xs text-balance text-sm leading-relaxed text-white/85">
-            {theme.finished.body}
-          </p>
-
-          <div className="mt-5 grid w-full grid-cols-2 gap-2.5 rounded-2xl border border-white/20 bg-[#5A1D6A] p-3">
-            <div className="rounded-xl border border-white/15 px-3 py-2.5">
-              <p className="font-serif text-2xl font-bold leading-none text-white tabular-nums">
-                {recap.daysWithUs}
-              </p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/75">
-                Days with us
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/15 px-3 py-2.5">
-              <p className="font-serif text-2xl font-bold leading-none text-white tabular-nums">
-                {recap.stats.totalBookings}
-              </p>
-              <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/75">
-                {recap.stats.totalBookings === 1 ? 'Visit' : 'Visits'}
-              </p>
-            </div>
+          <div className="px-3">
+            <p className="font-serif text-2xl font-bold leading-none text-white tabular-nums">
+              {recap.stats.totalBookings}
+            </p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-white/75">
+              {recap.stats.totalBookings === 1 ? 'Visit' : 'Visits'}
+            </p>
           </div>
+        </div>
 
-          <div className="mt-6 flex w-full flex-col gap-2.5">
+        <div className="mt-5 flex w-full flex-col gap-2">
+          <button
+            type="button"
+            onClick={onShare}
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-full bg-white py-2.5 text-sm font-semibold text-[#7B2D8E] transition-colors hover:bg-[#F5ECFA] active:scale-[0.98]"
+          >
+            {shareStatus === 'copied' || shareStatus === 'shared' ? (
+              <>
+                <Check className="h-4 w-4" aria-hidden />
+                {shareStatus === 'copied' ? 'Copied to clipboard' : 'Shared'}
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4" aria-hidden />
+                {theme.finished.shareButton}
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onBook}
+            className="flex min-h-[44px] items-center justify-center gap-2 rounded-full border border-white/30 bg-[#5A1D6A] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-[0.98]"
+          >
+            {theme.finished.bookButton}
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </button>
+
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-4">
             <button
               type="button"
-              onClick={onShare}
-              className="flex min-h-[46px] items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-semibold text-[#7B2D8E] transition-colors hover:bg-[#F5ECFA] active:scale-[0.98]"
+              onClick={onReplay}
+              className="inline-flex min-h-[34px] items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80 hover:text-white"
             >
-              {shareStatus === 'copied' || shareStatus === 'shared' ? (
-                <>
-                  <Check className="h-4 w-4" aria-hidden />
-                  {shareStatus === 'copied' ? 'Copied to clipboard' : 'Shared'}
-                </>
-              ) : (
-                <>
-                  <Share2 className="h-4 w-4" aria-hidden />
-                  {theme.finished.shareButton}
-                </>
-              )}
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+              Watch again
             </button>
-
+            {theme.finished.secondaryCta && (
+              <button
+                type="button"
+                onClick={() => onSecondary(theme.finished.secondaryCta!.href)}
+                className="min-h-[34px] text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 hover:text-white"
+              >
+                {theme.finished.secondaryCta.label}
+              </button>
+            )}
             <button
               type="button"
-              onClick={onBook}
-              className="flex min-h-[46px] items-center justify-center gap-2 rounded-full border border-white/35 bg-[#5A1D6A] py-3 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-[#7B2D8E] active:scale-[0.98]"
+              onClick={onClose}
+              className="min-h-[34px] text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75 hover:text-white"
             >
-              {theme.finished.bookButton}
-              <ArrowRight className="h-4 w-4" aria-hidden />
+              Dashboard
             </button>
-
-            <div className="mt-1.5 flex flex-wrap items-center justify-center gap-5">
-              <button
-                type="button"
-                onClick={onReplay}
-                className="inline-flex min-h-[36px] items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-white/80 hover:text-white"
-              >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-                Watch again
-              </button>
-              {theme.finished.secondaryCta && (
-                <button
-                  type="button"
-                  onClick={() => onSecondary(theme.finished.secondaryCta!.href)}
-                  className="min-h-[36px] text-xs font-semibold uppercase tracking-[0.16em] text-white/75 hover:text-white"
-                >
-                  {theme.finished.secondaryCta.label}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-[36px] text-xs font-semibold uppercase tracking-[0.16em] text-white/75 hover:text-white"
-              >
-                Dashboard
-              </button>
-            </div>
           </div>
         </div>
       </div>

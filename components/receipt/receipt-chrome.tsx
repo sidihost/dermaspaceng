@@ -63,22 +63,8 @@ export function ReceiptCrownBand({ className }: { className?: string }) {
 /**
  * Crisp corner registration brackets for the official receipt masthead / frame.
  */
-export function ReceiptCornerMarks({
-  inset = 'inset-2.5',
-}: {
-  inset?: string
-}) {
-  return (
-    <div
-      aria-hidden="true"
-      className={cn('pointer-events-none absolute', inset)}
-    >
-      <span className="absolute top-0 left-0 h-2.5 w-2.5 border-t-2 border-l-2 border-[#7B2D8E]/45" />
-      <span className="absolute top-0 right-0 h-2.5 w-2.5 border-t-2 border-r-2 border-[#7B2D8E]/45" />
-      <span className="absolute bottom-0 left-0 h-2.5 w-2.5 border-b-2 border-l-2 border-[#7B2D8E]/45" />
-      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 border-b-2 border-r-2 border-[#7B2D8E]/45" />
-    </div>
-  )
+export function ReceiptCornerMarks(_props: { inset?: string }) {
+  return null
 }
 
 /**

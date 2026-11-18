@@ -321,7 +321,11 @@ export function buildSlides(recap: RecapPayload): SlideSpec[] {
       ? [{ id: 'location' as const, label: 'Sanctuary Branch', ms: 6500 }]
       : []),
     { id: 'share', label: 'Share Glow Year', ms: 7000 },
-    { id: 'wish', label: 'Birthday Wish', ms: 9000 },
+    {
+      id: 'wish',
+      label: recap.isBirthdayToday ? 'Birthday Wish' : 'Your Glow Wish',
+      ms: 9000,
+    },
   ]
 }
 

@@ -113,6 +113,16 @@ test('buildSlides omits empty stat/treatment/location slides when bookings are z
     buildSlides(activeRecap).map((s) => s.id),
     ['intro', 'joined', 'stats', 'treatment', 'location', 'share', 'wish'],
   )
+  assert.equal(
+    buildSlides(activeRecap).find((s) => s.id === 'wish')?.label,
+    'Birthday Wish',
+  )
+  assert.equal(
+    buildSlides({ ...activeRecap, isBirthdayToday: false }).find(
+      (s) => s.id === 'wish',
+    )?.label,
+    'Your Glow Wish',
+  )
 })
 
 test('buildShareText contains zero sparkle emojis and summarizes real stats', () => {

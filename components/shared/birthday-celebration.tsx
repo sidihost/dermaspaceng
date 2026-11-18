@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ArrowRight, Cake, Clock, Snowflake, X } from 'lucide-react'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 import { getLocalCalendarDate } from '@/lib/birthday'
@@ -26,6 +27,7 @@ import {
   getCelebrationConfettiColors,
   getNewYearEdition,
   getSeasonalSeenKey,
+  isCelebrationStoryRoute,
   type CelebrationBannerCopy,
 } from '@/lib/celebrations'
 
@@ -46,6 +48,8 @@ interface FestiveResponse {
 const BANNER_TTL_MS = 12000
 
 export default function BirthdayCelebration() {
+  const pathname = usePathname()
+  const isStoryRoute = isCelebrationStoryRoute(pathname)
   const [banner, setBanner] = useState<CelebrationBannerCopy | null>(null)
   const [visible, setVisible] = useState(false)
   const [hoverPaused, setHoverPaused] = useState(false)
@@ -55,6 +59,7 @@ export default function BirthdayCelebration() {
   const lastTickRef = useRef(0)
 
   const checkAndTrigger = useCallback(async () => {
+    if (isStoryRoute) return
     try {
       const [meRes, festiveRes] = await Promise.all([
         fetch('/api/auth/me', {
@@ -164,9 +169,13 @@ export default function BirthdayCelebration() {
     } catch {
       /* Auth or network failure must never disturb page rendering */
     }
-  }, [])
+  }, [isStoryRoute])
 
   useEffect(() => {
+    if (isStoryRoute) {
+      setVisible(false)
+      return
+    }
     void checkAndTrigger()
 
     const onUserUpdated = () => {
@@ -176,7 +185,7 @@ export default function BirthdayCelebration() {
     return () => {
       window.removeEventListener('user-updated', onUserUpdated)
     }
-  }, [checkAndTrigger])
+  }, [checkAndTrigger, isStoryRoute])
 
   useEffect(() => {
     if (!visible || hoverPaused) return
@@ -193,7 +202,7 @@ export default function BirthdayCelebration() {
     }
   }, [visible, hoverPaused])
 
-  if (!visible || !banner) return null
+  if (isStoryRoute || !visible || !banner) return null
 
   return (
     <div

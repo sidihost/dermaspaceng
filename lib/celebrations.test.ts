@@ -11,6 +11,8 @@ import {
   getSeasonalSeenKey,
   isChristmasSeasonCalendar,
   isNewYearSeasonCalendar,
+  isCelebrationStoryRoute,
+  shouldPlayBirthdayCelebrationEffects,
 } from './celebrations'
 import type { RecapPayload } from './birthday'
 
@@ -146,4 +148,21 @@ test('Christmas and New Year copy, slides, share text, and confetti stay strictl
     assert.ok(colors.includes('#7B2D8E'))
     assert.ok(colors.includes('#FFFFFF'))
   }
+})
+
+test('shouldPlayBirthdayCelebrationEffects disables birthday confetti/song on non-birthday days', () => {
+  assert.equal(shouldPlayBirthdayCelebrationEffects('birthday', false), false)
+  assert.equal(shouldPlayBirthdayCelebrationEffects('birthday', true), true)
+  assert.equal(shouldPlayBirthdayCelebrationEffects('christmas', false), true)
+  assert.equal(shouldPlayBirthdayCelebrationEffects('new-year', false), true)
+})
+
+test('isCelebrationStoryRoute matches story routes and ignores regular pages', () => {
+  assert.equal(isCelebrationStoryRoute('/birthday'), true)
+  assert.equal(isCelebrationStoryRoute('/birthday/preview'), true)
+  assert.equal(isCelebrationStoryRoute('/christmas'), true)
+  assert.equal(isCelebrationStoryRoute('/new-year'), true)
+  assert.equal(isCelebrationStoryRoute('/dashboard'), false)
+  assert.equal(isCelebrationStoryRoute('/'), false)
+  assert.equal(isCelebrationStoryRoute(null), false)
 })
