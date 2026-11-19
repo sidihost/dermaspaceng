@@ -123,44 +123,48 @@ export default function GlobalError({
             __html: `
               *,*::before,*::after{box-sizing:border-box}
               html,body{margin:0;padding:0;background:#FAF6FB;color:#1A0D1F;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-              .ds-wrap{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:24px 16px}
-              .ds-card{width:100%;max-width:520px;background:#fff;border:1px solid #E5E0EA;border-radius:16px;overflow:hidden}
-              .ds-strip{height:3px;background:${BRAND}}
-              .ds-body{padding:24px 20px}
-              .ds-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid #F3F4F6}
+              .ds-wrap{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+              .ds-card{width:100%;max-width:540px;background:#fff;border:1px solid #E5E0EA;border-radius:16px;overflow:hidden}
+              .ds-strip{height:2px;background:${BRAND}}
+              .ds-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-bottom:1px solid #F1ECF5}
               .ds-brand{display:inline-flex;align-items:center;gap:10px;min-width:0}
               .ds-brand-mark{width:32px;height:32px;border-radius:8px;background:rgba(123,45,142,.1);color:${BRAND};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-              .ds-brand-name{font-size:14px;font-weight:600;color:#111827;letter-spacing:-.01em}
-              .ds-tag{font-size:12px;font-weight:500;color:#6B7280;white-space:nowrap}
-              .ds-hero{padding-top:24px;text-align:center}
-              .ds-icon{width:48px;height:48px;margin:0 auto;border-radius:16px;background:rgba(123,45,142,.1);color:${BRAND};display:flex;align-items:center;justify-content:center}
-              .ds-h1{margin:16px 0 0;font-size:20px;line-height:1.25;font-weight:600;color:#111827;letter-spacing:-.01em}
-              .ds-p{margin:8px auto 0;max-width:420px;font-size:14px;line-height:1.6;color:#4B5563}
-              .ds-actions{margin-top:24px;display:grid;grid-template-columns:1fr;gap:12px}
-              .ds-btn{appearance:none;width:100%;min-height:44px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;padding:10px 20px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+              .ds-brand-name{font-family:Georgia,"Times New Roman",serif;font-size:16px;font-weight:600;color:#1A0D1F;letter-spacing:-.01em}
+              .ds-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:#4B5563;white-space:nowrap}
+              .ds-dot{width:6px;height:6px;border-radius:999px;background:${BRAND};display:inline-block}
+              .ds-dot-muted{background:#9CA3AF}
+              .ds-main{padding:32px 24px 28px}
+              .ds-icon{width:48px;height:48px;border-radius:16px;background:#FAF6FB;border:1px solid #E5E0EA;color:${BRAND};display:flex;align-items:center;justify-content:center}
+              .ds-h1{margin:20px 0 0;font-family:Georgia,"Times New Roman",serif;font-size:26px;line-height:1.2;font-weight:600;color:#1A0D1F;letter-spacing:-.01em}
+              .ds-p{margin:10px 0 0;max-width:440px;font-size:14px;line-height:1.65;color:#4B5563}
+              .ds-actions{margin-top:24px;display:flex;flex-direction:column;gap:10px}
+              .ds-btn{appearance:none;width:100%;height:44px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;padding:0 24px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
               .ds-btn-primary{background:${BRAND};color:#fff;border:1px solid ${BRAND}}
               .ds-btn-primary:hover{background:${BRAND_DARK};border-color:${BRAND_DARK}}
-              .ds-btn-secondary{background:#fff;color:#1F2937;border:1px solid #E5E0EA}
+              .ds-btn-secondary{background:#fff;color:#1A0D1F;border:1px solid #E5E0EA}
               .ds-btn-secondary:hover{border-color:rgba(123,45,142,.4);color:${BRAND}}
-              .ds-foot{margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6}
-              .ds-foot-title{margin:0 0 12px;font-size:12px;font-weight:600;color:#111827;text-align:center}
-              .ds-branches{display:grid;grid-template-columns:1fr;gap:14px;text-align:left}
-              .ds-branch-name{margin:0;font-size:12px;font-weight:600;color:#111827}
-              .ds-branch-addr{margin:2px 0 0;font-size:12px;line-height:1.4;color:#6B7280}
-              .ds-link{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;font-weight:600;color:${BRAND};text-decoration:none;word-break:break-word}
+              .ds-foot{padding:24px;border-top:1px solid #F1ECF5}
+              .ds-foot-title{margin:0;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#6B7280}
+              .ds-branches{margin-top:16px;display:grid;grid-template-columns:1fr;gap:18px;text-align:left}
+              .ds-branch-name{margin:0;font-size:14px;font-weight:600;color:#1A0D1F}
+              .ds-branch-addr{margin:3px 0 0;font-size:12px;line-height:1.5;color:#6B7280}
+              .ds-link{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:600;color:${BRAND};text-decoration:none}
               .ds-link:hover{text-decoration:underline}
-              .ds-email-row{margin-top:14px;padding-top:12px;border-top:1px solid #F3F4F6;display:flex;justify-content:center}
-              .ds-email{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:#4B5563;text-decoration:none;word-break:break-all}
+              .ds-email-row{margin-top:20px;padding-top:16px;border-top:1px solid #F1ECF5;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#6B7280}
+              .ds-email{font-weight:500;color:#1A0D1F;text-decoration:none;word-break:break-all}
               .ds-email:hover{color:${BRAND};text-decoration:underline}
-              @media (min-width:520px){
+              @media (min-width:560px){
                 .ds-wrap{padding:48px 24px}
-                .ds-body{padding:32px}
-                .ds-h1{font-size:24px}
+                .ds-top{padding:16px 36px}
+                .ds-main{padding:32px 36px 28px}
+                .ds-foot{padding:24px 36px}
+                .ds-h1{font-size:28px}
                 .ds-p{font-size:15px}
-                .ds-actions{grid-template-columns:1fr 1fr}
-                .ds-foot-title{text-align:left}
-                .ds-branches{grid-template-columns:1fr 1fr}
-                .ds-email-row{justify-content:flex-start}
+                .ds-actions{flex-direction:row}
+                .ds-btn{flex:1}
+                .ds-branches{grid-template-columns:1fr 1fr;gap:0}
+                .ds-branch-first{padding-right:24px;border-right:1px solid #F1ECF5}
+                .ds-branch-second{padding-left:24px}
               }
             `,
           }}
@@ -170,32 +174,34 @@ export default function GlobalError({
         <main className="ds-wrap">
           <div className="ds-card">
             <div aria-hidden className="ds-strip" />
-            <div className="ds-body">
-              <div className="ds-top">
-                <div className="ds-brand">
-                  <span className="ds-brand-mark" aria-hidden>
-                    <ButterflyGlyph />
-                  </span>
-                  <span className="ds-brand-name">Dermaspace</span>
-                </div>
-                <span className="ds-tag">
-                  {isOffline ? "Connection lost" : "Service notice"}
+            <div className="ds-top">
+              <div className="ds-brand">
+                <span className="ds-brand-mark" aria-hidden>
+                  <ButterflyGlyph />
                 </span>
+                <span className="ds-brand-name">Dermaspace</span>
               </div>
+              <span className="ds-tag">
+                <span
+                  aria-hidden
+                  className={isOffline ? "ds-dot ds-dot-muted" : "ds-dot"}
+                />
+                {isOffline ? "Offline" : "Service notice"}
+              </span>
+            </div>
 
-              <div className="ds-hero">
-                <div className="ds-icon" aria-hidden>
-                  {isOffline ? <OfflineGlyph /> : <AlertCircleGlyph />}
-                </div>
-                <h1 className="ds-h1">
-                  {isOffline ? "You\u2019re offline" : "Something went wrong"}
-                </h1>
-                <p className="ds-p">
-                  {isOffline
-                    ? "We can\u2019t reach Dermaspace right now because your connection dropped. Pages you\u2019ve already visited will keep working."
-                    : "We hit an unexpected snag loading this page. It\u2019s on us, not you \u2014 a quick retry usually clears it right up."}
-                </p>
+            <div className="ds-main">
+              <div className="ds-icon" aria-hidden>
+                {isOffline ? <OfflineGlyph /> : <AlertCircleGlyph />}
               </div>
+              <h1 className="ds-h1">
+                {isOffline ? "You\u2019re offline" : "Something went wrong"}
+              </h1>
+              <p className="ds-p">
+                {isOffline
+                  ? "Your connection dropped. Pages you\u2019ve already visited still work offline."
+                  : "We hit an unexpected snag loading this page. It\u2019s on us, not you \u2014 a quick retry usually clears it right up."}
+              </p>
 
               <div className="ds-actions">
                 <button
@@ -209,32 +215,33 @@ export default function GlobalError({
                   Back to Home
                 </a>
               </div>
+            </div>
 
-              <div className="ds-foot">
-                <p className="ds-foot-title">Need help? Reach either branch</p>
-                <div className="ds-branches">
-                  <div>
-                    <p className="ds-branch-name">Victoria Island</p>
-                    <p className="ds-branch-addr">237B Muri Okunola St, VI</p>
-                    <a href="tel:+2349061836625" className="ds-link">
-                      +234 906 183 6625
-                    </a>
-                  </div>
-                  <div>
-                    <p className="ds-branch-name">Ikoyi</p>
-                    <p className="ds-branch-addr">
-                      9 Agbeke Rotinwa Cl, Dolphin Estate
-                    </p>
-                    <a href="tel:+2349013134945" className="ds-link">
-                      +234 901 313 4945
-                    </a>
-                  </div>
-                </div>
-                <div className="ds-email-row">
-                  <a href="mailto:info@dermaspaceng.com" className="ds-email">
-                    info@dermaspaceng.com
+            <div className="ds-foot">
+              <p className="ds-foot-title">Reach our sanctuaries</p>
+              <div className="ds-branches">
+                <div className="ds-branch-first">
+                  <p className="ds-branch-name">Victoria Island</p>
+                  <p className="ds-branch-addr">237B Muri Okunola St, VI</p>
+                  <a href="tel:+2349061836625" className="ds-link">
+                    +234 906 183 6625
                   </a>
                 </div>
+                <div className="ds-branch-second">
+                  <p className="ds-branch-name">Ikoyi</p>
+                  <p className="ds-branch-addr">
+                    9 Agbeke Rotinwa Cl, Dolphin Estate
+                  </p>
+                  <a href="tel:+2349013134945" className="ds-link">
+                    +234 901 313 4945
+                  </a>
+                </div>
+              </div>
+              <div className="ds-email-row">
+                <span>Prefer email?</span>
+                <a href="mailto:info@dermaspaceng.com" className="ds-email">
+                  info@dermaspaceng.com
+                </a>
               </div>
             </div>
           </div>

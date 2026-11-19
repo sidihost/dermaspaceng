@@ -1,46 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
-import { requireAdmin, getCurrentUser } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
 import { sendStaffInvitation } from '@/lib/email'
 
 const sql = neon(process.env.DATABASE_URL!)
 
-export async function GET() {
+function resolveBaseUrl(request: NextRequest): string {
+  const headerOrigin = request.headers.get('origin')
+  const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+  const host = request.headers.get('host')
+  const raw =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    headerOrigin ||
+    (host ? `${proto}://${host}` : '')
+  return raw.replace(/\/+$/, '')
+}
+
+export async function GET(request: NextRequest) {
   try {
     await requireAdmin()
 
-    // Get all staff and admin users.
-    //
-    // We surface `email_verified`, `must_change_password`, `username`
-    // and `is_super_admin` alongside the existing fields so the UI
-    // can correctly differentiate:
-    //   • Verified  — is_active && email_verified && !must_change_password
-    //   • Pending   — is_active && (!email_verified || must_change_password)
-    //                  → row exists but the team member hasn't logged in
-    //                    yet (placeholder email, forced password reset)
-    //   • Suspended — !is_active
-    //
-    // Why this is two queries (was one large GROUP BY join):
-    //   The previous version selected from `users` and LEFT JOINed
-    //   four optional activity tables (admin_replies, contact_messages,
-    //   consultations, gift_card_requests) in a single GROUP BY. If
-    //   ANY of those tables / columns disagreed with what the query
-    //   expected (a missing column on a fresh DB, a renamed table, an
-    //   unsupported COALESCE on a NULLable column) the whole query
-    //   500'd and the admin saw "the staff list is empty even though
-    //   they're staff". Splitting into:
-    //     1. A bullet-proof users-only fetch (the ONLY query that
-    //        gates whether we render rows at all)
-    //     2. A best-effort activity-counts fetch that we soft-fail
-    //        on if the optional tables don't behave
-    //   means the staff list ALWAYS renders the team. Activity counts
-    //   are nice-to-have; they were never load-bearing for the UI.
-    // `avatar_url` is now projected so the team management table can
-    // render each member's chosen portrait. Without it the page fell
-    // back to two-letter initials for every row even when staff had
-    // picked a portrait from the avatar picker — the "avatars don't
-    // display in user management" bug.
+    // Bullet-proof users-only fetch so optional activity tables can never
+    // blank out the team roster. Archived rows (deleted_at IS NOT NULL)
+    // are excluded from active roster display.
     const staffRows = (await sql`
       SELECT
         u.id, u.email, u.username, u.first_name, u.last_name, u.phone,
@@ -48,15 +31,16 @@ export async function GET() {
         COALESCE(u.must_change_password, FALSE) AS must_change_password,
         COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
         COALESCE(u.can_manage_services, FALSE) AS can_manage_services,
-        u.created_at
+        u.created_at,
+        COALESCE(u.updated_at, u.created_at) AS last_seen_at
       FROM users u
       WHERE u.role IN ('staff', 'admin')
+        AND u.deleted_at IS NULL
       ORDER BY u.created_at DESC
     `) as Array<Record<string, unknown>>
 
     // Best-effort activity counts. Wrapped in try/catch so a missing
-    // optional column on a fresh database can't blank out the whole
-    // page — we just default the counts to zero in that case.
+    // optional column on a fresh database can't blank out the whole page.
     let activityById = new Map<
       string,
       {
@@ -80,6 +64,7 @@ export async function GET() {
         LEFT JOIN consultations c ON c.assigned_to = u.id
         LEFT JOIN gift_card_requests gcr ON gcr.assigned_to = u.id
         WHERE u.role IN ('staff', 'admin')
+          AND u.deleted_at IS NULL
         GROUP BY u.id
       `) as Array<Record<string, unknown>>
       for (const row of activityRows) {
@@ -91,39 +76,75 @@ export async function GET() {
         })
       }
     } catch (activityErr) {
-      // Don't block the list render. Log it so we can fix the join
-      // later, but the team list still appears with zero activity.
       console.warn('Staff activity counts failed (optional join):', activityErr)
       activityById = new Map()
     }
 
+    // Separate best-effort live chat count so a missing table never impacts core counts.
+    const liveChatById = new Map<string, number>()
+    try {
+      const chatRows = (await sql`
+        SELECT assigned_staff_id::text AS id, COUNT(*)::int AS live_chats_assigned
+        FROM live_chat_sessions
+        WHERE assigned_staff_id IS NOT NULL
+        GROUP BY assigned_staff_id
+      `) as Array<Record<string, unknown>>
+      for (const row of chatRows) {
+        liveChatById.set(String(row.id), Number(row.live_chats_assigned ?? 0))
+      }
+    } catch {
+      // Optional table; ignore gracefully
+    }
+
     const staff = staffRows.map((row) => {
-      const counts = activityById.get(String(row.id)) ?? {
+      const id = String(row.id)
+      const counts = activityById.get(id) ?? {
         replies_count: 0,
         complaints_assigned: 0,
         consultations_assigned: 0,
         gift_cards_assigned: 0,
       }
-      return { ...row, ...counts }
+      return {
+        ...row,
+        ...counts,
+        live_chats_assigned: liveChatById.get(id) ?? 0,
+      }
     })
 
-    // Get pending invitations
-    const invitations = await sql`
-      SELECT 
-        si.id, si.email, si.role, si.created_at, si.expires_at,
+    // Get pending invitations (including token so admins can copy the invite link directly)
+    const rawInvitations = (await sql`
+      SELECT
+        si.id, si.email, si.role, si.token, si.created_at, si.expires_at,
         u.first_name as invited_by_name, u.last_name as invited_by_last
       FROM staff_invitations si
       LEFT JOIN users u ON u.id = si.invited_by
       WHERE si.used_at IS NULL AND si.expires_at > NOW()
       ORDER BY si.created_at DESC
-    `
+    `) as Array<Record<string, unknown>>
+
+    const baseUrl = resolveBaseUrl(request)
+    const invitations = rawInvitations.map((inv) => {
+      const token = typeof inv.token === 'string' ? inv.token : null
+      return {
+        id: inv.id,
+        email: inv.email,
+        role: inv.role,
+        created_at: inv.created_at,
+        expires_at: inv.expires_at,
+        invited_by_name: inv.invited_by_name ?? null,
+        invited_by_last: inv.invited_by_last ?? null,
+        invite_url: token ? `${baseUrl}/accept-invite?token=${token}` : null,
+      }
+    })
 
     return NextResponse.json({ staff, invitations })
   } catch (error) {
     console.error('Get staff error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to fetch staff'
+    const status = /unauthor|forbidden/i.test(message) ? 401 : 500
     return NextResponse.json(
-      { error: 'Failed to fetch staff' },
-      { status: 500 }
+      { error: status === 401 ? message : 'Failed to fetch staff' },
+      { status }
     )
   }
 }
@@ -247,13 +268,12 @@ export async function POST(request: NextRequest) {
         : `Invitation created. Email could not be sent — copy the link below to share manually.`,
     })
   } catch (error) {
-    // Log the full error so we can tell a DB issue from an auth issue from
-    // the client-side "failed to send invitation" banner.
     console.error('Create invitation error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
+    const status = /unauthor|forbidden/i.test(message) ? 401 : 500
     return NextResponse.json(
-      { error: `Failed to create invitation: ${message}` },
-      { status: 500 }
+      { error: status === 401 ? message : `Failed to create invitation: ${message}` },
+      { status }
     )
   }
 }
@@ -276,9 +296,11 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete invitation error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to delete invitation'
+    const status = /unauthor|forbidden/i.test(message) ? 401 : 500
     return NextResponse.json(
-      { error: 'Failed to delete invitation' },
-      { status: 500 }
+      { error: status === 401 ? message : 'Failed to delete invitation' },
+      { status }
     )
   }
 }

@@ -264,7 +264,8 @@ export async function GET(
   } catch (error) {
     console.error('Get staff profile error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch staff profile'
-    return NextResponse.json({ error: message }, { status: 500 })
+    const status = /unauthor|forbidden/i.test(message) ? 401 : 500
+    return NextResponse.json({ error: message }, { status })
   }
 }
 
@@ -470,9 +471,10 @@ export async function DELETE(
         updated_at = NOW()
       WHERE id = ${userId}
     `
-    // Revoke their sessions so the admin-panel cookie can't keep elevated
-    // access; they sign back in as a normal client.
+    // Revoke their sessions and invalidate cached auth payload so the
+    // admin-panel cookie cannot keep elevated access for even a second.
     await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+    await invalidateUserMe(String(userId))
 
     return NextResponse.json({
       success: true,

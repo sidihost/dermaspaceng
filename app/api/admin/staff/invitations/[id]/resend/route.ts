@@ -26,7 +26,7 @@ const sql = neon(process.env.DATABASE_URL!)
  * error instead of silently doing nothing.
  */
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -75,10 +75,16 @@ export async function POST(
       WHERE id = ${id}
     `
 
-    // Best-effort email send — same pattern as the original POST
-    // route so the admin still gets a useful response if SMTP is
-    // misconfigured. We surface `emailSent` to the UI so the toast
-    // can read "Reminder sent" vs "Link refreshed (email failed)".
+    const headerOrigin = request.headers.get('origin')
+    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+    const host = request.headers.get('host')
+    const baseUrl = (
+      process.env.NEXT_PUBLIC_APP_URL ||
+      headerOrigin ||
+      (host ? `${proto}://${host}` : '')
+    ).replace(/\/+$/, '')
+    const inviteUrl = `${baseUrl}/accept-invite?token=${newToken}`
+
     let emailSent = false
     try {
       const inviterName =
@@ -88,10 +94,6 @@ export async function POST(
       emailSent = await sendStaffInvitation({
         email: invite.email,
         inviterName,
-        // Narrow the DB-stored string to the literal union the
-        // mailer expects. We schema-validate inserts elsewhere so
-        // anything outside admin/staff would be a data bug — fall
-        // back to 'staff' just in case.
         role: (invite.role === 'admin' ? 'admin' : 'staff') as 'admin' | 'staff',
         token: newToken,
       })
@@ -102,6 +104,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       emailSent,
+      inviteUrl,
       expiresAt: newExpiresAt.toISOString(),
       message: emailSent
         ? `Reminder sent to ${invite.email}`
@@ -110,9 +113,10 @@ export async function POST(
   } catch (error) {
     console.error('Resend invitation error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
+    const status = /unauthor|forbidden/i.test(message) ? 401 : 500
     return NextResponse.json(
-      { error: `Failed to resend invitation: ${message}` },
-      { status: 500 }
+      { error: status === 401 ? message : `Failed to resend invitation: ${message}` },
+      { status }
     )
   }
 }

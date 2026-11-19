@@ -16,17 +16,17 @@ export default function OfflineContent() {
       setIsOnline(online)
       if (!online) {
         wasOfflineRef.current = true
-        setStatusNote('Waiting for internet connection…')
+        setStatusNote('Waiting for your connection to return…')
         return
       }
 
       if (fromEvent && wasOfflineRef.current) {
-        setStatusNote('Connection restored — reloading…')
+        setStatusNote('Connection restored — returning you to Dermaspace…')
         reloadTimer = window.setTimeout(() => {
           window.location.href = '/'
         }, 600)
       } else {
-        setStatusNote('Connection ready — tap Try again.')
+        setStatusNote('Connection detected — select Try again to continue.')
       }
     }
 
@@ -46,7 +46,7 @@ export default function OfflineContent() {
     if (typeof navigator !== 'undefined' && navigator.onLine) {
       window.location.href = '/'
     } else {
-      setStatusNote("Still offline — we'll reload automatically once you reconnect.")
+      setStatusNote("Still offline — this page will reconnect automatically once you're back online.")
     }
   }
 

@@ -109,8 +109,8 @@ interface ApiResponse {
 
 const TICKET_STATUS_PILL: Record<string, string> = {
   open: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
-  in_progress: 'bg-amber-50 text-amber-700',
-  resolved: 'bg-emerald-50 text-emerald-700',
+  in_progress: 'bg-[#FAF6FB] text-[#5A1D6A] ring-1 ring-[#7B2D8E]/25',
+  resolved: 'bg-[#7B2D8E] text-white',
   closed: 'bg-gray-100 text-gray-700',
 }
 
@@ -217,6 +217,28 @@ export default function StaffProfilePage() {
     } finally {
       setActing(false)
       setConfirmAction(null)
+    }
+  }
+
+  const handleToggleServicePermission = async (next: boolean) => {
+    setActing(true)
+    try {
+      const res = await fetch(`/api/admin/staff/${userId}/permissions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canManageServices: next }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        notify.error(json.error || 'Failed to update service permission')
+        return
+      }
+      notify.success(next ? 'Service Editor access granted' : 'Service Editor access revoked')
+      await fetchProfile()
+    } catch {
+      notify.error('Could not reach server')
+    } finally {
+      setActing(false)
     }
   }
 
@@ -412,6 +434,20 @@ export default function StaffProfilePage() {
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Demote to staff
+              </button>
+            )}
+            {user.role === 'staff' && (
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => void handleToggleServicePermission(!user.can_manage_services)}
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${
+                  user.can_manage_services
+                    ? 'border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-[#5A1D6A] hover:bg-[#7B2D8E]/15'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
+                }`}
+              >
+                Service editor: {user.can_manage_services ? 'Granted' : 'Off'}
               </button>
             )}
           </div>
@@ -672,7 +708,7 @@ export default function StaffProfilePage() {
 
       {/* In-page confirmation modal (replaces browser confirm()) */}
       <Dialog open={!!confirmAction} onOpenChange={(o) => !o && !acting && setConfirmAction(null)}>
-        <DialogContent className="sm:max-w-md border border-gray-200">
+        <DialogContent className="sm:max-w-md border border-gray-200 bg-white shadow-none rounded-2xl">
           <DialogHeader>
             <DialogTitle>{confirmAction?.title}</DialogTitle>
             <DialogDescription>{confirmAction?.description}</DialogDescription>
