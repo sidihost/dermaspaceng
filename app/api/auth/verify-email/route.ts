@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { sql } from '@/lib/db'
 import { sendWelcomeEmail } from '@/lib/email'
 import { verifyOtp } from '@/lib/signup-otp'
@@ -114,15 +114,6 @@ export async function POST(request: Request) {
       headersList.get('x-forwarded-for')?.split(',')[0] || 'Unknown'
 
     const sessionId = await createSession(user.id, userAgent, ipAddress)
-
-    const cookieStore = await cookies()
-    cookieStore.set('session_id', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
-      path: '/',
-    })
 
     // Audit ledger — record the verified signup as a sign-in event so
     // the tamper-evident chain captures the auto-login. Best-effort.

@@ -19,6 +19,7 @@ import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission, 
 import { useNotify } from './notify'
 import { clearCachedUser } from '@/lib/auth-cache'
 import { logoutAndRedirect } from '@/lib/logout'
+import { useAuth } from '@/hooks/use-auth'
 import Image from 'next/image'
 import {
   detectHumanHandoffIntent,
@@ -2205,7 +2206,17 @@ export default function DermaAI({
   // Per-row menu popover (the "⋯" kebab on each sidebar chat). Only one
   // menu can be open at a time; clicking another row's kebab swaps it.
   const [openMenuSessionId, setOpenMenuSessionId] = useState<string | null>(null)
-  const [userInfo, setUserInfo] = useState<UserInfo>({})
+  const { user: authUser, preferences: authPreferences, isLoading: authLoading } = useAuth()
+  const [userInfo, setUserInfo] = useState<UserInfo>(() =>
+    authUser
+      ? {
+          name: authUser.firstName,
+          email: authUser.email,
+          avatarUrl: authUser.avatarUrl ?? null,
+          preferences: authPreferences || undefined,
+        }
+      : {}
+  )
   const [messages, setMessages] = useState<Message[]>([])
   const [hasHydrated, setHasHydrated] = useState(false)
   const [input, setInput] = useState('')
@@ -2347,7 +2358,9 @@ export default function DermaAI({
   // /api/auth/me check is still in flight). We only branch on the
   // explicit `false` case so first-paint never flashes a sign-in card
   // to a logged-in user whose auth check hasn't resolved yet.
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(() =>
+    authLoading ? null : Boolean(authUser)
+  )
   // Images staged in the composer (already uploaded to Blob) waiting to be
   // attached to the next outgoing message.
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
@@ -2860,47 +2873,45 @@ export default function DermaAI({
   // `undefined` = we haven't resolved auth yet on this mount.
   const previousAuthRef = useRef<boolean | undefined>(undefined)
 
-  // Fetch user info
+  // Keep Derma AI synced with the shared server-bootstrapped auth store
+  // (0ms on initial paint, zero duplicate /api/auth/me requests, and reacts
+  // immediately to sign-in / sign-out / profile updates).
+  const authUserId = authUser?.id ?? null
+  const authFirstName = authUser?.firstName ?? ''
+  const authEmail = authUser?.email ?? ''
+  const authAvatarUrl = authUser?.avatarUrl ?? null
+  const authPrefsSerialized = authPreferences ? JSON.stringify(authPreferences) : ''
+
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setUserInfo({
-              name: data.user.firstName,
-              email: data.user.email,
-              avatarUrl: data.user.avatarUrl ?? null,
-              preferences: data.preferences || undefined
-            })
-            setIsLoggedIn(true)
-            // Sign-in succeeded: clear the anonymous bucket so the
-            // pre-login "hello guest" chat doesn't linger on a shared
-            // device for the next anonymous visitor.
-            try {
-              localStorage.removeItem('derma-chat-sessions::__anon__')
-              localStorage.removeItem('derma-chat-active::__anon__')
-            } catch { /* ignore */ }
-          } else {
-            setIsLoggedIn(false)
-            setUserInfo({})
-          }
-        } else {
-          // 401 / 403 / anything non-OK means no session.
-          setIsLoggedIn(false)
-          setUserInfo({})
+    if (authLoading) return
+    if (authUserId) {
+      let parsedPrefs: UserInfo['preferences'] | undefined
+      if (authPrefsSerialized) {
+        try {
+          parsedPrefs = JSON.parse(authPrefsSerialized) as UserInfo['preferences']
+        } catch {
+          parsedPrefs = undefined
         }
-      } catch {
-        // Network error — treat as anonymous so the assistant still
-        // nudges the user to sign in instead of silently asking for
-        // permission to an account it can't read.
-        setIsLoggedIn(false)
-        setUserInfo({})
       }
+      setUserInfo({
+        name: authFirstName,
+        email: authEmail,
+        avatarUrl: authAvatarUrl,
+        preferences: parsedPrefs,
+      })
+      setIsLoggedIn(true)
+      // Sign-in succeeded: clear the anonymous bucket so the
+      // pre-login "hello guest" chat doesn't linger on a shared
+      // device for the next anonymous visitor.
+      try {
+        localStorage.removeItem('derma-chat-sessions::__anon__')
+        localStorage.removeItem('derma-chat-active::__anon__')
+      } catch { /* ignore */ }
+    } else {
+      setIsLoggedIn(false)
+      setUserInfo({})
     }
-    fetchUser()
-  }, [])
+  }, [authLoading, authUserId, authFirstName, authEmail, authAvatarUrl, authPrefsSerialized])
 
   // Auth transition watcher. When we detect a sign-OUT (was logged in
   // on a previous tick, now logged out) we:

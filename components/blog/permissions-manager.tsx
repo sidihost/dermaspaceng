@@ -28,6 +28,7 @@ import {
   Loader2,
   CheckCircle2,
 } from 'lucide-react'
+import { useNotify } from '@/components/shared/notify'
 
 interface StaffRow {
   id: string
@@ -55,6 +56,7 @@ const FLAGS: Array<{
 ]
 
 export function PermissionsManager({ initialStaff }: { initialStaff: StaffRow[] }) {
+  const notify = useNotify()
   const [staff, setStaff] = useState<StaffRow[]>(initialStaff)
   const [savingId, setSavingId] = useState<string | null>(null)
   const [savedId, setSavedId] = useState<string | null>(null)
@@ -74,7 +76,11 @@ export function PermissionsManager({ initialStaff }: { initialStaff: StaffRow[] 
   async function toggle(row: StaffRow, key: FlagKey) {
     // Optimistic — flip locally first, roll back on failure.
     const prev = staff
-    const updated: StaffRow = { ...row, [key]: !row[key] }
+    const nextValue = !row[key]
+    const updated: StaffRow = { ...row, [key]: nextValue }
+    const fullName = `${row.first_name} ${row.last_name}`.trim() || row.email
+    const flagMeta = FLAGS.find((f) => f.key === key)
+    const flagLabel = flagMeta?.label ?? 'Blog'
     setStaff((s) => s.map((r) => (r.id === row.id ? updated : r)))
     setSavingId(row.id)
     setError(null)
@@ -93,10 +99,22 @@ export function PermissionsManager({ initialStaff }: { initialStaff: StaffRow[] 
       })
       if (!res.ok) throw new Error('save failed')
       setSavedId(row.id)
+      if (nextValue) {
+        notify.success(
+          `Blog ${flagLabel} enabled`,
+          `${fullName} can now ${(flagMeta?.hint ?? 'use this blog action').toLowerCase()}.`,
+        )
+      } else {
+        notify.info(
+          `Blog ${flagLabel} disabled`,
+          `Removed blog ${flagLabel.toLowerCase()} permission from ${fullName}.`,
+        )
+      }
       setTimeout(() => setSavedId((id) => (id === row.id ? null : id)), 1200)
     } catch {
       setStaff(prev)
       setError('Could not save the change. Please try again.')
+      notify.error('Could not save permission', `Failed to update ${flagLabel} access for ${fullName}.`)
     } finally {
       setSavingId((id) => (id === row.id ? null : id))
     }

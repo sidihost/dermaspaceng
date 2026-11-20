@@ -25,24 +25,20 @@
  */
 
 import { useEffect } from 'react'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function DermaIntentResumer() {
+  const { user, isAuthenticated } = useAuth()
+  const userId = user?.id ?? null
+
   useEffect(() => {
+    if (!isAuthenticated || !userId) return
     let cancelled = false
 
     const run = async () => {
       try {
-        // Step 1: confirm the user is actually signed in. /api/auth/me
-        // returns 401 (or `{ user: null }`) when there's no session,
-        // in which case the intent must stay in the cookie until the
-        // user finishes the auth flow.
-        const meRes = await fetch('/api/auth/me', { credentials: 'same-origin' })
-        if (!meRes.ok) return
-        const meData = await meRes.json().catch(() => null)
-        if (!meData?.user) return
-
-        // Step 2: consume the intent (read + clear). If there is no
-        // pending intent the route returns `{ intent: null }`.
+        // Consume the intent (read + clear). If there is no pending
+        // intent the route returns `{ intent: null }`.
         const consumeRes = await fetch('/api/derma/intent/consume', {
           method: 'POST',
           credentials: 'same-origin',
@@ -51,11 +47,9 @@ export default function DermaIntentResumer() {
         const { intent } = await consumeRes.json().catch(() => ({ intent: null }))
         if (!intent || cancelled) return
 
-        // Step 3: dispatch with a small delay so the Derma AI panel
+        // Dispatch with a small delay so the Derma AI panel
         // (lazy-loaded via next/dynamic) has a chance to mount its
-        // event listener before we fire. 600ms is empirically enough
-        // on a cold load while still feeling instantaneous to the
-        // user.
+        // event listener before we fire.
         setTimeout(() => {
           if (cancelled) return
           window.dispatchEvent(
@@ -63,17 +57,15 @@ export default function DermaIntentResumer() {
           )
         }, 600)
       } catch {
-        // Any error here is non-fatal — the user just won't get the
-        // resume affordance, which gracefully degrades to the normal
-        // post-login experience.
+        // Non-fatal — gracefully degrades to normal post-login experience.
       }
     }
 
-    run()
+    void run()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [isAuthenticated, userId])
 
   return null
 }

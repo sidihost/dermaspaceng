@@ -88,3 +88,30 @@ export async function PATCH(req: Request, { params }: Params) {
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })
 }
+
+export async function DELETE(_req: Request, { params }: Params) {
+  let admin
+  try {
+    admin = await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  const { id } = await params
+  const session = await getSessionById(id)
+  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  await sql`DELETE FROM live_chat_messages WHERE session_id = ${session.id}`
+  await sql`DELETE FROM live_chat_sessions WHERE id = ${session.id}`
+
+  await logStaffActivity({
+    staffId: admin.id,
+    userId: session.user_id,
+    actionType: 'live_chat_deleted',
+    entityType: 'live_chat_session',
+    entityId: session.id,
+    description: `Admin deleted live chat session${session.support_code ? ` (${session.support_code})` : ''}${session.guest_name ? ` with ${session.guest_name}` : ''}`,
+  })
+
+  return NextResponse.json({ success: true })
+}

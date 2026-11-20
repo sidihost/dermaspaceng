@@ -64,34 +64,48 @@ const fetcher = async (url: string) => {
 }
 
 export function useUserPersonalization() {
-  // Seed the logged-in state from the shared auth cache. Pages such as
-  // /locations can now render the signed-in experience immediately instead
-  // of briefly offering a signed-in customer a "Sign in" CTA while this
-  // hook's richer profile request is still in flight.
-  const { user: cachedAuthUser, isAuthenticated } = useAuth()
-  const { data: authData, isLoading: authLoading } = useSWR<AuthResponse | null>(
-    '/api/auth/me',
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      shouldRetryOnError: false
-    }
-  )
-
-
+  // Consume the shared server-bootstrapped auth state directly — 0ms on
+  // first paint for signed-in users and zero redundant /api/auth/me 401
+  // requests for signed-out visitors.
+  const {
+    user: authUser,
+    preferences: authPreferences,
+    isAuthenticated,
+    isLoading: authLoading,
+  } = useAuth()
 
   const { data: bookingData, isLoading: bookingsLoading } = useSWR<BookingHistoryResponse | null>(
-    authData?.user ? '/api/user/booking-history' : null,
+    isAuthenticated && authUser?.id ? '/api/user/booking-history' : null,
     fetcher,
     {
       revalidateOnFocus: false,
-      shouldRetryOnError: false
-    }
+      shouldRetryOnError: false,
+    },
   )
 
-  const isLoggedIn = isAuthenticated || !!authData?.user
-  const user = authData?.user || cachedAuthUser || null
-  const preferences = authData?.preferences || null
+  const isLoggedIn = isAuthenticated && !!authUser
+  const user: User | null = authUser
+    ? {
+        id: authUser.id,
+        email: authUser.email,
+        firstName: authUser.firstName,
+        lastName: authUser.lastName,
+        phone: authUser.phone ?? undefined,
+        avatarUrl: authUser.avatarUrl ?? undefined,
+        username: authUser.username ?? undefined,
+      }
+    : null
+  const preferences: Preferences | null = authPreferences
+    ? {
+        skinType: authPreferences.skinType ?? '',
+        concerns: Array.isArray(authPreferences.concerns) ? authPreferences.concerns : [],
+        preferredServices: Array.isArray(authPreferences.preferredServices)
+          ? authPreferences.preferredServices
+          : [],
+        preferredLocation: authPreferences.preferredLocation ?? '',
+        notifications: authPreferences.notifications !== false,
+      }
+    : null
   const recentBookings = bookingData?.bookings || []
 
   // Get personalized tips based on user preferences

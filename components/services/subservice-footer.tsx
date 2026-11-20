@@ -1,12 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { MessageCircle, Phone, ArrowRight } from 'lucide-react'
-
-interface User {
-  firstName: string
-}
+import { useAuth } from '@/hooks/use-auth'
 
 interface SubserviceFooterProps {
   serviceName: string
@@ -14,27 +10,7 @@ interface SubserviceFooterProps {
 }
 
 export default function SubserviceFooter({ serviceName, relatedServices = [] }: SubserviceFooterProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setUser(data.user)
-          }
-        }
-      } catch {
-        // Not logged in
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    checkAuth()
-  }, [])
+  const { user, isLoading } = useAuth()
 
   if (isLoading) return null
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Mail, Check, ArrowRight, Info } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import {
   NEWSLETTER_STORAGE_KEYS,
   NEWSLETTER_SUBSCRIBED_EVENT,
@@ -26,14 +27,13 @@ function writeSubscribedStorage() {
 }
 
 export default function NewsletterSection() {
+  const { isAuthenticated: isLoggedIn, isLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [alreadySubscribed, setAlreadySubscribed] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [hasSubscribedBefore, setHasSubscribedBefore] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     setHasSubscribedBefore(readSubscribedStorage())
@@ -43,28 +43,7 @@ export default function NewsletterSection() {
     }
     window.addEventListener(NEWSLETTER_SUBSCRIBED_EVENT, onSubscribed)
 
-    let cancelled = false
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          if (!cancelled && data.user) {
-            setIsLoggedIn(true)
-          }
-        }
-      } catch {
-        // Guest visitor
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false)
-        }
-      }
-    }
-    void checkAuth()
-
     return () => {
-      cancelled = true
       window.removeEventListener(NEWSLETTER_SUBSCRIBED_EVENT, onSubscribed)
     }
   }, [])

@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { cookies, headers } from 'next/headers'
+import { NextResponse, after } from 'next/server'
+import { headers } from 'next/headers'
 import { authenticateUser, createSession, checkNewDevice, verifyHCaptcha } from '@/lib/auth'
 import { sendNewDeviceAlert } from '@/lib/email'
 import { sql } from '@/lib/db'
@@ -123,38 +123,39 @@ const body = await request.json()
     // Create session
     const sessionId = await createSession(user.id, userAgent, ipAddress)
 
-    // Send new device alert if needed
+    // Dispatch new-device geo lookup & email alert off the critical path so
+    // sign-in responds immediately without blocking on external ipapi/SMTP latency.
     if (isNewDevice) {
-      // Try to get location from IP (strictly validate public IP literal to prevent SSRF)
-      let location = 'Unknown location'
-      if (isValidPublicIpForGeo(ipAddress)) {
+      const alertEmail = user.email
+      const alertFirstName = user.first_name
+      after(async () => {
         try {
-          const geoRes = await fetch(`https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`)
-          const geoData = await geoRes.json()
-          location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
-        } catch {
-          // Ignore geo lookup errors
-        }
-      }
+          let location = 'Unknown location'
+          if (isValidPublicIpForGeo(ipAddress)) {
+            try {
+              const geoRes = await fetch(
+                `https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`,
+                { signal: AbortSignal.timeout(3500) },
+              )
+              const geoData = await geoRes.json()
+              location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
+            } catch {
+              // Ignore geo lookup errors
+            }
+          }
 
-      await sendNewDeviceAlert({
-        email: user.email,
-        firstName: user.first_name,
-        deviceInfo: userAgent,
-        ipAddress,
-        location
+          await sendNewDeviceAlert({
+            email: alertEmail,
+            firstName: alertFirstName,
+            deviceInfo: userAgent,
+            ipAddress,
+            location,
+          })
+        } catch (alertErr) {
+          console.error('New-device alert failed:', alertErr)
+        }
       })
     }
-
-    // Set session cookie
-    const cookieStore = await cookies()
-    cookieStore.set('session_id', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
-      path: '/'
-    })
 
     // ── Audit ledger: append successful sign-in ────────────────────
     // Records device, IP, and whether this was a recognised device

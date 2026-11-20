@@ -11,6 +11,7 @@ import {
   Mail, Phone, ArrowUpRight, UserPlus, CircleDashed, CheckCircle2,
   BadgeCheck, RefreshCw, Loader2, MailCheck, MailWarning,
 } from 'lucide-react'
+import { useNotify } from '@/components/shared/notify'
 
 interface User {
   id: string
@@ -85,6 +86,7 @@ interface Pagination {
 
 export default function UsersPage() {
   const router = useRouter()
+  const notify = useNotify()
   const [users, setUsers] = useState<User[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [loading, setLoading] = useState(true)
@@ -97,9 +99,6 @@ export default function UsersPage() {
   // Per-row in-flight flag for the "Resend verification" button so a slow
   // request only greys out the row it was fired from.
   const [resendingId, setResendingId] = useState<string | null>(null)
-  // Small inline banner for resend success/failure — the admin area has no
-  // global toast system, so we mirror the inline-banner pattern used on the
-  // staff page. Auto-dismisses after 5s.
   const [resendFeedback, setResendFeedback] = useState<
     { kind: 'success' | 'error'; message: string } | null
   >(null)
@@ -121,26 +120,23 @@ export default function UsersPage() {
       )
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setResendFeedback({
-          kind: 'error',
-          message: body?.error || `Could not send a code to ${fullName}.`,
-        })
+        const msg = body?.error || `Could not send a code to ${fullName}.`
+        setResendFeedback({ kind: 'error', message: msg })
+        notify.error('Could not resend verification', msg)
         return
       }
-      setResendFeedback({
-        kind: 'success',
-        message: body?.message || `Verification code sent to ${user.email}.`,
-      })
+      const msg = body?.message || `Verification code sent to ${user.email}.`
+      setResendFeedback({ kind: 'success', message: msg })
+      notify.success('Verification code sent', msg)
     } catch (error) {
       console.error('Resend verification failed:', error)
-      setResendFeedback({
-        kind: 'error',
-        message: 'Network error. Please try again in a moment.',
-      })
+      const msg = 'Network error. Please try again in a moment.'
+      setResendFeedback({ kind: 'error', message: msg })
+      notify.error('Network error', msg)
     } finally {
       setResendingId(null)
     }
-  }, [])
+  }, [notify])
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)

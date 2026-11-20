@@ -64,6 +64,8 @@ export function ServiceWorkerRegister() {
         msg.includes('Failed to fetch dynamically imported module') ||
         msg.includes('Importing a module script failed') ||
         msg.includes('error loading dynamically imported module') ||
+        msg.includes('module factory is not available') ||
+        msg.includes('deleted in an HMR update') ||
         // TDZ across mismatched chunks, e.g.
         // "Cannot access 'aH' before initialization"
         (msg.includes('Cannot access') && msg.includes('before initialization'))

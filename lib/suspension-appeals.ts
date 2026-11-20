@@ -94,8 +94,22 @@ export function verifyAppealToken(
   }
 }
 
-export function buildAppealUrl(token: string, originOverride?: string | null): string {
-  return buildEmailUrl(`/appeal?token=${encodeURIComponent(token)}`, originOverride)
+export function getAppealPathForRole(role?: string | null): '/appeal/staff' | '/appeal' {
+  const normalized = normalizeAppealRole(role)
+  return normalized === 'staff' || normalized === 'admin' ? '/appeal/staff' : '/appeal'
+}
+
+export function buildAppealUrl(
+  token: string,
+  roleOrOrigin?: AppealRole | string | null,
+  originOverride?: string | null,
+): string {
+  const isOriginInSecondArg =
+    typeof roleOrOrigin === 'string' && /^https?:\/\//i.test(roleOrOrigin.trim())
+  const resolvedRole = isOriginInSecondArg ? 'user' : roleOrOrigin
+  const resolvedOrigin = isOriginInSecondArg ? roleOrOrigin : originOverride
+  const path = getAppealPathForRole(resolvedRole)
+  return buildEmailUrl(`${path}?token=${encodeURIComponent(token)}`, resolvedOrigin)
 }
 
 export function validateAppealSubmission(input: {

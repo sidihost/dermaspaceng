@@ -3,15 +3,18 @@ import {
   findGiftCardDesignById,
   getGiftCardOccasionMeta,
 } from './gift-card-templates'
+import {
+  resolveEmailSender,
+  type EmailSenderCategory,
+} from './email-senders'
 
 const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
-const FROM_EMAIL = 'hello@dermaspaceng.com'
-const FROM_NAME = 'Dermaspace'
 
 interface EmailOptions {
   to: string
   subject: string
   html: string
+  sender?: EmailSenderCategory
 }
 
 // Brand color — exported below so individual templates can reference
@@ -78,6 +81,11 @@ interface EmailTemplateOptions {
    *  illustration's negative space so transparent-PNG hero art
    *  blends seamlessly. Defaults to a soft brand-purple wash. */
   heroBg?: string
+  /** Context-specific HTML <title> (e.g. "Dermaspace Support",
+   *  "Dermaspace Security"). Defaults from `sender` when provided. */
+  emailTitle?: string
+  /** Optional sender category used to derive the default HTML <title>. */
+  sender?: EmailSenderCategory
 }
 
 /**
@@ -114,6 +122,8 @@ function getEmailTemplate(
   const {
     preheader,
     eyebrow,
+    emailTitle,
+    sender,
     // `heroImage`, `heroAlt`, and `heroBg` are accepted for
     // backward compatibility with the existing call sites
     // (verify, booking, gift-card, welcome, ticket, ticket-reply,
@@ -129,6 +139,7 @@ function getEmailTemplate(
     // params stay on the type so callers don't break and we can
     // re-enable selective illustrations later if needed.
   } = options
+  const resolvedTitle = emailTitle?.trim() || resolveEmailSender(sender).title
 
   // Hidden preheader span — Gmail / Apple Mail surface it next to
   // the subject line in inbox lists. Padded with non-breaking
@@ -195,7 +206,7 @@ function getEmailTemplate(
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="light" />
   <meta name="supported-color-schemes" content="light" />
-  <title>Dermaspace</title>
+  <title>${escapeHtml(resolvedTitle)}</title>
   <!--[if mso]>
   <style type="text/css">
     table { border-collapse: collapse; }
@@ -303,9 +314,9 @@ function getEmailTemplate(
                 <strong style="color:#1c1e21;font-weight:600;">Ikoyi</strong> &nbsp;·&nbsp; 9 Agbeke Rotinwa Cl, Dolphin Ext. Estate, Lagos
               </p>
 
-              <p style="margin: 12px 0 0; font-size: 11px; color: #8a8b91; line-height: 1.5;">
-                &copy; ${new Date().getFullYear()} Dermaspace Esthetic &amp; Wellness Centre. All rights reserved.<br>
-                You&apos;re receiving this email because you&apos;re a Dermaspace customer.
+              <p style="margin: 12px 0 0; font-size: 11px; color: #8a8b91; line-height: 1.55;">
+                This is an automated email &mdash; please do not reply directly to this message. For assistance, visit your Dermaspace account or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.<br>
+                &copy; ${new Date().getFullYear()} Dermaspace Esthetic &amp; Wellness Centre. All rights reserved.
               </p>
             </td>
           </tr>
@@ -438,15 +449,16 @@ export async function sendNewsletterCampaign(input: {
 }
 
 // Send email via Zepto Mail SMTP with bounded timeouts and transient retry
-async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+async function sendEmail({ to, subject, html, sender = 'general' }: EmailOptions): Promise<boolean> {
   const safeSubject = String(subject ?? '')
     .replace(/[\r\n\0\u2028\u2029]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 300)
+  const resolved = resolveEmailSender(sender)
   return sendMailWithRetry({
     password: SMTP_PASSWORD,
-    from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+    from: resolved.from,
     to,
     subject: safeSubject,
     html,
@@ -495,9 +507,11 @@ export async function sendVerificationEmail(email: string, firstName: string, to
   return sendEmail({
     to: email,
     subject: 'Verify Your Email - Dermaspace',
+    sender: 'security',
     html: getEmailTemplate(content, {
       preheader: `Confirm your email to finish creating your Dermaspace account. Link expires in 24 hours.`,
       eyebrow: 'Verify your email',
+      sender: 'security',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-verify.jpg`,
       heroAlt: 'Sealed envelope with a verification check-mark',
     }),
@@ -577,9 +591,11 @@ export async function sendSignupOtpEmail(
   return sendEmail({
     to: email,
     subject: `${code} is your Dermaspace verification code`,
+    sender: 'security',
     html: getEmailTemplate(content, {
       preheader: `Your Dermaspace verification code is ${code}. It expires in 10 minutes.`,
       eyebrow: 'Complete your verification',
+      sender: 'security',
     }),
   })
 }
@@ -751,8 +767,9 @@ export async function sendConsultationConfirmation(data: {
   
   return sendEmail({
     to: data.email,
-    subject: 'Consultation Request Received - Dermaspace',
-    html: getEmailTemplate(content)
+    subject: 'Consultation Request Received - Dermaspace Bookings',
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -843,8 +860,9 @@ export async function sendConsultationStatusEmail(data: {
 
   return sendEmail({
     to: data.email,
-    subject: subjectMap[data.status] || 'Consultation Update - Dermaspace',
-    html: getEmailTemplate(content),
+    subject: subjectMap[data.status] || 'Consultation Update - Dermaspace Bookings',
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -892,8 +910,9 @@ export async function sendNewDeviceAlert(data: {
   
   return sendEmail({
     to: data.email,
-    subject: 'New Login to Your Account - Dermaspace',
-    html: getEmailTemplate(content)
+    subject: 'New Login to Your Account - Dermaspace Security',
+    sender: 'security',
+    html: getEmailTemplate(content, { sender: 'security' }),
   })
 }
 
@@ -955,8 +974,9 @@ export async function sendPasskeyAddedEmail(data: {
 
   return sendEmail({
     to: data.email,
-    subject: 'New passkey added to your account - Dermaspace',
-    html: getEmailTemplate(content),
+    subject: 'New passkey added to your account - Dermaspace Security',
+    sender: 'security',
+    html: getEmailTemplate(content, { sender: 'security' }),
   })
 }
 
@@ -1014,10 +1034,12 @@ export async function sendBookingConfirmation(data: {
 
   return sendEmail({
     to: data.email,
-    subject: 'Appointment Confirmed - Dermaspace',
+    subject: 'Appointment Confirmed - Dermaspace Bookings',
+    sender: 'bookings',
     html: getEmailTemplate(content, {
       preheader: `Your ${data.service} on ${data.date} at ${data.time} is locked in. We can't wait to see you.`,
       eyebrow: 'Appointment confirmed',
+      sender: 'bookings',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-booking.jpg`,
       heroAlt: 'Calendar with a marked appointment day',
     }),
@@ -1125,7 +1147,8 @@ export async function sendBookingPaymentFailedEmail(data: {
   return sendEmail({
     to: data.to,
     subject: `Finish your Dermaspace booking ${data.bookingReference}`,
-    html: getEmailTemplate(content),
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1185,7 +1208,8 @@ export async function sendBookingRebookReminderEmail(data: {
   return sendEmail({
     to: data.to,
     subject: `Rebook your Dermaspace appointment`,
-    html: getEmailTemplate(content),
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1236,7 +1260,8 @@ export async function sendBookingReminder(data: {
   return sendEmail({
     to: data.email,
     subject: 'Reminder: Your Dermaspace appointment is tomorrow',
-    html: getEmailTemplate(content),
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1274,7 +1299,8 @@ export async function sendConsultationReminder(data: {
   return sendEmail({
     to: data.email,
     subject: 'Heads up: Your Dermaspace consultation is in 1 hour',
-    html: getEmailTemplate(content),
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1318,7 +1344,8 @@ export async function sendVoucherExpiryReminder(data: {
   return sendEmail({
     to: data.email,
     subject: `Your Dermaspace voucher expires tomorrow`,
-    html: getEmailTemplate(content),
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1488,7 +1515,8 @@ export async function sendGiftCardRequestToAdmin(data: {
   return sendEmail({
     to: 'admin@dermaspaceng.com',
     subject: `${data.isPaid ? 'Paid Gift Card Order' : 'New Gift Card Request'} - N${data.amount.toLocaleString()} - ${displaySenderName}`,
-    html: getEmailTemplate(content)
+    sender: 'team',
+    html: getEmailTemplate(content, { sender: 'team' }),
   })
 }
 
@@ -1567,10 +1595,12 @@ export async function sendGiftCardConfirmation(data: {
   
   return sendEmail({
     to: data.userEmail,
-    subject: 'Gift Card Request Confirmed - Dermaspace',
+    subject: 'Gift Card Request Confirmed - Dermaspace Bookings',
+    sender: 'bookings',
     html: getEmailTemplate(content, {
       preheader: `Your gift card request is in. We'll email payment instructions shortly.`,
       eyebrow: 'Gift card request',
+      sender: 'bookings',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-giftcard.jpg`,
       heroAlt: 'A purple gift card with a ribbon bow',
     }),
@@ -1617,8 +1647,9 @@ export async function sendFormConfirmation(data: {
   
   return sendEmail({
     to: data.email,
-    subject: `${data.formType} Received - Dermaspace`,
-    html: getEmailTemplate(content)
+    subject: `${data.formType} Received - Dermaspace Support`,
+    sender: 'support',
+    html: getEmailTemplate(content, { sender: 'support' }),
   })
 }
 
@@ -1713,8 +1744,9 @@ export async function sendGiftCardPaymentReceipt(data: {
   
   return sendEmail({
     to: data.userEmail,
-    subject: 'Payment Confirmed - Gift Card Order - Dermaspace',
-    html: getEmailTemplate(content)
+    subject: 'Payment Confirmed - Gift Card Order - Dermaspace Bookings',
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1767,8 +1799,9 @@ export async function sendGiftCardPaymentCancelled(data: {
   
   return sendEmail({
     to: data.userEmail,
-    subject: 'Payment Cancelled - Gift Card Order - Dermaspace',
-    html: getEmailTemplate(content)
+    subject: 'Payment Cancelled - Gift Card Order - Dermaspace Bookings',
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -1916,10 +1949,12 @@ export async function sendPaymentCancelledEmail(data: {
 
   return sendEmail({
     to: data.email,
-    subject: `Payment cancelled \u00B7 ${data.reference} \u00B7 Dermaspace`,
+    subject: `Payment cancelled \u00B7 ${data.reference} \u00B7 Dermaspace Bookings`,
+    sender: 'bookings',
     html: getEmailTemplate(content, {
       preheader: `Your ${introLabel} of ${formattedAmount} was cancelled before completion. No funds were charged.`,
       eyebrow: 'Payment cancelled',
+      sender: 'bookings',
     }),
   })
 }
@@ -2010,7 +2045,8 @@ export async function sendStaffInvitation(data: {
   return sendEmail({
     to: data.email,
     subject: `You're Invited to Join Dermaspace as ${data.role}`,
-    html: getEmailTemplate(content)
+    sender: 'team',
+    html: getEmailTemplate(content, { sender: 'team' }),
   })
 }
 
@@ -2219,7 +2255,8 @@ export async function sendReplyNotification(data: {
 
   return sendEmail({
     to: data.email,
-    subject: `Response to Your ${typeLabels[data.requestType]} - Dermaspace`,
+    subject: `Response to Your ${typeLabels[data.requestType]} - Dermaspace Support`,
+    sender: 'support',
     html: getEmailTemplate(
       content,
       isTicket
@@ -2228,10 +2265,11 @@ export async function sendReplyNotification(data: {
               ? `${data.responderName} replied on ticket ${data.ticketId}.`
               : `${data.responderName} replied to your support ticket.`,
             eyebrow: 'New reply',
+            sender: 'support',
             heroImage: `${PUBLIC_ORIGIN}/emails/hero-message.jpg`,
             heroAlt: 'Illustrated chat bubbles representing a support reply',
           }
-        : {},
+        : { sender: 'support' },
     ),
   })
 }
@@ -2287,8 +2325,9 @@ export async function sendCustomerReplyAlert(data: {
 
   return sendEmail({
     to: data.to,
-    subject: `New reply on ticket ${data.ticketCode} - Dermaspace`,
-    html: getEmailTemplate(content),
+    subject: `New reply on ticket ${data.ticketCode} - Dermaspace Support`,
+    sender: 'support',
+    html: getEmailTemplate(content, { sender: 'support' }),
   })
 }
 
@@ -2344,8 +2383,9 @@ export async function sendConsultationCustomerReplyAlert(data: {
 
   return sendEmail({
     to: data.to,
-    subject: `New consultation response from ${data.customerName || 'Customer'} - Dermaspace`,
-    html: getEmailTemplate(content),
+    subject: `New consultation response from ${data.customerName || 'Customer'} - Dermaspace Support`,
+    sender: 'support',
+    html: getEmailTemplate(content, { sender: 'support' }),
   })
 }
 
@@ -2425,8 +2465,9 @@ export async function sendStatusUpdateNotification(data: {
   
   return sendEmail({
     to: data.email,
-    subject: `${typeLabels[data.requestType]} Status Updated - Dermaspace`,
-    html: getEmailTemplate(content)
+    subject: `${typeLabels[data.requestType]} Status Updated - Dermaspace Support`,
+    sender: 'support',
+    html: getEmailTemplate(content, { sender: 'support' }),
   })
 }
 
@@ -2486,7 +2527,8 @@ export async function sendAdminNewRequestNotification(data: {
   return sendEmail({
     to: data.adminEmail,
     subject: `New ${typeLabels[data.requestType]} - Action Required`,
-    html: getEmailTemplate(content)
+    sender: 'team',
+    html: getEmailTemplate(content, { sender: 'team' }),
   })
 }
 
@@ -2520,8 +2562,9 @@ export async function sendPasswordResetEmail(email: string, firstName: string, t
   
   return sendEmail({
     to: email,
-    subject: 'Reset Your Password - Dermaspace',
-    html: getEmailTemplate(content)
+    subject: 'Reset Your Password - Dermaspace Security',
+    sender: 'security',
+    html: getEmailTemplate(content, { sender: 'security' }),
   })
 }
 
@@ -2682,8 +2725,9 @@ export async function sendSecurityReminderEmail(data: {
   
   return sendEmail({
     to: data.email,
-    subject: 'Secure Your Account - Dermaspace Security Tips',
-    html: getEmailTemplate(content)
+    subject: 'Secure Your Account - Dermaspace Security',
+    sender: 'security',
+    html: getEmailTemplate(content, { sender: 'security' }),
   })
 }
 
@@ -2756,10 +2800,12 @@ export async function sendTicketConfirmation(data: {
   
   return sendEmail({
     to: data.email,
-    subject: `Ticket ${data.ticketId} - We've Received Your Request - Dermaspace`,
+    subject: `Ticket ${data.ticketId} - We've Received Your Request - Dermaspace Support`,
+    sender: 'support',
     html: getEmailTemplate(content, {
       preheader: `We've logged ticket ${data.ticketId}. Our team will get back to you within 24-48 hours.`,
       eyebrow: 'Ticket received',
+      sender: 'support',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-ticket.jpg`,
       heroAlt: 'Illustrated support ticket with a check badge',
     }),
@@ -3195,14 +3241,11 @@ export async function sendLiveChatTranscript(data: {
         </tr>
       </table>
       <p style="margin: 0 0 24px; font-size: 13px; color: #65676b; line-height: 1.5;">
-        You can also reply to this email and a representative will follow
-        up — please keep the subject line so we can match it to this
-        conversation.
+        This is an automated transcript email &mdash; please do not reply directly. To continue the conversation, use the button above or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
       </p>`
     : `
       <p style="margin: 0 0 24px; font-size: 14px; color: #1c1e21; line-height: 1.6;">
-        Need anything else? Reply to this email and a Dermaspace
-        representative will follow up directly.
+        Need anything else? Start a live chat in Derma AI or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> with your reference below (please do not reply directly to this automated message).
       </p>`
 
   const content = `
@@ -3237,8 +3280,9 @@ export async function sendLiveChatTranscript(data: {
 
   return sendEmail({
     to: data.email,
-    subject: `Your Dermaspace chat transcript`,
-    html: getEmailTemplate(content),
+    subject: `Your Dermaspace Support Chat Transcript`,
+    sender: 'support',
+    html: getEmailTemplate(content, { sender: 'support' }),
   })
 }
 
@@ -3335,18 +3379,19 @@ export async function sendTicketTranscript(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #65676b; line-height: 1.5;">
-      Reply to this email to add a follow-up message. Please keep the
-      subject line so we can route it back to ticket
-      <strong>${escapeHtml(data.ticketId)}</strong>.
+      This is an automated message &mdash; please do not reply directly. To add a follow-up to ticket
+      <strong>${escapeHtml(data.ticketId)}</strong>, open it in your Dermaspace dashboard using the button above.
     </p>
   `
 
   return sendEmail({
     to: data.email,
-    subject: `Transcript for ticket ${data.ticketId}`,
+    subject: `Transcript for ticket ${data.ticketId} - Dermaspace Support`,
+    sender: 'support',
     html: getEmailTemplate(content, {
       preheader: `A copy of your full conversation on ticket ${data.ticketId}.`,
       eyebrow: 'Ticket transcript',
+      sender: 'support',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-message.jpg`,
       heroAlt: 'Illustrated chat bubbles representing a support conversation',
     }),
@@ -3475,18 +3520,19 @@ export async function sendTicketResolvedReview(data: {
     </table>
 
     <p style="margin: 0 0 6px; font-size: 13px; line-height: 1.6; color: #6b7280;">
-      Not sorted yet? Just reply to this email and we'll reopen ticket
-      <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong> right away —
-      no need to start over.
+      Not sorted yet? Open ticket
+      <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong> in your Dermaspace dashboard or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> &mdash; please do not reply directly to this automated email.
     </p>
   `
 
   return sendEmail({
     to: data.email,
-    subject: `How did we do? Rate ticket ${data.ticketId} - Dermaspace`,
+    subject: `How did we do? Rate ticket ${data.ticketId} - Dermaspace Support`,
+    sender: 'support',
     html: getEmailTemplate(content, {
       preheader: `Your ticket ${data.ticketId} is resolved. Tap a star to let us know how we did.`,
       eyebrow: 'Ticket resolved',
+      sender: 'support',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-resolved.jpg`,
       heroAlt: 'Illustrated support docket with a purple checkmark',
     }),
@@ -3571,20 +3617,22 @@ export async function sendTicketStatusUpdateEmail(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #6b7280;">
-      Need to add anything else? Just reply directly to this email${
+      Need to add anything else? Open your support thread using the button above${
         data.ticketId
-          ? ` regarding <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong>`
+          ? ` for <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong>`
           : ''
-      } and our team will pick it right back up.
+      } or contact <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>. Please do not reply directly to this automated email.
     </p>
   `
 
   return sendEmail({
     to: data.email,
     subject: meta.subjectLine(refLabel),
+    sender: 'support',
     html: getEmailTemplate(content, {
       preheader: `${meta.heading} — Status: ${meta.statusLabel}.`,
       eyebrow: meta.eyebrow,
+      sender: 'support',
     }),
   })
 }
@@ -3834,8 +3882,9 @@ export async function sendBookingReceipt(data: {
 
   return sendEmail({
     to: data.email,
-    subject: `Receipt for booking ${data.bookingReference} \u00B7 Dermaspace`,
-    html: getEmailTemplate(content),
+    subject: `Receipt for booking ${data.bookingReference} \u00B7 Dermaspace Bookings`,
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -3976,8 +4025,9 @@ export async function sendBookingCancellation(data: {
 
   return sendEmail({
     to: data.email,
-    subject: `Booking ${data.bookingReference} cancelled \u00B7 Dermaspace`,
-    html: getEmailTemplate(content),
+    subject: `Booking ${data.bookingReference} cancelled \u00B7 Dermaspace Bookings`,
+    sender: 'bookings',
+    html: getEmailTemplate(content, { sender: 'bookings' }),
   })
 }
 
@@ -4033,7 +4083,8 @@ export async function sendApprovalDecisionNotification(data: {
   return sendEmail({
     to: data.email,
     subject: `${headline} \u00B7 ${data.actionLabel}`,
-    html: getEmailTemplate(content),
+    sender: 'team',
+    html: getEmailTemplate(content, { sender: 'team' }),
   })
 }
 
@@ -4119,9 +4170,11 @@ export async function sendBookingCompletedEmail(data: {
   return sendEmail({
     to: data.email,
     subject: `Thank you for visiting Dermaspace \u00B7 ${data.bookingReference}`,
+    sender: 'bookings',
     html: getEmailTemplate(content, {
       preheader: `Your booking ${data.bookingReference} is complete. We hope you loved your visit.`,
       eyebrow: 'Visit completed',
+      sender: 'bookings',
     }),
   })
 }
@@ -4275,16 +4328,18 @@ export async function sendGiftCardToRecipient(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Questions? Reply to this email or call 09013134945 / 09061836625.
+      Questions? Contact us at <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> or call 09013134945 / 09061836625.
     </p>
   `
 
   return sendEmail({
     to: data.recipientEmail,
     subject: `${data.senderName || 'Someone special'} sent you a Dermaspace Gift Card`,
+    sender: 'general',
     html: getEmailTemplate(content, {
       preheader: `${data.senderName || 'Someone special'} gifted you ${formattedAmount} to enjoy at Dermaspace.`,
       eyebrow: 'Your gift card',
+      sender: 'general',
     }),
   })
 }
@@ -4345,11 +4400,156 @@ export async function sendDirectUserEmail(data: {
   return sendEmail({
     to: data.email,
     subject: data.subject.trim(),
+    sender: 'support',
     html: getEmailTemplate(content, {
       preheader: cleanPreheader,
-      eyebrow: 'Message from Dermaspace',
+      eyebrow: 'Message from Dermaspace Support',
+      sender: 'support',
     }),
   })
+}
+
+/**
+ * Pure HTML builder for client vs. staff suspension notifications.
+ * Uses the exact Dermaspace flat transactional shell with distinct copy,
+ * sender titles ("Dermaspace Team Security" vs "Dermaspace Security"),
+ * and dedicated appeal portal links (/appeal/staff vs /appeal).
+ */
+export function buildAccountSuspendedEmailHtml(data: {
+  firstName?: string | null
+  role?: 'user' | 'staff' | 'admin' | string | null
+  reason?: string | null
+  appealUrl: string
+}): {
+  subject: string
+  html: string
+  sender: EmailSenderCategory
+} {
+  const safeName = escapeHtml(data.firstName?.trim() || 'there')
+  const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const sender: EmailSenderCategory = isTeamMember ? 'team_security' : 'security'
+  const safeReason = data.reason?.trim() ? escapeHtml(data.reason.trim()) : null
+  const safeAppealUrl = escapeHtml(data.appealUrl)
+
+  const content = isTeamMember
+    ? `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      Your Dermaspace staff access has been suspended
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      Your access to the Dermaspace Staff &amp; Admin Workspace has been temporarily suspended, and all active work sessions on your account have been signed out immediately.
+    </p>
+
+    ${
+      safeReason
+        ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #FAF6FB; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Administrative Note</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${safeReason}</p>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
+
+    <p style="margin: 0 0 20px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      If you believe this was done in error or you have resolved the matter with your clinic lead, submit an internal staff appeal below for Dermaspace Leadership &amp; Security to review.
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: #3E104B; border-radius: 10px;">
+          <a href="${safeAppealUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Submit Staff Appeal
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 12px; font-size: 12px; color: #666; line-height: 1.55; word-break: break-all;">
+      Or copy and paste your dedicated staff appeal link into your browser:<br />
+      <a href="${safeAppealUrl}" style="color: ${BRAND_COLOR}; text-decoration: underline;">${safeAppealUrl}</a>
+    </p>
+
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated security notice &mdash; please do not reply directly to this email. Submit your appeal using the portal above or reach clinic leadership directly.
+    </p>
+  `
+    : `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      Your Dermaspace account has been suspended
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      Your Dermaspace client account has been temporarily suspended, and active sessions have been signed out. Your bookings, wallet balance, and appointment history remain safely preserved.
+    </p>
+
+    ${
+      safeReason
+        ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #FAF6FB; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Suspension Note</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${safeReason}</p>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
+
+    <p style="margin: 0 0 20px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      If you believe this happened by mistake or would like our Care &amp; Security team to review your account for reinstatement, submit a client appeal below.
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${safeAppealUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Submit Account Appeal
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 12px; font-size: 12px; color: #666; line-height: 1.55; word-break: break-all;">
+      Or copy and paste this link into your browser:<br />
+      <a href="${safeAppealUrl}" style="color: ${BRAND_COLOR}; text-decoration: underline;">${safeAppealUrl}</a>
+    </p>
+
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated security email &mdash; please do not reply directly. Use the appeal portal above or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> for general assistance.
+    </p>
+  `
+
+  const subject = isTeamMember
+    ? 'Action Required: Your Dermaspace Staff Access Has Been Suspended'
+    : 'Your Dermaspace Account Has Been Suspended'
+
+  return {
+    subject,
+    sender,
+    html: getEmailTemplate(content, {
+      preheader: isTeamMember
+        ? 'Your Dermaspace staff workspace access is paused. Submit an internal staff appeal for review.'
+        : 'Your Dermaspace client account is paused. Submit an account appeal if you believe this was an error.',
+      eyebrow: isTeamMember ? 'Staff security notice' : 'Account security notice',
+      sender,
+    }),
+  }
 }
 
 /**
@@ -4364,78 +4564,12 @@ export async function sendAccountSuspendedEmail(data: {
   reason?: string | null
   appealUrl: string
 }): Promise<boolean> {
-  const safeName = escapeHtml(data.firstName?.trim() || 'there')
-  const isTeamMember = data.role === 'staff' || data.role === 'admin'
-  const safeReason = data.reason?.trim() ? escapeHtml(data.reason.trim()) : null
-  const safeAppealUrl = escapeHtml(data.appealUrl)
-
-  const content = `
-    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
-      ${isTeamMember ? 'Your team access has been suspended' : 'Your account has been suspended'}
-    </h1>
-
-    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
-      Hi ${safeName},
-    </p>
-
-    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
-      ${
-        isTeamMember
-          ? 'Your Dermaspace staff access has been temporarily suspended, and active sessions on your account have been signed out.'
-          : 'Your Dermaspace account has been temporarily suspended, and active sessions have been signed out. Your existing records and booking history remain safely preserved.'
-      }
-    </p>
-
-    ${
-      safeReason
-        ? `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
-      <tr>
-        <td style="padding: 16px 18px;">
-          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Reason</p>
-          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${safeReason}</p>
-        </td>
-      </tr>
-    </table>
-    `
-        : ''
-    }
-
-    <p style="margin: 0 0 20px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
-      If you believe this happened by mistake or would like us to review your account for reinstatement, you can submit an appeal below.
-    </p>
-
-    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
-      <tr>
-        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
-          <a href="${safeAppealUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
-            Submit an Appeal
-          </a>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0 0 12px; font-size: 12px; color: #666; line-height: 1.55; word-break: break-all;">
-      Or copy and paste this link into your browser:<br />
-      <a href="${safeAppealUrl}" style="color: ${BRAND_COLOR}; text-decoration: underline;">${safeAppealUrl}</a>
-    </p>
-
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      Need help? Reply to this email or contact hello@dermaspaceng.com.
-    </p>
-  `
-
+  const { subject, html, sender } = buildAccountSuspendedEmailHtml(data)
   return sendEmail({
     to: data.email,
-    subject: isTeamMember
-      ? 'Your Dermaspace staff access has been suspended'
-      : 'Your Dermaspace account has been suspended',
-    html: getEmailTemplate(content, {
-      preheader: isTeamMember
-        ? 'Your Dermaspace team access is paused. Submit an appeal for review.'
-        : 'Your Dermaspace account is paused. Submit an appeal if you believe this was an error.',
-      eyebrow: isTeamMember ? 'Staff account notice' : 'Account notice',
-    }),
+    subject,
+    sender,
+    html,
   })
 }
 
@@ -4447,13 +4581,16 @@ export async function sendAppealReceivedEmail(data: {
   email: string
   firstName?: string | null
   appealId: string
+  role?: 'user' | 'staff' | 'admin' | string | null
 }): Promise<boolean> {
   const safeName = escapeHtml(data.firstName?.trim() || 'there')
   const safeId = escapeHtml(data.appealId)
+  const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const sender: EmailSenderCategory = isTeamMember ? 'team_security' : 'security'
 
   const content = `
     <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
-      We received your appeal
+      ${isTeamMember ? 'We received your staff appeal' : 'We received your account appeal'}
     </h1>
 
     <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
@@ -4461,29 +4598,39 @@ export async function sendAppealReceivedEmail(data: {
     </p>
 
     <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
-      Thank you for reaching out. Our team has received your account reinstatement appeal and will review it carefully. You will receive another email once a decision is made.
+      ${
+        isTeamMember
+          ? 'Your staff access reinstatement appeal has been logged and routed to Dermaspace Leadership &amp; Security for review. You will receive an automated email once a decision is made.'
+          : 'Thank you for reaching out. Our Care &amp; Security team has received your account reinstatement appeal and will review it carefully. You will receive an automated email once a decision is made.'
+      }
     </p>
 
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #FAF6FB; border-radius: 12px; border: 1px solid #ece5f0;">
       <tr>
         <td style="padding: 16px 18px;">
-          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Appeal Reference</p>
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">${isTeamMember ? 'Staff Appeal Reference' : 'Appeal Reference'}</p>
           <p style="margin: 0; font-size: 14px; color: #1c1e21; font-family: monospace; font-weight: 600;">${safeId}</p>
         </td>
       </tr>
     </table>
 
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      Please keep this reference handy if you follow up at hello@dermaspaceng.com.
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated confirmation &mdash; please do not reply directly. Keep reference <strong>${safeId}</strong> handy for your records.
     </p>
   `
 
   return sendEmail({
     to: data.email,
-    subject: 'We received your Dermaspace account appeal',
+    subject: isTeamMember
+      ? `We received your Dermaspace staff appeal (${data.appealId})`
+      : `We received your Dermaspace account appeal (${data.appealId})`,
+    sender,
     html: getEmailTemplate(content, {
-      preheader: `Appeal ${data.appealId} is under review by our team.`,
-      eyebrow: 'Appeal received',
+      preheader: isTeamMember
+        ? `Staff appeal ${data.appealId} is queued for Dermaspace Leadership review.`
+        : `Appeal ${data.appealId} is under review by our team.`,
+      eyebrow: isTeamMember ? 'Staff appeal received' : 'Appeal received',
+      sender,
     }),
   })
 }
@@ -4500,6 +4647,7 @@ export async function sendAppealDecisionEmail(data: {
 }): Promise<boolean> {
   const safeName = escapeHtml(data.firstName?.trim() || 'there')
   const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const sender: EmailSenderCategory = isTeamMember ? 'team_security' : 'security'
   const approved = data.decision === 'approved'
   const safeNote = data.reviewNote?.trim() ? escapeHtml(data.reviewNote.trim()) : null
   const signInUrl = `${PUBLIC_ORIGIN}/signin`
@@ -4511,7 +4659,9 @@ export async function sendAppealDecisionEmail(data: {
           ? isTeamMember
             ? 'Your staff access has been reinstated'
             : 'Your account has been reinstated'
-          : 'Update on your account appeal'
+          : isTeamMember
+            ? 'Update on your staff access appeal'
+            : 'Update on your account appeal'
       }
     </h1>
 
@@ -4523,16 +4673,18 @@ export async function sendAppealDecisionEmail(data: {
       ${
         approved
           ? isTeamMember
-            ? 'Following our review of your appeal, your Dermaspace team account is now active again. You can sign back in immediately.'
+            ? 'Following our review of your staff appeal, your Dermaspace team account is now active again. You can sign back in to your workspace immediately.'
             : 'Following our review of your appeal, your Dermaspace account has been reinstated. You can sign back in right away.'
-          : 'After reviewing your appeal, we are unable to reinstate your account at this time.'
+          : isTeamMember
+            ? 'After reviewing your staff appeal, Dermaspace Leadership is unable to reinstate your team access at this time.'
+            : 'After reviewing your appeal, we are unable to reinstate your account at this time.'
       }
     </p>
 
     ${
       safeNote
         ? `
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #FAF6FB; border-radius: 12px; border: 1px solid #ece5f0;">
       <tr>
         <td style="padding: 16px 18px;">
           <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Reviewer Note</p>
@@ -4551,7 +4703,7 @@ export async function sendAppealDecisionEmail(data: {
       <tr>
         <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
           <a href="${signInUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
-            Sign In to Dermaspace
+            ${isTeamMember ? 'Sign In to Staff Workspace' : 'Sign In to Dermaspace'}
           </a>
         </td>
       </tr>
@@ -4560,8 +4712,12 @@ export async function sendAppealDecisionEmail(data: {
         : ''
     }
 
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      Questions? Reply to this email or contact hello@dermaspaceng.com.
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated security update &mdash; please do not reply directly.${
+        isTeamMember
+          ? ' For further questions, contact your clinic administrator.'
+          : ` For assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
+      }
     </p>
   `
 
@@ -4571,12 +4727,24 @@ export async function sendAppealDecisionEmail(data: {
       ? isTeamMember
         ? 'Your Dermaspace staff access has been reinstated'
         : 'Your Dermaspace account has been reinstated'
-      : 'Update on your Dermaspace account appeal',
+      : isTeamMember
+        ? 'Update on your Dermaspace staff access appeal'
+        : 'Update on your Dermaspace account appeal',
+    sender,
     html: getEmailTemplate(content, {
       preheader: approved
-        ? 'Your appeal was approved — you can sign back into Dermaspace now.'
-        : 'A decision has been reached regarding your Dermaspace account appeal.',
-      eyebrow: approved ? 'Account reinstated' : 'Appeal decision',
+        ? isTeamMember
+          ? 'Your staff appeal was approved — you can sign back in to the workspace now.'
+          : 'Your appeal was approved — you can sign back into Dermaspace now.'
+        : 'A decision has been reached regarding your Dermaspace appeal.',
+      eyebrow: approved
+        ? isTeamMember
+          ? 'Staff access reinstated'
+          : 'Account reinstated'
+        : isTeamMember
+          ? 'Staff appeal decision'
+          : 'Appeal decision',
+      sender,
     }),
   })
 }
@@ -4591,6 +4759,7 @@ export async function sendAccountReinstatedEmail(data: {
 }): Promise<boolean> {
   const safeName = escapeHtml(data.firstName?.trim() || 'there')
   const isTeamMember = data.role === 'staff' || data.role === 'admin'
+  const sender: EmailSenderCategory = isTeamMember ? 'team_security' : 'security'
   const signInUrl = `${PUBLIC_ORIGIN}/signin`
 
   const content = `
@@ -4614,14 +4783,18 @@ export async function sendAccountReinstatedEmail(data: {
       <tr>
         <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
           <a href="${signInUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
-            Sign In to Dermaspace
+            ${isTeamMember ? 'Sign In to Staff Workspace' : 'Sign In to Dermaspace'}
           </a>
         </td>
       </tr>
     </table>
 
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      Questions? Reply to this email or contact hello@dermaspaceng.com.
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated security notification &mdash; please do not reply directly.${
+        isTeamMember
+          ? ' Reach your clinic administrator if you have questions about your access.'
+          : ` If you need assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
+      }
     </p>
   `
 
@@ -4630,9 +4803,13 @@ export async function sendAccountReinstatedEmail(data: {
     subject: isTeamMember
       ? 'Your Dermaspace staff access has been reactivated'
       : 'Your Dermaspace account has been reactivated',
+    sender,
     html: getEmailTemplate(content, {
-      preheader: 'Your Dermaspace account is active again — sign in anytime.',
-      eyebrow: 'Account reactivated',
+      preheader: isTeamMember
+        ? 'Your Dermaspace staff workspace access is active again — sign in anytime.'
+        : 'Your Dermaspace account is active again — sign in anytime.',
+      eyebrow: isTeamMember ? 'Staff access reactivated' : 'Account reactivated',
+      sender,
     }),
   })
 }
@@ -4684,7 +4861,7 @@ export function buildStaffPromotedEmailHtml(data: {
       ${introCopy}
     </p>
 
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #FAF6FB; border-radius: 12px; border: 1px solid #ece5f0;">
       <tr>
         <td style="padding: 16px 18px;">
           <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Your New Role</p>
@@ -4712,8 +4889,8 @@ export function buildStaffPromotedEmailHtml(data: {
       </tr>
     </table>
 
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      Questions about your new access? Reply to this email or contact hello@dermaspaceng.com.
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated team notice &mdash; please do not reply directly. Reach your clinic administrator or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> if you have questions about your access.
     </p>
   `
 
@@ -4728,6 +4905,7 @@ export function buildStaffPromotedEmailHtml(data: {
         ? 'Your Dermaspace account now has Admin access. Sign in to open the dashboard.'
         : 'Welcome to the Dermaspace team! Sign in to open your Staff workspace.',
       eyebrow: isAdmin ? 'Team role update' : 'Welcome to the team',
+      sender: 'team',
     }),
   }
 }
@@ -4747,6 +4925,7 @@ export async function sendStaffPromotedEmail(data: {
   return sendEmail({
     to: data.email,
     subject,
+    sender: 'team',
     html,
   })
 }
@@ -4932,8 +5111,8 @@ export function buildLiveChatTranscriptEmailHtml(data: {
       </tr>
     </table>
 
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      You can quote Support ID <strong>${safeCode}</strong> anytime in Derma AI or by replying to hello@dermaspaceng.com.
+    <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
+      This is an automated transcript email &mdash; please do not reply directly. Quote Support ID <strong>${safeCode}</strong> anytime in Derma AI or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
     </p>
   `
 
@@ -4944,6 +5123,7 @@ export function buildLiveChatTranscriptEmailHtml(data: {
     html: getEmailTemplate(content, {
       preheader: `Copy of your Dermaspace live support conversation (${data.supportCode}).`,
       eyebrow: 'Live support transcript',
+      sender: 'support',
     }),
   }
 }
@@ -4962,6 +5142,7 @@ export async function sendLiveChatTranscriptEmail(data: {
   return sendEmail({
     to: data.email,
     subject,
+    sender: 'support',
     html,
   })
 }

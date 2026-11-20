@@ -67,6 +67,8 @@ import {
   type StaffSortKey,
   type StaffStatusFilter,
 } from '@/lib/admin-staff'
+import { useNotify } from '@/components/shared/notify'
+import { useAuth } from '@/hooks/use-auth'
 
 type ActiveSection = 'team' | 'invitations'
 
@@ -118,12 +120,14 @@ function formatShortDate(iso: string): string {
 }
 
 export default function StaffPage() {
+  const notify = useNotify()
+  const { user: authUser } = useAuth()
   const [staff, setStaff] = useState<StaffMember[]>([])
   const [invitations, setInvitations] = useState<StaffInvitation[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const currentUserId = authUser?.id ? String(authUser.id) : null
 
   // View & filtering state
   const [activeSection, setActiveSection] = useState<ActiveSection>('team')
@@ -177,14 +181,6 @@ export default function StaffPage() {
 
   useEffect(() => {
     void fetchStaff(false)
-    void fetch('/api/auth/me', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.user?.id) setCurrentUserId(String(data.user.id))
-      })
-      .catch(() => {
-        /* server enforces self-action guardrails too */
-      })
   }, [fetchStaff])
 
   useEffect(() => {
@@ -238,11 +234,13 @@ export default function StaffPage() {
     try {
       await navigator.clipboard.writeText(text)
       setCopiedId(key)
+      notify.success('Copied to clipboard')
       window.setTimeout(() => {
         setCopiedId((curr) => (curr === key ? null : curr))
       }, 2000)
     } catch {
       setFeedback({ kind: 'error', message: 'Could not copy to clipboard.' })
+      notify.error('Could not copy', 'Please copy the text manually.')
     }
   }
 
@@ -259,14 +257,14 @@ export default function StaffPage() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    setFeedback({
-      kind: 'success',
-      message: `Exported ${targetList.length} team member${targetList.length === 1 ? '' : 's'} to CSV.`,
-    })
+    const msg = `Exported ${targetList.length} team member${targetList.length === 1 ? '' : 's'} to CSV.`
+    setFeedback({ kind: 'success', message: msg })
+    notify.success('CSV exported', msg)
   }
 
   const handleToggleServicePerm = async (member: StaffMember, next: boolean) => {
     const prev = staff
+    const name = getMemberDisplayName(member)
     setBusyMember((b) => ({ ...b, [member.id]: 'perm' }))
     setStaff((rows) =>
       rows.map((r) => (r.id === member.id ? { ...r, can_manage_services: next } : r))
@@ -280,22 +278,24 @@ export default function StaffPage() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
         setStaff(prev)
-        setFeedback({
-          kind: 'error',
-          message: body?.error || 'Could not update Service Editor permission.',
-        })
+        const errMsg = body?.error || 'Could not update Service Editor permission.'
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error('Permission update failed', errMsg)
         return
       }
-      const name = getMemberDisplayName(member)
-      setFeedback({
-        kind: 'success',
-        message: next
-          ? `Granted Service Editor access to ${name}.`
-          : `Revoked Service Editor access from ${name}.`,
-      })
+      const msg = next
+        ? `Granted Service Editor access to ${name}.`
+        : `Revoked Service Editor access from ${name}.`
+      setFeedback({ kind: 'success', message: msg })
+      if (next) {
+        notify.success('Service Editor enabled', `${name} can now edit the service catalog.`)
+      } else {
+        notify.info('Service Editor disabled', `Revoked Service Editor access from ${name}.`)
+      }
     } catch {
       setStaff(prev)
       setFeedback({ kind: 'error', message: 'Network error while updating permission.' })
+      notify.error('Network error', 'Could not update Service Editor permission.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
     }
@@ -323,22 +323,24 @@ export default function StaffPage() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
         setStaff(prev)
-        setFeedback({
-          kind: 'error',
-          message: body?.error || `Could not ${action} ${fullName}.`,
-        })
+        const errMsg = body?.error || `Could not ${action} ${fullName}.`
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error(action === 'suspend' ? 'Suspension failed' : 'Reinstatement failed', errMsg)
         return
       }
-      setFeedback({
-        kind: 'success',
-        message:
-          action === 'suspend'
-            ? `${fullName} has been suspended and signed out of all sessions.`
-            : `${fullName} has been reinstated and can sign back in.`,
-      })
+      const msg =
+        action === 'suspend'
+          ? `${fullName} has been suspended and emailed a dedicated staff appeal link.`
+          : `${fullName} has been reinstated and can sign back in.`
+      setFeedback({ kind: 'success', message: msg })
+      notify.success(
+        action === 'suspend' ? 'Staff member suspended' : 'Staff member reinstated',
+        msg,
+      )
     } catch {
       setStaff(prev)
       setFeedback({ kind: 'error', message: 'Network error. Please try again.' })
+      notify.error('Network error', 'Please try again in a moment.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
       setConfirmModal(null)
@@ -360,22 +362,25 @@ export default function StaffPage() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
         setStaff(prev)
-        setFeedback({
-          kind: 'error',
-          message: body?.error || `Could not update role for ${fullName}.`,
-        })
+        const errMsg = body?.error || `Could not update role for ${fullName}.`
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error('Role update failed', errMsg)
         return
       }
-      setFeedback({
-        kind: 'success',
-        message:
-          nextRole === 'admin'
-            ? `${fullName} has been promoted to Admin.`
-            : `${fullName} has been changed to Staff.`,
-      })
+      const msg =
+        nextRole === 'admin'
+          ? `${fullName} has been promoted to Admin and notified by email.`
+          : `${fullName} has been changed to Staff.`
+      setFeedback({ kind: 'success', message: msg })
+      if (nextRole === 'admin') {
+        notify.success('Promoted to Admin', msg)
+      } else {
+        notify.info('Role updated to Staff', msg)
+      }
     } catch {
       setStaff(prev)
       setFeedback({ kind: 'error', message: 'Network error while updating role.' })
+      notify.error('Network error', 'Could not update team role.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
       setConfirmModal(null)
@@ -394,19 +399,18 @@ export default function StaffPage() {
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
         setStaff(prev)
-        setFeedback({
-          kind: 'error',
-          message: body?.error || `Could not remove ${fullName}.`,
-        })
+        const errMsg = body?.error || `Could not remove ${fullName}.`
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error('Could not remove member', errMsg)
         return
       }
-      setFeedback({
-        kind: 'success',
-        message: `${fullName} was removed from the team and moved to regular clients.`,
-      })
+      const msg = `${fullName} was removed from the team and moved to regular clients.`
+      setFeedback({ kind: 'success', message: msg })
+      notify.info('Removed from team', msg)
     } catch {
       setStaff(prev)
       setFeedback({ kind: 'error', message: 'Network error while removing member.' })
+      notify.error('Network error', 'Could not remove team member.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
       setConfirmModal(null)
@@ -422,18 +426,17 @@ export default function StaffPage() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setFeedback({
-          kind: 'error',
-          message: body?.error || `Could not send verification code to ${fullName}.`,
-        })
+        const errMsg = body?.error || `Could not send verification code to ${fullName}.`
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error('Could not send verification', errMsg)
         return
       }
-      setFeedback({
-        kind: 'success',
-        message: body?.message || `Verification code sent to ${member.email ?? fullName}.`,
-      })
+      const msg = body?.message || `Verification code sent to ${member.email ?? fullName}.`
+      setFeedback({ kind: 'success', message: msg })
+      notify.success('Verification sent', msg)
     } catch {
       setFeedback({ kind: 'error', message: 'Network error. Please try again.' })
+      notify.error('Network error', 'Could not send verification code.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
     }
@@ -451,33 +454,34 @@ export default function StaffPage() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
+        const errMsg = body?.error || 'Could not reset password.'
         setPasswordModal((curr) =>
-          curr
-            ? {
-                ...curr,
-                submitting: false,
-                error: body?.error || 'Could not reset password.',
-              }
-            : null
+          curr ? { ...curr, submitting: false, error: errMsg } : null
         )
+        notify.error('Password reset failed', errMsg)
         return
       }
+      const successMessage =
+        body?.message ||
+        (mode === 'send_link'
+          ? 'Password reset link generated.'
+          : 'Temporary password generated.')
       setPasswordModal((curr) =>
         curr
           ? {
               ...curr,
               submitting: false,
               result: {
-                message:
-                  body?.message ||
-                  (mode === 'send_link'
-                    ? 'Password reset link generated.'
-                    : 'Temporary password generated.'),
+                message: successMessage,
                 resetUrl: body?.resetUrl ?? null,
                 tempPassword: body?.tempPassword ?? null,
               },
             }
           : null
+      )
+      notify.success(
+        mode === 'send_link' ? 'Password reset link sent' : 'Temporary password ready',
+        successMessage,
       )
       if (mode === 'set_temp') {
         setStaff((rows) =>
@@ -488,6 +492,7 @@ export default function StaffPage() {
       setPasswordModal((curr) =>
         curr ? { ...curr, submitting: false, error: 'Network error. Please try again.' } : null
       )
+      notify.error('Network error', 'Could not reset password.')
     }
   }
 
@@ -499,10 +504,9 @@ export default function StaffPage() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setFeedback({
-          kind: 'error',
-          message: body?.error || `Could not resend invitation for ${invite.email}.`,
-        })
+        const errMsg = body?.error || `Could not resend invitation for ${invite.email}.`
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error('Could not resend invitation', errMsg)
         return
       }
       setInvitations((rows) =>
@@ -516,14 +520,14 @@ export default function StaffPage() {
             : r
         )
       )
-      setFeedback({
-        kind: 'success',
-        message:
-          body?.message ||
-          `Invitation refreshed and sent to ${invite.email}. Previous link is now invalid.`,
-      })
+      const msg =
+        body?.message ||
+        `Invitation refreshed and sent to ${invite.email}. Previous link is now invalid.`
+      setFeedback({ kind: 'success', message: msg })
+      notify.success('Invitation resent', msg)
     } catch {
       setFeedback({ kind: 'error', message: 'Network error while resending invitation.' })
+      notify.error('Network error', 'Could not resend invitation.')
     } finally {
       setBusyInvite((b) => ({ ...b, [invite.id]: undefined }))
     }
@@ -539,19 +543,18 @@ export default function StaffPage() {
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setFeedback({
-          kind: 'error',
-          message: body?.error || 'Could not revoke this invitation.',
-        })
+        const errMsg = body?.error || 'Could not revoke this invitation.'
+        setFeedback({ kind: 'error', message: errMsg })
+        notify.error('Could not revoke invitation', errMsg)
         return
       }
       setInvitations((rows) => rows.filter((r) => r.id !== invite.id))
-      setFeedback({
-        kind: 'success',
-        message: `Invitation for ${invite.email} revoked. The link no longer works.`,
-      })
+      const msg = `Invitation for ${invite.email} revoked. The link no longer works.`
+      setFeedback({ kind: 'success', message: msg })
+      notify.info('Invitation revoked', msg)
     } catch {
       setFeedback({ kind: 'error', message: 'Network error while revoking invitation.' })
+      notify.error('Network error', 'Could not revoke invitation.')
     } finally {
       setBusyInvite((b) => ({ ...b, [invite.id]: undefined }))
       setConfirmModal(null)

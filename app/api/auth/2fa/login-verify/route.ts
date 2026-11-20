@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { sql } from '@/lib/db'
 import { verifyTOTPCode } from '@/lib/totp'
 import { verify, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken'
@@ -150,15 +150,7 @@ export async function POST(request: Request) {
       })
     }
 
-    // Set session cookie (same cookie as regular signin uses)
-    const cookieStore = await cookies()
-    cookieStore.set('session_id', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
-      path: '/'
-    })
+    // Session cookie is set below on `response` with getAuthCookieOptions()
 
     const needsProfileCompletion = shouldRequireProfileCompletion({
       role: user.role || 'user',

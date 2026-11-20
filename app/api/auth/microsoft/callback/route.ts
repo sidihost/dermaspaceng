@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createSession } from '@/lib/auth'
 import { sendWelcomeEmail } from '@/lib/email'
-import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
@@ -228,14 +227,7 @@ export async function GET(request: NextRequest) {
       request.headers.get('x-forwarded-for') || ''
     )
 
-    const cookieStore = await cookies()
-    cookieStore.set('session_id', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    })
+    // Session cookie is set below on `redirectResponse` with getAuthCookieOptions()
 
     const needsProfile = shouldRequireProfileCompletion({
       role: userRole,

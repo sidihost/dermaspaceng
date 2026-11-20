@@ -99,24 +99,29 @@ interface CachedUserRow {
 
 const NO_STORE = 'private, no-store, max-age=0'
 
-function unauthenticated(error: string, status = 401, clearUid = false) {
+function unauthenticated(
+  error: string,
+  status = 401,
+  clearUid = false,
+  request?: Request,
+) {
   const res = NextResponse.json(
     { error },
     { status, headers: { 'Cache-Control': NO_STORE } },
   )
   if (clearUid) {
-    clearAuthUidCookie(res)
+    clearAuthUidCookie(res, request)
   }
   return res
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('session_id')?.value
 
     if (!sessionId) {
-      return unauthenticated('Not authenticated', 401, true)
+      return unauthenticated('Not authenticated', 401, true, request)
     }
 
     // STAGE 1 — live session check. Tiny single-row PK lookup; can't
@@ -128,7 +133,7 @@ export async function GET() {
       LIMIT 1
     `
     if (sessionRows.length === 0) {
-      return unauthenticated('Session expired', 401, true)
+      return unauthenticated('Session expired', 401, true, request)
     }
     const userId = sessionRows[0].user_id as string
 
@@ -218,7 +223,7 @@ export async function GET() {
     if (!session) {
       // Defensive — session row pointed at a missing user. Treat as
       // expired so the client clears its state.
-      return unauthenticated('Session expired', 401, true)
+      return unauthenticated('Session expired', 401, true, request)
     }
 
     if (session.is_active === false) {
@@ -227,7 +232,7 @@ export async function GET() {
       } catch {
         /* best-effort */
       }
-      return unauthenticated('Account suspended', 401, true)
+      return unauthenticated('Account suspended', 401, true, request)
     }
 
     // Re-shape preferences for the response. We keep the legacy
@@ -412,10 +417,10 @@ export async function GET() {
     // would keep showing the signed-in user after logout (and the previous
     // user after switching accounts) until a hard refresh.
     response.headers.set('Cache-Control', NO_STORE)
-    applyAuthUidCookie(response, session.user_id)
+    applyAuthUidCookie(response, session.user_id, request)
     return response
   } catch (error) {
     console.error('Auth check error:', error)
-    return unauthenticated('Server error', 500)
+    return unauthenticated('Server error', 500, false, request)
   }
 }

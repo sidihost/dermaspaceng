@@ -8,53 +8,23 @@ import {
   clearCachedUser,
   getCookieAuthUid,
 } from '@/lib/auth-cache'
+import { useAuthBootstrap } from '@/components/auth/auth-provider'
+import {
+  shouldRevalidateAuthOnMount,
+  type AuthPreferencesData,
+  type AuthUserData,
+} from '@/lib/auth-bootstrap-helpers'
 
-interface UserData {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string
-  avatarUrl?: string | null
-  gender?: 'male' | 'female' | null
-  username?: string
-  /** Operator role — used by the staff/admin consoles to decide
-   *  what surfaces and gates render. */
-  role?: 'user' | 'staff' | 'admin'
-  /**
-   * Legal-pack acceptance state. Compared against
-   * `CURRENT_LEGAL_VERSION` from `lib/legal.ts` by the dashboard
-   * gate to decide whether to show the acceptance modal. `null`
-   * means the user has never accepted (legacy account before the
-   * flow shipped, or signed up via OAuth without seeing the
-   * wizard) and they should be re-prompted.
-   */
-  legalAcceptedVersion?: string | null
-  legalAcceptedAt?: string | null
-  /** Staff console policy acknowledgement — separate from the
-   *  customer-facing legal pack and only meaningful for operator
-   *  roles. */
-  staffPolicyAcceptedVersion?: string | null
-  staffPolicyAcceptedAt?: string | null
-  /**
-   * First-sign-in welcome flow flags (set by /api/auth/me).
-   * `mustChangePassword` is true while the seeded admin/staff
-   * temp password is still in use; `emailIsPlaceholder` is true
-   * while the row's email is the `pending+...@dermaspaceng.invalid`
-   * sentinel we issue for new admin invites. The AdminWelcomeGate
-   * reads both to decide whether to render its prompt.
-   */
-  mustChangePassword?: boolean
-  emailVerified?: boolean
-  emailIsPlaceholder?: boolean
-  profileComplete?: boolean
-  xUsername?: string | null
-  hasSocialAuth?: boolean
-  needsProfileCompletion?: boolean
+export type UserData = AuthUserData
+
+interface AuthMePayload {
+  user: UserData | null
+  preferences?: AuthPreferencesData | null
 }
 
 interface AuthState {
   user: UserData | null
+  preferences: AuthPreferencesData | null
   isLoading: boolean
   isAuthenticated: boolean
   mutate: () => void
@@ -63,72 +33,43 @@ interface AuthState {
 /**
  * Fetcher for /api/auth/me.
  *
- * - 401 is a perfectly normal "not signed in" state — we resolve to
- *   `{ user: null }` so SWR doesn't treat it as an error and doesn't
- *   retry it on a backoff timer.
- * - We also clear the localStorage cache on a 401 so the next page
- *   load doesn't paint a phantom user that no longer has a session.
+ * - 401 is a normal "not signed in" state — resolve to `{ user: null }` so
+ *   SWR doesn't treat it as an error or retry on a backoff timer.
+ * - Keeps localStorage display cache in sync with the server response.
  */
-const fetcher = async (url: string) => {
+const fetcher = async (url: string): Promise<AuthMePayload> => {
   const res = await fetch(url, { credentials: 'include', cache: 'no-store' })
   if (!res.ok) {
     if (res.status === 401) {
       clearCachedUser()
-      return { user: null }
+      return { user: null, preferences: null }
     }
     throw new Error('Failed to fetch')
   }
-  const data = await res.json()
-  // Side-effect: refresh the localStorage cache so the NEXT page's
-  // first paint already has the latest user payload (avatar change,
-  // first-name edit, etc.) without waiting for another network call.
-  //
-  // We deliberately pass the FULL /api/auth/me user object here.
-  // `writeCachedUser` runs its own whitelist (`pickDisplayFields`
-  // in lib/auth-cache.ts) and strips PII (email, phone, DOB, bio,
-  // social handles) plus auth gate signals (mustChangePassword,
-  // emailVerified, …) before any data lands in localStorage. That
-  // whitelist is the single choke point preventing an XSS payload
-  // from being able to read sensitive session metadata off disk.
+  const data = (await res.json()) as AuthMePayload
   if (data?.user) {
-    writeCachedUser(data.user as Record<string, unknown>)
+    writeCachedUser(data.user as unknown as Record<string, unknown>)
   } else {
     clearCachedUser()
   }
-  return data
+  return {
+    user: data?.user ?? null,
+    preferences: data?.preferences ?? null,
+  }
 }
 
 /**
- * Shared authentication hook with localStorage-backed instant first paint.
+ * Shared authentication hook with server-bootstrapped instant first paint.
  *
- * Performance characteristics
- * ---------------------------
- * 1. **First paint, signed-in** — we synchronously read the cached
- *    user from localStorage and feed it to SWR as `fallbackData`. The
- *    component renders the user's name/avatar immediately; SWR
- *    revalidates against `/api/auth/me` in the background.
- *
- * 2. **First paint, signed-out** — `readCachedUser()` returns null,
- *    SWR fetches `/api/auth/me`, server responds 401, fetcher
- *    resolves to `{ user: null }`. The "isLoading" flag stays true
- *    only until that first network resolves.
- *
- * 3. **Subsequent navigations** — SWR cache + the 30s `Cache-Control:
- *    private, max-age=30` header on the API both kick in, so most
- *    in-tab nav events do zero work.
- *
- * 4. **Profile edits** — code paths that mutate the user (settings
- *    page, avatar picker, etc.) call `mutate()` and dispatch the
- *    `user-updated` window event so EVERY consumer of useAuth in the
- *    tree refreshes at once.
+ * - On SSR & first client frame: consumes `<AuthProvider>` server state directly,
+ *   so signed-in users immediately see their name, avatar, role badge, and
+ *   personalized sections at 0ms with zero loading flash or hydration mismatch.
+ * - For confirmed signed-out guests: skips redundant `/api/auth/me` mount calls.
+ * - On login, logout, profile edits, cross-tab storage updates, or bfcache
+ *   restores: immediately updates and revalidates across every consumer.
  */
 export function useAuth(): AuthState {
-  // Never read localStorage during SSR or React's initial hydration pass.
-  // Doing so while a cached user exists on the client causes SSR HTML
-  // (logged-out) and hydration JSX (logged-in) to diverge and trigger a
-  // hydration error. Deferring until after mount keeps the first client
-  // pass identical to the server render, then immediately hydrates from
-  // the localStorage cache on the very next commit.
+  const bootstrap = useAuthBootstrap()
   const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => {
@@ -138,22 +79,44 @@ export function useAuth(): AuthState {
   const cached = hasMounted ? readCachedUser() : null
   const cookieUid = hasMounted ? getCookieAuthUid() : null
 
-  const { data, isLoading, mutate } = useSWR(
+  const fallbackPayload: AuthMePayload | undefined = bootstrap.resolved
+    ? { user: bootstrap.user, preferences: bootstrap.preferences }
+    : cached
+      ? { user: cached as unknown as UserData, preferences: null }
+      : undefined
+
+  const initialUidMismatch = Boolean(
+    hasMounted &&
+      bootstrap.resolved &&
+      cookieUid &&
+      bootstrap.user?.id &&
+      bootstrap.user.id !== cookieUid,
+  )
+
+  const revalidateOnMount = shouldRevalidateAuthOnMount({
+    initialResolved: bootstrap.resolved,
+    hasInitialUser: Boolean(bootstrap.user),
+    hasSessionCookie: bootstrap.hasSessionCookie,
+    hasCookieUid: Boolean(cookieUid),
+    cookieUidMismatch: initialUidMismatch,
+  })
+
+  const { data, isLoading, mutate } = useSWR<AuthMePayload>(
     '/api/auth/me',
     fetcher,
     {
-      fallbackData: cached ? { user: cached } : undefined,
+      fallbackData: fallbackPayload,
+      revalidateOnMount,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      // 2s dedupe prevents simultaneous mounts (Header, MobileNav, banners)
-      // on the same page from firing duplicate requests while never locking
-      // a newly-logged-in tab onto a stale `{ user: null }` response.
       dedupingInterval: 2000,
       errorRetryCount: 1,
-    }
+    },
   )
 
   const swrUser: UserData | null = data?.user ?? null
+  const swrPreferences: AuthPreferencesData | null = data?.preferences ?? null
+
   const hasUidMismatch = Boolean(
     hasMounted && cookieUid && swrUser?.id && swrUser.id !== cookieUid,
   )
@@ -166,7 +129,9 @@ export function useAuth(): AuthState {
     if (hasUidMismatch || hasNewSessionMissingFromSwr) {
       const freshCached = readCachedUser()
       void mutate(
-        freshCached ? { user: freshCached } : undefined,
+        freshCached
+          ? { user: freshCached as unknown as UserData, preferences: null }
+          : undefined,
         { revalidate: true },
       )
     }
@@ -177,7 +142,7 @@ export function useAuth(): AuthState {
       const freshCached = readCachedUser()
       if (freshCached) {
         void mutate(
-          (prev: { user?: UserData | null } | undefined) => ({
+          (prev) => ({
             ...(prev ?? {}),
             user:
               prev?.user && prev.user.id === freshCached.id
@@ -191,7 +156,7 @@ export function useAuth(): AuthState {
       }
     }
     const onLogout = () => {
-      void mutate({ user: null }, { revalidate: false })
+      void mutate({ user: null, preferences: null }, { revalidate: false })
     }
     const onStorage = (e: StorageEvent) => {
       if (e.key !== null && !e.key.startsWith('dermaspace.auth.user')) return
@@ -220,11 +185,16 @@ export function useAuth(): AuthState {
     user = cached as unknown as UserData | null
   }
 
+  const resolvedWithoutLoading =
+    bootstrap.resolved && !hasUidMismatch && !hasNewSessionMissingFromSwr
+
   return {
     user,
-    isLoading:
-      (isLoading && !data && !cached) ||
-      ((hasUidMismatch || hasNewSessionMissingFromSwr) && !user),
+    preferences: swrPreferences,
+    isLoading: resolvedWithoutLoading
+      ? false
+      : (isLoading && !data && !cached) ||
+        ((hasUidMismatch || hasNewSessionMissingFromSwr) && !user),
     isAuthenticated: !!user,
     mutate,
   }

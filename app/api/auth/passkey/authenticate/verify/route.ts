@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { verifyPasskeyAuth } from '@/lib/passkey'
 import { sql } from '@/lib/db'
 import { createSession } from '@/lib/auth'
@@ -101,16 +101,6 @@ export async function POST(request: Request) {
 
     // Create session using the same pattern as regular signin
     const sessionId = await createSession(user.id, userAgent, ipAddress)
-
-    // Set session cookie (same as regular signin)
-    const cookieStore = await cookies()
-    cookieStore.set('session_id', sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
-      path: '/'
-    })
 
     const onboardingRows = await sql`
       SELECT

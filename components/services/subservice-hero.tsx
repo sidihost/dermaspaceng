@@ -23,7 +23,6 @@
 //   spotlight) and never colored, so the surface stays brand-pure.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react'
 import {
   Heart,
   Flower2,
@@ -32,17 +31,8 @@ import {
   Moon,
   Droplet,
 } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import { ServiceBackBar } from './service-back-bar'
-
-interface User {
-  firstName: string
-  lastName: string
-}
-
-interface Preferences {
-  preferredServices?: string[]
-  skinType?: string
-}
 
 interface SubserviceHeroProps {
   title: string
@@ -60,33 +50,7 @@ export default function SubserviceHero({
   category,
   preferenceKeys = [],
 }: SubserviceHeroProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [preferences, setPreferences] = useState<Preferences | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setUser(data.user)
-            const prefRes = await fetch('/api/user/preferences')
-            if (prefRes.ok) {
-              const prefData = await prefRes.json()
-              setPreferences(prefData.preferences)
-            }
-          }
-        }
-      } catch {
-        // Not logged in — fall through to the guest hero.
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
+  const { user, preferences, isLoading } = useAuth()
 
   const isFavoriteCategory =
     preferences?.preferredServices?.some((pref) =>

@@ -11,6 +11,7 @@ import {
   parseStoredTimestamp,
   shouldShowNewsletterPopup,
 } from '@/lib/newsletter-popup'
+import { useAuth } from '@/hooks/use-auth'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
 
 const DWELL_MS = 10_000
@@ -42,6 +43,11 @@ function writeStorage(key: string, value: string, storage: 'local' | 'session') 
 export function NewsletterPopup() {
   const pathname = usePathname()
   const newsletterEnabled = useFeatureFlag('newsletter')
+  const { user: authUser } = useAuth()
+  const authRoleRef = useRef<string | null>(authUser?.role ?? null)
+  const authEmailRef = useRef<string | null>(authUser?.email ?? null)
+  authRoleRef.current = authUser?.role ?? null
+  authEmailRef.current = authUser?.email ?? null
 
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
@@ -121,20 +127,10 @@ export function NewsletterPopup() {
 
       if (!forceCheck) return
 
-      // Check auth & subscription status just before revealing so
-      // admins/staff and customers already on the list are never prompted.
-      let role: string | null = null
-      let userEmail: string | null = null
-      try {
-        const meRes = await fetch('/api/auth/me', { credentials: 'include' })
-        if (meRes.ok) {
-          const meJson = await meRes.json()
-          role = meJson?.user?.role ?? null
-          userEmail = meJson?.user?.email ?? null
-        }
-      } catch {
-        // Guest visitor: proceed.
-      }
+      // Read server-bootstrapped auth state so admins/staff and
+      // already-subscribed customers are never prompted (zero extra /api/auth/me calls).
+      const role = authRoleRef.current
+      const userEmail = authEmailRef.current
       if (cancelled) return
 
       if (role === 'admin' || role === 'staff') return

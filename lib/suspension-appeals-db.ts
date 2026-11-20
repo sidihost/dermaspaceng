@@ -78,10 +78,10 @@ export async function dispatchSuspensionNotification(args: {
         role,
         reason: args.reason ?? null,
       })
-      appealUrl = buildAppealUrl(token)
+      appealUrl = buildAppealUrl(token, role)
     } catch (tokenErr) {
       console.error('[suspension-appeals] appeal token signing failed, using contact fallback:', tokenErr)
-      appealUrl = buildEmailUrl('/contact')
+      appealUrl = buildEmailUrl(role === 'staff' || role === 'admin' ? '/appeal/staff' : '/appeal')
     }
 
     return await sendAccountSuspendedEmail({

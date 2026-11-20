@@ -3,8 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { AlertCircle, ArrowLeft, Check, Copy, Loader2, Mail, Shield, UserCog } from 'lucide-react'
+import { useNotify } from '@/components/shared/notify'
 
 export default function InviteStaffPage() {
+  const notify = useNotify()
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'staff' | 'admin'>('staff')
   const [inviting, setInviting] = useState(false)
@@ -27,11 +29,20 @@ export default function InviteStaffPage() {
       if (res.ok) {
         setInviteUrl(data.inviteUrl)
         setEmailSent(Boolean(data.emailSent))
+        notify.success(
+          data.emailSent ? 'Staff invitation sent' : 'Invitation link created',
+          data.emailSent
+            ? `Sent ${role} onboarding link to ${email}.`
+            : 'Copy the onboarding link below and share it directly.',
+        )
       } else {
-        setError(data.error || 'Failed to create invitation')
+        const msg = data.error || 'Failed to create invitation'
+        setError(msg)
+        notify.error('Could not send invitation', msg)
       }
     } catch {
       setError('Something went wrong. Please try again.')
+      notify.error('Network error', 'Could not create invitation. Please try again.')
     } finally {
       setInviting(false)
     }
@@ -41,9 +52,11 @@ export default function InviteStaffPage() {
     try {
       await navigator.clipboard.writeText(inviteUrl)
       setCopied(true)
+      notify.success('Invite link copied', 'Share this link to onboard the new team member.')
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
       setError('Could not copy link automatically. Select and copy it manually.')
+      notify.error('Could not copy link', 'Select and copy the link manually.')
     }
   }
 

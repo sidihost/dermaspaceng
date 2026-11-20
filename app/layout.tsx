@@ -21,6 +21,8 @@ import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prom
 import { PageViewTracker } from '@/components/shared/page-view-tracker'
 import { RoleBadge } from '@/components/shared/role-badge'
 import { CookieBanner } from '@/components/shared/cookie-banner'
+import { AuthProvider } from '@/components/auth/auth-provider'
+import { getServerInitialAuth } from '@/lib/server-auth-bootstrap'
 import { Suspense } from 'react'
 import './globals.css'
 
@@ -142,11 +144,13 @@ export const metadata: Metadata = {
   category: 'Spa & Wellness',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const initialAuth = await getServerInitialAuth()
+
   return (
     <html lang="en" className={`${lexendDeca.variable} ${poppins.variable} ${playfair.variable}`}>
       <head>
@@ -508,7 +512,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript>
         {/* End Google Tag Manager (noscript) */}
-        <GeoProvider>
+        <AuthProvider initialAuth={initialAuth}>
+          <GeoProvider>
           {/* NotifyProvider wraps everything so any component in the
               tree (pages, modals, floating widgets) can call
               useNotify() to fire a branded success/error toast. Kept
@@ -594,6 +599,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             </Suspense>
           </NotifyProvider>
         </GeoProvider>
+        </AuthProvider>
         <Analytics />
         <SpeedInsights />
         {/* Note: GTM (`gtm-bootstrap`) and Umami (`umami-analytics`)

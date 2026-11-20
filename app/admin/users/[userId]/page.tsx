@@ -308,25 +308,79 @@ export default function AdminUserDetailPage() {
     fetchUser()
   }, [fetchUser])
 
-  const handleAction = async (action: string, value: unknown) => {
+  const [suspendPrompt, setSuspendPrompt] = useState(false)
+  const [suspendReason, setSuspendReason] = useState('')
+  const [suspendError, setSuspendError] = useState('')
+
+  const handleAction = async (action: string, value: unknown, reason?: string) => {
     setActing(true)
+    const targetName = data?.user
+      ? `${data.user.first_name} ${data.user.last_name}`.trim() || data.user.email || 'Account'
+      : 'Account'
+    const isTeamAccount = data?.user?.role === 'staff' || data?.user?.role === 'admin'
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action, value }),
+        body: JSON.stringify({
+          userId,
+          action,
+          value,
+          ...(action === 'toggle_active' && value === false && reason?.trim()
+            ? { reason: reason.trim() }
+            : {}),
+        }),
       })
+      const body = await res.json().catch(() => ({}))
       if (res.ok) {
+        if (action === 'toggle_active' && value === false) {
+          setSuspendPrompt(false)
+          setSuspendReason('')
+          setSuspendError('')
+        }
         await fetchUser()
         if (action === 'restore_user') {
           notify.success('Client restored', 'They can sign in again and are back in the clients list.')
+        } else if (action === 'change_role' && value === 'staff') {
+          notify.success(
+            'Promoted to Staff',
+            `${targetName} now has Staff workspace access and was notified by email.`,
+          )
+        } else if (action === 'change_role' && value === 'admin') {
+          notify.success(
+            'Promoted to Admin',
+            `${targetName} now has full Admin access and was notified by email.`,
+          )
+        } else if (action === 'change_role' && value === 'user') {
+          notify.info(
+            'Staff access revoked',
+            `${targetName} has been returned to a regular client account.`,
+          )
+        } else if (action === 'toggle_active' && value === false) {
+          notify.success(
+            isTeamAccount ? 'Staff account suspended' : 'Account suspended',
+            isTeamAccount
+              ? `${targetName} was signed out and emailed a dedicated staff appeal link.`
+              : `${targetName} was signed out and emailed an account appeal link.`,
+          )
+        } else if (action === 'toggle_active' && value === true) {
+          notify.success(
+            'Account reactivated',
+            `${targetName} can sign back in and was notified by email.`,
+          )
         }
       } else {
-        const body = await res.json().catch(() => ({}))
-        if (action === 'restore_user') {
-          notify.error('Could not restore client', body?.error || 'Please try again.')
+        const errMsg = body?.error || 'Please try again.'
+        if (action === 'toggle_active' && value === false) {
+          setSuspendError(errMsg)
         }
+        notify.error('Action failed', errMsg)
       }
+    } catch {
+      if (action === 'toggle_active' && value === false) {
+        setSuspendError('Network error. Please try again.')
+      }
+      notify.error('Network error', 'Could not reach the server. Please try again.')
     } finally {
       setActing(false)
     }
@@ -424,6 +478,10 @@ export default function AdminUserDetailPage() {
       }
       setEditOpen(false)
       await fetchUser()
+      notify.success(
+        'Profile updated',
+        `Saved account details for ${editForm.first_name} ${editForm.last_name}.`,
+      )
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Could not save changes.')
     } finally {
@@ -481,8 +539,10 @@ export default function AdminUserDetailPage() {
       }
       if (body.mode === 'set_temp' && body.tempPassword) {
         setResetResult({ mode: 'set_temp', tempPassword: body.tempPassword })
+        notify.success('Temporary password ready', 'Share it with the client so they can sign in.')
       } else if (body.resetUrl) {
         setResetResult({ mode: 'send_link', resetUrl: body.resetUrl })
+        notify.success('Password reset link sent', 'A fresh reset link was generated and emailed.')
       }
     } catch (err) {
       setResetPwdError(
@@ -548,6 +608,15 @@ export default function AdminUserDetailPage() {
       })
       if (res.ok) {
         await fetchUser()
+        const labels: Record<'remove_totp' | 'remove_passkeys' | 'remove_all', string> = {
+          remove_totp: 'Authenticator 2FA removed',
+          remove_passkeys: 'Passkeys removed',
+          remove_all: 'All 2FA methods reset',
+        }
+        notify.success(labels[action], 'The user can now sign in and reconfigure security.')
+      } else {
+        const body = await res.json().catch(() => ({}))
+        notify.error('Security reset failed', body?.error || 'Could not update security settings.')
       }
     } finally {
       setActing(false)
@@ -910,7 +979,11 @@ export default function AdminUserDetailPage() {
             {user.is_active !== false ? (
               <button
                 disabled={acting}
-                onClick={() => handleAction('toggle_active', false)}
+                onClick={() => {
+                  setSuspendError('')
+                  setSuspendReason('')
+                  setSuspendPrompt(true)
+                }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <ShieldOff className="w-4 h-4" />
@@ -1106,6 +1179,74 @@ export default function AdminUserDetailPage() {
           onConfirm={handleSaveProfile}
           onCancel={() => setEditOpen(false)}
         />
+      )}
+
+      {suspendPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20">
+                <ShieldOff className="h-5 w-5 text-[#7B2D8E]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-gray-900">
+                  Suspend {user.first_name} {user.last_name}?
+                </h3>
+                <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+                  {user.role === 'staff' || user.role === 'admin'
+                    ? 'They will be signed out of all active sessions immediately and emailed a dedicated Staff Appeal link.'
+                    : 'They will be signed out immediately and emailed a Client Account Appeal link. Bookings and wallet history remain preserved.'}
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.1em] text-gray-500">
+              Reason (optional, included in suspension email)
+            </label>
+            <textarea
+              value={suspendReason}
+              onChange={(e) => setSuspendReason(e.target.value)}
+              rows={3}
+              maxLength={300}
+              placeholder="e.g. Policy review, unusual account activity..."
+              className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
+            />
+
+            {suspendError && (
+              <p className="mt-3 text-sm text-[#5A1D6A]" role="alert">
+                {suspendError}
+              </p>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => {
+                  setSuspendPrompt(false)
+                  setSuspendReason('')
+                  setSuspendError('')
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => void handleAction('toggle_active', false, suspendReason)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50"
+              >
+                {acting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ShieldOff className="w-4 h-4" />
+                )}
+                Suspend account
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Archive confirmation — recoverable. We spell out exactly what

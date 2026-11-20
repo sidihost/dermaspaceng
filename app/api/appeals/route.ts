@@ -171,6 +171,7 @@ export async function POST(request: NextRequest) {
           email: targetUser.email,
           firstName: targetUser.first_name,
           appealId,
+          role: userRole,
         }).catch((err) => {
           console.error('[api/appeals] failed to send confirmation email:', err)
         })
@@ -295,6 +296,7 @@ export async function POST(request: NextRequest) {
         email: targetUser.email,
         firstName: targetUser.first_name,
         appealId,
+        role: userRole,
       }).catch((err) => {
         console.error('[api/appeals] failed to send confirmation email:', err)
       })

@@ -176,6 +176,7 @@ export default function StaffProfilePage() {
     description: string
     confirmLabel: string
   } | null>(null)
+  const [suspendReason, setSuspendReason] = useState('')
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -197,31 +198,67 @@ export default function StaffProfilePage() {
     fetchProfile()
   }, [fetchProfile])
 
-  const handleAction = async (action: string, value: unknown) => {
+  const handleAction = async (action: string, value: unknown, reason?: string) => {
     setActing(true)
+    const targetName = data
+      ? `${data.user.first_name} ${data.user.last_name}`.trim() || data.user.email || 'Staff member'
+      : 'Staff member'
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action, value }),
+        body: JSON.stringify({
+          userId,
+          action,
+          value,
+          ...(action === 'toggle_active' && value === false && reason?.trim()
+            ? { reason: reason.trim() }
+            : {}),
+        }),
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        notify.error(json.error || 'Failed to update staff account')
+        notify.error('Action failed', json.error || 'Failed to update staff account')
         return
       }
-      notify.success('Staff account updated')
+      if (action === 'toggle_active' && value === false) {
+        notify.success(
+          'Staff member suspended',
+          `${targetName} was signed out and emailed a dedicated staff appeal link.`,
+        )
+      } else if (action === 'toggle_active' && value === true) {
+        notify.success(
+          'Staff member reactivated',
+          `${targetName} can sign back in and was notified by email.`,
+        )
+      } else if (action === 'change_role' && value === 'admin') {
+        notify.success(
+          'Promoted to Admin',
+          `${targetName} now has Admin access and was notified by email.`,
+        )
+      } else if (action === 'change_role' && value === 'staff') {
+        notify.info(
+          'Role changed to Staff',
+          `${targetName}'s admin privileges were removed while keeping staff tools.`,
+        )
+      } else {
+        notify.success('Staff account updated')
+      }
       await fetchProfile()
     } catch {
-      notify.error('Could not reach server')
+      notify.error('Network error', 'Could not reach server')
     } finally {
       setActing(false)
       setConfirmAction(null)
+      setSuspendReason('')
     }
   }
 
   const handleToggleServicePermission = async (next: boolean) => {
     setActing(true)
+    const targetName = data
+      ? `${data.user.first_name} ${data.user.last_name}`.trim() || data.user.email || 'Staff member'
+      : 'Staff member'
     try {
       const res = await fetch(`/api/admin/staff/${userId}/permissions`, {
         method: 'PATCH',
@@ -230,13 +267,17 @@ export default function StaffProfilePage() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        notify.error(json.error || 'Failed to update service permission')
+        notify.error('Permission update failed', json.error || 'Failed to update service permission')
         return
       }
-      notify.success(next ? 'Service Editor access granted' : 'Service Editor access revoked')
+      if (next) {
+        notify.success('Service Editor enabled', `${targetName} can now manage the service catalog.`)
+      } else {
+        notify.info('Service Editor disabled', `Service catalog editing revoked for ${targetName}.`)
+      }
       await fetchProfile()
     } catch {
-      notify.error('Could not reach server')
+      notify.error('Network error', 'Could not reach server')
     } finally {
       setActing(false)
     }
@@ -707,18 +748,48 @@ export default function StaffProfilePage() {
       </div>
 
       {/* In-page confirmation modal (replaces browser confirm()) */}
-      <Dialog open={!!confirmAction} onOpenChange={(o) => !o && !acting && setConfirmAction(null)}>
+      <Dialog
+        open={!!confirmAction}
+        onOpenChange={(o) => {
+          if (!o && !acting) {
+            setConfirmAction(null)
+            setSuspendReason('')
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md border border-gray-200 bg-white shadow-none rounded-2xl">
           <DialogHeader>
             <DialogTitle>{confirmAction?.title}</DialogTitle>
             <DialogDescription>{confirmAction?.description}</DialogDescription>
           </DialogHeader>
+          {confirmAction?.action === 'toggle_active' && confirmAction.value === false && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="staff-suspend-reason"
+                className="block text-xs font-medium text-gray-700"
+              >
+                Administrative note <span className="text-gray-400 font-normal">(optional, shown in staff suspension email)</span>
+              </label>
+              <textarea
+                id="staff-suspend-reason"
+                rows={3}
+                maxLength={300}
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                placeholder="Share a brief reason so the staff member knows why access was paused..."
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E] resize-none"
+              />
+            </div>
+          )}
           <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"
               disabled={acting}
-              onClick={() => setConfirmAction(null)}
+              onClick={() => {
+                setConfirmAction(null)
+                setSuspendReason('')
+              }}
             >
               Cancel
             </Button>
@@ -728,7 +799,7 @@ export default function StaffProfilePage() {
               className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
               onClick={() => {
                 if (confirmAction) {
-                  void handleAction(confirmAction.action, confirmAction.value)
+                  void handleAction(confirmAction.action, confirmAction.value, suspendReason)
                 }
               }}
             >

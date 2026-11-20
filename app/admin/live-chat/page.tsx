@@ -40,6 +40,7 @@ import {
   MapPin,
   UserCircle,
   Phone,
+  Trash2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
@@ -286,6 +287,8 @@ function TranscriptDrawer({
   const [sending, setSending] = useState(false)
   const [closing, setClosing] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -316,6 +319,32 @@ function TranscriptDrawer({
       setSendError(err instanceof Error ? err.message : 'Failed to end session.')
     } finally {
       setClosing(false)
+    }
+  }
+
+  const deleteSession = async () => {
+    if (deleting) return
+    setDeleting(true)
+    setConfirmDelete(false)
+    setSendError(null)
+    try {
+      const res = await fetch(sessionUrl, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not delete session.')
+      }
+      await Promise.all([
+        swrMutate('/api/admin/live-chat/sessions?status=open'),
+        swrMutate((key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/')),
+      ])
+      onClose()
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to delete session.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -406,7 +435,7 @@ function TranscriptDrawer({
             ) : null}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {liveStatus && (
+            {liveStatus && !confirmDelete && (
               confirmEnd ? (
                 <>
                   <button
@@ -433,6 +462,38 @@ function TranscriptDrawer({
                   className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:text-[#3E104B] hover:border-[#3E104B]/30 hover:bg-[#FAF6FB] transition-colors"
                 >
                   End chat
+                </button>
+              )
+            )}
+            {data?.session && !confirmEnd && (
+              confirmDelete ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={deleteSession}
+                    disabled={deleting}
+                    className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+                  >
+                    {deleting ? 'Deleting…' : 'Delete'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(false)}
+                    disabled={deleting}
+                    className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="p-2 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  aria-label="Delete chat session"
+                  title="Delete chat session"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               )
             )}

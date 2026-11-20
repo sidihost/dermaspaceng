@@ -10,44 +10,19 @@
  */
 
 import * as React from 'react'
-import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/hooks/use-auth'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
 import { shouldEnablePushPrompt } from '@/lib/push-prompt-helpers'
 import { syncBrowserPushSubscription } from './permissions-panel'
 import { PushSubscribePrompt } from './push-subscribe-prompt'
 
-const fetcher = async (u: string) => {
-  const r = await fetch(u, { credentials: 'include', cache: 'no-store' })
-  if (!r.ok) return null
-  return r.json()
-}
-
 export function PushSubscribePromptGate() {
   const pathname = usePathname() ?? ''
-  const { data, mutate } = useSWR<{ user?: { id: string; role?: string } | null } | null>(
-    '/api/auth/me',
-    fetcher,
-    { revalidateOnFocus: false },
-  )
+  const { user, isAuthenticated } = useAuth()
   const pushEnabled = useFeatureFlag('push_notifs')
-  const isSignedIn = Boolean(data?.user?.id)
-  const role = data?.user?.role
-
-  React.useEffect(() => {
-    const onLogout = () => {
-      void mutate(null, { revalidate: false })
-    }
-    const onUserUpdated = () => {
-      void mutate()
-    }
-    window.addEventListener('auth-logout', onLogout)
-    window.addEventListener('user-updated', onUserUpdated)
-    return () => {
-      window.removeEventListener('auth-logout', onLogout)
-      window.removeEventListener('user-updated', onUserUpdated)
-    }
-  }, [mutate])
+  const isSignedIn = isAuthenticated && Boolean(user?.id)
+  const role = user?.role
 
   React.useEffect(() => {
     if (!isSignedIn || !pushEnabled) return

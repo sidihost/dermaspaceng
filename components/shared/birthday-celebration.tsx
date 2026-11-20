@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ArrowRight, Cake, Clock, Snowflake, X } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 import { getLocalCalendarDate } from '@/lib/birthday'
 import {
@@ -54,6 +55,7 @@ const BANNER_TTL_MS = 12000
 
 export default function BirthdayCelebration() {
   const pathname = usePathname()
+  const { user: authUser, isAuthenticated } = useAuth()
   const isStoryRoute = isCelebrationStoryRoute(pathname)
   const [banner, setBanner] = useState<CelebrationBannerCopy | null>(null)
   const [visible, setVisible] = useState(false)
@@ -64,7 +66,8 @@ export default function BirthdayCelebration() {
   const lastTickRef = useRef(0)
 
   const checkAndTrigger = useCallback(async () => {
-    if (isStoryRoute) return
+    if (isStoryRoute || !isAuthenticated || !authUser?.id) return
+    if (authUser.needsProfileCompletion) return
     try {
       const [meRes, festiveRes] = await Promise.all([
         fetch('/api/auth/me', {
@@ -186,10 +189,10 @@ export default function BirthdayCelebration() {
     } catch {
       /* Auth or network failure must never disturb page rendering */
     }
-  }, [isStoryRoute])
+  }, [isStoryRoute, isAuthenticated, authUser?.id, authUser?.needsProfileCompletion])
 
   useEffect(() => {
-    if (isStoryRoute) {
+    if (isStoryRoute || !isAuthenticated) {
       setVisible(false)
       return
     }
@@ -202,7 +205,7 @@ export default function BirthdayCelebration() {
     return () => {
       window.removeEventListener('user-updated', onUserUpdated)
     }
-  }, [checkAndTrigger, isStoryRoute])
+  }, [checkAndTrigger, isStoryRoute, isAuthenticated])
 
   useEffect(() => {
     if (!visible || hoverPaused) return

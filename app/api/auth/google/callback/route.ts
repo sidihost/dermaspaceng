@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createSession } from '@/lib/auth'
 import { sendWelcomeEmail } from '@/lib/email'
-import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
 import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
@@ -144,16 +143,6 @@ export async function GET(request: NextRequest) {
     
     // Create session
     const sessionToken = await createSession(userId, request.headers.get('user-agent') || '', request.headers.get('x-forwarded-for') || '')
-    
-    // Set session cookie
-    const cookieStore = await cookies()
-    cookieStore.set('session_id', sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    })
     
     // Redirect based on profile completion
     const needsProfile = shouldRequireProfileCompletion({

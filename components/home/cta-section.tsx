@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Phone } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/hooks/use-auth'
 
 // WhatsApp Brand Icon SVG
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -13,37 +13,11 @@ function WhatsAppIcon({ className }: { className?: string }) {
   )
 }
 
-interface UserData {
-  firstName: string
-  lastName: string
-}
-
 export default function CTASection() {
-  const [user, setUser] = useState<UserData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { user, isLoading } = useAuth()
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setUser(data.user)
-          }
-        }
-      } catch {
-        // Not logged in
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    checkAuth()
-  }, [])
-
-  // Don't render the CTA for logged-in users
   if (isLoading) {
-    return null // Or a minimal skeleton
+    return null
   }
 
   // Show a different CTA for logged-in users
