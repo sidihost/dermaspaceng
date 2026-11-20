@@ -1,5 +1,12 @@
 import { sql } from '@/lib/db'
 import { invalidateAdminStats } from '@/lib/stats-cache'
+import {
+  generateLiveChatSupportId,
+  normalizeSupportIdQuery,
+  pickFrontDeskSlugForStaff,
+  resolveStaffAvatarUrl,
+  resolveSupportId,
+} from '@/lib/support-and-chat'
 
 // ---------------------------------------------------------------------------
 // Live chat helpers
@@ -14,6 +21,7 @@ export type SenderRole = 'user' | 'staff' | 'system'
 
 export interface LiveChatSession {
   id: string
+  support_code: string | null
   // Nullable: guest (not signed in) sessions identify themselves via the
   // pre-chat form fields below + an httpOnly cookie holding this row's id.
   user_id: string | null
@@ -43,6 +51,8 @@ export interface LiveChatMessage {
   session_id: string
   sender_role: SenderRole
   sender_id: string | null
+  sender_name?: string | null
+  sender_avatar_url?: string | null
   body: string
   read_at: string | null
   created_at: string
@@ -54,20 +64,65 @@ export const FRONT_DESK_AVATAR_POOL = [
   'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11',
 ] as const
 
-export function avatarUrlForSlug(slug: string | null | undefined): string {
-  const s = slug && FRONT_DESK_AVATAR_POOL.includes(slug as (typeof FRONT_DESK_AVATAR_POOL)[number])
-    ? slug
-    : 'f1'
-  return `/avatars/${s}.jpg`
+export { resolveStaffAvatarUrl, resolveSupportId }
+
+export function avatarUrlForSlug(
+  slug: string | null | undefined,
+  staffId?: string | null,
+): string {
+  return resolveStaffAvatarUrl({ avatarSlug: slug, staffId })
 }
 
 // Deterministic avatar pick for a given staff user id. Hashes the id so
 // every staff member gets a stable, distinct avatar without us having
 // to seed the staff_profiles table eagerly.
 export function pickDefaultAvatarSlug(userId: string): string {
-  let acc = 0
-  for (let i = 0; i < userId.length; i++) acc = (acc + userId.charCodeAt(i)) % 997
-  return FRONT_DESK_AVATAR_POOL[acc % FRONT_DESK_AVATAR_POOL.length]
+  return pickFrontDeskSlugForStaff(userId)
+}
+
+// Idempotently ensure `support_code` exists on `live_chat_sessions` so
+// every live chat carries a persistent, searchable Support ID (e.g. DS-LC-7K4M9P)
+// without breaking existing databases.
+let ensureSupportCodePromise: Promise<void> | null = null
+
+export function ensureLiveChatSupportCodeColumn(): Promise<void> {
+  if (!ensureSupportCodePromise) {
+    ensureSupportCodePromise = (async () => {
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS support_code TEXT
+      `
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_live_chat_sessions_support_code
+        ON live_chat_sessions (support_code)
+        WHERE support_code IS NOT NULL
+      `
+    })().catch((err) => {
+      ensureSupportCodePromise = null
+      console.error('[live-chat] ensure support_code column failed:', err)
+    })
+  }
+  return ensureSupportCodePromise
+}
+
+function withResolvedSupportCode<T extends { id: string; support_code?: string | null }>(
+  row: T,
+): T & { support_code: string } {
+  return {
+    ...row,
+    support_code: resolveSupportId(row.support_code, row.id),
+  }
+}
+
+async function allocateUniqueSupportCode(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateLiveChatSupportId()
+    const existing = await sql`
+      SELECT id FROM live_chat_sessions WHERE support_code = ${candidate} LIMIT 1
+    `
+    if (existing.length === 0) return candidate
+  }
+  return generateLiveChatSupportId()
 }
 
 // Ensure every staff/admin has a row in staff_profiles. Lazy-creates one
@@ -101,7 +156,10 @@ export async function getStaffProfile(userId: string): Promise<StaffProfile | nu
 // Mark the staff member as online. Called from the queue page on mount
 // and again every 30s while the page is focused so the admin's view of
 // "who's manning the desk" stays roughly accurate.
-export async function touchStaffPresence(userId: string, status: 'online' | 'offline' | 'busy' = 'online') {
+export async function touchStaffPresence(
+  userId: string,
+  status: 'online' | 'offline' | 'busy' = 'online',
+) {
   await sql`
     UPDATE staff_profiles
        SET status = ${status},
@@ -119,6 +177,7 @@ export async function touchStaffPresence(userId: string, status: 'online' | 'off
 // most one open session per user — when they ask to connect again
 // we return the existing row.
 export async function getOpenSessionForUser(userId: string): Promise<LiveChatSession | null> {
+  await ensureLiveChatSupportCodeColumn()
   const rows = await sql`
     SELECT * FROM live_chat_sessions
      WHERE user_id = ${userId}
@@ -126,13 +185,27 @@ export async function getOpenSessionForUser(userId: string): Promise<LiveChatSes
      ORDER BY created_at DESC
      LIMIT 1
   `
-  return (rows[0] as LiveChatSession) || null
+  const row = rows[0] as LiveChatSession | undefined
+  if (!row) return null
+  if (!row.support_code) {
+    const code = resolveSupportId(null, row.id)
+    await sql`
+      UPDATE live_chat_sessions
+         SET support_code = ${code}
+       WHERE id = ${row.id} AND support_code IS NULL
+    `.catch(() => {})
+    return { ...row, support_code: code }
+  }
+  return withResolvedSupportCode(row)
 }
 
 // Find a recently closed (last 30 minutes) session that hasn't been rated
 // or skipped yet so the customer overlay prompts for post-chat feedback even
 // if a staff member closed the session from their console.
-export async function getRecentUnratedSessionForUser(userId: string): Promise<LiveChatSession | null> {
+export async function getRecentUnratedSessionForUser(
+  userId: string,
+): Promise<LiveChatSession | null> {
+  await ensureLiveChatSupportCodeColumn()
   const rows = await sql`
     SELECT * FROM live_chat_sessions
      WHERE user_id = ${userId}
@@ -142,12 +215,52 @@ export async function getRecentUnratedSessionForUser(userId: string): Promise<Li
      ORDER BY closed_at DESC
      LIMIT 1
   `
-  return (rows[0] as LiveChatSession) || null
+  const row = rows[0] as LiveChatSession | undefined
+  return row ? withResolvedSupportCode(row) : null
 }
 
-export async function getSessionById(id: string): Promise<LiveChatSession | null> {
-  const rows = await sql`SELECT * FROM live_chat_sessions WHERE id = ${id}`
-  return (rows[0] as LiveChatSession) || null
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export async function getSessionById(idOrCode: string): Promise<LiveChatSession | null> {
+  await ensureLiveChatSupportCodeColumn()
+  const raw = (idOrCode || '').trim()
+  if (!raw) return null
+
+  if (UUID_RE.test(raw)) {
+    const rows = await sql`SELECT * FROM live_chat_sessions WHERE id = ${raw} LIMIT 1`
+    const row = rows[0] as LiveChatSession | undefined
+    return row ? withResolvedSupportCode(row) : null
+  }
+
+  const normalized = normalizeSupportIdQuery(raw)
+  if (!normalized) return null
+
+  const byCode = await sql`
+    SELECT * FROM live_chat_sessions
+     WHERE UPPER(COALESCE(support_code, '')) = ${normalized}
+     ORDER BY created_at DESC
+     LIMIT 1
+  `
+  if (byCode.length > 0) {
+    return withResolvedSupportCode(byCode[0] as LiveChatSession)
+  }
+
+  // Fallback for legacy sessions whose Support ID was derived from UUID prefix.
+  const suffix = normalized.replace(/^DS-LC-/, '')
+  if (suffix.length >= 6) {
+    const byPrefix = await sql`
+      SELECT * FROM live_chat_sessions
+       WHERE UPPER(REPLACE(id::text, '-', '')) LIKE ${`${suffix}%`}
+       ORDER BY created_at DESC
+       LIMIT 1
+    `
+    if (byPrefix.length > 0) {
+      return withResolvedSupportCode(byPrefix[0] as LiveChatSession)
+    }
+  }
+
+  return null
 }
 
 export async function escalateToHuman(
@@ -155,16 +268,23 @@ export async function escalateToHuman(
   initialTopic: string | null,
   aiTranscript: unknown,
 ): Promise<LiveChatSession> {
+  await ensureLiveChatSupportCodeColumn()
   // Reuse an open session if one exists rather than racing two queues.
   const existing = await getOpenSessionForUser(userId)
   if (existing) return existing
 
+  const supportCode = await allocateUniqueSupportCode()
   const rows = await sql`
-    INSERT INTO live_chat_sessions (user_id, initial_topic, ai_transcript)
-    VALUES (${userId}, ${initialTopic}, ${aiTranscript ? JSON.stringify(aiTranscript) : null})
+    INSERT INTO live_chat_sessions (user_id, initial_topic, ai_transcript, support_code)
+    VALUES (
+      ${userId},
+      ${initialTopic},
+      ${aiTranscript ? JSON.stringify(aiTranscript) : null},
+      ${supportCode}
+    )
     RETURNING *
   `
-  const session = rows[0] as LiveChatSession
+  const session = withResolvedSupportCode(rows[0] as LiveChatSession)
 
   await sql`
     INSERT INTO live_chat_messages (session_id, sender_role, body)
@@ -186,17 +306,20 @@ export async function escalateAsGuest(input: {
   phone: string | null
   initialTopic: string | null
 }): Promise<LiveChatSession> {
+  await ensureLiveChatSupportCodeColumn()
+  const supportCode = await allocateUniqueSupportCode()
   const rows = await sql`
     INSERT INTO live_chat_sessions
-      (initial_topic, guest_name, guest_email, guest_phone)
+      (initial_topic, guest_name, guest_email, guest_phone, support_code)
     VALUES
       (${input.initialTopic},
        ${input.name},
        ${input.email.toLowerCase()},
-       ${input.phone})
+       ${input.phone},
+       ${supportCode})
     RETURNING *
   `
-  const session = rows[0] as LiveChatSession
+  const session = withResolvedSupportCode(rows[0] as LiveChatSession)
 
   await sql`
     INSERT INTO live_chat_messages (session_id, sender_role, body)
@@ -227,6 +350,129 @@ export async function acceptSession(sessionId: string, staffId: string): Promise
     await invalidateAdminStats().catch(() => {})
   }
   return rows.length > 0
+}
+
+export interface TakeoverResult {
+  sessionId: string
+  supportCode: string
+  previousStaffId: string | null
+  previousStaffName: string | null
+  alreadyAssigned: boolean
+  staff: {
+    id: string
+    displayName: string
+    avatarUrl: string
+  }
+}
+
+export async function takeoverSession(
+  sessionId: string,
+  newStaffId: string,
+): Promise<TakeoverResult | null> {
+  await ensureLiveChatSupportCodeColumn()
+  const session = await getSessionById(sessionId)
+  if (!session) return null
+
+  const newStaffRows = (await sql`
+    SELECT u.first_name, u.last_name, u.avatar_url, sp.display_name, sp.avatar_slug
+      FROM users u
+      LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+     WHERE u.id = ${newStaffId}
+     LIMIT 1
+  `) as Array<{
+    first_name: string | null
+    last_name: string | null
+    avatar_url: string | null
+    display_name: string | null
+    avatar_slug: string | null
+  }>
+
+  const newStaffRow = newStaffRows[0]
+  const fallbackFullName = `${newStaffRow?.first_name || ''} ${newStaffRow?.last_name || ''}`.trim() || 'Customer Care'
+  await ensureStaffProfile(newStaffId, fallbackFullName)
+
+  const newStaffName = staffDisplayName({
+    display_name: newStaffRow?.display_name,
+    first_name: newStaffRow?.first_name,
+    last_name: newStaffRow?.last_name,
+  })
+  const newStaffAvatarUrl = resolveStaffAvatarUrl({
+    avatarUrl: newStaffRow?.avatar_url,
+    avatarSlug: newStaffRow?.avatar_slug,
+    staffId: newStaffId,
+  })
+
+  const supportCode = resolveSupportId(session.support_code, session.id)
+  const previousStaffId = session.assigned_staff_id
+
+  if (previousStaffId === newStaffId && session.status === 'active') {
+    return {
+      sessionId: session.id,
+      supportCode,
+      previousStaffId,
+      previousStaffName: newStaffName,
+      alreadyAssigned: true,
+      staff: {
+        id: newStaffId,
+        displayName: newStaffName,
+        avatarUrl: newStaffAvatarUrl,
+      },
+    }
+  }
+
+  let previousStaffName: string | null = null
+  if (previousStaffId && previousStaffId !== newStaffId) {
+    const prevRows = (await sql`
+      SELECT u.first_name, u.last_name, sp.display_name
+        FROM users u
+        LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+       WHERE u.id = ${previousStaffId}
+       LIMIT 1
+    `) as Array<{
+      first_name: string | null
+      last_name: string | null
+      display_name: string | null
+    }>
+    if (prevRows[0]) {
+      previousStaffName = staffDisplayName(prevRows[0])
+    }
+  }
+
+  const wasClosed = session.status === 'closed' || session.status === 'abandoned'
+
+  await sql`
+    UPDATE live_chat_sessions
+       SET assigned_staff_id = ${newStaffId},
+           status = 'active',
+           accepted_at = COALESCE(accepted_at, NOW()),
+           closed_at = NULL,
+           closed_by = NULL,
+           last_activity_at = NOW(),
+           support_code = COALESCE(support_code, ${supportCode})
+     WHERE id = ${session.id}
+  `
+
+  const systemText = wasClosed
+    ? `${newStaffName} reopened and joined the chat (${supportCode})`
+    : previousStaffName
+      ? `${newStaffName} joined and took over the chat from ${previousStaffName}`
+      : `${newStaffName} joined the chat`
+
+  await addMessage(session.id, 'system', null, systemText)
+  await invalidateAdminStats().catch(() => {})
+
+  return {
+    sessionId: session.id,
+    supportCode,
+    previousStaffId,
+    previousStaffName,
+    alreadyAssigned: false,
+    staff: {
+      id: newStaffId,
+      displayName: newStaffName,
+      avatarUrl: newStaffAvatarUrl,
+    },
+  }
 }
 
 export async function closeSession(sessionId: string, closedBy: 'user' | 'staff' | 'admin') {
@@ -267,22 +513,111 @@ export async function addMessage(
        WHERE id = ${sessionId}
     `
   }
-  return rows[0] as LiveChatMessage
+
+  const inserted = rows[0] as LiveChatMessage
+
+  if (senderRole === 'staff' && senderId) {
+    const staffRows = (await sql`
+      SELECT u.first_name, u.last_name, u.avatar_url, sp.display_name, sp.avatar_slug
+        FROM users u
+        LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+       WHERE u.id = ${senderId}
+       LIMIT 1
+    `) as Array<{
+      first_name: string | null
+      last_name: string | null
+      avatar_url: string | null
+      display_name: string | null
+      avatar_slug: string | null
+    }>
+    const s = staffRows[0]
+    return {
+      ...inserted,
+      sender_name: staffDisplayName({
+        display_name: s?.display_name,
+        first_name: s?.first_name,
+        last_name: s?.last_name,
+      }),
+      sender_avatar_url: resolveStaffAvatarUrl({
+        avatarUrl: s?.avatar_url,
+        avatarSlug: s?.avatar_slug,
+        staffId: senderId,
+      }),
+    }
+  }
+
+  return inserted
 }
 
-export async function getMessages(sessionId: string, sinceIso?: string): Promise<LiveChatMessage[]> {
-  const rows = sinceIso
-    ? await sql`
-        SELECT * FROM live_chat_messages
-         WHERE session_id = ${sessionId} AND created_at > ${sinceIso}
-         ORDER BY created_at ASC
-      `
-    : await sql`
-        SELECT * FROM live_chat_messages
-         WHERE session_id = ${sessionId}
-         ORDER BY created_at ASC
-      `
-  return rows as LiveChatMessage[]
+export async function getMessages(
+  sessionId: string,
+  sinceIso?: string,
+): Promise<LiveChatMessage[]> {
+  const rows = (
+    sinceIso
+      ? await sql`
+          SELECT m.*,
+                 u.first_name      AS u_first_name,
+                 u.last_name       AS u_last_name,
+                 u.avatar_url      AS u_avatar_url,
+                 sp.display_name   AS sp_display_name,
+                 sp.avatar_slug    AS sp_avatar_slug
+            FROM live_chat_messages m
+            LEFT JOIN users u ON u.id = m.sender_id
+            LEFT JOIN staff_profiles sp ON sp.user_id = m.sender_id AND m.sender_role = 'staff'
+           WHERE m.session_id = ${sessionId} AND m.created_at > ${sinceIso}
+           ORDER BY m.created_at ASC
+        `
+      : await sql`
+          SELECT m.*,
+                 u.first_name      AS u_first_name,
+                 u.last_name       AS u_last_name,
+                 u.avatar_url      AS u_avatar_url,
+                 sp.display_name   AS sp_display_name,
+                 sp.avatar_slug    AS sp_avatar_slug
+            FROM live_chat_messages m
+            LEFT JOIN users u ON u.id = m.sender_id
+            LEFT JOIN staff_profiles sp ON sp.user_id = m.sender_id AND m.sender_role = 'staff'
+           WHERE m.session_id = ${sessionId}
+           ORDER BY m.created_at ASC
+        `
+  ) as Array<
+    LiveChatMessage & {
+      u_first_name: string | null
+      u_last_name: string | null
+      u_avatar_url: string | null
+      sp_display_name: string | null
+      sp_avatar_slug: string | null
+    }
+  >
+
+  return rows.map((r) => {
+    const base: LiveChatMessage = {
+      id: r.id,
+      session_id: r.session_id,
+      sender_role: r.sender_role,
+      sender_id: r.sender_id,
+      body: r.body,
+      read_at: r.read_at,
+      created_at: r.created_at,
+    }
+    if (r.sender_role === 'staff') {
+      base.sender_name = staffDisplayName({
+        display_name: r.sp_display_name,
+        first_name: r.u_first_name,
+        last_name: r.u_last_name,
+      })
+      base.sender_avatar_url = resolveStaffAvatarUrl({
+        avatarUrl: r.u_avatar_url,
+        avatarSlug: r.sp_avatar_slug,
+        staffId: r.sender_id,
+      })
+    } else if (r.sender_role === 'user') {
+      base.sender_name = [r.u_first_name, r.u_last_name].filter(Boolean).join(' ').trim() || null
+      base.sender_avatar_url = r.u_avatar_url || null
+    }
+    return base
+  })
 }
 
 export async function markStaffMessagesRead(sessionId: string) {
@@ -336,6 +671,7 @@ export async function skipSessionRating(sessionId: string) {
 // ---------------------------------------------------------------------------
 
 export interface QueueItem extends LiveChatSession {
+  support_code: string
   user_first_name: string
   user_last_name: string
   user_avatar_url: string | null
@@ -343,13 +679,53 @@ export interface QueueItem extends LiveChatSession {
   user_phone: string | null
   is_guest: boolean
   unread_user_messages: number
+  assigned_staff_name?: string | null
+  assigned_staff_avatar_url?: string | null
 }
 
-export async function getStaffQueue(staffId: string): Promise<{
+type RawQueueRow = QueueItem & {
+  staff_first_name?: string | null
+  staff_last_name?: string | null
+  staff_user_avatar_url?: string | null
+  staff_display_name?: string | null
+  staff_avatar_slug?: string | null
+}
+
+function mapQueueRow(r: RawQueueRow): QueueItem {
+  const resolvedCode = resolveSupportId(r.support_code, r.id)
+  const hasStaff = Boolean(r.assigned_staff_id)
+  return {
+    ...r,
+    support_code: resolvedCode,
+    assigned_staff_name: hasStaff
+      ? staffDisplayName({
+          display_name: r.staff_display_name,
+          first_name: r.staff_first_name,
+          last_name: r.staff_last_name,
+        })
+      : null,
+    assigned_staff_avatar_url: hasStaff
+      ? resolveStaffAvatarUrl({
+          avatarUrl: r.staff_user_avatar_url,
+          avatarSlug: r.staff_avatar_slug,
+          staffId: r.assigned_staff_id,
+        })
+      : null,
+  }
+}
+
+export async function getStaffQueue(
+  staffId: string,
+  searchQuery?: string | null,
+): Promise<{
   waiting: QueueItem[]
   mine: QueueItem[]
+  others: QueueItem[]
+  searchResults: QueueItem[]
 }> {
-  const waiting = await sql`
+  await ensureLiveChatSupportCodeColumn()
+
+  const waiting = (await sql`
     SELECT s.*,
            COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
            COALESCE(u.last_name,
@@ -367,9 +743,9 @@ export async function getStaffQueue(staffId: string): Promise<{
      WHERE s.status = 'waiting'
      ORDER BY s.escalated_at ASC
      LIMIT 50
-  `
+  `) as RawQueueRow[]
 
-  const mine = await sql`
+  const mine = (await sql`
     SELECT s.*,
            COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
            COALESCE(u.last_name,
@@ -379,24 +755,110 @@ export async function getStaffQueue(staffId: string): Promise<{
            COALESCE(u.email, s.guest_email)                                            AS user_email,
            COALESCE(u.phone, s.guest_phone)                                            AS user_phone,
            (s.user_id IS NULL)                                                         AS is_guest,
+           st.first_name                                                               AS staff_first_name,
+           st.last_name                                                                AS staff_last_name,
+           st.avatar_url                                                               AS staff_user_avatar_url,
+           sp.display_name                                                             AS staff_display_name,
+           sp.avatar_slug                                                              AS staff_avatar_slug,
            (SELECT COUNT(*) FROM live_chat_messages m
               WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
              AS unread_user_messages
       FROM live_chat_sessions s
       LEFT JOIN users u ON u.id = s.user_id
+      LEFT JOIN users st ON st.id = s.assigned_staff_id
+      LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
      WHERE s.assigned_staff_id = ${staffId}
        AND s.status = 'active'
      ORDER BY s.last_activity_at DESC
      LIMIT 50
-  `
+  `) as RawQueueRow[]
+
+  const others = (await sql`
+    SELECT s.*,
+           COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
+           COALESCE(u.last_name,
+                    NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
+                    '')                                                                AS user_last_name,
+           u.avatar_url                                                                AS user_avatar_url,
+           COALESCE(u.email, s.guest_email)                                            AS user_email,
+           COALESCE(u.phone, s.guest_phone)                                            AS user_phone,
+           (s.user_id IS NULL)                                                         AS is_guest,
+           st.first_name                                                               AS staff_first_name,
+           st.last_name                                                                AS staff_last_name,
+           st.avatar_url                                                               AS staff_user_avatar_url,
+           sp.display_name                                                             AS staff_display_name,
+           sp.avatar_slug                                                              AS staff_avatar_slug,
+           (SELECT COUNT(*) FROM live_chat_messages m
+              WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+             AS unread_user_messages
+      FROM live_chat_sessions s
+      LEFT JOIN users u ON u.id = s.user_id
+      LEFT JOIN users st ON st.id = s.assigned_staff_id
+      LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+     WHERE s.assigned_staff_id IS NOT NULL
+       AND s.assigned_staff_id <> ${staffId}
+       AND s.status = 'active'
+     ORDER BY s.last_activity_at DESC
+     LIMIT 50
+  `) as RawQueueRow[]
+
+  let searchResults: QueueItem[] = []
+  const trimmedQ = (searchQuery ?? '').trim()
+  if (trimmedQ.length >= 2) {
+    const likePattern = `%${trimmedQ}%`
+    const normalizedCode = normalizeSupportIdQuery(trimmedQ)
+    const strippedSuffix = normalizedCode.replace(/^DS-LC-/, '')
+    const codeLike = `%${normalizedCode}%`
+    const suffixLike = strippedSuffix.length >= 3 ? `${strippedSuffix}%` : '__no_match__'
+
+    const found = (await sql`
+      SELECT s.*,
+             COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
+             COALESCE(u.last_name,
+                      NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
+                      '')                                                                AS user_last_name,
+             u.avatar_url                                                                AS user_avatar_url,
+             COALESCE(u.email, s.guest_email)                                            AS user_email,
+             COALESCE(u.phone, s.guest_phone)                                            AS user_phone,
+             (s.user_id IS NULL)                                                         AS is_guest,
+             st.first_name                                                               AS staff_first_name,
+             st.last_name                                                                AS staff_last_name,
+             st.avatar_url                                                               AS staff_user_avatar_url,
+             sp.display_name                                                             AS staff_display_name,
+             sp.avatar_slug                                                              AS staff_avatar_slug,
+             (SELECT COUNT(*) FROM live_chat_messages m
+                WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+               AS unread_user_messages
+        FROM live_chat_sessions s
+        LEFT JOIN users u ON u.id = s.user_id
+        LEFT JOIN users st ON st.id = s.assigned_staff_id
+        LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+       WHERE UPPER(COALESCE(s.support_code, '')) LIKE ${codeLike}
+          OR UPPER(REPLACE(s.id::text, '-', '')) LIKE ${suffixLike}
+          OR COALESCE(u.first_name, '') ILIKE ${likePattern}
+          OR COALESCE(u.last_name, '') ILIKE ${likePattern}
+          OR COALESCE(u.email, '') ILIKE ${likePattern}
+          OR COALESCE(s.guest_name, '') ILIKE ${likePattern}
+          OR COALESCE(s.guest_email, '') ILIKE ${likePattern}
+          OR COALESCE(s.initial_topic, '') ILIKE ${likePattern}
+       ORDER BY
+         CASE WHEN UPPER(COALESCE(s.support_code, '')) = ${normalizedCode} THEN 0 ELSE 1 END ASC,
+         s.last_activity_at DESC
+       LIMIT 20
+    `) as RawQueueRow[]
+    searchResults = found.map(mapQueueRow)
+  }
 
   return {
-    waiting: waiting as QueueItem[],
-    mine: mine as QueueItem[],
+    waiting: waiting.map(mapQueueRow),
+    mine: mine.map(mapQueueRow),
+    others: others.map(mapQueueRow),
+    searchResults,
   }
 }
 
 export interface AdminOversightItem extends LiveChatSession {
+  support_code: string
   user_first_name: string
   user_last_name: string
   user_email: string
@@ -416,10 +878,27 @@ export interface AdminOversightItem extends LiveChatSession {
   message_count: number
 }
 
+function hydrateAdminOversightRow(
+  row: AdminOversightItem & { staff_user_avatar_url?: string | null },
+): AdminOversightItem {
+  return {
+    ...row,
+    support_code: resolveSupportId(row.support_code, row.id),
+    staff_avatar_url: row.staff_id
+      ? resolveStaffAvatarUrl({
+          avatarUrl: row.staff_user_avatar_url || row.staff_avatar_url,
+          avatarSlug: row.staff_avatar_slug,
+          staffId: row.staff_id,
+        })
+      : null,
+  }
+}
+
 export async function getAllSessions(
   filter: 'all' | 'open' | LiveChatStatus = 'all',
   days?: number,
 ): Promise<AdminOversightItem[]> {
+  await ensureLiveChatSupportCodeColumn()
   const safeDays =
     typeof days === 'number' && Number.isFinite(days) && days > 0
       ? Math.min(Math.floor(days), 365)
@@ -440,8 +919,11 @@ export async function getAllSessions(
                  (s.user_id IS NULL)                                                   AS is_guest,
                  st.first_name                                                         AS staff_first_name,
                  st.last_name                                                          AS staff_last_name,
+                 st.avatar_url                                                         AS staff_user_avatar_url,
                  sp.avatar_slug                                                        AS staff_avatar_slug,
-                 CASE WHEN sp.avatar_slug IS NOT NULL
+                 CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
+                      THEN TRIM(st.avatar_url)
+                      WHEN sp.avatar_slug IS NOT NULL
                       THEN '/avatars/' || sp.avatar_slug || '.jpg'
                       ELSE NULL END                                                    AS staff_avatar_url,
                  s.service_rating                                                      AS rating,
@@ -479,8 +961,11 @@ export async function getAllSessions(
                    (s.user_id IS NULL)                                                   AS is_guest,
                    st.first_name                                                         AS staff_first_name,
                    st.last_name                                                          AS staff_last_name,
+                   st.avatar_url                                                         AS staff_user_avatar_url,
                    sp.avatar_slug                                                        AS staff_avatar_slug,
-                   CASE WHEN sp.avatar_slug IS NOT NULL
+                   CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
+                        THEN TRIM(st.avatar_url)
+                        WHEN sp.avatar_slug IS NOT NULL
                         THEN '/avatars/' || sp.avatar_slug || '.jpg'
                         ELSE NULL END                                                    AS staff_avatar_url,
                    s.service_rating                                                      AS rating,
@@ -515,8 +1000,11 @@ export async function getAllSessions(
                    (s.user_id IS NULL)                                                   AS is_guest,
                    st.first_name                                                         AS staff_first_name,
                    st.last_name                                                          AS staff_last_name,
+                   st.avatar_url                                                         AS staff_user_avatar_url,
                    sp.avatar_slug                                                        AS staff_avatar_slug,
-                   CASE WHEN sp.avatar_slug IS NOT NULL
+                   CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
+                        THEN TRIM(st.avatar_url)
+                        WHEN sp.avatar_slug IS NOT NULL
                         THEN '/avatars/' || sp.avatar_slug || '.jpg'
                         ELSE NULL END                                                    AS staff_avatar_url,
                    s.service_rating                                                      AS rating,
@@ -539,7 +1027,9 @@ export async function getAllSessions(
              ORDER BY s.last_activity_at DESC
              LIMIT 100
           `
-  return rows as AdminOversightItem[]
+  return (rows as Array<AdminOversightItem & { staff_user_avatar_url?: string | null }>).map(
+    hydrateAdminOversightRow,
+  )
 }
 
 export interface StaffPerformanceRow {
@@ -571,15 +1061,17 @@ export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRo
       ? Math.min(Math.floor(days), 365)
       : 30
 
-  const rows = await sql`
+  const rows = (await sql`
     SELECT
       u.id            AS staff_id,
       u.first_name    AS first_name,
       u.last_name     AS last_name,
       sp.avatar_slug  AS avatar_slug,
-      CASE WHEN sp.avatar_slug IS NOT NULL
+      CASE WHEN NULLIF(TRIM(u.avatar_url), '') IS NOT NULL
+           THEN TRIM(u.avatar_url)
+           WHEN sp.avatar_slug IS NOT NULL
            THEN '/avatars/' || sp.avatar_slug || '.jpg'
-           ELSE u.avatar_url END                                                       AS avatar_url,
+           ELSE NULL END                                                               AS avatar_url,
       sp.status       AS status,
       COUNT(s.id)::int                                                                 AS handled,
       COUNT(s.id) FILTER (WHERE s.status = 'active')::int                              AS active_now,
@@ -603,8 +1095,16 @@ export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRo
    WHERE u.role IN ('staff', 'admin')
    GROUP BY u.id, u.avatar_url, sp.avatar_slug, sp.status
    ORDER BY handled DESC, u.first_name ASC
-  `
-  return rows as StaffPerformanceRow[]
+  `) as StaffPerformanceRow[]
+
+  return rows.map((r) => ({
+    ...r,
+    avatar_url: resolveStaffAvatarUrl({
+      avatarUrl: r.avatar_url,
+      avatarSlug: r.avatar_slug,
+      staffId: r.staff_id,
+    }),
+  }))
 }
 
 export interface FullSessionMessage extends LiveChatMessage {
@@ -618,6 +1118,10 @@ export interface FullSessionView {
 }
 
 export async function getFullSessionView(sessionId: string): Promise<FullSessionView | null> {
+  await ensureLiveChatSupportCodeColumn()
+  const resolved = await getSessionById(sessionId)
+  if (!resolved) return null
+
   const sessions = await sql`
     SELECT s.*,
            s.assigned_staff_id                                                   AS staff_id,
@@ -631,8 +1135,11 @@ export async function getFullSessionView(sessionId: string): Promise<FullSession
            (s.user_id IS NULL)                                                   AS is_guest,
            st.first_name                                                         AS staff_first_name,
            st.last_name                                                          AS staff_last_name,
+           st.avatar_url                                                         AS staff_user_avatar_url,
            sp.avatar_slug                                                        AS staff_avatar_slug,
-           CASE WHEN sp.avatar_slug IS NOT NULL
+           CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
+                THEN TRIM(st.avatar_url)
+                WHEN sp.avatar_slug IS NOT NULL
                 THEN '/avatars/' || sp.avatar_slug || '.jpg'
                 ELSE NULL END                                                    AS staff_avatar_url,
            s.service_rating                                                      AS rating,
@@ -650,11 +1157,11 @@ export async function getFullSessionView(sessionId: string): Promise<FullSession
       LEFT JOIN users u ON u.id = s.user_id
       LEFT JOIN users st ON st.id = s.assigned_staff_id
       LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
-     WHERE s.id = ${sessionId}
+     WHERE s.id = ${resolved.id}
   `
   if (sessions.length === 0) return null
 
-  const messages = await sql`
+  const messages = (await sql`
     SELECT m.*,
            CASE
              WHEN m.sender_role = 'user' THEN COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')
@@ -666,18 +1173,44 @@ export async function getFullSessionView(sessionId: string): Promise<FullSession
              WHEN m.sender_role = 'staff' AND NULLIF(TRIM(sp.display_name), '') IS NOT NULL THEN NULL
              WHEN m.sender_role = 'staff' THEN u.last_name
              ELSE NULL
-           END AS sender_last_name
+           END AS sender_last_name,
+           u.avatar_url AS u_avatar_url,
+           sp.avatar_slug AS sp_avatar_slug
       FROM live_chat_messages m
       JOIN live_chat_sessions s ON s.id = m.session_id
       LEFT JOIN users u ON u.id = m.sender_id
       LEFT JOIN staff_profiles sp ON sp.user_id = m.sender_id AND m.sender_role = 'staff'
-     WHERE m.session_id = ${sessionId}
+     WHERE m.session_id = ${resolved.id}
      ORDER BY m.created_at ASC
-  `
+  `) as Array<
+    FullSessionMessage & { u_avatar_url: string | null; sp_avatar_slug: string | null }
+  >
 
   return {
-    session: sessions[0] as AdminOversightItem,
-    messages: messages as FullSessionMessage[],
+    session: hydrateAdminOversightRow(
+      sessions[0] as AdminOversightItem & { staff_user_avatar_url?: string | null },
+    ),
+    messages: messages.map((m) => ({
+      id: m.id,
+      session_id: m.session_id,
+      sender_role: m.sender_role,
+      sender_id: m.sender_id,
+      body: m.body,
+      read_at: m.read_at,
+      created_at: m.created_at,
+      sender_first_name: m.sender_first_name,
+      sender_last_name: m.sender_last_name,
+      sender_name:
+        [m.sender_first_name, m.sender_last_name].filter(Boolean).join(' ').trim() || null,
+      sender_avatar_url:
+        m.sender_role === 'staff'
+          ? resolveStaffAvatarUrl({
+              avatarUrl: m.u_avatar_url,
+              avatarSlug: m.sp_avatar_slug,
+              staffId: m.sender_id,
+            })
+          : m.u_avatar_url || null,
+    })),
   }
 }
 

@@ -1,5 +1,6 @@
 import { sql } from './db'
 import { isPlaceholderEmail } from './auth-onboarding'
+import { buildEmailUrl } from './email-url'
 import {
   buildAppealUrl,
   createAppealToken,
@@ -69,13 +70,19 @@ export async function dispatchSuspensionNotification(args: {
     }
 
     const role = normalizeAppealRole(target.role)
-    const token = createAppealToken({
-      userId: String(target.id),
-      email: target.email,
-      role,
-      reason: args.reason ?? null,
-    })
-    const appealUrl = buildAppealUrl(token)
+    let appealUrl: string
+    try {
+      const token = createAppealToken({
+        userId: String(target.id),
+        email: target.email,
+        role,
+        reason: args.reason ?? null,
+      })
+      appealUrl = buildAppealUrl(token)
+    } catch (tokenErr) {
+      console.error('[suspension-appeals] appeal token signing failed, using contact fallback:', tokenErr)
+      appealUrl = buildEmailUrl('/contact')
+    }
 
     return await sendAccountSuspendedEmail({
       email: target.email,

@@ -149,8 +149,8 @@ export default function SupportTab({ user }: SupportTabProps) {
               <Headphones className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Live Chat</p>
-              <p className="text-xs text-gray-500">Talk to front desk</p>
+              <p className="text-sm font-medium text-gray-900">Talk to an Agent</p>
+              <p className="text-xs text-gray-500">Connects inside chat</p>
             </div>
           </button>
         )}

@@ -12,16 +12,56 @@ import {
   ChevronRight, Activity, Inbox, LayoutGrid,
   TrendingUp, Clock, CheckCircle2, Bell,
   Wallet, Mail, Headphones, Cake, CreditCard,
+  Ticket, CircleDashed, CircleDot, Archive,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
 import { AdminOpsOverview } from '@/components/admin/ops-overview'
 import { OperationsPanel } from '@/components/admin/operations-panel'
+import {
+  computeTicketSummary,
+  formatRelativeTimestamp,
+  getTicketPriorityMeta,
+  getTicketStatusMeta,
+} from '@/lib/support-and-chat'
+
+interface RecentTicketItem {
+  id: string
+  ticketId: string | null
+  subject: string
+  customerName: string
+  customerEmail: string
+  status: string
+  priority: string
+  category: string | null
+  source: 'ticket' | 'complaint'
+  createdAt: string
+  updatedAt: string
+}
 
 interface Stats {
   users: { total: number; recent: number; growth: number }
   consultations: { total: number; pending: number; thisWeek: number }
-  complaints: { total: number; open: number; resolved: number }
+  complaints: {
+    total: number
+    open: number
+    awaiting?: number
+    inProgress?: number
+    resolved: number
+    closed?: number
+  }
+  tickets?: {
+    open: number
+    total?: number
+    breakdown?: {
+      total: number
+      open: number
+      inProgress: number
+      resolved: number
+      closed: number
+    }
+    recent?: RecentTicketItem[]
+  }
   giftCards: { total: number; pending: number; totalValue: number }
   surveys: { total: number; avgRating: number; thisWeek: number }
   staff: { total: number }
@@ -207,15 +247,24 @@ export default function AdminDashboard() {
     },
   ]
 
-  const totalComplaints = (stats?.complaints.open ?? 0) + (stats?.complaints.resolved ?? 0)
-  const resolutionRate = totalComplaints > 0
-    ? Math.round(((stats?.complaints.resolved ?? 0) / totalComplaints) * 100)
-    : 0
-
-  const complaintData = [
-    { name: 'Resolved', value: stats?.complaints.resolved ?? 0, color: '#7B2D8E' },
-    { name: 'Open', value: stats?.complaints.open ?? 0, color: '#F3E8F7' },
-  ]
+  const ticketSummary = computeTicketSummary({
+    open: stats?.complaints.awaiting ?? stats?.complaints.open ?? 0,
+    inProgress: stats?.complaints.inProgress ?? 0,
+    resolved: stats?.complaints.resolved ?? 0,
+    closed: stats?.complaints.closed ?? 0,
+  })
+  const resolutionRate = ticketSummary.resolutionRate
+  const complaintData = ticketSummary.rows.map((row) => ({
+    status: row.status,
+    name: row.label,
+    value: row.count,
+    color: row.chartColor,
+  }))
+  const hasChartBreakdown = complaintData.some((item) => item.value > 0)
+  const pieChartData = hasChartBreakdown
+    ? complaintData
+    : [{ status: 'closed', name: 'No tickets yet', value: 1, color: '#F3E8F7' }]
+  const recentTickets = stats?.tickets?.recent ?? []
 
   const quickActions = [
     { label: 'Invite staff', sub: 'Add team members', href: '/admin/staff', icon: UserCog },
@@ -685,7 +734,7 @@ export default function AdminDashboard() {
                     className={`inline-flex items-center gap-0.5 text-xs font-medium rounded-full px-1.5 py-0.5 ${
                       stat.delta >= 0
                         ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
-                        : 'text-rose-600 bg-rose-50'
+                        : 'text-[#3E104B] bg-[#3E104B]/10'
                     }`}
                   >
                     {stat.delta >= 0 ? (
@@ -784,29 +833,39 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Resolution Rate */}
+        {/* Ticket & Support Status Breakdown */}
         <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="p-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">
-              Complaint resolution
-            </h2>
-            <p className="mt-0.5 text-xs text-gray-500">Current status breakdown</p>
+          <div className="flex items-start justify-between gap-2 p-4 border-b border-gray-100">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">
+                Ticket status breakdown
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {ticketSummary.total} total · {ticketSummary.awaitingReply} active
+              </p>
+            </div>
+            <Link
+              href="/admin/complaints"
+              className="text-xs font-semibold text-[#7B2D8E] hover:underline whitespace-nowrap"
+            >
+              Open inbox
+            </Link>
           </div>
           <div className="p-4">
-            <div className="relative h-[180px] flex items-center justify-center">
+            <div className="relative h-[168px] flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={complaintData}
+                    data={pieChartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={58}
-                    outerRadius={82}
-                    paddingAngle={2}
+                    innerRadius={54}
+                    outerRadius={76}
+                    paddingAngle={hasChartBreakdown ? 2 : 0}
                     dataKey="value"
                     stroke="none"
                   >
-                    {complaintData.map((entry, index) => (
+                    {pieChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -821,27 +880,194 @@ export default function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               {complaintData.map((item) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between text-xs bg-gray-50 rounded-lg px-3 py-2"
+                <Link
+                  key={item.status}
+                  href={`/admin/complaints?status=${item.status}`}
+                  className="flex items-center justify-between text-xs bg-[#FAF6FB]/70 hover:bg-[#FAF6FB] border border-gray-100 hover:border-[#7B2D8E]/25 rounded-lg px-2.5 py-2 transition-colors"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <span
-                      className="w-2.5 h-2.5 rounded-full"
+                      className="w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-gray-700 font-medium">{item.name}</span>
+                    <span className="text-gray-700 font-medium truncate">
+                      {item.name}
+                    </span>
                   </div>
-                  <span className="font-semibold text-gray-900 tabular-nums">
+                  <span className="font-semibold text-gray-900 tabular-nums ml-2">
                     {item.value}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Support Tickets & Live Status — shows every recent ticket
+          alongside its current status pill and clickable status counters
+          so admins can track ticket progress directly from the dashboard. */}
+      <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-b border-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <Ticket className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900 truncate">
+                Support tickets &amp; status
+              </h2>
+              <p className="text-xs text-gray-500">
+                <span className="tabular-nums font-medium text-gray-700">
+                  {ticketSummary.open}
+                </span>{' '}
+                open
+                <span aria-hidden="true"> · </span>
+                <span className="tabular-nums font-medium text-[#7B2D8E]">
+                  {ticketSummary.inProgress}
+                </span>{' '}
+                in progress
+                <span aria-hidden="true"> · </span>
+                <span className="tabular-nums">
+                  {ticketSummary.resolved}
+                </span>{' '}
+                resolved
+                <span aria-hidden="true"> · </span>
+                <span className="tabular-nums">
+                  {ticketSummary.closed}
+                </span>{' '}
+                closed
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/complaints"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:underline whitespace-nowrap"
+          >
+            View all tickets
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* Status quick-filter strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 border-b border-gray-100 bg-[#FAF6FB]/40">
+          {ticketSummary.rows.map((row) => {
+            const StatusIcon =
+              row.status === 'open'
+                ? CircleDashed
+                : row.status === 'in_progress'
+                  ? CircleDot
+                  : row.status === 'resolved'
+                    ? CheckCircle2
+                    : Archive
+            return (
+              <Link
+                key={row.status}
+                href={`/admin/complaints?status=${row.status}`}
+                className="flex items-center justify-between gap-2 px-4 py-2.5 hover:bg-[#FAF6FB] transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${row.dotClass}`}
+                    aria-hidden="true"
+                  />
+                  <span className="text-xs font-medium text-gray-700 truncate">
+                    {row.label}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                    {row.count}
+                  </span>
+                  <StatusIcon className="w-3.5 h-3.5 text-[#7B2D8E]/60" aria-hidden="true" />
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+
+        {recentTickets.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-2">
+              <Ticket className="w-4 h-4" />
+            </div>
+            <p className="text-sm font-medium text-gray-900">
+              No support tickets yet
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Customer tickets and support messages will appear here with their live status.
+            </p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {recentTickets.map((ticket) => {
+              const sMeta = getTicketStatusMeta(ticket.status)
+              const pMeta = getTicketPriorityMeta(ticket.priority)
+              return (
+                <li key={`${ticket.source}-${ticket.id}`}>
+                  <Link
+                    href={`/admin/complaints/${ticket.id}?source=${ticket.source}`}
+                    className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-4 py-3 hover:bg-[#FAF6FB]/70 transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {ticket.ticketId ? (
+                          <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-[10.5px] font-medium text-gray-700 border border-gray-200">
+                            {ticket.ticketId}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600 border border-gray-200">
+                            Contact
+                          </span>
+                        )}
+                        <p className="text-xs sm:text-sm font-semibold text-gray-900 group-hover:text-[#7B2D8E] truncate transition-colors">
+                          {ticket.subject}
+                        </p>
+                      </div>
+                      <p className="text-[11.5px] text-gray-500 mt-0.5 truncate">
+                        {ticket.customerName}
+                        {ticket.customerEmail ? ` · ${ticket.customerEmail}` : ''}
+                        {ticket.category
+                          ? ` · ${ticket.category.replace(/_/g, ' ')}`
+                          : ''}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        {ticket.priority !== 'normal' && (
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10.5px] font-semibold ${pMeta.badgeClass}`}
+                          >
+                            {pMeta.label}
+                          </span>
+                        )}
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${sMeta.badgeClass}`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              sMeta.key === 'resolved' ? 'bg-white' : sMeta.dotClass
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {sMeta.label}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-400 tabular-nums whitespace-nowrap">
+                        {formatRelativeTimestamp(ticket.updatedAt || ticket.createdAt)}
+                      </span>
+                      <ChevronRight
+                        className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] transition-colors hidden sm:block"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </section>
 
       {/* Sales — monthly Gross / Tax / Net mix.
@@ -870,7 +1096,7 @@ export default function AdminDashboard() {
                   className={`inline-flex items-center gap-0.5 text-xs font-medium rounded-full px-1.5 py-0.5 ${
                     revenue.growth >= 0
                       ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
-                      : 'text-rose-600 bg-rose-50'
+                      : 'text-[#3E104B] bg-[#3E104B]/10'
                   }`}
                 >
                   {revenue.growth >= 0 ? (

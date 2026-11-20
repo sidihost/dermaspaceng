@@ -8,8 +8,11 @@ import {
 } from '@/lib/live-chat'
 
 // ---------------------------------------------------------------------------
-// Staff-side messages endpoint. Same shape as the user-facing one but with
-// staff permission rules.
+// Staff-side messages endpoint.
+// Any authenticated staff/admin can read the full transcript of a session
+// (including chats currently handled by a colleague or looked up by Support ID)
+// so handovers have full context. Only the assigned staff member (or admin)
+// can send replies, and unread counters only clear when the assigned rep reads.
 // ---------------------------------------------------------------------------
 
 interface Params {
@@ -28,24 +31,15 @@ export async function GET(req: Request, { params }: Params) {
   const session = await getSessionById(id)
   if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  // Staff can read messages for sessions assigned to them OR sessions in
-  // the waiting queue. Admins can read anything.
-  if (user.role !== 'admin') {
-    const assigned = session.assigned_staff_id
-    if (assigned && assigned !== user.id) {
-      return NextResponse.json({ error: 'not yours' }, { status: 403 })
-    }
-    if (!assigned && session.status !== 'waiting') {
-      return NextResponse.json({ error: 'not yours' }, { status: 403 })
-    }
-  }
-
   const url = new URL(req.url)
   const since = url.searchParams.get('since') || undefined
-  const messages = await getMessages(id, since)
+  const messages = await getMessages(session.id, since)
 
-  // Bump read state on the user's messages so the staff queue badge clears.
-  await markUserMessagesRead(id)
+  // Only clear unread badges when the assigned representative reads the thread
+  // (so another rep peeking before takeover doesn't silently clear unread counts).
+  if (session.assigned_staff_id === user.id || session.status === 'waiting') {
+    await markUserMessagesRead(session.id)
+  }
 
   return NextResponse.json({ messages })
 }
@@ -62,11 +56,9 @@ export async function POST(req: Request, { params }: Params) {
   const session = await getSessionById(id)
   if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  // Only the assigned staff member (or an admin) can post into a session.
-  // Staff must accept first — there's no posting from the queue.
   if (user.role !== 'admin' && session.assigned_staff_id !== user.id) {
     return NextResponse.json(
-      { error: 'Accept the chat before sending a message.' },
+      { error: 'Take over or accept this chat before sending a reply.' },
       { status: 403 },
     )
   }
@@ -89,6 +81,6 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: 'message too long' }, { status: 400 })
   }
 
-  const message = await addMessage(id, 'staff', user.id, text)
+  const message = await addMessage(session.id, 'staff', user.id, text)
   return NextResponse.json({ message })
 }

@@ -361,6 +361,7 @@ export async function PATCH(
       )
     }
 
+    let emailSent = false
     if (action === 'suspend') {
       await sql`
         UPDATE users
@@ -370,7 +371,7 @@ export async function PATCH(
       // Kill live sessions so the change takes effect immediately.
       await sql`DELETE FROM sessions WHERE user_id = ${userId}`
       await invalidateUserMe(String(userId))
-      await dispatchSuspensionNotification({
+      emailSent = await dispatchSuspensionNotification({
         userId: String(userId),
         reason: typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null,
       })
@@ -382,11 +383,11 @@ export async function PATCH(
       `
       await invalidateUserMe(String(userId))
       if (!target.is_active) {
-        await dispatchReinstatementNotification({ userId: String(userId) })
+        emailSent = await dispatchReinstatementNotification({ userId: String(userId) })
       }
     }
 
-    return NextResponse.json({ success: true, action })
+    return NextResponse.json({ success: true, action, emailSent })
   } catch (error) {
     console.error('PATCH /api/admin/staff/[userId] failed', error)
     const message = error instanceof Error ? error.message : 'Server error'

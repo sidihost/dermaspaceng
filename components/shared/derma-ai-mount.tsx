@@ -168,11 +168,24 @@ export default function DermaAIMount() {
       }
       setIsOpen(true)
     }
+    const handleOpenLiveChat = (event: Event) => {
+      const detail = (event as CustomEvent<{ topic?: string }>).detail
+      try {
+        ;(window as unknown as { __dermaPendingLiveChat?: { topic?: string } }).__dermaPendingLiveChat = {
+          topic: detail?.topic || 'Customer support',
+        }
+      } catch {
+        /* ignore */
+      }
+      handleOpen()
+    }
     const handleClose = () => setIsOpen(false)
     window.addEventListener('openDermaAI', handleOpen)
+    window.addEventListener('openLiveChat', handleOpenLiveChat as EventListener)
     window.addEventListener('closeDermaAI', handleClose)
     return () => {
       window.removeEventListener('openDermaAI', handleOpen)
+      window.removeEventListener('openLiveChat', handleOpenLiveChat as EventListener)
       window.removeEventListener('closeDermaAI', handleClose)
     }
   }, [])

@@ -19,6 +19,18 @@ import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission, 
 import { useNotify } from './notify'
 import { clearCachedUser } from '@/lib/auth-cache'
 import { logoutAndRedirect } from '@/lib/logout'
+import Image from 'next/image'
+import {
+  detectHumanHandoffIntent,
+  getHandoffAutoMessage,
+  resolveSupportId,
+} from '@/lib/support-and-chat'
+import {
+  useInlineLiveChat,
+  InlineLiveHeaderControls,
+  InlineLiveFeed,
+  RepAvatar,
+} from './derma-inline-live-chat'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
 // with `ssr: false`. We render a small branded placeholder while the
@@ -373,11 +385,7 @@ const KNOWN_TOOL_NAMES = [
   'getNotifications', 'joinBookingWaitlist', 'bookConsultation',
   'createSupportTicket', 'searchServices', 'recommendByConcern', 'fundWallet',
   'cancelBooking', 'rescheduleBooking', 'updateProfile', 'updatePreferences', 'logoutUser',
-  // `requestLiveChat` was removed from the AI tool surface — see the
-  // matching comment in app/api/chat/route.ts. We keep the rest of
-  // this allow-list strictly in sync with the API so the leaked-tool
-  // prefix stripper never accidentally eats real prose.
-  'getCurrentDateTime', 'requestCallback', 'getSupportTickets',
+  'getCurrentDateTime', 'requestLiveChat', 'requestCallback', 'getSupportTickets',
   'searchProducts', 'saveMemory', 'forgetMemory', 'getWebsiteInfo',
 ] as const
 
@@ -595,6 +603,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'bookConsultation': return 'Booking your consultation'
     case 'joinBookingWaitlist': return 'Adding you to the waitlist'
     case 'createSupportTicket': return 'Opening your support ticket'
+    case 'requestLiveChat': return 'Connecting you to an agent'
     case 'requestCallback': return 'Scheduling your callback'
     case 'navigateToPage': return 'Finding the right page'
     case 'checkLoginStatus': return 'Checking if you\u2019re signed in'
@@ -626,12 +635,8 @@ function guessToolFromText(raw: string): string | null {
   if (/(forgot.+password|reset.+password|password reset)/.test(text)) return 'sendPasswordResetEmail'
   if (/(resend|re-send).+(verification|verify.+email)/.test(text)) return 'resendVerificationEmail'
   if (/(open.+ticket|raise.+ticket|file.+ticket|complaint|report.+issue|support.+request)/.test(text)) return 'createSupportTicket'
-  // "Talk to a human" intents (live chat, agent, representative,
-  // customer service, callback, etc.) all route to requestCallback
-  // now that the AI no longer opens live-chat sessions directly.
-  // Staff still get the conversation — it just arrives as a callback
-  // ticket on the support queue instead of an immediate live session.
-  if (/(live ?chat|talk.+(human|agent|representative|rep|someone|customer service)|speak.+(human|agent|representative|rep|someone|customer service)|connect.+(human|agent|representative|rep|customer service)|customer service|customer care|call ?back|call me|reach me|phone me)/.test(text)) return 'requestCallback'
+  if (detectHumanHandoffIntent(raw)) return 'requestLiveChat'
+  if (/(call ?back|call me|reach me|phone me)/.test(text)) return 'requestCallback'
   if (/(book.+consult|free consult|skin consult)/.test(text)) return 'bookConsultation'
   if (/(book|schedule|reschedule|reserve).+(appointment|facial|massage|treatment|session|visit)/.test(text)) return 'createBooking'
   if (/(update|change|edit).+(profile|name|phone|number|details)/.test(text)) return 'updateProfile'
@@ -2354,6 +2359,19 @@ export default function DermaAI({
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
+  const scrollToLatestMessage = useCallback(() => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 60)
+  }, [])
+
+  // Unified live human representative handoff (runs inside this same chat
+  // panel rather than popping a separate floating live-chat window).
+  const inlineLiveChat = useInlineLiveChat({
+    isOpen,
+    onSessionChange: scrollToLatestMessage,
+  })
+
   // ── Mistral Voxtral live-listen loop (replaces webkitSpeechRecognition
   // for Derma AI Live's voice-to-voice mode) ─────────────────────────
   // We expose start / stop via these refs so `speakText` can trigger a
@@ -3236,6 +3254,69 @@ export default function DermaAI({
     window.addEventListener('openDermaAI', handleOpen)
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [isControlled, setIsOpen])
+
+  // Unified `openLiveChat` bridge: any legacy Support / Help CTA that
+  // dispatches `openLiveChat` opens THIS single Derma AI chat panel and
+  // automatically connects the user to a live representative in place.
+  const triggerLiveHandoffInChat = useCallback(
+    async (topic?: string | null, skipUserMessage?: boolean) => {
+      setIsOpen(true)
+      const cleanTopic = (topic || '').trim()
+      if (!inlineLiveChat.isLiveMode && !inlineLiveChat.guestFormOpen) {
+        setMessages((prev) => {
+          const next = [...prev]
+          if (!skipUserMessage && cleanTopic) {
+            next.push({
+              id: `handoff-u-${Date.now()}`,
+              role: 'user',
+              content: cleanTopic,
+              timestamp: new Date(),
+            })
+          }
+          next.push({
+            id: `handoff-a-${Date.now() + 1}`,
+            role: 'assistant',
+            content: getHandoffAutoMessage('connecting'),
+            timestamp: new Date(),
+          })
+          return next
+        })
+      }
+      const transcript = messages.slice(-16).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
+      await inlineLiveChat.triggerHandoff(cleanTopic || 'Customer support', transcript)
+      scrollToLatestMessage()
+    },
+    [setIsOpen, inlineLiveChat, messages, scrollToLatestMessage],
+  )
+
+  useEffect(() => {
+    const onOpenLiveChat = (event: Event) => {
+      const detail = (event as CustomEvent<{ topic?: string }>).detail
+      try {
+        delete (window as unknown as { __dermaPendingLiveChat?: unknown }).__dermaPendingLiveChat
+      } catch {
+        /* ignore */
+      }
+      void triggerLiveHandoffInChat(detail?.topic || 'Customer support', true)
+    }
+    window.addEventListener('openLiveChat', onOpenLiveChat as EventListener)
+    return () => window.removeEventListener('openLiveChat', onOpenLiveChat as EventListener)
+  }, [triggerLiveHandoffInChat])
+
+  // Consume any `openLiveChat` event captured by DermaAIMount while the
+  // DermaAI chunk was still lazy-loading.
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') return
+    const win = window as unknown as { __dermaPendingLiveChat?: { topic?: string } }
+    if (win.__dermaPendingLiveChat) {
+      const pendingTopic = win.__dermaPendingLiveChat.topic || 'Customer support'
+      delete win.__dermaPendingLiveChat
+      void triggerLiveHandoffInChat(pendingTopic, true)
+    }
+  }, [isOpen, triggerLiveHandoffInChat])
 
   // Shake-to-feedback bridge.
   //
@@ -5567,15 +5648,20 @@ export default function DermaAI({
             router.push(dest)
           }, 900)
         }
-        // NOTE: The Derma AI used to dispatch `openLiveChat` here in
-        // response to a `requestLiveChat` tool result, which slid the
-        // global LiveChatOverlay up over the AI panel. Admin asked
-        // that the AI no longer route conversations into the live
-        // queue (it overwhelmed staff and conflicted with the
-        // callback flow), so the tool itself was removed in the API
-        // and this handler with it. The live-chat overlay + staff +
-        // admin live-chat dashboards remain fully functional — they
-        // are just no longer entered from inside the AI.
+        // requestLiveChat — when the AI model itself decides the user wants
+        // a human representative (e.g. indirect phrasing), smoothly activate
+        // the inline live representative thread right inside this chat.
+        if (tr.toolName === 'requestLiveChat') {
+          const topic =
+            typeof r?.topic === 'string' && r.topic.trim()
+              ? r.topic.trim()
+              : content.trim() || 'Customer support'
+          const transcript = messages.slice(-16).map((m) => ({
+            role: m.role,
+            content: m.content,
+          }))
+          void inlineLiveChat.triggerHandoff(topic, transcript)
+        }
       }
     } catch (err) {
       // User hit the stop button — not an error. Commit whatever we
@@ -5808,10 +5894,51 @@ export default function DermaAI({
     sendMessageWithConsent(lastUser.content, undefined, lastUser.attachments, trimmed)
   }, [isLoading, messages, sendMessageWithConsent])
 
-  // Main sendMessage function that checks for consent
+  // Main sendMessage function that handles inline live-agent mode,
+  // automatic human handoff detection, and AI account consent.
   const sendMessage = useCallback((content: string) => {
     const hasAttachments = pendingAttachments.length > 0
     if ((!content.trim() && !hasAttachments) || isLoading) return
+
+    // If a live human representative session is already waiting or active,
+    // send the customer's message directly to the live representative instead
+    // of calling the AI model.
+    if (inlineLiveChat.isLiveMode) {
+      const text = content.trim()
+      if (!text) return
+      setInput('')
+      playChime('send')
+      void inlineLiveChat.sendLiveMessage(text)
+      return
+    }
+
+    // Auto-trigger live human representative handoff inside this same chat
+    // whenever the user asks for a human, agent, representative, or support.
+    if (!hasAttachments && detectHumanHandoffIntent(content)) {
+      const trimmed = content.trim()
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: trimmed,
+        timestamp: new Date(),
+      }
+      const handoffMessage: Message = {
+        id: `handoff-${Date.now() + 1}`,
+        role: 'assistant',
+        content: getHandoffAutoMessage('connecting'),
+        timestamp: new Date(),
+      }
+      const transcript = [...messages, userMessage].slice(-16).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
+      setMessages(prev => [...prev, userMessage, handoffMessage])
+      setInput('')
+      playChime('send')
+      void inlineLiveChat.triggerHandoff(trimmed, transcript)
+      scrollToLatestMessage()
+      return
+    }
 
     // Check if this message requires account access.
     if (requiresAccountAccess(content)) {
@@ -5854,7 +5981,7 @@ export default function DermaAI({
 
     // Proceed with sending the message
     sendMessageWithConsent(content)
-  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments, isLoggedIn, playChime])
+  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments, isLoggedIn, playChime, inlineLiveChat, messages, scrollToLatestMessage])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -6103,7 +6230,7 @@ export default function DermaAI({
           affecting genuine outside-clicks. */}
       {!isPageMode && isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[58] md:bg-transparent md:backdrop-blur-none"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[64] md:bg-transparent md:backdrop-blur-none"
           onClick={() => {
             if (Date.now() - panelOpenedAtRef.current < 350) return
             setIsOpen(false)
@@ -6126,7 +6253,7 @@ export default function DermaAI({
         className={
           isPageMode
             ? 'relative w-full h-full'
-            : `fixed z-[60] transition-all duration-300 ease-out
+            : `fixed z-[65] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
           inset-0
           md:inset-auto md:bottom-4 md:right-4 md:h-[min(680px,calc(100dvh-2rem))]
@@ -7012,8 +7139,8 @@ export default function DermaAI({
                     the panel feel heavy. All icon buttons now use
                     neutral gray → brand-on-hover so the header
                     stays quiet until you interact with it. */}
-                <div className="relative px-3.5 py-2.5 flex items-center justify-between flex-shrink-0 bg-white border-b border-gray-100">
-                  <div className="relative flex items-center gap-2.5 min-w-0">
+                <div className="relative px-3.5 py-2.5 flex items-center justify-between gap-2 flex-shrink-0 bg-white border-b border-gray-100">
+                  <div className="relative flex-1 flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
                       className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
@@ -7041,24 +7168,47 @@ export default function DermaAI({
                         <rect x="3"  y="16" width="9"  height="2.2" rx="1.1" fill="currentColor" />
                       </svg>
                     </button>
-                    {/* Circular brand avatar — clean, brand-only. We
-                        intentionally drop the old green availability
-                        dot: it's a "live agent" affordance that misled
-                        users into thinking a human was on the line. */}
+                    {/* Circular brand avatar — switches cleanly to the
+                        live representative avatar while in human support mode. */}
                     <div className="relative flex-shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center">
-                        <ButterflyLogo className="w-4.5 h-4.5 text-white" />
-                      </div>
+                      {inlineLiveChat.isLiveMode && inlineLiveChat.staff ? (
+                        <RepAvatar
+                          src={inlineLiveChat.staff.avatarUrl}
+                          name={inlineLiveChat.staff.displayName}
+                          size={36}
+                          className="ring-2 ring-[#7B2D8E]/20"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+                          <ButterflyLogo className="w-4.5 h-4.5 text-white" />
+                        </div>
+                      )}
+                      {inlineLiveChat.isLiveMode && (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#7B2D8E] ring-2 ring-white" />
+                      )}
                     </div>
                     <div className="min-w-0 leading-tight">
                       <h3 className="font-semibold text-gray-900 text-[14px] tracking-tight truncate whitespace-nowrap">
-                        Derma AI
+                        {inlineLiveChat.isLiveMode
+                          ? inlineLiveChat.staff?.displayName || 'Customer Care'
+                          : 'Derma AI'}
                       </h3>
-                      {/* Dynamic status line — quiet brand tone on
-                          idle, switches to active state when the
-                          assistant is working. */}
-                      <p className="text-[11px] leading-none mt-0.5">
-                        {isLoading ? (
+                      {/* Dynamic status line */}
+                      <p className="text-[11px] leading-none mt-0.5 truncate">
+                        {inlineLiveChat.isLiveMode ? (
+                          <span className="text-[#7B2D8E] font-medium">
+                            {inlineLiveChat.status === 'active'
+                              ? `Live · ${
+                                  inlineLiveChat.session
+                                    ? resolveSupportId(
+                                        inlineLiveChat.session.supportCode,
+                                        inlineLiveChat.session.id,
+                                      )
+                                    : 'Customer Care'
+                                }`
+                              : 'Connecting to an agent…'}
+                          </span>
+                        ) : isLoading ? (
                           <span className="text-gray-500">Thinking…</span>
                         ) : isSpeaking ? (
                           <span className="text-gray-500">Speaking…</span>
@@ -7074,6 +7224,11 @@ export default function DermaAI({
                   </div>
 
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
+                    {inlineLiveChat.isLiveMode && (
+                      <InlineLiveHeaderControls
+                        onEndLiveChat={inlineLiveChat.endLiveChat}
+                      />
+                    )}
                     {/* Derma AI Live used to live here as a Phone icon
                         in the header. We moved it into the composer
                         (next to Send) so the entry-point sits exactly
@@ -7986,7 +8141,7 @@ export default function DermaAI({
                       can ask the concierge" shortcut cards, designed
                       like premium app tiles (vertical icon + label,
                       roomier padding, subtle lift on hover). */}
-                  {messages.length === 1 && !isLoading && !streamingContent && (
+                  {messages.length === 1 && !isLoading && !streamingContent && !inlineLiveChat.isLiveMode && !inlineLiveChat.guestFormOpen && !inlineLiveChat.showRating && (
                     <div className="pt-2 pb-2 animate-[derma-msg-in_0.5s_ease-out_0.1s_both]">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
@@ -8046,6 +8201,33 @@ export default function DermaAI({
                       </div>
                     </div>
                   )}
+
+                  <InlineLiveFeed
+                    session={inlineLiveChat.session}
+                    staff={inlineLiveChat.staff}
+                    messages={inlineLiveChat.messages}
+                    connecting={inlineLiveChat.connecting}
+                    justConnected={inlineLiveChat.justConnected}
+                    error={inlineLiveChat.error}
+                    onClearError={inlineLiveChat.clearError}
+                    guestFormOpen={inlineLiveChat.guestFormOpen}
+                    guestSubmitting={inlineLiveChat.guestSubmitting}
+                    guestError={inlineLiveChat.guestError}
+                    onSubmitGuest={inlineLiveChat.submitGuestHandoff}
+                    onCancelGuest={inlineLiveChat.cancelGuestHandoff}
+                    showRating={inlineLiveChat.showRating}
+                    ratingStaffName={inlineLiveChat.ratingStaffName}
+                    serviceRating={inlineLiveChat.serviceRating}
+                    staffRating={inlineLiveChat.staffRating}
+                    ratingComment={inlineLiveChat.ratingComment}
+                    savingRating={inlineLiveChat.savingRating}
+                    ratingDone={inlineLiveChat.ratingDone}
+                    onServiceRatingChange={inlineLiveChat.setServiceRating}
+                    onStaffRatingChange={inlineLiveChat.setStaffRating}
+                    onRatingCommentChange={inlineLiveChat.setRatingComment}
+                    onSubmitRating={inlineLiveChat.submitRating}
+                    onSkipRating={inlineLiveChat.skipRating}
+                  />
 
                   <div ref={messagesEndRef} />
                 </div>
@@ -9278,22 +9460,20 @@ export default function DermaAI({
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={
-                          pendingAttachments.length > 0
-                            ? 'Add a note (optional)…'
-                            : 'Ask me anything…'
+                          inlineLiveChat.isLiveMode
+                            ? inlineLiveChat.status === 'active'
+                              ? `Message ${(inlineLiveChat.staff?.displayName || 'representative').replace(/\.$/, '')}…`
+                              : 'Write a message while we connect you…'
+                            : pendingAttachments.length > 0
+                              ? 'Add a note (optional)…'
+                              : 'Ask me anything…'
                         }
-                        className="flex-1 min-w-0 bg-transparent px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
-                        disabled={isLoading}
+                        className="flex-1 min-w-0 bg-transparent px-2 py-1.5 text-base sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                        disabled={isLoading || inlineLiveChat.sending}
                       />
                     </div>
 
-                    {/* Trailing controls — matches the Gemini layout
-                        from the user's reference: when the composer is
-                        empty we show the Live pill (audio-lines glyph on
-                        a tinted brand chip). The moment the user starts
-                        typing we morph it into the Send button so the
-                        primary action is always one tap away. While a
-                        generation is in flight Send becomes Stop. */}
+                    {/* Trailing controls */}
                     {isLoading ? (
                       <button
                         type="button"
@@ -9304,10 +9484,10 @@ export default function DermaAI({
                       >
                         <span className="block w-3 h-3 rounded-sm bg-white" aria-hidden="true" />
                       </button>
-                    ) : (input.trim() || pendingAttachments.length > 0) ? (
+                    ) : (input.trim() || pendingAttachments.length > 0 || inlineLiveChat.isLiveMode) ? (
                       <button
                         type="submit"
-                        disabled={isUploading}
+                        disabled={isUploading || inlineLiveChat.sending || (!input.trim() && pendingAttachments.length === 0)}
                         className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                         aria-label="Send message"
                       >
@@ -9317,7 +9497,7 @@ export default function DermaAI({
                       <button
                         type="button"
                         onClick={startVoiceCall}
-                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0 shadow-sm shadow-[#7B2D8E]/25"
+                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0"
                         aria-label="Start Derma AI Live"
                         title="Derma AI Live"
                       >

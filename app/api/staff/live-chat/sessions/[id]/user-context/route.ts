@@ -36,17 +36,9 @@ export async function GET(_req: Request, { params }: Params) {
   const session = await getSessionById(id)
   if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  // Staff can only see context for sessions assigned to them or in the
-  // queue. Admins see anything.
-  if (me.role !== 'admin') {
-    const assigned = session.assigned_staff_id
-    if (assigned && assigned !== me.id) {
-      return NextResponse.json({ error: 'not yours' }, { status: 403 })
-    }
-    if (!assigned && session.status !== 'waiting') {
-      return NextResponse.json({ error: 'not yours' }, { status: 403 })
-    }
-  }
+  // Any authenticated staff or admin can view this read-only customer snapshot
+  // so handovers and Support ID lookups carry full customer context.
+  void me
 
   const userId = session.user_id
   if (!userId) {

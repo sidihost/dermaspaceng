@@ -474,7 +474,7 @@ export default function HelpCenterPage() {
               }
               className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-4 py-2 text-xs font-semibold text-white hover:bg-[#5A1D6A] transition-colors"
             >
-              Start Live Chat
+              Talk to a Representative
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </section>

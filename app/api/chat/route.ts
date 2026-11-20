@@ -39,6 +39,7 @@ import {
   searchMergedCatalogForAI,
 } from '@/lib/derma-knowledge'
 import { buildLiveWebsiteKnowledgePrompt } from '@/lib/derma-live-context'
+import { escalateToHuman } from '@/lib/live-chat'
 
 // Provider selection now lives in `lib/ai-chain.ts`. That module
 // exposes an ordered chain of text + tool-calling models — Mistral
@@ -1679,20 +1680,70 @@ const tools = {
     },
   }),
 
-  // NOTE: `requestLiveChat` (the AI-driven entry point into the staff
-  // live-chat queue) was intentionally removed from Derma AI. The
-  // underlying staff + admin live-chat surfaces (queue, sessions,
-  // performance dashboards, guest support) all still exist and are
-  // wired up via lib/live-chat.ts and /app/api/(admin|staff)/live-chat/*.
-  // The AI now routes "talk to a human" intents to `requestCallback`
-  // (async ticket) + `createSupportTicket` instead, which is what
-  // admin asked for. If we ever want to bring the live-chat tool
-  // back, the original implementation is in git history.
+  // Seamless in-chat human representative handoff.
+  // Connects the user directly to a Dermaspace Customer Care rep inside
+  // the same Derma AI conversation — no separate popup or page needed.
+  requestLiveChat: tool({
+    description:
+      'Connect the user directly to a live Dermaspace human customer care representative right inside this chat. Call this immediately whenever the user asks to talk to a human, agent, representative, live support, customer service, or customer care.',
+    inputSchema: z.object({
+      topic: z
+        .string()
+        .min(2)
+        .max(200)
+        .describe('Short summary of what the customer needs help with'),
+    }),
+    execute: async ({ topic }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return {
+          success: true,
+          guestFormRequired: true,
+          topic,
+          message:
+            'Connecting you to an agent — share your name and email below and a customer representative will join shortly.',
+        }
+      }
+      try {
+        const rows = await sql`
+          SELECT u.id FROM sessions s JOIN users u ON s.user_id = u.id
+          WHERE s.id = ${sessionId} AND s.expires_at > NOW() LIMIT 1
+        `
+        if (rows.length === 0) {
+          return {
+            success: true,
+            guestFormRequired: true,
+            topic,
+            message:
+              'Connecting you to an agent — share your name and email below and a customer representative will join shortly.',
+          }
+        }
+        const liveSession = await escalateToHuman(rows[0].id as string, topic, null)
+        return {
+          success: true,
+          sessionId: liveSession.id,
+          status: liveSession.status,
+          topic,
+          message:
+            'Connecting you to an agent — a customer representative will join shortly.',
+        }
+      } catch (error) {
+        console.error('requestLiveChat error:', error)
+        return {
+          success: false,
+          topic,
+          message:
+            'Connecting you to an agent right now — if it takes a moment, you can also call us on +234 906 183 6625.',
+        }
+      }
+    },
+  }),
 
   // Request a staff callback
   requestCallback: tool({
     description:
-      "Create a support ticket asking a Dermaspace staff member to call the user back. Use when the user says 'call me', 'can someone call me', or wants to speak to a human. Requires login.",
+      "Create a support ticket asking a Dermaspace staff member to call the user back by phone. Use ONLY when the user specifically asks for a phone callback ('call me back', 'phone me'). For live chat or talking to a human/agent/representative, use requestLiveChat instead. Requires login.",
     inputSchema: z.object({
       reason: z.string().min(3).describe('Short reason for the callback'),
       preferredTime: z
@@ -2070,7 +2121,8 @@ ACTION TOOLS (these actually change things):
 - joinBookingWaitlist(email) — adds to the real waitlist
 - bookConsultation({...}) — creates a real consultation booking in the DB
 - createSupportTicket({category, subject, message, priority?}) — opens a real ticket. DO NOT call this tool until you've gathered every field from the user (see SUPPORT TICKET FLOW below). Valid categories: booking, treatment, account, payment, feedback, other. Valid priorities: low, medium, high, urgent.
-- requestCallback(reason, preferredTime?) — asks a human to call back asynchronously (logs a ticket; the human calls back later). This is the ONLY "talk to a human" path Derma AI exposes — live chat with a rep has been removed from the AI; users who want it use the Live Chat surface in their dashboard.
+- requestLiveChat(topic) — connects the user directly to a live human customer representative RIGHT INSIDE THIS CHAT. Call immediately when the user wants to talk to a human, agent, representative, customer service, customer care, or live support.
+- requestCallback(reason, preferredTime?) — asks a staff member to phone the user back asynchronously (ONLY when they explicitly ask for a phone call back).
 - createBooking(...) / navigateToPage(path) — booking prep + navigation
 
 ACTION PATTERNS:
@@ -2081,7 +2133,8 @@ ACTION PATTERNS:
 - User says "update my phone to 080…" → call updateProfile({phone: "080…"}).
   - User says "log me out" / "sign out" → call logoutUser IMMEDIATELY. The tool renders a confirmation card ("Are you sure you want to sign out? Yes, sign me out / Cancel") so the user explicitly approves. Your reply must NOT claim they're signed out — say exactly ONE of: "Just to be safe — tap Yes, sign me out below to confirm." or "Tap Yes, sign me out below and I'll sign you out." Never say "you have been signed out" here because they haven't yet. After the user taps the button, the card itself shows a "Signed out" acknowledgement and redirects — no further assistant reply is needed.
 - User forgot password → ask for the email, then call sendPasswordResetEmail.
-- User wants a human in any form — "right now" / "live" / "talk to a representative" / "customer service" / "call me" / "phone me back" — → call requestCallback with a one-line reason. Tell them a Dermaspace rep will reach out shortly and that they can also open a live chat themselves from their dashboard's Support tab if they want a real-time session.
+- User wants a human representative / agent / live support / customer service / customer care → call requestLiveChat(topic) IMMEDIATELY and say "Connecting you to an agent — a customer representative will join shortly." NEVER tell them to go to a separate live chat page or tab — live support happens right inside this chat.
+- User specifically asks for a phone call ("call me back", "phone me") → call requestCallback(reason, preferredTime?).
 
 SUPPORT TICKET FLOW (IMPORTANT — the user explicitly asked that we
 gather details BEFORE creating a ticket, so the ticket that lands in

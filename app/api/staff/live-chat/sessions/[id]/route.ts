@@ -6,8 +6,10 @@ import {
   closeSession,
   ensureStaffProfile,
   getSessionById,
+  resolveStaffAvatarUrl,
+  resolveSupportId,
   staffDisplayName,
-  avatarUrlForSlug,
+  takeoverSession,
   addMessage,
 } from '@/lib/live-chat'
 import { logStaffActivity } from '@/lib/activity-log'
@@ -25,6 +27,10 @@ export async function GET(_req: Request, { params }: Params) {
   }
 
   const { id } = await params
+  const resolved = await getSessionById(id)
+  if (!resolved) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
 
   const rows = await sql`
     SELECT s.*,
@@ -38,13 +44,14 @@ export async function GET(_req: Request, { params }: Params) {
            (s.user_id IS NULL)                                                          AS is_guest,
            st.first_name                                                                AS staff_first_name,
            st.last_name                                                                 AS staff_last_name,
+           st.avatar_url                                                                AS staff_user_avatar_url,
            sp.display_name                                                              AS staff_display_name,
            sp.avatar_slug                                                               AS staff_avatar_slug
       FROM live_chat_sessions s
       LEFT JOIN users u ON u.id = s.user_id
       LEFT JOIN users st ON st.id = s.assigned_staff_id
       LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
-     WHERE s.id = ${id}
+     WHERE s.id = ${resolved.id}
      LIMIT 1
   `
   if (rows.length === 0) {
@@ -52,23 +59,20 @@ export async function GET(_req: Request, { params }: Params) {
   }
 
   const r = rows[0] as Record<string, unknown>
-
-  if (user.role !== 'admin') {
-    const assigned = r.assigned_staff_id as string | null
-    const status = r.status as string
-    if (assigned && assigned !== user.id) {
-      return NextResponse.json({ error: 'not yours' }, { status: 403 })
-    }
-    if (!assigned && status !== 'waiting') {
-      return NextResponse.json({ error: 'not yours' }, { status: 403 })
-    }
-  }
+  const assignedStaffId = (r.assigned_staff_id as string | null) ?? null
+  const supportCode = resolveSupportId(
+    (r.support_code as string | null) ?? resolved.support_code,
+    String(r.id),
+  )
 
   return NextResponse.json({
     session: {
       id: r.id,
+      supportCode,
+      support_code: supportCode,
       user_id: r.user_id,
-      assigned_staff_id: r.assigned_staff_id,
+      assigned_staff_id: assignedStaffId,
+      isAssignedToMe: assignedStaffId === user.id,
       status: r.status,
       initial_topic: r.initial_topic,
       escalated_at: r.escalated_at,
@@ -85,14 +89,19 @@ export async function GET(_req: Request, { params }: Params) {
         phone: r.user_phone,
         avatarUrl: r.user_avatar_url,
       },
-      staff: r.assigned_staff_id
+      staff: assignedStaffId
         ? {
+            id: assignedStaffId,
             displayName: staffDisplayName({
               display_name: r.staff_display_name as string | null,
               first_name: r.staff_first_name as string | null,
               last_name: r.staff_last_name as string | null,
             }),
-            avatarUrl: avatarUrlForSlug(r.staff_avatar_slug as string | null),
+            avatarUrl: resolveStaffAvatarUrl({
+              avatarUrl: r.staff_user_avatar_url as string | null,
+              avatarSlug: r.staff_avatar_slug as string | null,
+              staffId: assignedStaffId,
+            }),
           }
         : null,
     },
@@ -118,10 +127,12 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   }
 
+  const supportCode = resolveSupportId(session.support_code, session.id)
+
   if (body.action === 'accept') {
     if (session.status !== 'waiting') {
       return NextResponse.json(
-        { error: 'This chat is no longer available.' },
+        { error: 'This chat is no longer waiting. Use Take over to assume the conversation.' },
         { status: 409 },
       )
     }
@@ -129,7 +140,7 @@ export async function PATCH(req: Request, { params }: Params) {
       user.id,
       `${user.first_name} ${user.last_name}`.trim(),
     )
-    const accepted = await acceptSession(id, user.id)
+    const accepted = await acceptSession(session.id, user.id)
     if (!accepted) {
       return NextResponse.json(
         { error: 'This chat has already been picked up.' },
@@ -145,16 +156,41 @@ export async function PATCH(req: Request, { params }: Params) {
       first_name: user.first_name,
       last_name: user.last_name,
     })
-    await addMessage(id, 'system', null, `${dn} joined the chat`)
+    await addMessage(session.id, 'system', null, `${dn} joined the chat`)
     await logStaffActivity({
       staffId: user.id,
       userId: session.user_id,
       actionType: 'live_chat_accepted',
       entityType: 'live_chat_session',
-      entityId: id,
-      description: `Accepted live chat session${session.guest_name ? ` with ${session.guest_name}` : ''}`,
+      entityId: session.id,
+      description: `Accepted live chat ${supportCode}${session.guest_name ? ` with ${session.guest_name}` : ''}`,
     })
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, supportCode })
+  }
+
+  if (body.action === 'takeover') {
+    const result = await takeoverSession(session.id, user.id)
+    if (!result) {
+      return NextResponse.json({ error: 'not found' }, { status: 404 })
+    }
+    if (!result.alreadyAssigned) {
+      await logStaffActivity({
+        staffId: user.id,
+        userId: session.user_id,
+        actionType: 'live_chat_takeover',
+        entityType: 'live_chat_session',
+        entityId: session.id,
+        description: result.previousStaffName
+          ? `Took over live chat ${result.supportCode} from ${result.previousStaffName}`
+          : `Joined live chat ${result.supportCode}`,
+      })
+    }
+    return NextResponse.json({
+      success: true,
+      supportCode: result.supportCode,
+      previousStaffName: result.previousStaffName,
+      staff: result.staff,
+    })
   }
 
   if (body.action === 'close') {
@@ -164,7 +200,7 @@ export async function PATCH(req: Request, { params }: Params) {
     ) {
       return NextResponse.json({ error: 'not yours' }, { status: 403 })
     }
-    await closeSession(id, user.role === 'admin' ? 'admin' : 'staff')
+    await closeSession(session.id, user.role === 'admin' ? 'admin' : 'staff')
 
     if (session.assigned_staff_id) {
       const profileRows = await sql`
@@ -183,17 +219,17 @@ export async function PATCH(req: Request, { params }: Params) {
           first_name: r.first_name,
           last_name: r.last_name,
         })
-        await addMessage(id, 'system', null, `${dn} left the chat`)
+        await addMessage(session.id, 'system', null, `${dn} left the chat`)
       }
     }
-    await addMessage(id, 'system', null, 'Chat ended')
+    await addMessage(session.id, 'system', null, 'Chat ended')
     await logStaffActivity({
       staffId: user.id,
       userId: session.user_id,
       actionType: 'live_chat_closed',
       entityType: 'live_chat_session',
-      entityId: id,
-      description: `Ended live chat session${session.guest_name ? ` with ${session.guest_name}` : ''}`,
+      entityId: session.id,
+      description: `Ended live chat ${supportCode}${session.guest_name ? ` with ${session.guest_name}` : ''}`,
     })
     return NextResponse.json({ success: true })
   }

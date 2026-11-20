@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { escalateToHuman, escalateAsGuest } from '@/lib/live-chat'
+import { escalateToHuman, escalateAsGuest, resolveSupportId } from '@/lib/live-chat'
 import { setGuestChatCookieOnResponse } from '@/lib/live-chat-guest'
 
 // ---------------------------------------------------------------------------
@@ -58,6 +58,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       sessionId: session.id,
+      supportCode: resolveSupportId(session.support_code, session.id),
       status: session.status,
       isGuest: false,
     })
@@ -111,6 +112,7 @@ export async function POST(req: Request) {
   const response = NextResponse.json({
     success: true,
     sessionId: session.id,
+    supportCode: resolveSupportId(session.support_code, session.id),
     status: session.status,
     isGuest: true,
   })

@@ -7,18 +7,23 @@ import {
 } from '@/lib/live-chat'
 
 // ---------------------------------------------------------------------------
-// GET /api/staff/live-chat/queue
+// GET /api/staff/live-chat/queue?q=<optional Support ID or customer search>
 // ---------------------------------------------------------------------------
 // Returns:
-//   { waiting: QueueItem[]; mine: QueueItem[] }
+//   {
+//     waiting: QueueItem[],
+//     mine: QueueItem[],
+//     others: QueueItem[],
+//     searchResults: QueueItem[],
+//     currentUserId: string
+//   }
 // `waiting` is the global queue any staff member can pick up.
-// `mine` is the current user's accepted/active sessions.
-//
-// Side-effects: ensures the staff member has a `staff_profiles` row (so a
-// brand-new staff hire shows up correctly the first time they open the
-// queue) and bumps their presence so admins see them as online.
+// `mine` is the current staff member's active sessions.
+// `others` is active sessions currently handled by another representative so
+//   colleagues can seamlessly inspect and take over a chat.
+// `searchResults` returns matching chats when `?q=` (e.g. Support ID) is given.
 // ---------------------------------------------------------------------------
-export async function GET() {
+export async function GET(req: Request) {
   let user
   try {
     user = await requireAdminOrStaff()
@@ -29,7 +34,16 @@ export async function GET() {
   await ensureStaffProfile(user.id, `${user.first_name} ${user.last_name}`.trim())
   await touchStaffPresence(user.id, 'online')
 
-  const { waiting, mine } = await getStaffQueue(user.id)
+  const url = new URL(req.url)
+  const q = url.searchParams.get('q')?.trim() || undefined
 
-  return NextResponse.json({ waiting, mine })
+  const { waiting, mine, others, searchResults } = await getStaffQueue(user.id, q)
+
+  return NextResponse.json({
+    waiting,
+    mine,
+    others,
+    searchResults,
+    currentUserId: user.id,
+  })
 }

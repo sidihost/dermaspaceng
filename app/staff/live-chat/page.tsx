@@ -32,9 +32,21 @@ import {
   Headphones,
   AlertCircle,
   Receipt,
+  ArrowLeft,
+  UserRound,
+  Search,
+  Copy,
+  ArrowRightLeft,
+  Ticket,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getReceiptHref } from '@/lib/receipt-access'
+import {
+  getLiveChatStatusMeta,
+  getTicketStatusMeta,
+  resolveSupportId,
+} from '@/lib/support-and-chat'
+import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
 
 const fetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((r) => {
@@ -46,8 +58,12 @@ const fetcher = (url: string) =>
 
 interface QueueItem {
   id: string
-  user_id: string
-  status: 'waiting' | 'active'
+  support_code?: string | null
+  user_id: string | null
+  assigned_staff_id?: string | null
+  assigned_staff_name?: string | null
+  assigned_staff_avatar_url?: string | null
+  status: 'waiting' | 'active' | 'closed' | 'abandoned'
   initial_topic: string | null
   escalated_at: string
   accepted_at: string | null
@@ -62,12 +78,19 @@ interface Message {
   id: string
   session_id: string
   sender_role: 'user' | 'staff' | 'system'
+  sender_id?: string | null
+  sender_name?: string | null
+  sender_avatar_url?: string | null
   body: string
   created_at: string
 }
 
 interface FullSession {
   id: string
+  supportCode?: string | null
+  support_code?: string | null
+  assigned_staff_id?: string | null
+  isAssignedToMe?: boolean
   status: 'waiting' | 'active' | 'closed' | 'abandoned'
   initial_topic: string | null
   escalated_at: string
@@ -84,6 +107,7 @@ interface FullSession {
     avatarUrl: string | null
   }
   staff: {
+    id?: string
     displayName: string
     avatarUrl: string
   } | null
@@ -100,76 +124,97 @@ interface StaffProfile {
 
 export default function StaffLiveChatPage() {
   const [selected, setSelected] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [showProfileSheet, setShowProfileSheet] = useState(false)
 
-  const queueQuery = useSWR<{ waiting: QueueItem[]; mine: QueueItem[] }>(
-    '/api/staff/live-chat/queue',
-    fetcher,
-    { refreshInterval: 5000, revalidateOnFocus: true },
-  )
+  const trimmedQuery = searchQuery.trim()
+  const queueUrl =
+    trimmedQuery.length >= 2
+      ? `/api/staff/live-chat/queue?q=${encodeURIComponent(trimmedQuery)}`
+      : '/api/staff/live-chat/queue'
+
+  const queueQuery = useSWR<{
+    waiting: QueueItem[]
+    mine: QueueItem[]
+    others?: QueueItem[]
+    searchResults?: QueueItem[]
+    currentUserId?: string
+  }>(queueUrl, fetcher, { refreshInterval: 5000, revalidateOnFocus: true })
 
   const profileQuery = useSWR<{ profile: StaffProfile }>(
     '/api/staff/profile',
     fetcher,
   )
 
-  // Auto-select first active or waiting session if none chosen.
+  // Auto-select first active or waiting session on desktop only so mobile/tablet
+  // users land on the queue list first and tap into a conversation intentionally.
   useEffect(() => {
     if (selected) return
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return
     const data = queueQuery.data
     if (!data) return
-    const candidate = data.mine[0] || data.waiting[0]
+    const candidate = data.mine[0] || data.waiting[0] || data.others?.[0]
     if (candidate) setSelected(candidate.id)
   }, [selected, queueQuery.data])
 
   return (
     <div className="space-y-4 lg:space-y-6">
       <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Live Chat</h1>
-          <p className="text-sm text-gray-500 mt-1">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Live Chat</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Customers connect from Derma AI when they need a real person.
-            Pick up a chat from the queue and respond inline.
+            Pick up a chat, or look up any Support ID to review history and take over.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setShowProfileSheet(true)}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 text-[12px] font-semibold text-gray-700 hover:text-[#7B2D8E]"
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 text-[12px] font-semibold text-gray-700 hover:text-[#7B2D8E] shrink-0"
         >
           {profileQuery.data?.profile ? (
-            <Image
+            <RepAvatar
               src={profileQuery.data.profile.avatarUrl}
-              alt=""
-              width={22}
-              height={22}
-              className="w-5 h-5 rounded-full object-cover"
+              name={profileQuery.data.profile.displayName}
+              size={22}
             />
           ) : (
             <Settings className="w-4 h-4" />
           )}
-          {profileQuery.data?.profile?.displayName || 'Set your avatar'}
+          <span className="truncate max-w-[160px]">
+            {profileQuery.data?.profile?.displayName || 'Set your avatar'}
+          </span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-4">
-        <QueueColumn
-          loading={queueQuery.isLoading}
-          waiting={queueQuery.data?.waiting || []}
-          mine={queueQuery.data?.mine || []}
-          selected={selected}
-          onSelect={setSelected}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-[340px,1fr] gap-4 items-start">
+        <div className={cn(selected ? 'hidden lg:block' : 'block')}>
+          <QueueColumn
+            loading={queueQuery.isLoading}
+            waiting={queueQuery.data?.waiting || []}
+            mine={queueQuery.data?.mine || []}
+            others={queueQuery.data?.others || []}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchResults={queueQuery.data?.searchResults || []}
+            selected={selected}
+            onSelect={setSelected}
+          />
+        </div>
 
-        <ConversationColumn
-          sessionId={selected}
-          onAccepted={() => queueQuery.mutate()}
-          onClosed={() => {
-            queueQuery.mutate()
-            setSelected(null)
-          }}
-          myDisplayName={profileQuery.data?.profile.displayName || ''}
-        />
+        <div className={cn(selected ? 'block' : 'hidden lg:block')}>
+          <ConversationColumn
+            sessionId={selected}
+            currentUserId={queueQuery.data?.currentUserId || null}
+            onBack={() => setSelected(null)}
+            onAccepted={() => queueQuery.mutate()}
+            onClosed={() => {
+              queueQuery.mutate()
+              setSelected(null)
+            }}
+            myDisplayName={profileQuery.data?.profile.displayName || ''}
+          />
+        </div>
       </div>
 
       {showProfileSheet && (
@@ -187,55 +232,124 @@ export default function StaffLiveChatPage() {
 }
 
 // ---------------------------------------------------------------------------
-// QueueColumn — split into "Waiting" and "Yours" so urgent pickups surface
-// at the top.
+// QueueColumn — Support ID search + Waiting + Your active chats + Team active
 // ---------------------------------------------------------------------------
 
 function QueueColumn({
   loading,
   waiting,
   mine,
+  others,
+  searchQuery,
+  onSearchChange,
+  searchResults,
   selected,
   onSelect,
 }: {
   loading: boolean
   waiting: QueueItem[]
   mine: QueueItem[]
+  others: QueueItem[]
+  searchQuery: string
+  onSearchChange: (v: string) => void
+  searchResults: QueueItem[]
   selected: string | null
   onSelect: (id: string) => void
 }) {
+  const isSearching = searchQuery.trim().length >= 2
+
   return (
-    <aside className="bg-white rounded-2xl border border-gray-100 p-2 max-h-[calc(100vh-180px)] overflow-y-auto">
-      <Section title="Waiting" count={waiting.length} accent>
-        {loading && waiting.length === 0 ? (
-          <SectionEmpty label="Loading queue…" />
-        ) : waiting.length === 0 ? (
-          <SectionEmpty label="No customers in line." />
-        ) : (
-          waiting.map((q) => (
-            <QueueRow
-              key={q.id}
-              item={q}
-              selected={selected === q.id}
-              onSelect={() => onSelect(q.id)}
-            />
-          ))
-        )}
-      </Section>
-      <Section title="Your active chats" count={mine.length}>
-        {mine.length === 0 ? (
-          <SectionEmpty label="No active conversations." />
-        ) : (
-          mine.map((q) => (
-            <QueueRow
-              key={q.id}
-              item={q}
-              selected={selected === q.id}
-              onSelect={() => onSelect(q.id)}
-            />
-          ))
-        )}
-      </Section>
+    <aside className="bg-white rounded-2xl border border-gray-200 p-2 lg:max-h-[calc(100dvh-190px)] lg:overflow-y-auto">
+      <div className="px-1.5 pt-1 pb-2 border-b border-gray-100">
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Lookup Support ID (DS-LC-…) or client"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-8 pr-7 py-2 text-base sm:text-[12px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isSearching ? (
+        <Section title="Support ID & search results" count={searchResults.length} accent>
+          {loading && searchResults.length === 0 ? (
+            <SectionEmpty label="Searching conversations…" />
+          ) : searchResults.length === 0 ? (
+            <SectionEmpty label="No live chat matched that Support ID or name." />
+          ) : (
+            searchResults.map((q) => (
+              <QueueRow
+                key={q.id}
+                item={q}
+                selected={selected === q.id}
+                onSelect={() => onSelect(q.id)}
+                showAssignedRep
+              />
+            ))
+          )}
+        </Section>
+      ) : (
+        <>
+          <Section title="Waiting" count={waiting.length} accent>
+            {loading && waiting.length === 0 ? (
+              <SectionEmpty label="Loading queue…" />
+            ) : waiting.length === 0 ? (
+              <SectionEmpty label="No customers in line." />
+            ) : (
+              waiting.map((q) => (
+                <QueueRow
+                  key={q.id}
+                  item={q}
+                  selected={selected === q.id}
+                  onSelect={() => onSelect(q.id)}
+                />
+              ))
+            )}
+          </Section>
+          <Section title="Your active chats" count={mine.length}>
+            {mine.length === 0 ? (
+              <SectionEmpty label="No active conversations." />
+            ) : (
+              mine.map((q) => (
+                <QueueRow
+                  key={q.id}
+                  item={q}
+                  selected={selected === q.id}
+                  onSelect={() => onSelect(q.id)}
+                />
+              ))
+            )}
+          </Section>
+          <Section title="Team active (handover)" count={others.length}>
+            {others.length === 0 ? (
+              <SectionEmpty label="No chats with other reps right now." />
+            ) : (
+              others.map((q) => (
+                <QueueRow
+                  key={q.id}
+                  item={q}
+                  selected={selected === q.id}
+                  onSelect={() => onSelect(q.id)}
+                  showAssignedRep
+                />
+              ))
+            )}
+          </Section>
+        </>
+      )}
     </aside>
   )
 }
@@ -288,12 +402,15 @@ function QueueRow({
   item,
   selected,
   onSelect,
+  showAssignedRep = false,
 }: {
   item: QueueItem
   selected: boolean
   onSelect: () => void
+  showAssignedRep?: boolean
 }) {
   const initials = `${item.user_first_name?.[0] || '?'}${item.user_last_name?.[0] || ''}`.toUpperCase()
+  const supportCode = resolveSupportId(item.support_code, item.id)
   const waited = useMemo(() => {
     try {
       const ms = Date.now() - new Date(item.escalated_at).getTime()
@@ -332,6 +449,7 @@ function QueueRow({
             alt=""
             width={36}
             height={36}
+            referrerPolicy="no-referrer"
             className="w-9 h-9 rounded-full object-cover"
           />
         ) : (
@@ -361,20 +479,50 @@ function QueueRow({
         </div>
         <p
           className={cn(
-            'text-[11px] leading-snug line-clamp-2',
+            'text-[10px] font-mono font-semibold tracking-wide mt-0.5',
+            selected ? 'text-white/90' : 'text-[#7B2D8E]',
+          )}
+        >
+          {supportCode}
+        </p>
+        <p
+          className={cn(
+            'text-[11px] leading-snug line-clamp-1 mt-0.5',
             selected ? 'text-white/80' : 'text-gray-500',
           )}
         >
           {item.initial_topic || 'No topic provided'}
         </p>
-        <p
-          className={cn(
-            'text-[10px] mt-0.5',
-            selected ? 'text-white/70' : 'text-gray-400',
-          )}
-        >
-          {item.status === 'waiting' ? `Waiting ${waited}` : `Active · ${waited}`}
-        </p>
+        {showAssignedRep && item.assigned_staff_name ? (
+          <div className="flex items-center gap-1.5 mt-1">
+            <RepAvatar
+              src={item.assigned_staff_avatar_url}
+              name={item.assigned_staff_name}
+              size={16}
+            />
+            <span
+              className={cn(
+                'text-[10px] truncate',
+                selected ? 'text-white/85' : 'text-gray-500',
+              )}
+            >
+              With {item.assigned_staff_name} · {item.status}
+            </span>
+          </div>
+        ) : (
+          <p
+            className={cn(
+              'text-[10px] mt-0.5',
+              selected ? 'text-white/70' : 'text-gray-400',
+            )}
+          >
+            {item.status === 'waiting'
+              ? `Waiting ${waited}`
+              : item.status === 'active'
+                ? `Active · ${waited}`
+                : `${item.status} · ${waited}`}
+          </p>
+        )}
       </div>
       <ChevronRight
         className={cn(
@@ -392,11 +540,15 @@ function QueueRow({
 
 function ConversationColumn({
   sessionId,
+  currentUserId,
+  onBack,
   onAccepted,
   onClosed,
   myDisplayName,
 }: {
   sessionId: string | null
+  currentUserId: string | null
+  onBack: () => void
   onAccepted: () => void
   onClosed: () => void
   myDisplayName: string
@@ -414,8 +566,11 @@ function ConversationColumn({
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [accepting, setAccepting] = useState(false)
+  const [takingOver, setTakingOver] = useState(false)
   const [closing, setClosing] = useState(false)
   const [confirmEnd, setConfirmEnd] = useState(false)
+  const [copiedId, setCopiedId] = useState(false)
+  const [showMobileContext, setShowMobileContext] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
 
@@ -462,6 +617,7 @@ function ConversationColumn({
     setDraft('')
     setError(null)
     setConfirmEnd(false)
+    setShowMobileContext(false)
     setMessages([])
     lastSeenRef.current = null
     if (sessionId) refetchAll(sessionId)
@@ -521,6 +677,7 @@ function ConversationColumn({
   const accept = useCallback(async () => {
     if (!sessionId) return
     setAccepting(true)
+    setError(null)
     try {
       const res = await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
         method: 'PATCH',
@@ -533,14 +690,35 @@ function ConversationColumn({
         setError(json.error || 'Could not accept this chat.')
         return
       }
-      sessionQuery.mutate()
-      // Re-pull the full transcript so the "Sarah joined the chat"
-      // system message the server just inserted shows up immediately
-      // — without waiting for the next 1.5s tick.
+      await sessionQuery.mutate()
       await refetchAll(sessionId)
       onAccepted()
     } finally {
       setAccepting(false)
+    }
+  }, [sessionId, sessionQuery, refetchAll, onAccepted])
+
+  const takeover = useCallback(async () => {
+    if (!sessionId) return
+    setTakingOver(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'takeover' }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setError(json.error || 'Could not take over this chat.')
+        return
+      }
+      await sessionQuery.mutate()
+      await refetchAll(sessionId)
+      onAccepted()
+    } finally {
+      setTakingOver(false)
     }
   }, [sessionId, sessionQuery, refetchAll, onAccepted])
 
@@ -655,37 +833,154 @@ function ConversationColumn({
 
   const isWaiting = session.status === 'waiting'
   const isClosed = session.status === 'closed' || session.status === 'abandoned'
+  const isAssignedToOther =
+    session.status === 'active' &&
+    Boolean(session.assigned_staff_id) &&
+    session.isAssignedToMe === false
+  const supportCode = resolveSupportId(
+    session.supportCode || session.support_code,
+    session.id,
+  )
+
+  const copySupportCode = () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    navigator.clipboard
+      .writeText(supportCode)
+      .then(() => {
+        setCopiedId(true)
+        window.setTimeout(() => setCopiedId(false), 1800)
+      })
+      .catch(() => {})
+  }
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr,300px] gap-4">
-      <div className="bg-white rounded-2xl border border-gray-100 flex flex-col min-h-[480px] max-h-[calc(100vh-180px)]">
+    <div className="grid grid-cols-1 xl:grid-cols-[1fr,300px] gap-4 items-start">
+      <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[calc(100dvh-165px)] lg:h-[calc(100dvh-190px)] min-h-[440px] overflow-hidden">
         {/* Header */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+        <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-gray-100 shrink-0">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to queue"
+            className="lg:hidden w-8 h-8 rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] text-gray-600 flex items-center justify-center shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           <UserAvatar
             firstName={session.user.firstName}
             lastName={session.user.lastName}
             url={session.user.avatarUrl}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-semibold text-gray-900 truncate">
-              {session.user.firstName} {session.user.lastName}
-            </p>
-            <p className="text-[11px] text-gray-500 truncate">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[13.5px] sm:text-[14px] font-semibold text-gray-900 truncate">
+                {session.user.firstName} {session.user.lastName}
+              </p>
+              <button
+                type="button"
+                onClick={copySupportCode}
+                title="Copy Support ID"
+                className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2 py-0.5 text-[10px] font-mono font-semibold text-[#5A1D6A] transition-colors"
+              >
+                <Ticket className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                {supportCode}
+                {copiedId ? (
+                  <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                ) : (
+                  <Copy className="w-2.5 h-2.5 text-[#7B2D8E]/70" />
+                )}
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-500 truncate mt-0.5">
               {session.user.email}
               {session.user.phone ? ` · ${session.user.phone}` : ''}
             </p>
           </div>
-          <StatusPill status={session.status} />
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="hidden sm:block">
+              <StatusPill status={session.status} />
+            </div>
+
+            {!isWaiting && !isClosed && !isAssignedToOther && (
+              confirmEnd ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={closeChat}
+                    disabled={closing}
+                    className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#3E104B] text-white hover:bg-[#5A1D6A]"
+                  >
+                    {closing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirm'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmEnd(false)}
+                    disabled={closing}
+                    className="inline-flex items-center px-2 py-1.5 rounded-full text-[11px] font-medium text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmEnd(true)}
+                  disabled={closing}
+                  className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-gray-600 hover:text-[#3E104B] border border-gray-200 hover:border-[#3E104B]/30 hover:bg-[#FAF6FB] transition-colors"
+                >
+                  End
+                </button>
+              )
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowMobileContext((v) => !v)}
+              aria-label="Toggle customer info"
+              aria-expanded={showMobileContext}
+              className={cn(
+                'xl:hidden w-8 h-8 rounded-full border flex items-center justify-center transition-colors',
+                showMobileContext
+                  ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
+                  : 'border-gray-200 text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]',
+              )}
+            >
+              <UserRound className="w-4 h-4" />
+            </button>
+          </div>
         </header>
+
+        {/* Collapsible customer context for < xl screens */}
+        {showMobileContext && (
+          <div className="xl:hidden border-b border-gray-100 max-h-[45dvh] overflow-y-auto bg-[#FAF6FB]/40 p-3">
+            <CustomerContextPanel
+              data={contextQuery.data}
+              loading={contextQuery.isLoading}
+              embedded
+            />
+          </div>
+        )}
+
+        {/* Current rep banner when viewing another rep's chat */}
+        {isAssignedToOther && session.staff && (
+          <div className="px-3.5 sm:px-4 py-2 bg-[#FAF6FB] border-b border-[#7B2D8E]/15 flex items-center justify-between gap-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <RepAvatar
+                src={session.staff.avatarUrl}
+                name={session.staff.displayName}
+                size={22}
+              />
+              <p className="text-[11.5px] text-[#5A1D6A] truncate">
+                Currently handled by <span className="font-semibold">{session.staff.displayName}</span> — reviewing full conversation history.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Topic banner */}
         {session.initial_topic && (
-          // The brand-purple ring + tint already telegraphs "topic
-          // summary". The Sparkles glyph here added zero meaning and
-          // overlapped with the same icon used inside the AI panel,
-          // so it's gone — the row reads as the AI's topic recap on
-          // its own.
-          <div className="px-4 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10 text-[12px] text-[#7B2D8E]">
+          <div className="px-3.5 sm:px-4 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10 text-[12px] text-[#5A1D6A] shrink-0">
             {session.initial_topic}
           </div>
         )}
@@ -693,19 +988,20 @@ function ConversationColumn({
         {/* Messages */}
         <div
           ref={scrollerRef}
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#FAF8FC]"
+          className="flex-1 overflow-y-auto px-3.5 sm:px-4 py-4 space-y-3 bg-[#FAF8FC] min-h-0"
         >
           {messages.map((m) => (
             <MessageRow
               key={m.id}
               message={m}
+              currentUserId={currentUserId}
               userName={session.user.firstName}
               userAvatarUrl={session.user.avatarUrl}
             />
           ))}
           {isWaiting && (
             <div className="flex justify-center pt-2">
-              <div className="inline-flex items-center gap-2 text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/5 px-3 py-1.5 rounded-full">
+              <div className="inline-flex items-center gap-2 text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 px-3 py-1.5 rounded-full">
                 <Loader2 className="w-3 h-3 animate-spin" />
                 Customer is waiting — accept to start chatting.
               </div>
@@ -714,10 +1010,10 @@ function ConversationColumn({
         </div>
 
         {/* Action bar */}
-        <div className="border-t border-gray-100 px-3 py-2.5">
+        <div className="border-t border-gray-100 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:pb-2.5 bg-white shrink-0">
           {error && (
-            <div className="mb-2 px-2 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-[11px] text-rose-700 flex items-center gap-2">
-              <AlertCircle className="w-3.5 h-3.5" />
+            <div className="mb-2 px-2.5 py-1.5 rounded-lg bg-[#FAF6FB] border border-[#3E104B]/20 text-[11px] text-[#3E104B] flex items-center gap-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               {error}
             </div>
           )}
@@ -726,7 +1022,7 @@ function ConversationColumn({
               type="button"
               onClick={accept}
               disabled={accepting}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] text-white py-2.5 text-[13px] font-semibold hover:bg-[#6B2278] disabled:opacity-60"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] text-white py-2.5 text-[13px] font-semibold hover:bg-[#5A1D6A] disabled:opacity-60"
             >
               {accepting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -735,14 +1031,48 @@ function ConversationColumn({
               )}
               Accept &amp; join as {myDisplayName || 'representative'}
             </button>
+          ) : isAssignedToOther ? (
+            <div className="space-y-2">
+              <p className="text-[11px] text-gray-500 text-center">
+                Taking over reassigns <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span> to you and notifies the customer while preserving all previous messages.
+              </p>
+              <button
+                type="button"
+                onClick={takeover}
+                disabled={takingOver}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] text-white py-2.5 text-[13px] font-semibold hover:bg-[#5A1D6A] disabled:opacity-60"
+              >
+                {takingOver ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowRightLeft className="w-4 h-4" />
+                )}
+                Take over chat as {myDisplayName || 'representative'}
+              </button>
+            </div>
           ) : isClosed ? (
-            <div className="text-center text-[12px] text-gray-400 py-2">
-              This chat has ended.
-              {session.staff_rating != null && (
-                <span className="ml-2">
-                  Rated {session.staff_rating}/5 by the customer.
-                </span>
-              )}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 py-1">
+              <div className="text-[12px] text-gray-500">
+                This chat has ended.
+                {session.staff_rating != null && (
+                  <span className="ml-2 font-medium text-[#5A1D6A]">
+                    Rated {session.staff_rating}/5
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={takeover}
+                disabled={takingOver}
+                className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[#5A1D6A] hover:text-white px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors disabled:opacity-60"
+              >
+                {takingOver ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <ArrowRightLeft className="w-3.5 h-3.5" />
+                )}
+                Reopen &amp; take over
+              </button>
             </div>
           ) : (
             <div className="flex items-end gap-2">
@@ -757,13 +1087,13 @@ function ConversationColumn({
                 }}
                 placeholder="Reply to the customer…"
                 rows={1}
-                className="flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40 max-h-32"
+                className="flex-1 min-w-0 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3.5 sm:px-4 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50 max-h-32"
               />
               <button
                 type="button"
                 onClick={send}
                 disabled={!draft.trim() || sending}
-                className="shrink-0 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400"
+                className="shrink-0 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 hover:bg-[#5A1D6A] transition-colors"
                 aria-label="Send"
               >
                 {sending ? (
@@ -772,73 +1102,29 @@ function ConversationColumn({
                   <Send className="w-4 h-4" />
                 )}
               </button>
-              {confirmEnd ? (
-                <div className="shrink-0 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={closeChat}
-                    disabled={closing}
-                    className="inline-flex items-center px-3 py-2 rounded-full text-[11px] font-semibold bg-rose-600 text-white hover:bg-rose-700"
-                  >
-                    {closing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirm end'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmEnd(false)}
-                    disabled={closing}
-                    className="inline-flex items-center px-2.5 py-2 rounded-full text-[11px] font-medium text-gray-500 border border-gray-200 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmEnd(true)}
-                  disabled={closing}
-                  className="shrink-0 inline-flex items-center px-3 py-2 rounded-full text-[11px] font-semibold text-gray-500 hover:text-rose-600 border border-gray-200 hover:border-rose-200"
-                >
-                  End
-                </button>
-              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Customer context column */}
-      <CustomerContextPanel data={contextQuery.data} loading={contextQuery.isLoading} />
+      {/* Customer context column (xl+ desktop; smaller screens use header toggle) */}
+      <div className="hidden xl:block">
+        <CustomerContextPanel data={contextQuery.data} loading={contextQuery.isLoading} />
+      </div>
     </div>
   )
 }
 
 function StatusPill({ status }: { status: FullSession['status'] }) {
-  const map: Record<FullSession['status'], { label: string; className: string }> = {
-    waiting: {
-      label: 'Waiting',
-      className: 'bg-amber-50 text-amber-700 border-amber-200',
-    },
-    active: {
-      label: 'Active',
-      className: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25',
-    },
-    closed: {
-      label: 'Closed',
-      className: 'bg-gray-50 text-gray-600 border-gray-200',
-    },
-    abandoned: {
-      label: 'Abandoned',
-      className: 'bg-rose-50 text-rose-700 border-rose-200',
-    },
-  }
-  const cfg = map[status]
+  const cfg = getLiveChatStatusMeta(status)
   return (
     <span
       className={cn(
-        'text-[10px] font-semibold uppercase tracking-wider rounded-full border px-2.5 py-1',
-        cfg.className,
+        'inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-full border px-2.5 py-1 whitespace-nowrap',
+        cfg.badgeClass,
       )}
     >
+      <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dotClass)} />
       {cfg.label}
     </span>
   )
@@ -874,10 +1160,12 @@ function UserAvatar({
 
 function MessageRow({
   message,
+  currentUserId,
   userName,
   userAvatarUrl,
 }: {
   message: Message
+  currentUserId: string | null
   userName: string
   userAvatarUrl: string | null
 }) {
@@ -894,12 +1182,8 @@ function MessageRow({
 
   if (message.sender_role === 'system') {
     return (
-      // System bubble — used for "{rep} joined the chat" and similar
-      // announcements. The pill shape + neutral palette already reads
-      // as "informational"; we dropped the Sparkles glyph as part of
-      // the dashboard-wide cleanup.
       <div className="flex justify-center">
-        <div className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-100 px-3 py-1 rounded-full">
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-[#5A1D6A] bg-white border border-[#7B2D8E]/15 px-3 py-1 rounded-full text-center">
           {message.body}
         </div>
       </div>
@@ -915,6 +1199,7 @@ function MessageRow({
             alt={userName}
             width={28}
             height={28}
+            referrerPolicy="no-referrer"
             className="w-7 h-7 rounded-full object-cover"
           />
         ) : (
@@ -922,7 +1207,7 @@ function MessageRow({
             {(userName?.[0] || '?').toUpperCase()}
           </div>
         )}
-        <div className="max-w-[70%]">
+        <div className="max-w-[72%]">
           <div className="bg-white border border-gray-100 px-3.5 py-2 rounded-2xl rounded-bl-sm">
             <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap leading-relaxed">
               {message.body}
@@ -934,17 +1219,36 @@ function MessageRow({
     )
   }
 
-  // staff (you)
+  // Staff message — show exact sender avatar & name so previous staff replies
+  // remain clearly distinguished from the current representative after takeover.
+  const isFromMe = Boolean(currentUserId && message.sender_id === currentUserId)
+  const senderLabel = message.sender_name || (isFromMe ? 'You' : 'Previous rep')
+
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[70%]">
-        <div className="bg-[#7B2D8E] text-white px-3.5 py-2 rounded-2xl rounded-br-sm">
+    <div className="flex items-end justify-end gap-2">
+      <div className="max-w-[72%]">
+        <p className="text-[10px] font-medium text-[#5A1D6A] mr-2 mb-0.5 text-right">
+          {isFromMe ? `${senderLabel} (You)` : senderLabel}
+        </p>
+        <div
+          className={cn(
+            'px-3.5 py-2 rounded-2xl rounded-br-sm',
+            isFromMe
+              ? 'bg-[#7B2D8E] text-white'
+              : 'bg-[#FAF6FB] text-[#3E104B] border border-[#7B2D8E]/25',
+          )}
+        >
           <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed">
             {message.body}
           </p>
         </div>
         <p className="text-[10px] text-gray-400 mt-1 mr-2 text-right">{time}</p>
       </div>
+      <RepAvatar
+        src={message.sender_avatar_url}
+        name={senderLabel}
+        size={28}
+      />
     </div>
   )
 }
@@ -956,9 +1260,11 @@ function MessageRow({
 function CustomerContextPanel({
   data,
   loading,
+  embedded = false,
 }: {
   data: unknown
   loading: boolean
+  embedded?: boolean
 }) {
   type ContextData = {
     isGuest?: boolean
@@ -998,7 +1304,12 @@ function CustomerContextPanel({
   const c = data as ContextData | undefined
 
   return (
-    <aside className="bg-white rounded-2xl border border-gray-100 p-4 space-y-4 max-h-[calc(100vh-180px)] overflow-y-auto">
+    <aside
+      className={cn(
+        'bg-white rounded-2xl border border-gray-200 p-4 space-y-4',
+        !embedded && 'max-h-[calc(100dvh-190px)] overflow-y-auto',
+      )}
+    >
       <div>
         <div className="flex items-center justify-between gap-2">
           <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E]">
@@ -1074,12 +1385,12 @@ function CustomerContextPanel({
                         )}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p
                         className={cn(
                           'text-[12px] font-semibold tabular-nums',
                           tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
-                            ? 'text-rose-600'
+                            ? 'text-[#3E104B]'
                             : 'text-gray-900',
                         )}
                       >
@@ -1091,8 +1402,8 @@ function CustomerContextPanel({
                           tx.status === 'success' || tx.status === 'completed'
                             ? 'text-[#7B2D8E]'
                             : tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
-                              ? 'text-rose-600'
-                              : 'text-amber-600',
+                              ? 'text-[#3E104B]'
+                              : 'text-gray-500',
                         )}
                       >
                         {tx.status}
@@ -1145,25 +1456,33 @@ function CustomerContextPanel({
           </SubSection>
 
           {c.tickets.length > 0 && (
-            <SubSection title="Open tickets">
-              {c.tickets.map((t) => (
-                <div
-                  key={t.ticket_id}
-                  className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-medium text-gray-800 truncate">
-                      {t.subject}
-                    </p>
-                    <p className="text-[10px] text-gray-400">
-                      {t.category} · {t.ticket_id}
-                    </p>
+            <SubSection title="Support tickets">
+              {c.tickets.map((t) => {
+                const sMeta = getTicketStatusMeta(t.status)
+                return (
+                  <div
+                    key={t.ticket_id}
+                    className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-medium text-gray-800 truncate">
+                        {t.subject}
+                      </p>
+                      <p className="text-[10px] text-gray-400">
+                        {t.category} · {t.ticket_id}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        'shrink-0 text-[9px] uppercase tracking-wider font-semibold rounded-full border px-2 py-0.5 whitespace-nowrap',
+                        sMeta.badgeClass,
+                      )}
+                    >
+                      {sMeta.label}
+                    </span>
                   </div>
-                  <span className="text-[9px] uppercase tracking-wider font-semibold text-amber-600">
-                    {t.status}
-                  </span>
-                </div>
-              ))}
+                )
+              })}
             </SubSection>
           )}
         </>
@@ -1273,14 +1592,14 @@ function ProfileSheet({
   }, [slug, displayName, onSaved, onClose])
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center pointer-events-none p-4">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center pointer-events-none sm:p-4">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-md bg-white rounded-3xl border border-gray-200 overflow-hidden pointer-events-auto">
-        <div className="flex items-start justify-between px-6 pt-6 pb-2">
+      <div className="relative w-full sm:max-w-md max-h-[92dvh] overflow-y-auto bg-white rounded-t-3xl sm:rounded-3xl border border-gray-200 pointer-events-auto">
+        <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-2">
           <div>
             <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
               Your front-desk identity
@@ -1299,7 +1618,7 @@ function ProfileSheet({
           </button>
         </div>
 
-        <div className="px-6 pb-6 pt-4 space-y-5">
+        <div className="px-5 sm:px-6 pb-5 pt-4 space-y-5">
           <div>
             <label className="text-[11px] font-semibold text-gray-700 mb-1.5 block">
               Display name
@@ -1310,7 +1629,7 @@ function ProfileSheet({
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={60}
               placeholder="e.g. Sarah O."
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50"
             />
             <p className="text-[10px] text-gray-400 mt-1">
               Shown in the chat header and the &quot;Sarah joined the chat&quot; system message.
@@ -1321,7 +1640,7 @@ function ProfileSheet({
             <label className="text-[11px] font-semibold text-gray-700 mb-1.5 block">
               Avatar
             </label>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
               {AVATAR_SLUGS.map((s) => (
                 <button
                   key={s}
@@ -1356,7 +1675,7 @@ function ProfileSheet({
             </p>
           </div>
 
-          {error && <p className="text-[11px] text-rose-600">{error}</p>}
+          {error && <p className="text-[11px] text-[#3E104B]">{error}</p>}
 
           <div className="flex items-center gap-2 pt-2">
             <button
@@ -1370,7 +1689,7 @@ function ProfileSheet({
               type="button"
               onClick={save}
               disabled={saving}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-semibold text-white bg-[#7B2D8E] hover:bg-[#6B2278] disabled:opacity-60"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-semibold text-white bg-[#7B2D8E] hover:bg-[#5A1D6A] disabled:opacity-60"
             >
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Save profile
@@ -1378,7 +1697,7 @@ function ProfileSheet({
           </div>
         </div>
 
-        <div className="px-6 pb-6 grid grid-cols-2 gap-3">
+        <div className="px-5 sm:px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <PreviewCard label="Preview" url={`/avatars/${slug}.jpg`} name={displayName || 'Customer Care'} />
           <CalendarPlaceholder count={0} />
         </div>

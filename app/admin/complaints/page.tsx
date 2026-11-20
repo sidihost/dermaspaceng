@@ -21,6 +21,11 @@ import {
   X,
 } from 'lucide-react'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
+import {
+  getTicketPriorityMeta,
+  getTicketStatusMeta,
+  TICKET_STATUS_ORDER,
+} from '@/lib/support-and-chat'
 
 interface Complaint {
   id: number
@@ -52,6 +57,13 @@ interface Pagination {
   totalPages: number
 }
 
+const STATUS_ICON_MAP: Record<string, typeof Inbox> = {
+  open: CircleDashed,
+  in_progress: CircleDot,
+  resolved: CheckCircle2,
+  closed: Archive,
+}
+
 const STATUS_META: Record<
   string,
   {
@@ -61,57 +73,42 @@ const STATUS_META: Record<
     chip: string
     icon: typeof Inbox
   }
-> = {
-  open: {
-    label: 'Open',
-    caption: 'awaiting reply',
-    dot: 'bg-amber-500',
-    chip: 'bg-amber-50 text-amber-700 border-amber-200',
-    icon: CircleDashed,
-  },
-  in_progress: {
-    label: 'In progress',
-    caption: 'being handled',
-    dot: 'bg-[#7B2D8E]',
-    chip: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
-    icon: CircleDot,
-  },
-  resolved: {
-    label: 'Resolved',
-    caption: 'wrapped up',
-    dot: 'bg-[#7B2D8E]',
-    chip: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
-    icon: CheckCircle2,
-  },
-  closed: {
-    label: 'Closed',
-    caption: 'archived',
-    dot: 'bg-gray-400',
-    chip: 'bg-gray-100 text-gray-600 border-gray-200',
-    icon: Archive,
-  },
-}
+> = Object.fromEntries(
+  TICKET_STATUS_ORDER.map((status) => {
+    const meta = getTicketStatusMeta(status)
+    return [
+      status,
+      {
+        label: meta.label,
+        caption: meta.caption,
+        dot: meta.dotClass,
+        chip: meta.badgeClass,
+        icon: STATUS_ICON_MAP[status] ?? CircleDashed,
+      },
+    ]
+  }),
+)
 
 const PRIORITY_META: Record<string, { label: string; chip: string }> = {
   urgent: {
-    label: 'Urgent',
-    chip: 'bg-rose-50 text-rose-700 border-rose-200',
+    label: getTicketPriorityMeta('urgent').label,
+    chip: getTicketPriorityMeta('urgent').badgeClass,
   },
   high: {
-    label: 'High',
-    chip: 'bg-amber-50 text-amber-700 border-amber-200',
+    label: getTicketPriorityMeta('high').label,
+    chip: getTicketPriorityMeta('high').badgeClass,
   },
   normal: {
-    label: 'Normal',
-    chip: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
+    label: getTicketPriorityMeta('normal').label,
+    chip: getTicketPriorityMeta('normal').badgeClass,
   },
   low: {
-    label: 'Low',
-    chip: 'bg-gray-100 text-gray-600 border-gray-200',
+    label: getTicketPriorityMeta('low').label,
+    chip: getTicketPriorityMeta('low').badgeClass,
   },
 }
 
-const STATUS_ORDER = ['open', 'in_progress', 'resolved', 'closed'] as const
+const STATUS_ORDER = TICKET_STATUS_ORDER
 const SOURCE_TABS = [
   { id: '', label: 'All messages' },
   { id: 'ticket', label: 'Tickets' },
@@ -161,8 +158,16 @@ export default function ComplaintsPage() {
     tickets: 0,
   })
   const [loading, setLoading] = useState(true)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [sourceFilter, setSourceFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const param = new URLSearchParams(window.location.search).get('status') || ''
+    return (STATUS_ORDER as readonly string[]).includes(param) ? param : ''
+  })
+  const [sourceFilter, setSourceFilter] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    const param = new URLSearchParams(window.location.search).get('source') || ''
+    return param === 'ticket' || param === 'complaint' ? param : ''
+  })
   const [search, setSearch] = useState('')
 
   const fetchComplaints = useCallback(async () => {
@@ -235,8 +240,8 @@ export default function ComplaintsPage() {
             <span>{totalAll} total messages</span>
           </div>
           {awaiting > 0 ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 border border-amber-200">
-              <CircleDashed className="h-3 w-3" aria-hidden="true" />
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF6FB] px-2.5 py-1 text-xs font-semibold text-[#5A1D6A] border border-[#7B2D8E]/25">
+              <CircleDashed className="h-3 w-3 text-[#7B2D8E]" aria-hidden="true" />
               {awaiting} awaiting reply
             </div>
           ) : null}
@@ -483,7 +488,7 @@ export default function ComplaintsPage() {
                           )}
                           {complaint.source === 'ticket' &&
                           complaint.ticket_source === 'email' ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] px-2 py-0.5 text-[10px] font-semibold text-[#5A1D6A] border border-[#7B2D8E]/20">
                               <Mail className="h-2.5 w-2.5" aria-hidden="true" />
                               Email
                             </span>

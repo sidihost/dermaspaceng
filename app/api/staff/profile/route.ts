@@ -6,7 +6,7 @@ import {
   FRONT_DESK_AVATAR_POOL,
   getStaffProfile,
   pickDefaultAvatarSlug,
-  avatarUrlForSlug,
+  resolveStaffAvatarUrl,
 } from '@/lib/live-chat'
 
 // ---------------------------------------------------------------------------
@@ -26,11 +26,16 @@ export async function GET() {
   await ensureStaffProfile(user.id, `${user.first_name} ${user.last_name}`.trim())
   const profile = await getStaffProfile(user.id)
   if (!profile) {
+    const defaultSlug = pickDefaultAvatarSlug(user.id)
     return NextResponse.json({
       profile: {
-        avatarSlug: pickDefaultAvatarSlug(user.id),
+        avatarSlug: defaultSlug,
         displayName: user.first_name,
-        avatarUrl: avatarUrlForSlug(pickDefaultAvatarSlug(user.id)),
+        avatarUrl: resolveStaffAvatarUrl({
+          avatarUrl: user.avatar_url,
+          avatarSlug: defaultSlug,
+          staffId: user.id,
+        }),
       },
     })
   }
@@ -38,7 +43,11 @@ export async function GET() {
     profile: {
       avatarSlug: profile.avatar_slug,
       displayName: profile.display_name,
-      avatarUrl: avatarUrlForSlug(profile.avatar_slug),
+      avatarUrl: resolveStaffAvatarUrl({
+        avatarUrl: user.avatar_url,
+        avatarSlug: profile.avatar_slug,
+        staffId: user.id,
+      }),
       status: profile.status,
     },
   })

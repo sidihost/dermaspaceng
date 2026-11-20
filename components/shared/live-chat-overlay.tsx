@@ -47,6 +47,7 @@ import {
   Phone,
   ArrowUpRight,
   MessageCircle,
+  UserRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -538,23 +539,30 @@ export default function LiveChatOverlay() {
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[58] w-[min(92vw,360px)] flex items-center gap-3 rounded-full bg-white border border-[#7B2D8E]/25 pl-1.5 pr-4 py-1.5 hover:border-[#7B2D8E]/45 transition-colors"
+        className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-[65] w-[min(calc(100vw-1.5rem),360px)] flex items-center gap-3 rounded-full bg-white border border-[#7B2D8E]/25 pl-1.5 pr-4 py-1.5 hover:border-[#7B2D8E]/45 transition-colors"
       >
         <div className="relative shrink-0">
           {status === 'active' && active.staff ? (
-            <Image
-              src={active.staff.avatarUrl}
-              alt={active.staff.displayName}
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-white"
-            />
+            active.staff.avatarUrl ? (
+              <Image
+                src={active.staff.avatarUrl}
+                alt={active.staff.displayName}
+                width={40}
+                height={40}
+                referrerPolicy="no-referrer"
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-white"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[13px] font-semibold flex items-center justify-center ring-2 ring-white">
+                {active.staff.displayName.charAt(0).toUpperCase() || 'D'}
+              </div>
+            )
           ) : (
             <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center ring-2 ring-white">
               <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
             </div>
           )}
-          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" />
+          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#7B2D8E] ring-2 ring-white" />
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[#7B2D8E]">
@@ -572,7 +580,7 @@ export default function LiveChatOverlay() {
               : 'Connecting to the front desk\u2026'}
           </p>
         </div>
-        <ChevronDown className="w-4 h-4 text-gray-400 rotate-180" />
+        <ChevronDown className="w-4 h-4 text-gray-400 rotate-180 shrink-0" />
       </button>
     ) : null
 
@@ -685,66 +693,75 @@ function ExpandedPanel(props: {
   const isWaiting = session.status === 'waiting'
   const isClosed =
     session.status === 'closed' || session.status === 'abandoned'
+  const [confirmEnd, setConfirmEnd] = useState(false)
+  const [showMobileSnapshot, setShowMobileSnapshot] = useState(false)
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center md:justify-center pointer-events-none">
-      {/* Backdrop — soft so the page underneath remains visible. */}
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center pointer-events-none">
+      {/* Backdrop — soft so the page underneath remains visible on desktop. */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto animate-fade-in"
         onClick={onClose}
         aria-hidden
       />
 
-      <div className="relative w-full md:w-[min(92vw,920px)] h-[88vh] md:h-[min(720px,88vh)] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 overflow-hidden flex flex-col md:flex-row pointer-events-auto animate-slide-up">
+      <div className="relative w-full sm:w-[min(94vw,920px)] h-[100dvh] sm:h-[min(720px,88dvh)] bg-white sm:rounded-3xl sm:border border-gray-200 overflow-hidden flex flex-col lg:flex-row pointer-events-auto animate-slide-up">
         {/* Conversation column */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {/* Header */}
-          <header className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 bg-white">
+          <header className="flex items-center gap-2.5 sm:gap-3 px-3.5 sm:px-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-3 pb-3 border-b border-gray-100 bg-white shrink-0">
             <div className="relative shrink-0">
               {staff ? (
-                <Image
-                  src={staff.avatarUrl}
-                  alt={staff.displayName}
-                  width={44}
-                  height={44}
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-[#7B2D8E]/10"
-                />
+                staff.avatarUrl ? (
+                  <Image
+                    src={staff.avatarUrl}
+                    alt={staff.displayName}
+                    width={44}
+                    height={44}
+                    referrerPolicy="no-referrer"
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full object-cover ring-2 ring-[#7B2D8E]/15"
+                  />
+                ) : (
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[14px] font-semibold flex items-center justify-center ring-2 ring-[#7B2D8E]/15">
+                    {staff.displayName.charAt(0).toUpperCase() || 'D'}
+                  </div>
+                )
               ) : (
-                <div className="w-11 h-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center ring-2 ring-[#7B2D8E]/10">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center ring-2 ring-[#7B2D8E]/15">
                   <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
                 </div>
               )}
               {!isClosed && (
-                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" />
+                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#7B2D8E] ring-2 ring-white" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-semibold text-gray-900 truncate">
                 {isWaiting
-                  ? 'Connecting to the front desk\u2026'
+                  ? 'Connecting to front desk\u2026'
                   : staff?.displayName || 'Customer Care'}
               </p>
               <p
                 className={cn(
                   'text-[11px] truncate flex items-center gap-1.5',
                   showConnected
-                    ? 'text-emerald-600 font-semibold'
+                    ? 'text-[#7B2D8E] font-semibold'
                     : 'text-gray-500',
                 )}
               >
                 {isWaiting ? (
                   <>
-                    <span className="relative flex h-2 w-2">
+                    <span className="relative flex h-2 w-2 shrink-0">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-60" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-[#7B2D8E]" />
                     </span>
-                    Reaching out to the next available rep
+                    <span className="truncate">Reaching out to the next available rep</span>
                   </>
                 ) : isClosed ? (
                   'Chat ended'
                 ) : showConnected ? (
                   <>
-                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="inline-flex h-2 w-2 rounded-full bg-[#7B2D8E] shrink-0" />
                     Connected just now
                   </>
                 ) : (
@@ -752,31 +769,124 @@ function ExpandedPanel(props: {
                 )}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Minimise"
-              className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900"
-            >
-              <ChevronDown className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={onEndChat}
-              disabled={isClosed}
-              className="hidden md:inline-flex text-[11px] font-semibold text-gray-500 hover:text-rose-600 px-3 py-1.5 rounded-full border border-gray-200 hover:border-rose-200 disabled:opacity-40 disabled:hover:text-gray-500 disabled:hover:border-gray-200"
-            >
-              End chat
-            </button>
+
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Mobile / tablet account snapshot toggle */}
+              <button
+                type="button"
+                onClick={() => setShowMobileSnapshot((v) => !v)}
+                aria-label="Toggle account snapshot"
+                aria-expanded={showMobileSnapshot}
+                className={cn(
+                  'lg:hidden w-9 h-9 rounded-full flex items-center justify-center border transition-colors',
+                  showMobileSnapshot
+                    ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
+                    : 'border-gray-200 text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]',
+                )}
+              >
+                <UserRound className="w-4 h-4" />
+              </button>
+
+              {/* Safe 2-step End chat right in the header across all viewports */}
+              {!isClosed && (
+                confirmEnd ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmEnd(false)
+                        onEndChat()
+                      }}
+                      className="text-[11px] font-semibold text-white bg-[#3E104B] hover:bg-[#5A1D6A] px-2.5 py-1.5 rounded-full transition-colors whitespace-nowrap"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmEnd(false)}
+                      className="text-[11px] font-medium text-gray-600 px-2 py-1.5 rounded-full border border-gray-200 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmEnd(true)}
+                    className="text-[11px] font-semibold text-gray-600 hover:text-[#3E104B] px-2.5 sm:px-3 py-1.5 rounded-full border border-gray-200 hover:border-[#3E104B]/30 hover:bg-[#FAF6FB] transition-colors whitespace-nowrap"
+                  >
+                    End chat
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Minimise"
+                className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900"
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
           </header>
+
+          {/* Collapsible mobile & tablet account snapshot */}
+          {showMobileSnapshot && (
+            <div className="lg:hidden border-b border-gray-100 bg-[#FAF6FB]/60 px-3.5 py-3 space-y-2 shrink-0 max-h-[42dvh] overflow-y-auto">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
+                  Your snapshot
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileSnapshot(false)}
+                  className="text-[11px] font-medium text-gray-500 hover:text-[#7B2D8E]"
+                >
+                  Hide
+                </button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <ContextCard
+                  icon={<Wallet className="w-4 h-4" />}
+                  label="Wallet balance"
+                  value={account?.wallet.formatted || '\u2014'}
+                  href="/dashboard/wallet"
+                />
+                <ContextCard
+                  icon={<CalendarDays className="w-4 h-4" />}
+                  label="Upcoming bookings"
+                  value={
+                    account?.bookings && account.bookings.length > 0
+                      ? `${account.bookings.length} scheduled`
+                      : 'None scheduled'
+                  }
+                  href="/dashboard/bookings"
+                />
+                <ContextCard
+                  icon={<Mail className="w-4 h-4" />}
+                  label="Account hub"
+                  value="Profile & settings"
+                  href="/dashboard"
+                />
+                <ContextCard
+                  icon={<Phone className="w-4 h-4" />}
+                  label="Or call us"
+                  value="+234 906 183 6625"
+                  href="tel:+2349061836625"
+                  external
+                />
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div
             ref={scrollerRef}
-            className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-[#FAF8FC]"
+            className="flex-1 overflow-y-auto px-3.5 sm:px-4 py-4 space-y-3 bg-[#FAF8FC] min-h-0"
           >
             {messages.length === 0 ? (
-              <div className="text-center text-[12px] text-gray-400 py-12">
+              <div className="text-center text-[12px] text-gray-400 py-12 px-4">
                 {isWaiting
                   ? 'Connecting you to the front desk \u2014 we\u2019ll be right with you.'
                   : 'Send a message to get started.'}
@@ -792,7 +902,7 @@ function ExpandedPanel(props: {
             )}
             {isWaiting && (
               <div className="flex justify-center pt-2">
-                <div className="inline-flex items-center gap-2 text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/5 px-3 py-1.5 rounded-full">
+                <div className="inline-flex items-center gap-2 text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 px-3 py-1.5 rounded-full">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Connecting to the front desk
                 </div>
@@ -800,8 +910,8 @@ function ExpandedPanel(props: {
             )}
             {showConnected && !isWaiting && !isClosed && (
               <div className="flex justify-center pt-2 animate-fade-in">
-                <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full ring-1 ring-emerald-200">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-[#5A1D6A] bg-[#FAF6FB] px-3 py-1.5 rounded-full border border-[#7B2D8E]/25">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-[#7B2D8E]" />
                   Connected{staff ? ` with ${staff.displayName}` : ''}
                 </div>
               </div>
@@ -809,9 +919,11 @@ function ExpandedPanel(props: {
           </div>
 
           {/* Composer */}
-          <div className="border-t border-gray-100 px-3 py-2.5 bg-white">
+          <div className="border-t border-gray-100 px-3 sm:px-3.5 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3 bg-white shrink-0">
             {error && (
-              <p className="text-[11px] text-rose-600 mb-2 px-1">{error}</p>
+              <p className="text-[11px] text-[#3E104B] bg-[#FAF6FB] border border-[#3E104B]/20 rounded-lg px-2.5 py-1.5 mb-2">
+                {error}
+              </p>
             )}
             <div className="flex items-end gap-2">
               <textarea
@@ -832,13 +944,13 @@ function ExpandedPanel(props: {
                 }
                 disabled={isClosed || sending}
                 rows={1}
-                className="flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40 max-h-32"
+                className="flex-1 min-w-0 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3.5 sm:px-4 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50 max-h-32"
               />
               <button
                 type="button"
                 onClick={send}
                 disabled={!draft.trim() || sending || isClosed}
-                className="shrink-0 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 hover:bg-[#6B2278] transition-colors"
+                className="shrink-0 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 hover:bg-[#5A1D6A] transition-colors"
                 aria-label="Send"
               >
                 {sending ? (
@@ -848,19 +960,11 @@ function ExpandedPanel(props: {
                 )}
               </button>
             </div>
-            <button
-              type="button"
-              onClick={onEndChat}
-              disabled={isClosed}
-              className="md:hidden mt-2 text-[11px] font-semibold text-gray-500 hover:text-rose-600 disabled:opacity-40"
-            >
-              End chat
-            </button>
           </div>
         </div>
 
-        {/* Account context column (desktop only) */}
-        <aside className="hidden md:flex w-72 shrink-0 border-l border-gray-100 bg-gray-50/50 flex-col overflow-y-auto">
+        {/* Account context column (large desktop only; mobile & tablet use header toggle) */}
+        <aside className="hidden lg:flex w-72 shrink-0 border-l border-gray-100 bg-gray-50/50 flex-col overflow-y-auto">
           <div className="p-4 border-b border-gray-100">
             <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
               Your snapshot
@@ -1009,12 +1113,13 @@ function MessageBubble({
         staff && staff.displayName.trim() === name.trim()
       return (
         <div className="flex flex-col items-center py-2">
-          {usingCurrentAvatar && staff ? (
+          {usingCurrentAvatar && staff?.avatarUrl ? (
             <Image
               src={staff.avatarUrl}
               alt={staff.displayName}
               width={56}
               height={56}
+              referrerPolicy="no-referrer"
               className="w-14 h-14 rounded-full object-cover ring-2 ring-[#7B2D8E]/15"
             />
           ) : (
@@ -1078,16 +1183,19 @@ function MessageBubble({
   if (message.sender_role === 'staff') {
     return (
       <div className="flex items-end gap-2">
-        {staff ? (
+        {staff?.avatarUrl ? (
           <Image
             src={staff.avatarUrl}
             alt={staff.displayName}
             width={28}
             height={28}
-            className="w-7 h-7 rounded-full object-cover"
+            referrerPolicy="no-referrer"
+            className="w-7 h-7 rounded-full object-cover shrink-0"
           />
         ) : (
-          <div className="w-7 h-7 rounded-full bg-[#7B2D8E]/10" />
+          <div className="w-7 h-7 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-semibold flex items-center justify-center shrink-0">
+            {staff?.displayName?.charAt(0).toUpperCase() || 'D'}
+          </div>
         )}
         <div className="max-w-[80%]">
           <div className="bg-white border border-gray-100 px-3.5 py-2 rounded-2xl rounded-bl-sm">
@@ -1150,17 +1258,17 @@ function RatingSheet(props: {
   } = props
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center md:justify-center pointer-events-none">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center sm:justify-center pointer-events-none">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
         onClick={onSkip}
         aria-hidden
       />
-      <div className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 overflow-hidden pointer-events-auto animate-slide-up">
+      <div className="relative w-full sm:w-[440px] max-h-[92dvh] overflow-y-auto bg-white sm:rounded-3xl rounded-t-3xl border border-gray-200 pointer-events-auto animate-slide-up">
         {done ? (
           <div className="px-6 py-10 text-center">
-            <div className="w-14 h-14 mx-auto rounded-full bg-emerald-50 flex items-center justify-center mb-3">
-              <Star className="w-6 h-6 text-emerald-500 fill-emerald-500" />
+            <div className="w-14 h-14 mx-auto rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 flex items-center justify-center mb-3">
+              <Star className="w-6 h-6 text-[#7B2D8E] fill-[#7B2D8E]" />
             </div>
             <p className="text-[15px] font-semibold text-gray-900">
               Thank you for the feedback.
@@ -1170,7 +1278,7 @@ function RatingSheet(props: {
             </p>
           </div>
         ) : (
-          <div className="px-6 pt-6 pb-5">
+          <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
@@ -1208,11 +1316,11 @@ function RatingSheet(props: {
               maxLength={500}
               rows={3}
               placeholder="Anything you'd like to add? (optional)"
-              className="mt-4 w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+              className="mt-4 w-full resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-base sm:text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50"
             />
 
             {error && (
-              <p className="text-[11px] text-rose-600 mt-2">{error}</p>
+              <p className="text-[11px] text-[#3E104B] mt-2">{error}</p>
             )}
 
             <div className="flex items-center gap-2 mt-4">
@@ -1227,7 +1335,7 @@ function RatingSheet(props: {
                 type="button"
                 onClick={onSubmit}
                 disabled={saving}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-semibold text-white bg-[#7B2D8E] hover:bg-[#6B2278] disabled:opacity-60"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-semibold text-white bg-[#7B2D8E] hover:bg-[#5A1D6A] disabled:opacity-60"
               >
                 {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Submit rating
@@ -1282,20 +1390,20 @@ function GuestPreChatForm({
     // animation) the AI panel hasn't fully closed yet. Without this the
     // form rendered "behind" the AI on the Talk-to-human flow and looked
     // like nothing happened.
-    <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center pointer-events-none">
+    <div className="fixed inset-0 z-[90] flex items-end sm:items-center sm:justify-center pointer-events-none">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
         onClick={onClose}
         aria-hidden
       />
       <div
-        className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl border border-gray-200 overflow-hidden pointer-events-auto animate-slide-up"
+        className="relative w-full sm:w-[440px] max-h-[92dvh] overflow-y-auto bg-white sm:rounded-3xl rounded-t-3xl border border-gray-200 pointer-events-auto animate-slide-up"
         role="dialog"
         aria-modal="true"
         aria-labelledby="live-chat-prechat-title"
       >
         {/* Hero — flat brand-coloured welcome block. */}
-        <div className="relative bg-[#7B2D8E] px-6 pt-6 pb-7 text-white">
+        <div className="relative bg-[#7B2D8E] px-5 sm:px-6 pt-5 sm:pt-6 pb-6 sm:pb-7 text-white">
           <button
             type="button"
             onClick={onClose}
@@ -1304,7 +1412,7 @@ function GuestPreChatForm({
           >
             <X className="w-4 h-4" />
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 pr-8">
             <div className="w-11 h-11 rounded-full bg-white/15 ring-1 ring-white/30 flex items-center justify-center shrink-0">
               <MessageCircle className="w-5 h-5" />
             </div>
@@ -1337,7 +1445,7 @@ function GuestPreChatForm({
             e.preventDefault()
             onSubmit()
           }}
-          className="px-6 py-5 space-y-3"
+          className="px-5 sm:px-6 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-5 space-y-3"
         >
           <Field label="Name" optional>
             <input
@@ -1347,7 +1455,7 @@ function GuestPreChatForm({
               placeholder="Enter your name"
               autoComplete="name"
               maxLength={80}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50"
             />
           </Field>
 
@@ -1360,7 +1468,7 @@ function GuestPreChatForm({
               placeholder="Enter your email"
               autoComplete="email"
               maxLength={120}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50"
             />
           </Field>
 
@@ -1372,18 +1480,20 @@ function GuestPreChatForm({
               placeholder="Optional, for callbacks"
               autoComplete="tel"
               maxLength={32}
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50"
             />
           </Field>
 
           {error && (
-            <p className="text-[12px] text-rose-600">{error}</p>
+            <p className="text-[12px] text-[#3E104B] bg-[#FAF6FB] border border-[#3E104B]/20 rounded-xl px-3 py-2">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={submitting || !email.trim()}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#6B2278] disabled:bg-[#7B2D8E]/40 text-white text-[14px] font-semibold py-3 transition-colors mt-1"
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] disabled:bg-[#7B2D8E]/40 text-white text-[14px] font-semibold py-3 transition-colors mt-1"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             Start chat

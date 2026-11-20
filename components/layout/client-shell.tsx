@@ -69,14 +69,8 @@ const ChristmasAnimation = dynamic(
   { ssr: false, loading: () => null },
 )
 
-const LiveChatOverlay = dynamic(
-  () => import('@/components/shared/live-chat-overlay'),
-  { ssr: false, loading: () => null },
-)
-
 export default function ClientShell() {
   const aiEnabled = useFeatureFlag('ai_chat')
-  const liveChatEnabled = useFeatureFlag('live_chat')
   return (
     <>
       <RootErrorBoundary label="christmas-animation">
@@ -89,11 +83,6 @@ export default function ClientShell() {
         <BirthdayCelebration />
       </RootErrorBoundary>
       {aiEnabled && <DermaAIMount />}
-      {liveChatEnabled && (
-        <RootErrorBoundary label="live-chat">
-          <LiveChatOverlay />
-        </RootErrorBoundary>
-      )}
       <RootErrorBoundary label="legal-gate">
         <LegalAcceptanceGate />
       </RootErrorBoundary>

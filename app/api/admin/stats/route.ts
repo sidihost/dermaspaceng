@@ -57,12 +57,15 @@ async function computeAdminStats() {
 
     // Complaints + support tickets share the admin inbox, so the dashboard
     // counter has to include both sources. Using a UNION ALL sub-select so
-    // the outer aggregate is a single row.
+    // the outer aggregate is a single row with full status breakdown.
     const complaintsResult = await sql`
       SELECT
         COUNT(*) AS total,
         COUNT(*) FILTER (WHERE status IN ('open', 'pending', 'in_progress')) AS open,
-        COUNT(*) FILTER (WHERE status = 'resolved') AS resolved
+        COUNT(*) FILTER (WHERE status IN ('open', 'pending')) AS awaiting,
+        COUNT(*) FILTER (WHERE status = 'in_progress') AS in_progress,
+        COUNT(*) FILTER (WHERE status = 'resolved') AS resolved,
+        COUNT(*) FILTER (WHERE status = 'closed') AS closed
       FROM (
         SELECT COALESCE(status, 'open') AS status FROM contact_messages
         UNION ALL
@@ -155,19 +158,140 @@ async function computeAdminStats() {
     // Tickets queue — split out from the combined "complaints" tally
     // above so the sidebar can drive a dedicated Tickets badge that
     // ONLY counts support_tickets rows (the unified inbox tally
-    // remains under `complaints.open`). Mirrors the same defensive
-    // try/catch pattern so a missing table doesn't take down stats.
+    // remains under `complaints.open`), AND so the Admin Dashboard can
+    // display the full ticket status breakdown + recent tickets with
+    // their live status badges right on /admin.
     let ticketsOpen = 0
+    let ticketsBreakdown = {
+      total: 0,
+      open: 0,
+      inProgress: 0,
+      resolved: 0,
+      closed: 0,
+    }
+    let recentTickets: Array<{
+      id: string
+      ticketId: string | null
+      subject: string
+      customerName: string
+      customerEmail: string
+      status: string
+      priority: string
+      category: string | null
+      source: 'ticket' | 'complaint'
+      createdAt: string
+      updatedAt: string
+    }> = []
+
     try {
       const ticketsResult = await sql`
-        SELECT COUNT(*) FILTER (
-          WHERE status IN ('open', 'pending', 'in_progress')
-        )::int AS open_count
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE COALESCE(status, 'open') IN ('open', 'pending', 'in_progress'))::int AS open_count,
+          COUNT(*) FILTER (WHERE COALESCE(status, 'open') IN ('open', 'pending'))::int AS status_open,
+          COUNT(*) FILTER (WHERE COALESCE(status, 'open') = 'in_progress')::int AS status_in_progress,
+          COUNT(*) FILTER (WHERE COALESCE(status, 'open') = 'resolved')::int AS status_resolved,
+          COUNT(*) FILTER (WHERE COALESCE(status, 'open') = 'closed')::int AS status_closed
         FROM support_tickets
       `
-      ticketsOpen = Number(ticketsResult[0].open_count) || 0
+      ticketsOpen = Number(ticketsResult[0]?.open_count) || 0
+      ticketsBreakdown = {
+        total: Number(ticketsResult[0]?.total) || 0,
+        open: Number(ticketsResult[0]?.status_open) || 0,
+        inProgress: Number(ticketsResult[0]?.status_in_progress) || 0,
+        resolved: Number(ticketsResult[0]?.status_resolved) || 0,
+        closed: Number(ticketsResult[0]?.status_closed) || 0,
+      }
+
+      const ticketRows = await sql`
+        SELECT
+          id,
+          ticket_id,
+          name,
+          email,
+          subject,
+          message,
+          COALESCE(status, 'open') AS status,
+          COALESCE(priority, 'normal') AS priority,
+          category,
+          created_at,
+          COALESCE(updated_at, created_at) AS updated_at
+        FROM support_tickets
+        ORDER BY COALESCE(updated_at, created_at) DESC
+        LIMIT 6
+      `
+      recentTickets = ticketRows.map((r) => ({
+        id: String(r.id),
+        ticketId: r.ticket_id ? String(r.ticket_id) : null,
+        subject:
+          String(r.subject || '').trim() ||
+          String(r.message || '').replace(/\s+/g, ' ').trim().slice(0, 80) ||
+          'Support ticket',
+        customerName: String(r.name || '').trim() || 'Customer',
+        customerEmail: String(r.email || ''),
+        status: String(r.status || 'open'),
+        priority: String(r.priority || 'normal'),
+        category: r.category ? String(r.category) : null,
+        source: 'ticket' as const,
+        createdAt: r.created_at
+          ? new Date(r.created_at as string).toISOString()
+          : new Date().toISOString(),
+        updatedAt: r.updated_at
+          ? new Date(r.updated_at as string).toISOString()
+          : new Date().toISOString(),
+      }))
     } catch {
-      /* table missing — keep zero */
+      /* support_tickets table missing — keep defaults */
+    }
+
+    // If fewer than 6 support_tickets exist, also pull recent contact_messages
+    // so the Admin Dashboard's ticket status feed always reflects active support
+    // conversations from both channels.
+    if (recentTickets.length < 6) {
+      try {
+        const remaining = 6 - recentTickets.length
+        const msgRows = await sql`
+          SELECT
+            id,
+            name,
+            email,
+            subject,
+            message,
+            COALESCE(status, 'open') AS status,
+            COALESCE(priority, 'normal') AS priority,
+            category,
+            created_at,
+            COALESCE(updated_at, created_at) AS updated_at
+          FROM contact_messages
+          ORDER BY COALESCE(updated_at, created_at) DESC
+          LIMIT ${remaining}
+        `
+        const mappedMsgs = msgRows.map((r) => ({
+          id: String(r.id),
+          ticketId: null,
+          subject:
+            String(r.subject || '').trim() ||
+            String(r.message || '').replace(/\s+/g, ' ').trim().slice(0, 80) ||
+            'Contact message',
+          customerName: String(r.name || '').trim() || 'Customer',
+          customerEmail: String(r.email || ''),
+          status: String(r.status || 'open'),
+          priority: String(r.priority || 'normal'),
+          category: r.category ? String(r.category) : null,
+          source: 'complaint' as const,
+          createdAt: r.created_at
+            ? new Date(r.created_at as string).toISOString()
+            : new Date().toISOString(),
+          updatedAt: r.updated_at
+            ? new Date(r.updated_at as string).toISOString()
+            : new Date().toISOString(),
+        }))
+        recentTickets = [...recentTickets, ...mappedMsgs].sort((a, b) =>
+          b.updatedAt.localeCompare(a.updatedAt),
+        )
+      } catch {
+        /* contact_messages fallback failed — keep support_tickets list */
+      }
     }
 
     // Bookings queue health. `pending` drives the Bookings sidebar
@@ -534,7 +658,10 @@ async function computeAdminStats() {
         complaints: {
           total: Number(complaintsResult[0].total),
           open: Number(complaintsResult[0].open),
-          resolved: Number(complaintsResult[0].resolved)
+          awaiting: Number(complaintsResult[0].awaiting) || 0,
+          inProgress: Number(complaintsResult[0].in_progress) || 0,
+          resolved: Number(complaintsResult[0].resolved),
+          closed: Number(complaintsResult[0].closed) || 0,
         },
         giftCards: {
           total: Number(giftCardsResult[0].total),
@@ -559,6 +686,9 @@ async function computeAdminStats() {
         },
         tickets: {
           open: ticketsOpen,
+          total: ticketsBreakdown.total,
+          breakdown: ticketsBreakdown,
+          recent: recentTickets,
         },
         feedback: {
           new: feedbackNew,

@@ -6,6 +6,9 @@ import {
   dispatchReinstatementNotification,
   dispatchSuspensionNotification,
 } from '@/lib/suspension-appeals-db'
+import { sendStaffPromotedEmail } from '@/lib/email'
+import { isPlaceholderEmail } from '@/lib/auth-onboarding'
+import { ensureStaffProfile } from '@/lib/live-chat'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -333,11 +336,31 @@ export async function PUT(request: NextRequest) {
         }
         break
 
-      case 'change_role':
+      case 'change_role': {
         if (!['user', 'staff', 'admin'].includes(value)) {
           return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
         }
-        await sql`UPDATE users SET role = ${value} WHERE id = ${userId}`
+
+        const prevRows = (await sql`
+          SELECT id, email, first_name, last_name, role
+          FROM users
+          WHERE id = ${userId}
+          LIMIT 1
+        `) as Array<{
+          id: string
+          email: string | null
+          first_name: string | null
+          last_name: string | null
+          role: string | null
+        }>
+
+        const targetUser = prevRows[0]
+        if (!targetUser) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        }
+
+        const previousRole = targetUser.role || 'user'
+        await sql`UPDATE users SET role = ${value}, updated_at = NOW() WHERE id = ${userId}`
         // Role changes need a fresh session so the user's cached
         // client-side `useAuth` payload picks up the new role and
         // route guards (e.g. /staff, /admin) gate correctly. Without
@@ -347,7 +370,36 @@ export async function PUT(request: NextRequest) {
         // their cookie expired. Wiping sessions is the simplest
         // reliable invalidation.
         await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+
+        const isPromotionToTeam =
+          previousRole !== value && (value === 'staff' || value === 'admin')
+
+        if (isPromotionToTeam) {
+          const fullName = `${targetUser.first_name || ''} ${targetUser.last_name || ''}`.trim() || 'Team Member'
+          await ensureStaffProfile(String(userId), fullName).catch((err) => {
+            console.error('[admin/users] ensureStaffProfile failed:', err)
+          })
+
+          if (targetUser.email && !isPlaceholderEmail(targetUser.email)) {
+            const promoterName =
+              `${admin.first_name || ''} ${admin.last_name || ''}`.trim() ||
+              admin.email ||
+              'Dermaspace Admin'
+            try {
+              await sendStaffPromotedEmail({
+                email: targetUser.email,
+                firstName: targetUser.first_name,
+                newRole: value as 'staff' | 'admin',
+                previousRole,
+                promotedByName: promoterName,
+              })
+            } catch (mailErr) {
+              console.error('[admin/users] staff promotion email failed:', mailErr)
+            }
+          }
+        }
         break
+      }
 
       case 'archive_user':
         // Recoverable soft-delete. The client is hidden from the default

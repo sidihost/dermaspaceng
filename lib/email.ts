@@ -4637,3 +4637,118 @@ export async function sendAccountReinstatedEmail(data: {
   })
 }
 
+/**
+ * Builds the HTML for the staff/admin promotion notification using the
+ * exact existing Dermaspace transactional email shell untouched.
+ */
+export function buildStaffPromotedEmailHtml(data: {
+  firstName?: string | null
+  newRole: 'staff' | 'admin'
+  previousRole?: string | null
+  promotedByName?: string | null
+}): { subject: string; html: string } {
+  const safeName = escapeHtml(data.firstName?.trim() || 'there')
+  const isAdmin = data.newRole === 'admin'
+  const roleLabel = isAdmin ? 'Admin' : 'Staff'
+  const safePromoter = data.promotedByName?.trim()
+    ? escapeHtml(data.promotedByName.trim())
+    : null
+  const dashboardPath = isAdmin ? '/admin' : '/staff'
+  const signInUrl = `${PUBLIC_ORIGIN}/signin?next=${encodeURIComponent(dashboardPath)}`
+  const wasRegularUser = !data.previousRole || data.previousRole === 'user'
+
+  const heading = isAdmin
+    ? 'You have been promoted to Admin'
+    : 'Welcome to the Dermaspace team'
+
+  const introCopy = isAdmin
+    ? wasRegularUser
+      ? 'Your Dermaspace account has been upgraded to an Administrator role. You now have access to the Admin and Staff workspaces to manage operations, bookings, live support, and team settings.'
+      : 'Your Dermaspace team account has been promoted to Administrator. You now have access to the full Admin dashboard in addition to the Staff workspace.'
+    : 'Congratulations! Your Dermaspace account has been promoted to Staff. You now have access to the Staff Console to assist clients, respond to live chats, and manage assigned requests.'
+
+  const roleDescription = isAdmin
+    ? 'Administrator — Full access to the Admin dashboard, client requests, live chat oversight, and team management.'
+    : 'Staff — Access to the Staff workspace, customer live chat queue, bookings, and assigned support requests.'
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      ${heading}
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      ${introCopy}
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Your New Role</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${roleDescription}</p>
+          ${
+            safePromoter
+              ? `<p style="margin: 10px 0 0; font-size: 12px; color: #666;">Updated by ${safePromoter}</p>`
+              : ''
+          }
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 20px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      For security, your previous sessions have been refreshed. Sign back in below to activate your ${roleLabel.toLowerCase()} workspace.
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${escapeHtml(signInUrl)}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Sign In to ${roleLabel} Workspace
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Questions about your new access? Reply to this email or contact hello@dermaspaceng.com.
+    </p>
+  `
+
+  const subject = isAdmin
+    ? 'You have been promoted to Admin at Dermaspace'
+    : 'You have been promoted to Staff at Dermaspace'
+
+  return {
+    subject,
+    html: getEmailTemplate(content, {
+      preheader: isAdmin
+        ? 'Your Dermaspace account now has Admin access. Sign in to open the dashboard.'
+        : 'Welcome to the Dermaspace team! Sign in to open your Staff workspace.',
+      eyebrow: isAdmin ? 'Team role update' : 'Welcome to the team',
+    }),
+  }
+}
+
+/**
+ * Sent immediately when an admin promotes a user to staff (or promotes
+ * a user/staff member to admin).
+ */
+export async function sendStaffPromotedEmail(data: {
+  email: string
+  firstName?: string | null
+  newRole: 'staff' | 'admin'
+  previousRole?: string | null
+  promotedByName?: string | null
+}): Promise<boolean> {
+  const { subject, html } = buildStaffPromotedEmailHtml(data)
+  return sendEmail({
+    to: data.email,
+    subject,
+    html,
+  })
+}
+
+

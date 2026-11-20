@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import {
-  avatarUrlForSlug,
   getOpenSessionForUser,
   getRecentUnratedSessionForUser,
   getSessionById,
+  resolveStaffAvatarUrl,
+  resolveSupportId,
   staffDisplayName,
   type LiveChatSession,
 } from '@/lib/live-chat'
@@ -42,13 +43,14 @@ export async function GET() {
   if (!session) return NextResponse.json({ session: null })
 
   let staff: {
+    id: string
     displayName: string
     avatarUrl: string
   } | null = null
 
   if (session.assigned_staff_id) {
     const rows = await sql`
-      SELECT u.first_name, u.last_name, sp.display_name, sp.avatar_slug
+      SELECT u.first_name, u.last_name, u.avatar_url, sp.display_name, sp.avatar_slug
         FROM users u
         LEFT JOIN staff_profiles sp ON sp.user_id = u.id
        WHERE u.id = ${session.assigned_staff_id}
@@ -58,18 +60,24 @@ export async function GET() {
       | {
           first_name: string | null
           last_name: string | null
+          avatar_url: string | null
           display_name: string | null
           avatar_slug: string | null
         }
       | undefined
     if (row) {
       staff = {
+        id: session.assigned_staff_id,
         displayName: staffDisplayName({
           display_name: row.display_name,
           first_name: row.first_name,
           last_name: row.last_name,
         }),
-        avatarUrl: avatarUrlForSlug(row.avatar_slug),
+        avatarUrl: resolveStaffAvatarUrl({
+          avatarUrl: row.avatar_url,
+          avatarSlug: row.avatar_slug,
+          staffId: session.assigned_staff_id,
+        }),
       }
     }
   }
@@ -77,6 +85,7 @@ export async function GET() {
   return NextResponse.json({
     session: {
       id: session.id,
+      supportCode: resolveSupportId(session.support_code, session.id),
       status: session.status,
       escalatedAt: session.escalated_at,
       acceptedAt: session.accepted_at,
