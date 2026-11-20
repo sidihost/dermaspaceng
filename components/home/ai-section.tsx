@@ -54,14 +54,14 @@ const SHOTS: Shot[] = [
   {
     id: 'welcome',
     label: 'Welcome',
-    path: 'Derma AI · Concierge',
+    path: 'Derma AI',
     src: '/images/mockups/derma-ai-welcome.png',
     alt: 'Derma AI welcome screen greeting the user with quick suggestions like popular services, skin advice and finding a branch',
   },
   {
     id: 'chat',
     label: 'Ask anything',
-    path: 'Derma AI · Concierge',
+    path: 'Derma AI',
     src: '/images/mockups/derma-ai-chat.png',
     alt: 'Derma AI chat showing the assistant greeting with quick action cards to book an appointment or browse services',
   },
@@ -86,7 +86,7 @@ const DESKTOP_SHOTS: Shot[] = [
     label: 'Welcome',
     path: 'dermaspace.ng',
     src: '/images/mockups/derma-ai-desktop-welcome.png',
-    alt: 'Derma AI concierge docked on the right of the Dermaspace website on desktop, greeting the visitor with quick suggestions',
+    alt: 'Derma AI docked on the right of the Dermaspace website on desktop, greeting the visitor with quick suggestions',
   },
   {
     id: 'desktop-voice',
@@ -157,9 +157,6 @@ export default function AISection() {
               <div className="min-w-0">
                 <p className="text-base font-bold text-gray-900 leading-tight">
                   Derma AI
-                </p>
-                <p className="text-[11px] text-gray-500 leading-none mt-1">
-                  Your Dermaspace concierge
                 </p>
               </div>
             </div>

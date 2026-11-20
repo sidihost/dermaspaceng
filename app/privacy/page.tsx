@@ -124,7 +124,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          Derma AI is our in-app virtual concierge. When you chat, speak or
+          Derma AI is our in-app assistant. When you chat, speak or
           share images with Derma AI we collect the message contents and any
           attached media in order to answer your question and recommend
           relevant treatments.

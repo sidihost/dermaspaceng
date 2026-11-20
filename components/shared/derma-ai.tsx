@@ -7194,32 +7194,35 @@ export default function DermaAI({
                           : 'Derma AI'}
                       </h3>
                       {/* Dynamic status line */}
-                      <p className="text-[11px] leading-none mt-0.5 truncate">
-                        {inlineLiveChat.isLiveMode ? (
-                          <span className="text-[#7B2D8E] font-medium">
-                            {inlineLiveChat.status === 'active'
-                              ? `Live · ${
-                                  inlineLiveChat.session
-                                    ? resolveSupportId(
-                                        inlineLiveChat.session.supportCode,
-                                        inlineLiveChat.session.id,
-                                      )
-                                    : 'Customer Care'
-                                }`
-                              : 'Connecting to an agent…'}
-                          </span>
-                        ) : isLoading ? (
-                          <span className="text-gray-500">Thinking…</span>
-                        ) : isSpeaking ? (
-                          <span className="text-gray-500">Speaking…</span>
-                        ) : memories.length > 0 ? (
-                          <span className="text-[#7B2D8E] font-medium">
-                            Concierge · remembers {memories.length}
-                          </span>
-                        ) : (
-                          <span className="text-gray-500">Concierge</span>
-                        )}
-                      </p>
+                      {(inlineLiveChat.isLiveMode ||
+                        isLoading ||
+                        isSpeaking ||
+                        memories.length > 0) && (
+                        <p className="text-[11px] leading-none mt-0.5 truncate">
+                          {inlineLiveChat.isLiveMode ? (
+                            <span className="text-[#7B2D8E] font-medium">
+                              {inlineLiveChat.status === 'active'
+                                ? `Live · ${
+                                    inlineLiveChat.session
+                                      ? resolveSupportId(
+                                          inlineLiveChat.session.supportCode,
+                                          inlineLiveChat.session.id,
+                                        )
+                                      : 'Customer Care'
+                                  }`
+                                : 'Connecting to an agent…'}
+                            </span>
+                          ) : isLoading ? (
+                            <span className="text-gray-500">Thinking…</span>
+                          ) : isSpeaking ? (
+                            <span className="text-gray-500">Speaking…</span>
+                          ) : (
+                            <span className="text-[#7B2D8E] font-medium">
+                              Remembers {memories.length}
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -7398,7 +7401,7 @@ export default function DermaAI({
                           </div>
                         </div>
                         <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
-                          Derma AI · Concierge
+                          Derma AI
                         </p>
                         <h4 className="text-[22px] font-semibold text-gray-900 tracking-tight leading-tight text-balance">
                           {userInfo.name ? `Hello, ${userInfo.name}.` : 'Hello there.'}
@@ -8934,7 +8937,7 @@ export default function DermaAI({
                               </button>
                             )}
                             <p className="text-center text-[10.5px] text-gray-400">
-                              Derma AI · Dermaspace Concierge
+                              Derma AI
                             </p>
                           </div>
                         )}
@@ -9204,10 +9207,7 @@ export default function DermaAI({
                                 <ButterflyLogo className="w-5 h-5 text-white" />
                               </div>
                               <p className="text-[13px] font-semibold text-gray-900">Derma AI</p>
-                              <p className="text-[11px] text-gray-500 mt-0.5">
-                                Your Dermaspace concierge
-                              </p>
-                              <p className="text-[10.5px] text-gray-400 mt-2 tracking-wide">
+                              <p className="text-[10.5px] text-gray-400 mt-1.5 tracking-wide">
                                 Version 1.0
                               </p>
                             </div>

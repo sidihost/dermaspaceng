@@ -169,7 +169,7 @@ export function evaluateGiftCardRedemptionState({
           : 'Processing Gift Card',
       summary:
         normalizedPayment === 'paid'
-          ? 'Payment has been received and the card is awaiting final activation from our concierge team.'
+          ? 'Payment has been received and the card is awaiting final activation from our customer care team.'
           : 'This gift card request is still being processed.',
     }
   }

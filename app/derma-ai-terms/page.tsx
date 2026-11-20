@@ -19,7 +19,7 @@ import LegalShell, { type LegalSection } from "@/components/legal/legal-shell"
 export const metadata: Metadata = {
   title: "Derma AI Terms & Acceptable Use",
   description:
-    "The ground rules for using Derma AI — Dermaspace's virtual concierge. What it can do, what it can't, how your conversations are stored, and how to use it safely.",
+    "The ground rules for using Derma AI — Dermaspace's built-in assistant. What it can do, what it can't, how your conversations are stored, and how to use it safely.",
   alternates: { canonical: "https://dermaspaceng.com/derma-ai-terms" },
   openGraph: {
     title: "Derma AI Terms & Acceptable Use | Dermaspace",
@@ -38,7 +38,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          Derma AI is the virtual concierge built into the Dermaspace website
+          Derma AI is the assistant built into the Dermaspace website
           and app. It can answer questions about our treatments and locations,
           recommend services based on your skin and wellness concerns, help
           you book or reschedule appointments, top up your wallet, redeem gift
@@ -61,7 +61,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          Derma AI is a wellness and concierge tool. It is{" "}
+          Derma AI is a wellness and booking assistant. It is{" "}
           <strong>not</strong>:
         </p>
         <ul>

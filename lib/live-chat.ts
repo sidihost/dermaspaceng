@@ -92,6 +92,33 @@ export function ensureLiveChatSupportCodeColumn(): Promise<void> {
         ALTER TABLE live_chat_sessions
         ADD COLUMN IF NOT EXISTS support_code TEXT
       `
+      // Backfill any pre-existing sessions so every row in Postgres has a real,
+      // searchable Support ID stored in the database (collision-safe).
+      await sql`
+        WITH candidates AS (
+          SELECT
+            id,
+            'DS-LC-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 6)) AS base_code,
+            'DS-LC-' || UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 8)) AS long_code,
+            ROW_NUMBER() OVER (
+              PARTITION BY UPPER(SUBSTRING(REPLACE(id::text, '-', ''), 1, 6))
+              ORDER BY created_at ASC, id ASC
+            ) AS rn
+          FROM live_chat_sessions
+          WHERE support_code IS NULL
+        )
+        UPDATE live_chat_sessions s
+           SET support_code = CASE
+             WHEN c.rn = 1 AND NOT EXISTS (
+               SELECT 1 FROM live_chat_sessions existing
+                WHERE existing.support_code = c.base_code
+             ) THEN c.base_code
+             ELSE c.long_code
+           END
+          FROM candidates c
+         WHERE s.id = c.id
+           AND s.support_code IS NULL
+      `
       await sql`
         CREATE UNIQUE INDEX IF NOT EXISTS idx_live_chat_sessions_support_code
         ON live_chat_sessions (support_code)

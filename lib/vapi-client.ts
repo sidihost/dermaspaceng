@@ -81,6 +81,6 @@ export function voiceToVapiOverrides(voiceElevenLabsId: string): Record<string, 
       similarityBoost: 0.8,
     },
     firstMessage:
-      "Hi, I'm your Derma AI Live concierge. You can ask me about services, bookings, or your skin goals. Tap or talk to interrupt me anytime.",
+      "Hi, I'm Derma AI Live. You can ask me about services, bookings, or your skin goals. Tap or talk to interrupt me anytime.",
   }
 }

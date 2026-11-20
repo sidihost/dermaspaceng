@@ -16,7 +16,7 @@ import { analyzeVisionFrame } from '@/lib/ai-chain'
 
 export const maxDuration = 20
 
-const SYSTEM = `You are Derma AI Live — the real-time vision layer behind Dermaspace's in-app skin concierge.
+const SYSTEM = `You are Derma AI Live — the real-time vision layer behind Dermaspace's in-app skincare assistant.
 You receive a single camera frame plus the last few observations you already made.
 Your job is to produce ONE short sentence (max ~18 words) describing what you now see, as if you were talking to the user in real time.
 Focus on:

@@ -2708,7 +2708,7 @@ function SettingsPageContent() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/70">
-                          Derma AI · Concierge
+                          Derma AI
                         </p>
                         <h2 className="text-base sm:text-lg font-semibold leading-tight mt-0.5 truncate">
                           {user?.firstName
