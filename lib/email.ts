@@ -4751,4 +4751,220 @@ export async function sendStaffPromotedEmail(data: {
   })
 }
 
+export interface LiveChatTranscriptEmailMessage {
+  senderRole: 'user' | 'staff' | 'system'
+  senderName?: string | null
+  body: string
+  createdAt: string
+}
+
+/**
+ * Pure HTML builder for live chat conversation transcripts sent to the
+ * customer (logged-in or guest) after a live chat ends. Uses the exact
+ * existing Dermaspace `getEmailTemplate` shell and `#7B2D8E` palette.
+ */
+export function buildLiveChatTranscriptEmailHtml(data: {
+  firstName?: string | null
+  supportCode: string
+  topic?: string | null
+  startedAt?: string | null
+  closedAt?: string | null
+  representatives?: string[]
+  messages: LiveChatTranscriptEmailMessage[]
+}): { subject: string; html: string } {
+  const safeName = escapeHtml((data.firstName || '').trim() || 'there')
+  const safeCode = escapeHtml(data.supportCode.trim() || 'DS-LC')
+  const safeTopic = data.topic ? escapeHtml(data.topic.trim()) : ''
+
+  const formatTime = (iso?: string | null) => {
+    if (!iso) return ''
+    try {
+      return new Date(iso).toLocaleTimeString('en-NG', {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'Africa/Lagos',
+      })
+    } catch {
+      return ''
+    }
+  }
+
+  const formatDate = (iso?: string | null) => {
+    if (!iso) return ''
+    try {
+      return new Date(iso).toLocaleDateString('en-NG', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Africa/Lagos',
+      })
+    } catch {
+      return ''
+    }
+  }
+
+  const uniqueReps = Array.from(
+    new Set(
+      (data.representatives || [])
+        .map((r) => r.trim())
+        .filter(Boolean),
+    ),
+  )
+
+  const sessionDate = formatDate(data.closedAt || data.startedAt || data.messages[0]?.createdAt)
+
+  const rowsHtml = data.messages
+    .map((m) => {
+      const time = escapeHtml(formatTime(m.createdAt))
+      const bodyHtml = escapeHtml(m.body).replace(/\n/g, '<br>')
+
+      if (m.senderRole === 'system') {
+        return `
+          <tr>
+            <td style="padding: 6px 0; text-align: center;">
+              <span style="display: inline-block; padding: 5px 12px; background-color: #f8f5fa; border: 1px solid #ece5f0; border-radius: 16px; font-size: 12px; color: #5A1D6A;">
+                ${bodyHtml}${time ? ` &middot; ${time}` : ''}
+              </span>
+            </td>
+          </tr>
+        `
+      }
+
+      if (m.senderRole === 'staff') {
+        const repLabel = escapeHtml((m.senderName || '').trim() || 'Dermaspace Customer Care')
+        return `
+          <tr>
+            <td style="padding: 6px 0;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border: 1px solid #ece5f0; border-radius: 12px;">
+                <tr>
+                  <td style="padding: 12px 14px;">
+                    <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: 0.3px;">
+                      ${repLabel}${time ? ` <span style="font-weight: 400; color: #8c8c8c;">&middot; ${time}</span>` : ''}
+                    </p>
+                    <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">
+                      ${bodyHtml}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        `
+      }
+
+      return `
+        <tr>
+          <td style="padding: 6px 0;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f5fa; border: 1px solid #e4d4ea; border-radius: 12px;">
+              <tr>
+                <td style="padding: 12px 14px;">
+                  <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #3E104B; letter-spacing: 0.3px;">
+                    You${time ? ` <span style="font-weight: 400; color: #8c8c8c;">&middot; ${time}</span>` : ''}
+                  </p>
+                  <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">
+                    ${bodyHtml}
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `
+    })
+    .join('')
+
+  const contactUrl = `${PUBLIC_ORIGIN}/contact`
+
+  const content = `
+    <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
+      Your Dermaspace Chat Transcript
+    </h1>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${safeName},
+    </p>
+
+    <p style="margin: 0 0 18px; font-size: 15px; color: #4a4a4a; line-height: 1.65;">
+      Thank you for chatting with Dermaspace Customer Care. Here is a copy of your conversation for your records. If you ever need to follow up, simply share your Support ID below and any representative can pick up right where we left off.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 8px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Conversation Summary</p>
+          <p style="margin: 0 0 4px; font-size: 14px; color: #1c1e21;">
+            <strong>Support ID:</strong> <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: ${BRAND_COLOR}; font-weight: 700;">${safeCode}</span>
+          </p>
+          ${
+            sessionDate
+              ? `<p style="margin: 0 0 4px; font-size: 13px; color: #4a4a4a;"><strong>Date:</strong> ${escapeHtml(sessionDate)}</p>`
+              : ''
+          }
+          ${
+            uniqueReps.length > 0
+              ? `<p style="margin: 0 0 4px; font-size: 13px; color: #4a4a4a;"><strong>Assisted by:</strong> ${escapeHtml(uniqueReps.join(', '))}</p>`
+              : ''
+          }
+          ${
+            safeTopic
+              ? `<p style="margin: 0; font-size: 13px; color: #4a4a4a;"><strong>Topic:</strong> ${safeTopic}</p>`
+              : ''
+          }
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 10px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">
+      Transcript
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 22px;">
+      ${rowsHtml}
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 18px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${escapeHtml(contactUrl)}" style="display: inline-block; padding: 13px 26px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Need More Help? Contact Us
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      You can quote Support ID <strong>${safeCode}</strong> anytime in Derma AI or by replying to hello@dermaspaceng.com.
+    </p>
+  `
+
+  const subject = `Your Dermaspace Chat Transcript (${data.supportCode})`
+
+  return {
+    subject,
+    html: getEmailTemplate(content, {
+      preheader: `Copy of your Dermaspace live support conversation (${data.supportCode}).`,
+      eyebrow: 'Live support transcript',
+    }),
+  }
+}
+
+export async function sendLiveChatTranscriptEmail(data: {
+  email: string
+  firstName?: string | null
+  supportCode: string
+  topic?: string | null
+  startedAt?: string | null
+  closedAt?: string | null
+  representatives?: string[]
+  messages: LiveChatTranscriptEmailMessage[]
+}): Promise<boolean> {
+  const { subject, html } = buildLiveChatTranscriptEmailHtml(data)
+  return sendEmail({
+    to: data.email,
+    subject,
+    html,
+  })
+}
+
+
 

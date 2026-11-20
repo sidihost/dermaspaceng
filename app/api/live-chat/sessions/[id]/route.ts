@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import {
   closeSession,
+  dispatchLiveChatTranscriptEmail,
   getSessionById,
   rateSession,
   skipSessionRating,
@@ -30,7 +31,7 @@ export async function GET(_req: Request, { params }: Params) {
   return NextResponse.json({ session })
 }
 
-export async function PATCH(req: Request, { params }: Params) {
+async function handleSessionAction(req: Request, { params }: Params) {
   const user = await getCurrentUser()
   const { id } = await params
   const session = await getSessionById(id)
@@ -42,7 +43,14 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
-  let body: { action?: string; service?: number; staff?: number; comment?: string } = {}
+  let body: {
+    action?: string
+    service?: number
+    staff?: number
+    serviceRating?: number
+    staffRating?: number
+    comment?: string
+  } = {}
   try {
     body = await req.json()
   } catch {
@@ -50,16 +58,23 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 
   if (body.action === 'close') {
-    await closeSession(id, 'user')
-    const response = NextResponse.json({ success: true })
-    if (role === 'guest') {
-      clearGuestChatCookieOnResponse(response)
-    }
-    return response
+    await closeSession(session.id, 'user')
+    const transcriptSent = await dispatchLiveChatTranscriptEmail(session.id)
+    // Keep the guest session cookie intact after closing so the visitor can
+    // submit their post-chat rating or resend their transcript. The cookie is
+    // cleared once they submit or skip the rating (or after the 30-min window).
+    return NextResponse.json({ success: true, transcriptSent })
+  }
+
+  if (body.action === 'email_transcript') {
+    const transcriptSent = await dispatchLiveChatTranscriptEmail(session.id, {
+      force: true,
+    })
+    return NextResponse.json({ success: true, transcriptSent })
   }
 
   if (body.action === 'skip_rating') {
-    await skipSessionRating(id)
+    await skipSessionRating(session.id)
     const response = NextResponse.json({ success: true })
     if (role === 'guest') {
       clearGuestChatCookieOnResponse(response)
@@ -68,8 +83,18 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 
   if (body.action === 'rate') {
-    const service = Number(body.service)
-    const staff = Number(body.staff)
+    const rawService = body.service ?? body.serviceRating
+    const rawStaff = body.staff ?? body.staffRating
+    const service = Number(rawService)
+    // When a chat ends before any staff representative joined, default staff
+    // rating to the overall support rating if not separately supplied.
+    const staff =
+      rawStaff !== undefined && rawStaff !== null && Number(rawStaff) > 0
+        ? Number(rawStaff)
+        : !session.assigned_staff_id
+          ? service
+          : NaN
+
     if (
       !Number.isFinite(service) ||
       !Number.isFinite(staff) ||
@@ -78,11 +103,16 @@ export async function PATCH(req: Request, { params }: Params) {
       staff < 1 ||
       staff > 5
     ) {
-      return NextResponse.json({ error: 'ratings must be 1-5' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Please select a rating from 1 to 5 stars.' },
+        { status: 400 },
+      )
     }
     const comment =
-      typeof body.comment === 'string' ? body.comment.slice(0, 500) : null
-    await rateSession(id, service, staff, comment)
+      typeof body.comment === 'string' && body.comment.trim()
+        ? body.comment.trim().slice(0, 500)
+        : null
+    await rateSession(session.id, Math.round(service), Math.round(staff), comment)
     const response = NextResponse.json({ success: true })
     if (role === 'guest') {
       clearGuestChatCookieOnResponse(response)
@@ -91,4 +121,12 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })
+}
+
+export async function PATCH(req: Request, context: Params) {
+  return handleSessionAction(req, context)
+}
+
+export async function POST(req: Request, context: Params) {
+  return handleSessionAction(req, context)
 }

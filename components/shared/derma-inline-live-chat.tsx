@@ -22,9 +22,26 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
-import { Check, Copy, Headphones, Loader2, Star, Ticket, X } from 'lucide-react'
+import {
+  Check,
+  Copy,
+  Headphones,
+  Loader2,
+  Mail,
+  Star,
+  Ticket,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getHandoffAutoMessage, resolveSupportId } from '@/lib/support-and-chat'
+import {
+  fetchLiveChatSoundPreference,
+  playLiveChatChime,
+  saveLiveChatSoundPreference,
+  unlockLiveChatAudio,
+} from '@/lib/live-chat-sound'
 
 export type InlineLiveStatus = 'waiting' | 'active' | 'closed' | 'abandoned'
 
@@ -156,14 +173,22 @@ export function useInlineLiveChat({
   // Inline post-chat rating state
   const [showRating, setShowRating] = useState(false)
   const [ratingSessionId, setRatingSessionId] = useState<string | null>(null)
+  const [ratingSupportCode, setRatingSupportCode] = useState<string | null>(null)
   const [ratingStaffName, setRatingStaffName] = useState<string | undefined>(undefined)
   const [serviceRating, setServiceRating] = useState(0)
   const [staffRating, setStaffRating] = useState(0)
   const [ratingComment, setRatingComment] = useState('')
   const [savingRating, setSavingRating] = useState(false)
   const [ratingDone, setRatingDone] = useState(false)
+  const [ratingError, setRatingError] = useState<string | null>(null)
+  const showRatingRef = useRef(false)
+  useEffect(() => {
+    showRatingRef.current = showRating
+  }, [showRating])
 
   const lastFetchedRef = useRef<string | null>(null)
+  const hydratedSessionRef = useRef<string | null>(null)
+  const seenMessageIdsRef = useRef<Set<string>>(new Set())
   const prevStatusRef = useRef<InlineLiveStatus | null>(null)
   const prevStaffKeyRef = useRef<string | null>(null)
   const [justConnected, setJustConnected] = useState(false)
@@ -201,9 +226,14 @@ export function useInlineLiveChat({
       const res = await fetch('/api/live-chat/active', { credentials: 'include' })
       if (!res.ok) return null
       const json = (await res.json()) as InlineLivePayload
+      // Never wipe out an active post-chat rating card if the poll returns null
+      if (!json.session && showRatingRef.current) {
+        return json
+      }
       setActive(json)
       if (json.session?.status === 'closed' && !json.session.ratedAt) {
         setRatingSessionId(json.session.id)
+        setRatingSupportCode(resolveSupportId(json.session.supportCode, json.session.id))
         setRatingStaffName(json.staff?.displayName)
         setShowRating(true)
       }
@@ -231,6 +261,15 @@ export function useInlineLiveChat({
     }
   }, [enabled, isOpen, isLiveMode, fetchActive])
 
+  // Reset hydration tracking when session changes
+  useEffect(() => {
+    if (hydratedSessionRef.current !== sessionId) {
+      hydratedSessionRef.current = null
+      seenMessageIdsRef.current = new Set()
+      lastFetchedRef.current = null
+    }
+  }, [sessionId])
+
   // Poll messages while live session is open & panel is visible
   useEffect(() => {
     if (!enabled || !sessionId || !isLiveMode || !isOpen) return
@@ -247,7 +286,27 @@ export function useInlineLiveChat({
         if (!res.ok) return
         const json = (await res.json()) as { messages?: InlineLiveMessage[] }
         const incoming = json.messages ?? []
-        if (cancelled || incoming.length === 0) return
+        if (cancelled) return
+
+        const wasHydrated = hydratedSessionRef.current === sessionId
+        hydratedSessionRef.current = sessionId
+
+        if (incoming.length === 0) return
+
+        let hasNewStaffReply = false
+        for (const m of incoming) {
+          if (!seenMessageIdsRef.current.has(m.id)) {
+            seenMessageIdsRef.current.add(m.id)
+            if (wasHydrated && m.sender_role === 'staff') {
+              hasNewStaffReply = true
+            }
+          }
+        }
+
+        if (hasNewStaffReply) {
+          playLiveChatChime('reply', 'customer')
+        }
+
         setMessages((prev) => {
           const seen = new Set(prev.map((m) => m.id))
           const merged = [...prev]
@@ -284,6 +343,7 @@ export function useInlineLiveChat({
         return 'already_active'
       }
 
+      unlockLiveChatAudio()
       setConnecting(true)
       try {
         const res = await fetch('/api/live-chat/request', {
@@ -368,6 +428,7 @@ export function useInlineLiveChat({
         return false
       }
 
+      unlockLiveChatAudio()
       setGuestSubmitting(true)
       setGuestError(null)
       try {
@@ -433,6 +494,7 @@ export function useInlineLiveChat({
     async (rawBody: string): Promise<boolean> => {
       const body = rawBody.trim()
       if (!body || !sessionId || sending) return false
+      unlockLiveChatAudio()
       setSending(true)
       setError(null)
       try {
@@ -448,6 +510,7 @@ export function useInlineLiveChat({
           return false
         }
         const { message } = (await res.json()) as { message: InlineLiveMessage }
+        seenMessageIdsRef.current.add(message.id)
         setMessages((prev) =>
           prev.some((m) => m.id === message.id) ? prev : [...prev, message],
         )
@@ -467,14 +530,22 @@ export function useInlineLiveChat({
   const endLiveChat = useCallback(async () => {
     if (!sessionId) return
     setError(null)
+    setRatingError(null)
     try {
-      await fetch(`/api/live-chat/sessions/${sessionId}`, {
-        method: 'POST',
+      const res = await fetch(`/api/live-chat/sessions/${sessionId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ action: 'close' }),
       })
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        setError(json.error || 'Could not end live session right now.')
+        return
+      }
+      const code = session ? resolveSupportId(session.supportCode, session.id) : null
       setRatingSessionId(sessionId)
+      setRatingSupportCode(code)
       setRatingStaffName(staff?.displayName)
       setShowRating(true)
       setActive((prev) =>
@@ -493,33 +564,52 @@ export function useInlineLiveChat({
     } catch {
       setError('Could not end live session right now.')
     }
-  }, [sessionId, staff?.displayName, onSessionChange])
+  }, [sessionId, session, staff?.displayName, onSessionChange])
 
   const submitRating = useCallback(async () => {
-    if (!ratingSessionId || serviceRating < 1 || staffRating < 1) return
+    const targetSessionId = ratingSessionId || session?.id || null
+    if (!targetSessionId) {
+      setRatingError('Could not locate this chat session. Please refresh and try again.')
+      return
+    }
+    const requiresStaffRating = Boolean(ratingStaffName)
+    if (serviceRating < 1 || (requiresStaffRating && staffRating < 1)) {
+      setRatingError(
+        requiresStaffRating
+          ? 'Please rate both overall support and your representative.'
+          : 'Please pick a star rating before submitting.',
+      )
+      return
+    }
+    const effectiveStaffRating = staffRating >= 1 ? staffRating : serviceRating
     setSavingRating(true)
     setError(null)
+    setRatingError(null)
     try {
-      const res = await fetch(`/api/live-chat/sessions/${ratingSessionId}`, {
-        method: 'POST',
+      const res = await fetch(`/api/live-chat/sessions/${targetSessionId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           action: 'rate',
-          serviceRating,
-          staffRating,
+          service: serviceRating,
+          staff: effectiveStaffRating,
           comment: ratingComment.trim() || undefined,
         }),
       })
       if (!res.ok) {
-        setError('Could not save your rating. Please try again.')
+        const json = (await res.json().catch(() => ({}))) as { error?: string }
+        setRatingError(json.error || 'Could not save your rating. Please try again.')
         return
       }
       setRatingDone(true)
       window.setTimeout(() => {
         setShowRating(false)
         setRatingDone(false)
+        setRatingError(null)
         setRatingSessionId(null)
+        setRatingSupportCode(null)
+        setRatingStaffName(undefined)
         setServiceRating(0)
         setStaffRating(0)
         setRatingComment('')
@@ -527,15 +617,20 @@ export function useInlineLiveChat({
         setMessages([])
         lastFetchedRef.current = null
       }, 1500)
+    } catch {
+      setRatingError('Connection issue while saving your rating. Please try again.')
     } finally {
       setSavingRating(false)
     }
-  }, [ratingSessionId, serviceRating, staffRating, ratingComment])
+  }, [ratingSessionId, session?.id, ratingStaffName, serviceRating, staffRating, ratingComment])
 
   const skipRating = useCallback(async () => {
-    const id = ratingSessionId
+    const id = ratingSessionId || session?.id || null
     setShowRating(false)
+    setRatingError(null)
     setRatingSessionId(null)
+    setRatingSupportCode(null)
+    setRatingStaffName(undefined)
     setServiceRating(0)
     setStaffRating(0)
     setRatingComment('')
@@ -544,13 +639,13 @@ export function useInlineLiveChat({
     lastFetchedRef.current = null
     if (id) {
       fetch(`/api/live-chat/sessions/${id}`, {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ action: 'skip_rating' }),
       }).catch(() => {})
     }
-  }, [ratingSessionId])
+  }, [ratingSessionId, session?.id])
 
   return {
     active,
@@ -568,14 +663,23 @@ export function useInlineLiveChat({
     guestSubmitting,
     guestError,
     showRating,
+    ratingSessionId,
+    ratingSupportCode,
     ratingStaffName,
+    ratingError,
     serviceRating,
     staffRating,
     ratingComment,
     savingRating,
     ratingDone,
-    setServiceRating,
-    setStaffRating,
+    setServiceRating: (n: number) => {
+      setRatingError(null)
+      setServiceRating(n)
+    },
+    setStaffRating: (n: number) => {
+      setRatingError(null)
+      setStaffRating(n)
+    },
     setRatingComment,
     triggerHandoff,
     submitGuestHandoff,
@@ -654,7 +758,10 @@ export function InlineLiveFeed({
   onSubmitGuest,
   onCancelGuest,
   showRating,
+  ratingSessionId,
+  ratingSupportCode,
   ratingStaffName,
+  ratingError,
   serviceRating,
   staffRating,
   ratingComment,
@@ -679,7 +786,10 @@ export function InlineLiveFeed({
   onSubmitGuest: (input: { name: string; email: string; phone?: string }) => Promise<boolean>
   onCancelGuest: () => void
   showRating: boolean
+  ratingSessionId?: string | null
+  ratingSupportCode?: string | null
   ratingStaffName?: string
+  ratingError?: string | null
   serviceRating: number
   staffRating: number
   ratingComment: string
@@ -692,10 +802,31 @@ export function InlineLiveFeed({
   onSkipRating: () => void
 }) {
   const [copiedId, setCopiedId] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const isWaiting = session?.status === 'waiting'
   const isActive = session?.status === 'active'
   const isLive = isWaiting || isActive
   const supportCode = session ? resolveSupportId(session.supportCode, session.id) : null
+
+  useEffect(() => {
+    let activeMount = true
+    void fetchLiveChatSoundPreference('customer').then((enabled) => {
+      if (activeMount) setSoundEnabled(enabled)
+    })
+    return () => {
+      activeMount = false
+    }
+  }, [])
+
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    void saveLiveChatSoundPreference('customer', next)
+    if (next) {
+      unlockLiveChatAudio()
+      window.setTimeout(() => playLiveChatChime('reply'), 30)
+    }
+  }, [soundEnabled])
 
   const copySupportCode = useCallback(() => {
     if (!supportCode || typeof navigator === 'undefined' || !navigator.clipboard) return
@@ -769,23 +900,39 @@ export function InlineLiveFeed({
                   {supportCode}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={copySupportCode}
-                className="inline-flex items-center gap-1 rounded-full bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2.5 py-0.5 text-[10.5px] font-semibold text-[#5A1D6A] transition-colors shrink-0"
-              >
-                {copiedId ? (
-                  <>
-                    <Check className="w-3 h-3 text-[#7B2D8E]" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3 h-3 text-[#7B2D8E]" />
-                    Copy
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={toggleSound}
+                  aria-label={soundEnabled ? 'Mute reply sound' : 'Unmute reply sound'}
+                  title={soundEnabled ? 'Sound on' : 'Sound muted'}
+                  data-testid="live-chat-sound-toggle"
+                  className="inline-flex items-center justify-center rounded-full bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 p-1 text-[#5A1D6A] transition-colors shrink-0"
+                >
+                  {soundEnabled ? (
+                    <Volume2 className="w-3 h-3 text-[#7B2D8E]" />
+                  ) : (
+                    <VolumeX className="w-3 h-3 text-gray-400" />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={copySupportCode}
+                  className="inline-flex items-center gap-1 rounded-full bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2.5 py-0.5 text-[10.5px] font-semibold text-[#5A1D6A] transition-colors shrink-0"
+                >
+                  {copiedId ? (
+                    <>
+                      <Check className="w-3 h-3 text-[#7B2D8E]" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3 text-[#7B2D8E]" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -836,8 +983,11 @@ export function InlineLiveFeed({
       {/* Post-chat rating card right inside the chat */}
       {showRating && (
         <InlineRatingCard
+          sessionId={ratingSessionId ?? session?.id ?? null}
+          supportCode={ratingSupportCode ?? supportCode}
           done={ratingDone}
           saving={savingRating}
+          error={ratingError ?? null}
           staffName={ratingStaffName}
           serviceRating={serviceRating}
           staffRating={staffRating}
@@ -1022,8 +1172,11 @@ function GuestHandoffCard({
 }
 
 function InlineRatingCard({
+  sessionId,
+  supportCode,
   done,
   saving,
+  error,
   staffName,
   serviceRating,
   staffRating,
@@ -1034,8 +1187,11 @@ function InlineRatingCard({
   onSubmit,
   onSkip,
 }: {
+  sessionId: string | null
+  supportCode: string | null
   done: boolean
   saving: boolean
+  error: string | null
   staffName?: string
   serviceRating: number
   staffRating: number
@@ -1046,6 +1202,35 @@ function InlineRatingCard({
   onSubmit: () => void
   onSkip: () => void
 }) {
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const requiresStaffRating = Boolean(staffName)
+  const canSubmit =
+    !saving &&
+    serviceRating >= 1 &&
+    (!requiresStaffRating || staffRating >= 1)
+
+  const handleResendTranscript = useCallback(async () => {
+    if (!sessionId || resending) return
+    setResending(true)
+    try {
+      const res = await fetch(`/api/live-chat/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'email_transcript' }),
+      })
+      if (res.ok) {
+        setResent(true)
+        window.setTimeout(() => setResent(false), 3000)
+      }
+    } catch {
+      /* ignore transient */
+    } finally {
+      setResending(false)
+    }
+  }, [sessionId, resending])
+
   if (done) {
     return (
       <div className="rounded-2xl bg-[#FAF6FB] border border-[#7B2D8E]/20 p-4 text-center">
@@ -1060,7 +1245,7 @@ function InlineRatingCard({
   }
 
   return (
-    <div className="rounded-2xl bg-white border border-[#7B2D8E]/25 p-4 space-y-3">
+    <div className="rounded-2xl bg-white border border-[#7B2D8E]/25 p-4 space-y-3" data-testid="live-chat-rating-card">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7B2D8E]">
           Live chat ended
@@ -1070,16 +1255,37 @@ function InlineRatingCard({
         </p>
       </div>
 
+      <div className="flex items-center justify-between gap-2 rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3 py-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Mail className="w-3.5 h-3.5 text-[#7B2D8E] shrink-0" />
+          <p className="text-[11.5px] text-gray-700 leading-snug">
+            A transcript{supportCode ? ` (${supportCode})` : ''} has been emailed to you.
+          </p>
+        </div>
+        {sessionId && (
+          <button
+            type="button"
+            onClick={handleResendTranscript}
+            disabled={resending}
+            className="text-[11px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] whitespace-nowrap shrink-0 disabled:opacity-50"
+          >
+            {resending ? 'Sending…' : resent ? 'Sent' : 'Resend'}
+          </button>
+        )}
+      </div>
+
       <StarRow
         label="Overall support"
         value={serviceRating}
         onChange={onServiceRatingChange}
       />
-      <StarRow
-        label={staffName ? `Helpfulness (${staffName})` : 'Representative'}
-        value={staffRating}
-        onChange={onStaffRatingChange}
-      />
+      {requiresStaffRating && (
+        <StarRow
+          label={`Helpfulness (${staffName})`}
+          value={staffRating}
+          onChange={onStaffRatingChange}
+        />
+      )}
 
       <textarea
         value={comment}
@@ -1089,11 +1295,17 @@ function InlineRatingCard({
         className="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-base sm:text-[12.5px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none resize-none"
       />
 
+      {error && (
+        <p className="text-[12px] text-[#3E104B] bg-[#FAF6FB] border border-[#3E104B]/20 rounded-xl px-2.5 py-1.5">
+          {error}
+        </p>
+      )}
+
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onSubmit}
-          disabled={saving || serviceRating < 1 || staffRating < 1}
+          disabled={!canSubmit}
           className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[12.5px] font-semibold px-4 py-2 transition-colors disabled:opacity-40"
         >
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

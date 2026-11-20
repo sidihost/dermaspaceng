@@ -94,7 +94,7 @@ export async function POST(req: Request, { params }: Params) {
         (prev[0]?.display_name && prev[0].display_name.trim()) ||
         [prev[0]?.first_name, prev[0]?.last_name].filter(Boolean).join(' ').trim() ||
         'A representative'
-      await addMessage(id, 'system', null, `${prevName} left the chat`)
+      await addMessage(session.id, 'system', null, `${prevName} left the chat`)
     }
 
     await sql`
@@ -103,27 +103,27 @@ export async function POST(req: Request, { params }: Params) {
              status = 'active',
              accepted_at = COALESCE(accepted_at, NOW()),
              last_activity_at = NOW()
-       WHERE id = ${id}
+       WHERE id = ${session.id}
     `
 
-    await addMessage(id, 'system', null, `${finalDisplay} joined the chat`)
+    await addMessage(session.id, 'system', null, `${finalDisplay} joined the chat`)
     await invalidateAdminStats().catch(() => {})
     await logStaffActivity({
       staffId: user.id,
       userId: session.user_id,
       actionType: 'live_chat_takeover',
       entityType: 'live_chat_session',
-      entityId: id,
+      entityId: session.id,
       description: `Joined live chat as ${finalDisplay}${session.guest_name ? ` (${session.guest_name})` : ''}`,
     })
   }
 
-  const message = await addMessage(id, 'staff', user.id, text)
+  const message = await addMessage(session.id, 'staff', user.id, text)
 
   await sql`
     UPDATE live_chat_sessions
        SET last_activity_at = NOW()
-     WHERE id = ${id}
+     WHERE id = ${session.id}
   `
 
   return NextResponse.json({

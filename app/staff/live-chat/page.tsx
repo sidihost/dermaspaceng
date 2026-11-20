@@ -38,6 +38,8 @@ import {
   Copy,
   ArrowRightLeft,
   Ticket,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getReceiptHref } from '@/lib/receipt-access'
@@ -46,6 +48,12 @@ import {
   getTicketStatusMeta,
   resolveSupportId,
 } from '@/lib/support-and-chat'
+import {
+  fetchLiveChatSoundPreference,
+  playLiveChatChime,
+  saveLiveChatSoundPreference,
+  unlockLiveChatAudio,
+} from '@/lib/live-chat-sound'
 import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
 
 const fetcher = (url: string) =>
@@ -146,6 +154,51 @@ export default function StaffLiveChatPage() {
     fetcher,
   )
 
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const queueHydratedRef = useRef(false)
+  const seenWaitingIdsRef = useRef<Set<string>>(new Set())
+
+  useEffect(() => {
+    let activeMount = true
+    void fetchLiveChatSoundPreference('staff').then((enabled) => {
+      if (activeMount) setSoundEnabled(enabled)
+    })
+    return () => {
+      activeMount = false
+    }
+  }, [])
+
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    void saveLiveChatSoundPreference('staff', next)
+    if (next) {
+      unlockLiveChatAudio()
+      window.setTimeout(() => playLiveChatChime('reply'), 30)
+    }
+  }, [soundEnabled])
+
+  // Play a gentle queue chime when a brand-new customer enters the waiting line.
+  useEffect(() => {
+    const waiting = queueQuery.data?.waiting
+    if (!waiting) return
+    if (!queueHydratedRef.current) {
+      queueHydratedRef.current = true
+      seenWaitingIdsRef.current = new Set(waiting.map((w) => w.id))
+      return
+    }
+    let hasNewWaiting = false
+    for (const w of waiting) {
+      if (!seenWaitingIdsRef.current.has(w.id)) {
+        seenWaitingIdsRef.current.add(w.id)
+        hasNewWaiting = true
+      }
+    }
+    if (hasNewWaiting) {
+      playLiveChatChime('queue', 'staff')
+    }
+  }, [queueQuery.data?.waiting])
+
   // Auto-select first active or waiting session on desktop only so mobile/tablet
   // users land on the queue list first and tap into a conversation intentionally.
   useEffect(() => {
@@ -167,24 +220,47 @@ export default function StaffLiveChatPage() {
             Pick up a chat, or look up any Support ID to review history and take over.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowProfileSheet(true)}
-          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 text-[12px] font-semibold text-gray-700 hover:text-[#7B2D8E] shrink-0"
-        >
-          {profileQuery.data?.profile ? (
-            <RepAvatar
-              src={profileQuery.data.profile.avatarUrl}
-              name={profileQuery.data.profile.displayName}
-              size={22}
-            />
-          ) : (
-            <Settings className="w-4 h-4" />
-          )}
-          <span className="truncate max-w-[160px]">
-            {profileQuery.data?.profile?.displayName || 'Set your avatar'}
-          </span>
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-label={soundEnabled ? 'Mute notification sounds' : 'Unmute notification sounds'}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-[12px] font-semibold transition-colors',
+              soundEnabled
+                ? 'border-[#7B2D8E]/25 bg-[#FAF6FB] text-[#5A1D6A] hover:border-[#7B2D8E]/45'
+                : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300',
+            )}
+          >
+            {soundEnabled ? (
+              <Volume2 className="w-3.5 h-3.5 text-[#7B2D8E]" />
+            ) : (
+              <VolumeX className="w-3.5 h-3.5 text-gray-400" />
+            )}
+            <span className="hidden sm:inline">{soundEnabled ? 'Sound on' : 'Muted'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              unlockLiveChatAudio()
+              setShowProfileSheet(true)
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 text-[12px] font-semibold text-gray-700 hover:text-[#7B2D8E] shrink-0"
+          >
+            {profileQuery.data?.profile ? (
+              <RepAvatar
+                src={profileQuery.data.profile.avatarUrl}
+                name={profileQuery.data.profile.displayName}
+                size={22}
+              />
+            ) : (
+              <Settings className="w-4 h-4" />
+            )}
+            <span className="truncate max-w-[160px]">
+              {profileQuery.data?.profile?.displayName || 'Set your avatar'}
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[340px,1fr] gap-4 items-start">
@@ -198,7 +274,10 @@ export default function StaffLiveChatPage() {
             onSearchChange={setSearchQuery}
             searchResults={queueQuery.data?.searchResults || []}
             selected={selected}
-            onSelect={setSelected}
+            onSelect={(id) => {
+              unlockLiveChatAudio()
+              setSelected(id)
+            }}
           />
         </div>
 
@@ -599,6 +678,7 @@ function ConversationColumn({
   // ---------------------------------------------------------------------
   const [messages, setMessages] = useState<Message[]>([])
   const lastSeenRef = useRef<string | null>(null)
+  const seenMsgIdsRef = useRef<Set<string>>(new Set())
 
   const refetchAll = useCallback(async (id: string) => {
     const res = await fetch(
@@ -607,6 +687,7 @@ function ConversationColumn({
     )
     if (!res.ok) return
     const json = (await res.json()) as { messages: Message[] }
+    seenMsgIdsRef.current = new Set(json.messages.map((m) => m.id))
     setMessages(json.messages)
     const last = json.messages[json.messages.length - 1]
     lastSeenRef.current = last?.created_at || null
@@ -619,6 +700,7 @@ function ConversationColumn({
     setConfirmEnd(false)
     setShowMobileContext(false)
     setMessages([])
+    seenMsgIdsRef.current = new Set()
     lastSeenRef.current = null
     if (sessionId) refetchAll(sessionId)
   }, [sessionId, refetchAll])
@@ -641,6 +723,20 @@ function ConversationColumn({
         if (!res.ok || cancelled) return
         const json = (await res.json()) as { messages: Message[] }
         if (json.messages.length === 0) return
+
+        let hasNewUserMessage = false
+        for (const m of json.messages) {
+          if (!seenMsgIdsRef.current.has(m.id)) {
+            seenMsgIdsRef.current.add(m.id)
+            if (m.sender_role === 'user') {
+              hasNewUserMessage = true
+            }
+          }
+        }
+        if (hasNewUserMessage) {
+          playLiveChatChime('reply', 'staff')
+        }
+
         setMessages((prev) => {
           // Dedupe by id — same message id can come back if we already
           // appended it optimistically on send.

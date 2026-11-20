@@ -35,11 +35,11 @@ export async function GET(req: Request, { params }: Params) {
 
   const url = new URL(req.url)
   const since = url.searchParams.get('since') || undefined
-  const messages = await getMessages(id, since)
+  const messages = await getMessages(session.id, since)
 
   // Mark all staff replies as read by the user side. Powers the unread
   // badge on the staff dashboard.
-  await markStaffMessagesRead(id)
+  await markStaffMessagesRead(session.id)
 
   return NextResponse.json({ messages })
 }
@@ -79,6 +79,6 @@ export async function POST(req: Request, { params }: Params) {
   // For guests we still record a 'user' role message but with NULL
   // sender_id (no users row). The staff-side rendering already tolerates
   // a null sender_id.
-  const message = await addMessage(id, 'user', user?.id ?? null, text)
+  const message = await addMessage(session.id, 'user', user?.id ?? null, text)
   return NextResponse.json({ message })
 }

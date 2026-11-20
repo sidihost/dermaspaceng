@@ -4,6 +4,7 @@ import { requireAdminOrStaff } from '@/lib/auth'
 import {
   acceptSession,
   closeSession,
+  dispatchLiveChatTranscriptEmail,
   ensureStaffProfile,
   getSessionById,
   resolveStaffAvatarUrl,
@@ -223,6 +224,7 @@ export async function PATCH(req: Request, { params }: Params) {
       }
     }
     await addMessage(session.id, 'system', null, 'Chat ended')
+    const transcriptSent = await dispatchLiveChatTranscriptEmail(session.id)
     await logStaffActivity({
       staffId: user.id,
       userId: session.user_id,
@@ -231,7 +233,7 @@ export async function PATCH(req: Request, { params }: Params) {
       entityId: session.id,
       description: `Ended live chat ${supportCode}${session.guest_name ? ` with ${session.guest_name}` : ''}`,
     })
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, transcriptSent })
   }
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })

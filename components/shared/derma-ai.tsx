@@ -2710,26 +2710,40 @@ export default function DermaAI({
     }
   }, [])
 
-  // Clear all chat sessions — belt-and-braces: wipe state + localStorage
-  // so a refresh lands in the pristine welcome state. Also resets the
-  // active conversation so the sidebar + main pane stay in sync.
+  // Refs for immediate scoped storage & DB sync inside deletion callbacks
+  const sessionsKeyRef = useRef<string | null>(null)
+  const activeKeyRef = useRef<string | null>(null)
+  const syncPutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const suppressNextSyncRef = useRef<boolean>(false)
+  const deletedSessionIdsRef = useRef<Set<string>>(new Set())
+
+  // Clear all chat sessions — wipe React state, scoped browser cache, AND
+  // PostgreSQL (/api/derma/sessions) immediately so a reload never resurrects them.
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
   const clearAllSessions = useCallback(() => {
+    for (const s of sessions) {
+      deletedSessionIdsRef.current.add(s.id)
+    }
+    if (syncPutTimerRef.current) {
+      clearTimeout(syncPutTimerRef.current)
+      syncPutTimerRef.current = null
+    }
+    suppressNextSyncRef.current = true
     setSessions([])
     setCurrentSessionId('')
     try {
+      if (sessionsKeyRef.current) localStorage.removeItem(sessionsKeyRef.current)
+      if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
       localStorage.removeItem('derma-chat-sessions')
       localStorage.removeItem('derma-chat-active')
     } catch {
       /* quota */
     }
-    // Also wipe the server-side copy so the clear syncs across
-    // devices. Fail-soft — if the user is signed out this 401s and
-    // we don't surface anything (the local clear is the source of
-    // truth for the current view).
+    // Also wipe the server-side copy immediately (keepalive survives reload).
     void fetch('/api/derma/sessions', {
       method: 'DELETE',
       credentials: 'same-origin',
+      keepalive: true,
     }).catch(() => { /* ignore */ })
     const greeting = userInfo.name
       ? `Hello ${userInfo.name}! How can I help you today?`
@@ -2746,7 +2760,7 @@ export default function DermaAI({
     }])
     setShowClearAllConfirm(false)
     setShowSidebar(false)
-  }, [userInfo.name])
+  }, [sessions, userInfo.name])
 
   // Export the CURRENT conversation as a tidy plain-text transcript.
   // Tool results are flattened to a short summary line so the file is
@@ -2952,6 +2966,8 @@ export default function DermaAI({
         : '__anon__'
   const sessionsKey = storageScope ? `derma-chat-sessions::${storageScope}` : null
   const activeKey = storageScope ? `derma-chat-active::${storageScope}` : null
+  sessionsKeyRef.current = sessionsKey
+  activeKeyRef.current = activeKey
 
   // Hydrate from localStorage whenever the storage scope changes (i.e.
   // initial mount once auth resolves, then again on sign-in/sign-out).
@@ -3081,6 +3097,8 @@ export default function DermaAI({
 
   // Persist the ACTIVE conversation (messages + sessionId + open state) on every
   // change so a page refresh restores the exact chat + open-modal state.
+  // When there is no real user content (e.g., after deleting a chat or starting
+  // a fresh one), ALWAYS clear activeKey even if the panel is still open.
   useEffect(() => {
     if (!hasHydrated || !activeKey) return
     const hasRealContent = messages.some(m => m.role === 'user')
@@ -3090,7 +3108,7 @@ export default function DermaAI({
           activeKey,
           JSON.stringify({ sessionId: currentSessionId, messages, isOpen })
         )
-      } else if (!isOpen) {
+      } else {
         localStorage.removeItem(activeKey)
       }
     } catch { /* quota */ }
@@ -3184,8 +3202,13 @@ export default function DermaAI({
   useEffect(() => {
     if (!hasHydrated) return
     if (isLoggedIn !== true) return
+    if (suppressNextSyncRef.current) {
+      suppressNextSyncRef.current = false
+      return
+    }
     // Defer write so a typing burst settles into ONE PUT.
     const handle = setTimeout(() => {
+      syncPutTimerRef.current = null
       const hasRealContent = messages.some((m) => m.role === 'user')
       // Serialise only what we already persist locally so payloads
       // stay small + match the GET response shape exactly.
@@ -3204,7 +3227,13 @@ export default function DermaAI({
         /* fail soft — local copy is still source of truth */
       })
     }, 1500)
-    return () => clearTimeout(handle)
+    syncPutTimerRef.current = handle
+    return () => {
+      clearTimeout(handle)
+      if (syncPutTimerRef.current === handle) {
+        syncPutTimerRef.current = null
+      }
+    }
   }, [sessions, messages, currentSessionId, isOpen, hasHydrated, isLoggedIn])
 
   // Auto-upsert the active conversation into the saved sessions list. Uses a
@@ -3215,6 +3244,7 @@ export default function DermaAI({
     const firstUserMsg = messages.find(m => m.role === 'user')
     if (!firstUserMsg) return
     const id = currentSessionId || firstUserMsg.id
+    if (deletedSessionIdsRef.current.has(id)) return
     if (!currentSessionId) setCurrentSessionId(id)
 
     const title = generateChatTitle(firstUserMsg.content)
@@ -4907,7 +4937,10 @@ export default function DermaAI({
     setCurrentSessionId('')
     setShowSidebar(false)
     // Clear the active-chat slot so a refresh lands on the welcome screen
-    try { localStorage.removeItem('derma-chat-active') } catch {}
+    try {
+      if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
+      localStorage.removeItem('derma-chat-active')
+    } catch {}
   }
 
   const loadSession = (session: ChatSession) => {
@@ -4921,12 +4954,62 @@ export default function DermaAI({
   }
 
   const deleteSession = (id: string) => {
-    setSessions(prev => prev.filter(s => s.id !== id))
+    deletedSessionIdsRef.current.add(id)
+    const nextSessions = sessions.filter((s) => s.id !== id)
+    const firstUserId = messages.find((m) => m.role === 'user')?.id
+    const isDeletingActive = currentSessionId === id || firstUserId === id
+
+    setSessions(nextSessions)
     setOpenMenuSessionId((prev) => (prev === id ? null : prev))
-    if (currentSessionId === id) {
-      // Also wipe the persisted active slot immediately
-      try { localStorage.removeItem('derma-chat-active') } catch {}
+
+    // Immediately update scoped local cache so refreshing never brings the deleted chat back
+    try {
+      if (sessionsKeyRef.current) {
+        if (nextSessions.length > 0) {
+          localStorage.setItem(sessionsKeyRef.current, JSON.stringify(nextSessions))
+        } else {
+          localStorage.removeItem(sessionsKeyRef.current)
+        }
+      }
+      localStorage.removeItem('derma-chat-sessions')
+    } catch {}
+
+    if (isDeletingActive) {
+      try {
+        if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
+        localStorage.removeItem('derma-chat-active')
+      } catch {}
       startNewChat()
+    }
+
+    // Immediately persist the deletion to PostgreSQL (do not wait for 1.5s debounce)
+    if (isLoggedIn === true) {
+      if (syncPutTimerRef.current) {
+        clearTimeout(syncPutTimerRef.current)
+        syncPutTimerRef.current = null
+      }
+      suppressNextSyncRef.current = true
+      const hasRealActive = !isDeletingActive && messages.some((m) => m.role === 'user')
+      if (nextSessions.length === 0 && !hasRealActive) {
+        void fetch('/api/derma/sessions', {
+          method: 'DELETE',
+          credentials: 'same-origin',
+          keepalive: true,
+        }).catch(() => {})
+      } else {
+        void fetch('/api/derma/sessions', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessions: nextSessions,
+            active: hasRealActive
+              ? { sessionId: currentSessionId, messages, isOpen }
+              : null,
+          }),
+        }).catch(() => {})
+      }
     }
   }
 
@@ -6282,7 +6365,7 @@ export default function DermaAI({
             setShowSidebar(false)
           }}
         >
-        <div className={`w-full h-full bg-white flex overflow-hidden ${
+        <div className={`relative w-full h-full bg-white flex overflow-hidden ${
           isPageMode
             ? 'rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
             : 'md:rounded-2xl md:border md:border-gray-200'
@@ -6586,7 +6669,7 @@ export default function DermaAI({
                                           className={`w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-all ${
                                             isActive || isMenuOpen
                                               ? 'opacity-100'
-                                              : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                                              : 'opacity-70 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100'
                                           }`}
                                           aria-label="Chat options"
                                           aria-haspopup="true"
@@ -8219,7 +8302,10 @@ export default function DermaAI({
                     onSubmitGuest={inlineLiveChat.submitGuestHandoff}
                     onCancelGuest={inlineLiveChat.cancelGuestHandoff}
                     showRating={inlineLiveChat.showRating}
+                    ratingSessionId={inlineLiveChat.ratingSessionId}
+                    ratingSupportCode={inlineLiveChat.ratingSupportCode}
                     ratingStaffName={inlineLiveChat.ratingStaffName}
+                    ratingError={inlineLiveChat.ratingError}
                     serviceRating={inlineLiveChat.serviceRating}
                     staffRating={inlineLiveChat.staffRating}
                     ratingComment={inlineLiveChat.ratingComment}
@@ -8474,63 +8560,8 @@ export default function DermaAI({
                   )
                 })()}
 
-                {/* Delete session confirm — same bottom-sheet language
-                    as the actions menu so destructive operations stay
-                    visually distinct from casual taps. The "Delete"
-                    button is the only one tinted red. */}
-                {deleteConfirmId && (() => {
-                  const session = sessions.find(s => s.id === deleteConfirmId)
-                  if (!session) return null
-                  return (
-                    <>
-                      <div
-                        className="absolute inset-0 z-30 bg-black/30 animate-[derma-backdrop-in_0.18s_ease-out]"
-                        onClick={() => setDeleteConfirmId(null)}
-                      />
-                      <div
-                        role="alertdialog"
-                        aria-label="Delete chat?"
-                        className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
-                      >
-                        <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
-                        <div className="px-5 pb-5">
-                          <div className="flex items-start gap-3 mb-4">
-                            <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
-                              <AlertTriangle className="w-4 h-4" />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">Delete this chat?</p>
-                              <p className="text-[12px] text-gray-500 leading-snug mt-1">
-                                &ldquo;{session.title || 'Untitled chat'}&rdquo; will be permanently removed. This can&apos;t be undone.
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmId(null)}
-                              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const id = deleteConfirmId
-                                setDeleteConfirmId(null)
-                                setOpenMenuSessionId(null)
-                                deleteSession(id)
-                              }}
-                              className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#6B2278] transition-colors"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )
-                })()}
+                {/* Delete session confirm moved to outer panel shell so it
+                    always renders cleanly above the sidebar on mobile & desktop. */}
 
                 {/* Select-text modal — a read-only card over the chat
                     that displays the message text in a large, selectable
@@ -9533,6 +9564,62 @@ export default function DermaAI({
               </>
             )}
           </div>
+
+          {/* Delete session confirm — mounted on the outer panel shell at z-50
+              so it always appears above the sidebar on both mobile & desktop. */}
+          {deleteConfirmId && (() => {
+            const session = sessions.find(s => s.id === deleteConfirmId)
+            if (!session) return null
+            return (
+              <>
+                <div
+                  className="absolute inset-0 z-40 bg-black/30 animate-[derma-backdrop-in_0.18s_ease-out]"
+                  onClick={() => setDeleteConfirmId(null)}
+                />
+                <div
+                  role="alertdialog"
+                  aria-label="Delete chat?"
+                  className="absolute left-0 right-0 bottom-0 z-50 bg-white rounded-t-2xl border-t border-gray-200 animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
+                >
+                  <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
+                  <div className="px-5 pb-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
+                        <AlertTriangle className="w-4 h-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold text-gray-900 leading-tight">Delete this chat?</p>
+                        <p className="text-[12px] text-gray-500 leading-snug mt-1">
+                          &ldquo;{session.title || 'Untitled chat'}&rdquo; will be permanently removed. This can&apos;t be undone.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmId(null)}
+                        className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const id = deleteConfirmId
+                          setDeleteConfirmId(null)
+                          setOpenMenuSessionId(null)
+                          deleteSession(id)
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#5A1D6A] transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )
+          })()}
         </div>
         </DermaAIPanelBoundary>
       </div>

@@ -157,11 +157,6 @@ function fullName(first: string | null, last: string | null, fallback: string): 
 // also type a custom alias if none of the presets fit (e.g. "Adaeze").
 const ADMIN_DISPLAY_PRESETS = ['Admin', 'Franca', 'Itunu', 'Juwon'] as const
 
-// Local-storage key for remembering the last alias the admin used so
-// they don't have to re-pick on every page reload. Per-browser is fine
-// — admins on a different device would just pick once.
-const ADMIN_DISPLAY_KEY = 'admin:liveChatDisplayName'
-
 /**
  * Interactive chat drawer. Slides in from the right; closing removes
  * the active session id from local state which unmounts the drawer.
@@ -244,37 +239,46 @@ function TranscriptDrawer({
     )
   }, [data, pending.length])
 
-  // Display-name picker state. Persisted to localStorage so admins
-  // who reload the page or open another session in the same browser
-  // start signed as their last alias rather than re-picking on each
-  // session.
+  // Display-name picker state — persisted in PostgreSQL via /api/staff/profile
+  // (zero localStorage) so admins stay signed under their chosen alias across devices.
   const [displayName, setDisplayName] = useState<string>('')
   const [editingDisplay, setEditingDisplay] = useState<boolean>(false)
   const [customDisplay, setCustomDisplay] = useState<string>('')
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(ADMIN_DISPLAY_KEY)
-      if (stored && stored.trim()) {
-        setDisplayName(stored.trim())
-      } else {
-        // No prior alias — open the picker so the admin must pick
-        // before the first send. Stops them accidentally posting
-        // under their real legal name.
+    let activeMount = true
+    ;(async () => {
+      try {
+        const res = await fetch('/api/staff/profile', { credentials: 'include' })
+        if (!activeMount) return
+        if (res.ok) {
+          const json = (await res.json().catch(() => null)) as {
+            profile?: { displayName?: string | null }
+          } | null
+          const stored = json?.profile?.displayName?.trim()
+          if (stored) {
+            setDisplayName(stored)
+            return
+          }
+        }
         setEditingDisplay(true)
+      } catch {
+        if (activeMount) setEditingDisplay(true)
       }
-    } catch {
-      setEditingDisplay(true)
+    })()
+    return () => {
+      activeMount = false
     }
   }, [])
 
   const persistDisplayName = (value: string) => {
     setDisplayName(value)
     setEditingDisplay(false)
-    try {
-      window.localStorage.setItem(ADMIN_DISPLAY_KEY, value)
-    } catch {
-      /* localStorage off — alias still works for the session */
-    }
+    void fetch('/api/staff/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ displayName: value }),
+    }).catch(() => {})
   }
 
   // Composer state.

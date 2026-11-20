@@ -1,5 +1,7 @@
 import { sql } from '@/lib/db'
 import { invalidateAdminStats } from '@/lib/stats-cache'
+import { isPlaceholderEmail } from '@/lib/auth-onboarding'
+import { sendLiveChatTranscriptEmail } from '@/lib/email'
 import {
   generateLiveChatSupportId,
   normalizeSupportIdQuery,
@@ -91,6 +93,10 @@ export function ensureLiveChatSupportCodeColumn(): Promise<void> {
       await sql`
         ALTER TABLE live_chat_sessions
         ADD COLUMN IF NOT EXISTS support_code TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS transcript_sent_at TIMESTAMPTZ
       `
       // Backfill any pre-existing sessions so every row in Postgres has a real,
       // searchable Support ID stored in the database (collision-safe).
@@ -1254,4 +1260,101 @@ export function staffDisplayName(opts: {
   const last = (opts.last_name || '').trim()
   if (first && last) return `${first} ${last.charAt(0)}.`
   return first || 'Customer Care'
+}
+
+/**
+ * Emails a clean, styled Dermaspace transcript of a live chat session to the
+ * customer (logged-in or guest) once the conversation ends. Idempotent via
+ * `transcript_sent_at` unless `options.force` is explicitly true.
+ */
+export async function dispatchLiveChatTranscriptEmail(
+  sessionId: string,
+  options?: { force?: boolean },
+): Promise<boolean> {
+  try {
+    await ensureLiveChatSupportCodeColumn()
+    const view = await getFullSessionView(sessionId)
+    if (!view) return false
+
+    const recipientEmail = (view.session.user_email || view.session.guest_email || '').trim()
+    if (!recipientEmail || isPlaceholderEmail(recipientEmail)) {
+      return false
+    }
+
+    const meaningfulMessages = view.messages.filter(
+      (m) => m.sender_role === 'user' || m.sender_role === 'staff',
+    )
+    if (meaningfulMessages.length === 0) {
+      return false
+    }
+
+    if (!options?.force) {
+      const sentCheck = (await sql`
+        SELECT transcript_sent_at
+          FROM live_chat_sessions
+         WHERE id = ${view.session.id}
+         LIMIT 1
+      `) as Array<{ transcript_sent_at: string | null }>
+      if (sentCheck[0]?.transcript_sent_at) {
+        return false
+      }
+    }
+
+    const representatives: string[] = []
+    for (const m of view.messages) {
+      if (m.sender_role === 'staff' && m.sender_name) {
+        representatives.push(m.sender_name)
+      }
+    }
+    if (view.session.staff_display_name) {
+      representatives.push(view.session.staff_display_name)
+    } else if (view.session.staff_first_name) {
+      representatives.push(
+        staffDisplayName({
+          first_name: view.session.staff_first_name,
+          last_name: view.session.staff_last_name,
+        }),
+      )
+    }
+
+    const supportCode = resolveSupportId(view.session.support_code, view.session.id)
+    const filteredMessages = view.messages
+      .filter(
+        (m) =>
+          !(
+            m.sender_role === 'system' &&
+            /will be with you shortly/i.test(m.body)
+          ),
+      )
+      .map((m) => ({
+        senderRole: m.sender_role,
+        senderName: m.sender_name,
+        body: m.body,
+        createdAt: m.created_at,
+      }))
+
+    const sent = await sendLiveChatTranscriptEmail({
+      email: recipientEmail,
+      firstName: view.session.user_first_name || 'there',
+      supportCode,
+      topic: view.session.initial_topic,
+      startedAt: view.session.escalated_at || view.session.created_at,
+      closedAt: view.session.closed_at || new Date().toISOString(),
+      representatives,
+      messages: filteredMessages,
+    })
+
+    if (sent) {
+      await sql`
+        UPDATE live_chat_sessions
+           SET transcript_sent_at = NOW()
+         WHERE id = ${view.session.id}
+      `.catch(() => {})
+    }
+
+    return sent
+  } catch (err) {
+    console.error('[live-chat] dispatchLiveChatTranscriptEmail failed:', err)
+    return false
+  }
 }

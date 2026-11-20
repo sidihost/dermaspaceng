@@ -18,7 +18,10 @@ import {
   resolveSupportId,
   TICKET_STATUS_ORDER,
 } from './support-and-chat'
-import { buildStaffPromotedEmailHtml } from './email'
+import {
+  buildLiveChatTranscriptEmailHtml,
+  buildStaffPromotedEmailHtml,
+} from './email'
 
 test('normalizeTicketStatus maps variants cleanly', () => {
   assert.equal(normalizeTicketStatus('open'), 'open')
@@ -201,5 +204,70 @@ test('buildStaffPromotedEmailHtml preserves Dermaspace email shell, escapes inpu
   assert.match(adminMail.html, /promoted to Admin/i)
   assert.match(adminMail.html, /\/signin\?next=%2Fadmin/)
 })
+
+test('buildLiveChatTranscriptEmailHtml preserves Dermaspace email shell, Support ID, multi-rep attribution, and escapes HTML', () => {
+  const mail = buildLiveChatTranscriptEmailHtml({
+    firstName: 'Ada',
+    supportCode: 'DS-LC-7K4M9P',
+    topic: 'Reschedule <HydraFacial>',
+    startedAt: '2026-11-20T09:00:00.000Z',
+    closedAt: '2026-11-20T09:12:00.000Z',
+    representatives: ['Amaka O.', 'Tola B.', 'Amaka O.'],
+    messages: [
+      {
+        senderRole: 'user',
+        body: 'Hi, please move my slot\nto 2:00 PM <script>alert(1)</script>',
+        createdAt: '2026-11-20T09:01:00.000Z',
+      },
+      {
+        senderRole: 'staff',
+        senderName: 'Amaka O.',
+        body: 'Checking your Lekki booking now.',
+        createdAt: '2026-11-20T09:02:00.000Z',
+      },
+      {
+        senderRole: 'system',
+        body: 'Tola B. joined and took over the chat from Amaka O.',
+        createdAt: '2026-11-20T09:05:00.000Z',
+      },
+      {
+        senderRole: 'staff',
+        senderName: 'Tola B.',
+        body: 'Done! Your slot is confirmed for 2:00 PM.',
+        createdAt: '2026-11-20T09:06:00.000Z',
+      },
+    ],
+  })
+
+  assert.equal(mail.subject, 'Your Dermaspace Chat Transcript (DS-LC-7K4M9P)')
+  assert.match(mail.html, /#7B2D8E/i)
+  assert.match(mail.html, /DS-LC-7K4M9P/)
+  assert.match(mail.html, /Amaka O\., Tola B\./)
+  assert.match(mail.html, /Checking your Lekki booking now\./)
+  assert.match(mail.html, /Tola B\. joined and took over the chat from Amaka O\./)
+  assert.match(mail.html, /Done! Your slot is confirmed for 2:00 PM\./)
+  assert.match(mail.html, /to 2:00 PM &lt;script&gt;alert\(1\)&lt;\/script&gt;/)
+  assert.equal(mail.html.includes('<script>'), false)
+  assert.match(mail.html, /<br>/)
+})
+
+test('live-chat-sound tracks customer and staff mute states independently without localStorage', async () => {
+  const mod = await import('./live-chat-sound')
+  assert.equal(mod.isLiveChatSoundEnabled('customer'), true)
+  assert.equal(mod.isLiveChatSoundEnabled('staff'), true)
+
+  mod.setLiveChatSoundEnabled('customer', false)
+  assert.equal(mod.isLiveChatSoundEnabled('customer'), false)
+  assert.equal(mod.isLiveChatSoundEnabled('staff'), true)
+
+  mod.setLiveChatSoundEnabled('staff', false)
+  assert.equal(mod.isLiveChatSoundEnabled('staff'), false)
+
+  mod.setLiveChatSoundEnabled('customer', true)
+  mod.setLiveChatSoundEnabled('staff', true)
+  assert.equal(mod.isLiveChatSoundEnabled('customer'), true)
+  assert.equal(mod.isLiveChatSoundEnabled('staff'), true)
+})
+
 
 

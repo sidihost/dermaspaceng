@@ -38,6 +38,27 @@ type SessionsRow = {
   updated_at: string
 }
 
+let ensureTablePromise: Promise<void> | null = null
+
+function ensureDermaChatSessionsTable(): Promise<void> {
+  if (!ensureTablePromise) {
+    ensureTablePromise = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS derma_chat_sessions (
+          user_id UUID PRIMARY KEY,
+          sessions JSONB NOT NULL DEFAULT '[]'::jsonb,
+          active JSONB,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `
+    })().catch((err) => {
+      ensureTablePromise = null
+      console.error('[derma/sessions] ensure table failed:', err)
+    })
+  }
+  return ensureTablePromise
+}
+
 export async function GET() {
   const user = await getCurrentUser()
   if (!user) {
@@ -48,6 +69,7 @@ export async function GET() {
   }
 
   try {
+    await ensureDermaChatSessionsTable()
     const rows = (await sql`
       SELECT sessions, active, updated_at
       FROM derma_chat_sessions
@@ -144,6 +166,7 @@ export async function PUT(request: NextRequest) {
         : null
 
   try {
+    await ensureDermaChatSessionsTable()
     await sql`
       INSERT INTO derma_chat_sessions (user_id, sessions, active, updated_at)
       VALUES (
@@ -182,6 +205,7 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   }
   try {
+    await ensureDermaChatSessionsTable()
     await sql`DELETE FROM derma_chat_sessions WHERE user_id = ${user.id}`
     return NextResponse.json({ success: true })
   } catch (err) {

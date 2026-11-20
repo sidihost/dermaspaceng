@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/auth'
 import {
   addMessage,
   closeSession,
+  dispatchLiveChatTranscriptEmail,
   getFullSessionView,
   getSessionById,
   staffDisplayName,
@@ -51,7 +52,7 @@ export async function PATCH(req: Request, { params }: Params) {
     if (session.status !== 'waiting' && session.status !== 'active') {
       return NextResponse.json({ success: true })
     }
-    await closeSession(id, 'admin')
+    await closeSession(session.id, 'admin')
     if (session.assigned_staff_id) {
       const profileRows = await sql`
         SELECT u.first_name, u.last_name, sp.display_name
@@ -69,19 +70,20 @@ export async function PATCH(req: Request, { params }: Params) {
           first_name: r.first_name,
           last_name: r.last_name,
         })
-        await addMessage(id, 'system', null, `${dn} left the chat`)
+        await addMessage(session.id, 'system', null, `${dn} left the chat`)
       }
     }
-    await addMessage(id, 'system', null, 'Chat ended')
+    await addMessage(session.id, 'system', null, 'Chat ended')
+    const transcriptSent = await dispatchLiveChatTranscriptEmail(session.id)
     await logStaffActivity({
       staffId: admin.id,
       userId: session.user_id,
       actionType: 'live_chat_closed',
       entityType: 'live_chat_session',
-      entityId: id,
+      entityId: session.id,
       description: `Admin ended live chat session${session.guest_name ? ` with ${session.guest_name}` : ''}`,
     })
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, transcriptSent })
   }
 
   return NextResponse.json({ error: 'unknown action' }, { status: 400 })

@@ -9,6 +9,9 @@
 ALTER TABLE live_chat_sessions
   ADD COLUMN IF NOT EXISTS support_code TEXT;
 
+ALTER TABLE live_chat_sessions
+  ADD COLUMN IF NOT EXISTS transcript_sent_at TIMESTAMPTZ;
+
 -- Backfill any pre-existing sessions that do not yet have a Support ID.
 WITH candidates AS (
   SELECT
