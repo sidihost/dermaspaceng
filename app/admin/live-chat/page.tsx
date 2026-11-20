@@ -44,6 +44,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
+import { useNotify } from '@/components/shared/notify'
 import {
   formatWaitSeconds,
   getLiveChatStatusMeta,
@@ -51,7 +52,7 @@ import {
 } from '@/lib/support-and-chat'
 
 const fetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((r) => {
+  fetch(url, { credentials: 'include', cache: 'no-store' }).then((r) => {
     if (!r.ok) throw new Error('Request failed')
     return r.json()
   })
@@ -282,6 +283,8 @@ function TranscriptDrawer({
     }).catch(() => {})
   }
 
+  const notify = useNotify()
+
   // Composer state.
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -314,9 +317,13 @@ function TranscriptDrawer({
       await Promise.all([
         swrMutate(sessionUrl),
         swrMutate('/api/admin/live-chat/sessions?status=open'),
+        swrMutate((key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/sessions')),
       ])
+      notify.info('Live chat ended', 'The session has been closed and moved to history.')
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : 'Failed to end session.')
+      const msg = err instanceof Error ? err.message : 'Failed to end session.'
+      setSendError(msg)
+      notify.error('Could not end chat', msg)
     } finally {
       setClosing(false)
     }
@@ -336,13 +343,15 @@ function TranscriptDrawer({
         const json = await res.json().catch(() => ({}))
         throw new Error(json.error || 'Could not delete session.')
       }
-      await Promise.all([
-        swrMutate('/api/admin/live-chat/sessions?status=open'),
-        swrMutate((key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/')),
-      ])
+      await swrMutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
+      )
+      notify.success('Live chat deleted', 'The session and its messages were permanently removed.')
       onClose()
     } catch (err) {
-      setSendError(err instanceof Error ? err.message : 'Failed to delete session.')
+      const msg = err instanceof Error ? err.message : 'Failed to delete session.'
+      setSendError(msg)
+      notify.error('Could not delete chat', msg)
     } finally {
       setDeleting(false)
     }
@@ -848,6 +857,8 @@ function HistoryTab({ onPeek }: { onPeek: (id: string) => void }) {
           (s.user_first_name || '').toLowerCase().includes(q) ||
           (s.user_last_name || '').toLowerCase().includes(q) ||
           (s.user_email || '').toLowerCase().includes(q) ||
+          (s.guest_name || '').toLowerCase().includes(q) ||
+          (s.guest_email || '').toLowerCase().includes(q) ||
           (s.initial_topic || '').toLowerCase().includes(q) ||
           (s.staff_first_name || '').toLowerCase().includes(q)
         )
@@ -1149,10 +1160,44 @@ function SessionTable({
   onPeek: (id: string) => void
   showWait?: boolean
 }) {
+  const notify = useNotify()
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleRowDelete = async (session: SessionRow, customerLabel: string) => {
+    if (deletingId) return
+    setDeletingId(session.id)
+    setConfirmDeleteId(null)
+    try {
+      const res = await fetch(`/api/admin/live-chat/sessions/${session.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not delete live chat session.')
+      }
+      await swrMutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
+      )
+      notify.success(
+        'Live chat deleted',
+        `${customerLabel} (${resolveSupportId(session.support_code, session.id)}) was removed.`,
+      )
+    } catch (err) {
+      notify.error(
+        'Could not delete chat',
+        err instanceof Error ? err.message : 'Please try again.',
+      )
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   // Empty state shared across both layouts.
   if (rows.length === 0) {
     return (
-      <div className="bg-white rounded-2xl ring-1 ring-gray-100 text-center text-xs text-gray-400 py-10">
+      <div className="bg-white rounded-2xl border border-gray-200 text-center text-xs text-gray-400 py-10">
         {emptyHint}
       </div>
     )
@@ -1170,20 +1215,24 @@ function SessionTable({
             : fullName(s.user_first_name, s.user_last_name, s.user_email || 'Customer')
           const customerEmail = isGuest ? s.guest_email : s.user_email
           const customerPhone = isGuest ? s.guest_phone : null
-          
+
           const rep = s.staff_id
             ? fullName(s.staff_first_name, s.staff_last_name, 'Assigned')
             : null
+          const isConfirming = confirmDeleteId === s.id
+          const isDeleting = deletingId === s.id
           return (
-            <button
+            <div
               key={s.id}
-              type="button"
-              onClick={() => onPeek(s.id)}
-              aria-label={`Open chat with ${customer}`}
-              className="w-full text-left bg-white rounded-2xl ring-1 ring-gray-100 hover:ring-[#7B2D8E]/30 active:bg-gray-50/60 transition-colors p-4"
+              className="w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors p-4"
             >
               <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => onPeek(s.id)}
+                  className="min-w-0 flex-1 text-left"
+                  aria-label={`Open chat with ${customer}`}
+                >
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-gray-900 truncate text-[14px]">
                       {customer}
@@ -1216,13 +1265,54 @@ function SessionTable({
                       {s.visitor_location}
                     </p>
                   ) : null}
+                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {isConfirming ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleRowDelete(s, customer)}
+                        disabled={isDeleting}
+                        className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#C63D3D] text-white hover:bg-[#a83232] transition-colors disabled:opacity-50"
+                      >
+                        {isDeleting ? 'Deleting…' : 'Delete'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        disabled={isDeleting}
+                        className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(s.id)}
+                        disabled={isDeleting}
+                        className="w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-[#C63D3D] hover:border-[#C63D3D]/30 hover:bg-red-50/40 flex items-center justify-center transition-colors"
+                        aria-label={`Delete chat with ${customer}`}
+                        title="Delete chat session"
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onPeek(s.id)}
+                        aria-label={`Open chat with ${customer}`}
+                        className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center hover:bg-[#7B2D8E]/15 transition-colors"
+                      >
+                        <ArrowUpRight className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </div>
-                <span
-                  aria-hidden="true"
-                  className="shrink-0 w-8 h-8 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center"
-                >
-                  <ArrowUpRight className="h-4 w-4" />
-                </span>
               </div>
 
               {s.initial_topic ? (
@@ -1264,7 +1354,7 @@ function SessionTable({
                   </span>
                 </div>
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
@@ -1395,14 +1485,53 @@ function SessionTable({
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onPeek(s.id)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
-                      >
-                        Open
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="inline-flex items-center justify-end gap-1.5">
+                        {confirmDeleteId === s.id ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleRowDelete(s, customer)}
+                              disabled={deletingId === s.id}
+                              className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#C63D3D] text-white hover:bg-[#a83232] transition-colors disabled:opacity-50"
+                            >
+                              {deletingId === s.id ? 'Deleting…' : 'Confirm delete'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              disabled={deletingId === s.id}
+                              className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(s.id)}
+                              disabled={deletingId === s.id}
+                              className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-[#C63D3D] hover:border-[#C63D3D]/30 hover:bg-red-50/40 transition-colors"
+                              aria-label={`Delete chat with ${customer}`}
+                              title="Delete chat session"
+                            >
+                              {deletingId === s.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onPeek(s.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                            >
+                              Open
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )

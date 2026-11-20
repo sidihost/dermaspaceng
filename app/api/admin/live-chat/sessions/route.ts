@@ -38,5 +38,8 @@ export async function GET(req: Request) {
       : undefined
 
   const sessions = await getAllSessions(filter, days)
-  return NextResponse.json({ sessions })
+  return NextResponse.json(
+    { sessions },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }

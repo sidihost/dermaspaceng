@@ -101,8 +101,16 @@ export async function DELETE(_req: Request, { params }: Params) {
   const session = await getSessionById(id)
   if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  await sql`DELETE FROM live_chat_messages WHERE session_id = ${session.id}`
-  await sql`DELETE FROM live_chat_sessions WHERE id = ${session.id}`
+  try {
+    await sql`DELETE FROM live_chat_messages WHERE session_id = ${session.id}`
+    await sql`DELETE FROM live_chat_sessions WHERE id = ${session.id}`
+  } catch (err) {
+    console.error('[admin/live-chat] Failed to delete session:', err)
+    return NextResponse.json(
+      { error: 'Could not delete live chat session. Please try again.' },
+      { status: 500 },
+    )
+  }
 
   await logStaffActivity({
     staffId: admin.id,
@@ -111,7 +119,10 @@ export async function DELETE(_req: Request, { params }: Params) {
     entityType: 'live_chat_session',
     entityId: session.id,
     description: `Admin deleted live chat session${session.support_code ? ` (${session.support_code})` : ''}${session.guest_name ? ` with ${session.guest_name}` : ''}`,
-  })
+  }).catch(() => {})
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json(
+    { success: true, deletedId: session.id },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
