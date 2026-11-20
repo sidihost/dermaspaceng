@@ -712,7 +712,7 @@ export function InlineLiveHeaderControls({
             setConfirmEnd(false)
             onEndLiveChat()
           }}
-          className="text-[11px] font-semibold text-white bg-[#3E104B] hover:bg-[#5A1D6A] px-2.5 py-1 rounded-full transition-colors whitespace-nowrap"
+          className="text-[11px] font-semibold text-white bg-[#7B2D8E] hover:bg-[#5A1D6A] px-2.5 py-1 rounded-full transition-colors whitespace-nowrap"
         >
           Confirm
         </button>

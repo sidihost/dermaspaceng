@@ -4461,12 +4461,12 @@ export function buildAccountSuspendedEmailHtml(data: {
     }
 
     <p style="margin: 0 0 20px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
-      If you believe this was done in error or you have resolved the matter with your clinic lead, submit an internal staff appeal below for Dermaspace Leadership &amp; Security to review.
+      If you believe this was done in error or you have resolved the matter with your manager, submit an internal staff appeal below for Dermaspace Leadership &amp; Security to review.
     </p>
 
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
       <tr>
-        <td style="background-color: #3E104B; border-radius: 10px;">
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
           <a href="${safeAppealUrl}" style="display: inline-block; padding: 13px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
             Submit Staff Appeal
           </a>
@@ -4480,7 +4480,7 @@ export function buildAccountSuspendedEmailHtml(data: {
     </p>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated security notice &mdash; please do not reply directly to this email. Submit your appeal using the portal above or reach clinic leadership directly.
+      This is an automated security notice &mdash; please do not reply directly to this email. Submit your appeal using the portal above or reach Dermaspace management directly.
     </p>
   `
     : `
@@ -4715,7 +4715,7 @@ export async function sendAppealDecisionEmail(data: {
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
       This is an automated security update &mdash; please do not reply directly.${
         isTeamMember
-          ? ' For further questions, contact your clinic administrator.'
+          ? ' For further questions, contact your Dermaspace administrator.'
           : ` For assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
       }
     </p>
@@ -4792,7 +4792,7 @@ export async function sendAccountReinstatedEmail(data: {
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
       This is an automated security notification &mdash; please do not reply directly.${
         isTeamMember
-          ? ' Reach your clinic administrator if you have questions about your access.'
+          ? ' Reach your Dermaspace administrator if you have questions about your access.'
           : ` If you need assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
       }
     </p>
@@ -4890,7 +4890,7 @@ export function buildStaffPromotedEmailHtml(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated team notice &mdash; please do not reply directly. Reach your clinic administrator or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> if you have questions about your access.
+      This is an automated team notice &mdash; please do not reply directly. Reach your Dermaspace administrator or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> if you have questions about your access.
     </p>
   `
 

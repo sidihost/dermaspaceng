@@ -878,7 +878,7 @@ export default function StaffPage() {
               </div>
               <p className="text-sm font-semibold text-gray-900">No staff members yet</p>
               <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
-                Invite your clinic coordinators, estheticians, or administrators to collaborate in
+                Invite your front desk coordinators, estheticians, or administrators to collaborate in
                 the dashboard.
               </p>
               <Link
@@ -1693,7 +1693,7 @@ export default function StaffPage() {
                   onClick={() =>
                     void handleToggleSuspend(confirmModal.member, false, suspendReason)
                   }
-                  className="h-9 px-4 rounded-lg bg-[#3E104B] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   {busyMember[confirmModal.member.id] === 'suspend' && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1766,7 +1766,7 @@ export default function StaffPage() {
                   type="button"
                   disabled={!!busyMember[confirmModal.member.id]}
                   onClick={() => void handleRemoveMember(confirmModal.member)}
-                  className="h-9 px-4 rounded-lg bg-[#3E104B] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   {busyMember[confirmModal.member.id] === 'remove' && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1800,7 +1800,7 @@ export default function StaffPage() {
                   type="button"
                   disabled={!!busyInvite[confirmModal.invitation.id]}
                   onClick={() => void handleRevokeInvitation(confirmModal.invitation)}
-                  className="h-9 px-4 rounded-lg bg-[#3E104B] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   {busyInvite[confirmModal.invitation.id] === 'revoke' && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -2054,7 +2054,7 @@ function StatusBadge({ status }: { status: MemberStatus }) {
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-gray-900 bg-gray-900 px-2 py-0.5 text-[11px] font-medium text-white">
+    <span className="inline-flex items-center gap-1 rounded-md border border-[#C63D3D]/25 bg-[#C63D3D]/10 px-2 py-0.5 text-[11px] font-medium text-[#C63D3D]">
       <UserX className="w-3 h-3" />
       Suspended
     </span>

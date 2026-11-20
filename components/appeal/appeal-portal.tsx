@@ -55,11 +55,7 @@ function BrandSidePanel({
   points: string[]
 }) {
   return (
-    <div
-      className={`hidden lg:flex lg:w-1/2 items-center justify-center p-10 ${
-        isStaff ? 'bg-[#3E104B]' : 'bg-[#7B2D8E]'
-      }`}
-    >
+    <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-10 bg-[#7B2D8E]">
       <div className="text-white max-w-md w-full">
         <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/15 flex items-center justify-center mb-6">
           {isStaff ? (
@@ -153,7 +149,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
     ? [
         'Console access and active staff sessions remain paused until review is complete.',
         'Every staff appeal is routed directly to Dermaspace Leadership & Security.',
-        'Automated status updates are emailed to your work address or preferred reply address.',
+        'Automated status updates are emailed to your work address or alternate contact email.',
       ]
     : [
         'Your bookings, wallet balance, and appointment history remain safely preserved.',
@@ -404,7 +400,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
         title={isStaff ? 'Staff Access Appeal' : 'Client Account Appeal'}
         description={
           isStaff
-            ? 'If your Dermaspace staff or administrator access was suspended in error or resolved with your clinic lead, share details below for leadership review.'
+            ? 'If your Dermaspace staff or administrator access was suspended in error or resolved with your manager, share details below for leadership review.'
             : 'If your Dermaspace client account was suspended by mistake or you have resolved the issue, submit an appeal below.'
         }
         points={sidePoints}

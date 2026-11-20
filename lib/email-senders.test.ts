@@ -113,7 +113,9 @@ describe('Dedicated Staff vs. Client suspension appeals', () => {
     assert.match(built.html, /<title>Dermaspace Team Security<\/title>/)
     assert.match(built.html, /Submit Staff Appeal/)
     assert.match(built.html, /\/appeal\/staff\?token=staff_tok/)
-    assert.match(built.html, /#3E104B/i)
+    assert.match(built.html, /#7B2D8E/i)
+    assert.doesNotMatch(built.html, /background-color:\s*#3E104B/i)
+    assert.doesNotMatch(built.html, /\bclinic\b|\bhospital\b/i)
     assert.match(built.html, /Administrative Note/)
     assert.match(built.html, /Policy review pending/)
     assert.match(built.html, /automated/i)
@@ -152,7 +154,7 @@ describe('Automated transactional email titles & no-reply hygiene', () => {
       firstName: 'Tola',
       newRole: 'admin',
       previousRole: 'staff',
-      promotedByName: 'Clinic Director',
+      promotedByName: 'Spa Director',
     })
 
     assert.match(built.html, /<title>Dermaspace Team<\/title>/)
@@ -160,6 +162,7 @@ describe('Automated transactional email titles & no-reply hygiene', () => {
     assert.match(built.html, /do not reply/i)
     assert.doesNotMatch(built.html, /hello@dermaspaceng\.com/i)
     assert.doesNotMatch(built.html, /reply to this email/i)
+    assert.doesNotMatch(built.html, /\bclinic\b|\bhospital\b/i)
   })
 
   it('uses Dermaspace Support title and automated no-reply copy on live chat transcript emails', () => {

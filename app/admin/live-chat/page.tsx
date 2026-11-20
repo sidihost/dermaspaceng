@@ -451,7 +451,7 @@ function TranscriptDrawer({
                     type="button"
                     onClick={endSession}
                     disabled={closing}
-                    className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#3E104B] text-white hover:bg-[#5A1D6A] transition-colors"
+                    className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#7B2D8E] text-white hover:bg-[#5A1D6A] transition-colors"
                   >
                     {closing ? 'Ending…' : 'Confirm'}
                   </button>

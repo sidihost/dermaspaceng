@@ -1005,7 +1005,7 @@ function ConversationColumn({
                     type="button"
                     onClick={closeChat}
                     disabled={closing}
-                    className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#3E104B] text-white hover:bg-[#5A1D6A]"
+                    className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]"
                   >
                     {closing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirm'}
                   </button>
