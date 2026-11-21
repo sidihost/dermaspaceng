@@ -69,6 +69,7 @@ import {
 } from '@/lib/admin-staff'
 import { useNotify } from '@/components/shared/notify'
 import { useAuth } from '@/hooks/use-auth'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 
 type ActiveSection = 'team' | 'invitations'
 
@@ -168,7 +169,6 @@ export default function StaffPage() {
 
   // Flat confirmation & password reset dialogs
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>(null)
-  const [suspendReason, setSuspendReason] = useState('')
   const [passwordModal, setPasswordModal] = useState<PasswordResetModalState>(null)
 
   const fetchStaff = useCallback(async (isManualRefresh = false) => {
@@ -1676,318 +1676,133 @@ export default function StaffPage() {
         )}
       </div>
 
-      {/* Flat In-Page Confirmation Dialog (Suspend / Role Change / Remove / Revoke) */}
-      <Dialog
-        open={confirmModal !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setConfirmModal(null)
-            setSuspendReason('')
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
-          {confirmModal?.kind === 'suspend' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  Suspend {getMemberDisplayName(confirmModal.member)}?
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  Their active sessions will end immediately and they will be locked out of the
-                  dashboard until reinstated.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-1.5">
-                <label className="block text-xs font-medium text-gray-700">
-                  Reason (optional — included in notification email)
-                </label>
-                <textarea
-                  value={suspendReason}
-                  onChange={(e) => setSuspendReason(e.target.value)}
-                  rows={3}
-                  placeholder="e.g. Temporary leave or rotation change"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E]"
-                />
-              </div>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirmModal(null)
-                    setSuspendReason('')
-                  }}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyMember[confirmModal.member.id]}
-                  onClick={() =>
-                    void handleToggleSuspend(confirmModal.member, false, suspendReason)
-                  }
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyMember[confirmModal.member.id] === 'suspend' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Suspend account
-                </button>
-              </DialogFooter>
-            </>
-          )}
+      {/* Brand-Purple Confirmation Popup (Suspend / Role Change / Remove / Revoke / Invites) */}
+      {(() => {
+        if (!confirmModal) return null
+        let title = ''
+        let description: React.ReactNode = ''
+        let confirmLabel = 'Confirm'
+        let cancelLabel = 'Cancel'
+        let icon: typeof Shield = Shield
+        let busy = false
+        let optionalReason = false
+        let reasonLabel = 'Reason (optional — included in notification email)'
+        let reasonPlaceholder = 'e.g. Temporary leave or rotation change'
+        let onConfirm: (reason?: string) => void = () => {}
 
-          {confirmModal?.kind === 'role' && (
+        if (confirmModal.kind === 'suspend') {
+          title = `Suspend ${getMemberDisplayName(confirmModal.member)}?`
+          description =
+            'Their active sessions will end immediately and they will be locked out of the dashboard until reinstated.'
+          confirmLabel = 'Suspend account'
+          cancelLabel = 'Keep active'
+          icon = UserX
+          busy = !!busyMember[confirmModal.member.id]
+          optionalReason = true
+          onConfirm = (reason) =>
+            void handleToggleSuspend(confirmModal.member, false, reason || '')
+        } else if (confirmModal.kind === 'role') {
+          title =
+            confirmModal.nextRole === 'admin'
+              ? `Promote ${getMemberDisplayName(confirmModal.member)} to Admin?`
+              : `Change ${getMemberDisplayName(confirmModal.member)} to Staff?`
+          description =
+            confirmModal.nextRole === 'admin'
+              ? 'Admins receive full dashboard access including staff, services, and system settings.'
+              : 'Admin privileges will be removed while keeping standard staff workspace tools.'
+          confirmLabel =
+            confirmModal.nextRole === 'admin' ? 'Promote to Admin' : 'Change to Staff'
+          cancelLabel = 'Cancel'
+          icon = Shield
+          busy = !!busyMember[confirmModal.member.id]
+          onConfirm = () =>
+            void handleChangeRole(confirmModal.member, confirmModal.nextRole)
+        } else if (confirmModal.kind === 'remove') {
+          title = `Remove ${getMemberDisplayName(confirmModal.member)} from team?`
+          description =
+            'They will be demoted to a regular client, signed out of every device, and moved to your Clients list. Their replies and assignment audit history remain intact.'
+          confirmLabel = 'Remove from team'
+          cancelLabel = 'Keep on team'
+          icon = UserMinus
+          busy = !!busyMember[confirmModal.member.id]
+          onConfirm = () => void handleRemoveMember(confirmModal.member)
+        } else if (confirmModal.kind === 'reinstate') {
+          title = `Reinstate ${getMemberDisplayName(confirmModal.member)}?`
+          description =
+            'Their staff access will be restored immediately and they will receive a confirmation email.'
+          confirmLabel = 'Reinstate access'
+          cancelLabel = 'Cancel'
+          icon = RotateCcw
+          busy = !!busyMember[confirmModal.member.id]
+          onConfirm = () => void handleToggleSuspend(confirmModal.member, true)
+        } else if (confirmModal.kind === 'service_perm') {
+          title = confirmModal.next
+            ? `Grant Service Editor access to ${getMemberDisplayName(confirmModal.member)}?`
+            : `Revoke Service Editor access from ${getMemberDisplayName(confirmModal.member)}?`
+          description = confirmModal.next
+            ? 'They will be able to create, update, and manage services and pricing inside their staff workspace.'
+            : 'They will no longer be able to add or edit service catalog entries.'
+          confirmLabel = confirmModal.next ? 'Grant access' : 'Revoke access'
+          cancelLabel = 'Cancel'
+          icon = ShieldCheck
+          busy = !!busyMember[confirmModal.member.id]
+          onConfirm = () =>
+            void handleToggleServicePerm(confirmModal.member, confirmModal.next)
+        } else if (confirmModal.kind === 'resend_verification') {
+          title = `Resend verification code to ${getMemberDisplayName(confirmModal.member)}?`
+          description = (
             <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  {confirmModal.nextRole === 'admin'
-                    ? `Promote ${getMemberDisplayName(confirmModal.member)} to Admin?`
-                    : `Change ${getMemberDisplayName(confirmModal.member)} to Staff?`}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  {confirmModal.nextRole === 'admin'
-                    ? 'Admins receive full dashboard access including staff, services, and system settings.'
-                    : 'Admin privileges will be removed while keeping standard staff workspace tools.'}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyMember[confirmModal.member.id]}
-                  onClick={() =>
-                    void handleChangeRole(confirmModal.member, confirmModal.nextRole)
-                  }
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyMember[confirmModal.member.id] === 'role' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  {confirmModal.nextRole === 'admin' ? 'Promote to Admin' : 'Change to Staff'}
-                </button>
-              </DialogFooter>
+              A fresh verification code will be sent to{' '}
+              <span className="font-semibold text-gray-900">
+                {confirmModal.member.email || getMemberDisplayName(confirmModal.member)}
+              </span>{' '}
+              so they can finish verifying their staff account.
             </>
-          )}
+          )
+          confirmLabel = 'Send verification code'
+          cancelLabel = 'Cancel'
+          icon = Mail
+          busy = !!busyMember[confirmModal.member.id]
+          onConfirm = () => void handleResendVerification(confirmModal.member)
+        } else if (confirmModal.kind === 'resend_invite') {
+          title = `Resend invitation to ${confirmModal.invitation.email}?`
+          description =
+            'This generates a fresh invitation link, invalidates any previous link, and sends a new email.'
+          confirmLabel = 'Resend invitation'
+          cancelLabel = 'Cancel'
+          icon = Send
+          busy = !!busyInvite[confirmModal.invitation.id]
+          onConfirm = () => void handleResendInvitation(confirmModal.invitation)
+        } else if (confirmModal.kind === 'revoke') {
+          title = `Revoke invitation for ${confirmModal.invitation.email}?`
+          description =
+            'The invitation link will stop working immediately. You can always send a new invitation later.'
+          confirmLabel = 'Revoke invitation'
+          cancelLabel = 'Keep invitation'
+          icon = UserX
+          busy = !!busyInvite[confirmModal.invitation.id]
+          onConfirm = () => void handleRevokeInvitation(confirmModal.invitation)
+        }
 
-          {confirmModal?.kind === 'remove' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  Remove {getMemberDisplayName(confirmModal.member)} from team?
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  They will be demoted to a regular client, signed out of every device, and moved
-                  to your Clients list. Their replies and assignment audit history remain intact.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyMember[confirmModal.member.id]}
-                  onClick={() => void handleRemoveMember(confirmModal.member)}
-                  className="h-9 px-4 rounded-lg bg-[#C63D3D] text-white text-xs font-semibold hover:bg-[#A83232] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyMember[confirmModal.member.id] === 'remove' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Remove from team
-                </button>
-              </DialogFooter>
-            </>
-          )}
-
-          {confirmModal?.kind === 'reinstate' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  Reinstate {getMemberDisplayName(confirmModal.member)}?
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  Their staff access will be restored immediately and they will receive a confirmation email.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyMember[confirmModal.member.id]}
-                  onClick={() => void handleToggleSuspend(confirmModal.member, true)}
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyMember[confirmModal.member.id] === 'reinstate' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Reinstate access
-                </button>
-              </DialogFooter>
-            </>
-          )}
-
-          {confirmModal?.kind === 'service_perm' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  {confirmModal.next
-                    ? `Grant Service Editor access to ${getMemberDisplayName(confirmModal.member)}?`
-                    : `Revoke Service Editor access from ${getMemberDisplayName(confirmModal.member)}?`}
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  {confirmModal.next
-                    ? 'They will be able to create, update, and manage services and pricing inside their staff workspace.'
-                    : 'They will no longer be able to add or edit service catalog entries.'}
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyMember[confirmModal.member.id]}
-                  onClick={() =>
-                    void handleToggleServicePerm(confirmModal.member, confirmModal.next)
-                  }
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyMember[confirmModal.member.id] === 'perm' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  {confirmModal.next ? 'Grant access' : 'Revoke access'}
-                </button>
-              </DialogFooter>
-            </>
-          )}
-
-          {confirmModal?.kind === 'resend_verification' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  Resend verification code to {getMemberDisplayName(confirmModal.member)}?
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  A fresh verification code will be sent to{' '}
-                  <span className="font-medium text-gray-900">
-                    {confirmModal.member.email || getMemberDisplayName(confirmModal.member)}
-                  </span>{' '}
-                  so they can finish verifying their staff account.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyMember[confirmModal.member.id]}
-                  onClick={() => void handleResendVerification(confirmModal.member)}
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyMember[confirmModal.member.id] === 'resend' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Send verification code
-                </button>
-              </DialogFooter>
-            </>
-          )}
-
-          {confirmModal?.kind === 'resend_invite' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  Resend invitation to {confirmModal.invitation.email}?
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  This generates a fresh invitation link, invalidates any previous link, and sends a new email.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyInvite[confirmModal.invitation.id]}
-                  onClick={() => void handleResendInvitation(confirmModal.invitation)}
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyInvite[confirmModal.invitation.id] === 'resend' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Resend invitation
-                </button>
-              </DialogFooter>
-            </>
-          )}
-
-          {confirmModal?.kind === 'revoke' && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="text-base font-semibold text-gray-900">
-                  Revoke invitation for {confirmModal.invitation.email}?
-                </DialogTitle>
-                <DialogDescription className="text-sm text-gray-600">
-                  The invitation link will stop working immediately. You can always send a new
-                  invitation later.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setConfirmModal(null)}
-                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!!busyInvite[confirmModal.invitation.id]}
-                  onClick={() => void handleRevokeInvitation(confirmModal.invitation)}
-                  className="h-9 px-4 rounded-lg bg-[#C63D3D] text-white text-xs font-semibold hover:bg-[#A83232] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  {busyInvite[confirmModal.invitation.id] === 'revoke' && (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  )}
-                  Revoke invitation
-                </button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        return (
+          <ConfirmDialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) setConfirmModal(null)
+            }}
+            title={title}
+            description={description}
+            confirmLabel={confirmLabel}
+            cancelLabel={cancelLabel}
+            icon={icon}
+            busy={busy}
+            optionalReason={optionalReason}
+            reasonLabel={reasonLabel}
+            reasonPlaceholder={reasonPlaceholder}
+            onConfirm={onConfirm}
+          />
+        )
+      })()}
 
       {/* Flat Password Reset Dialog */}
       <Dialog

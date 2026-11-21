@@ -8,9 +8,11 @@ import {
   resolveStaffAvatarUrl,
   resolveSupportId,
   staffDisplayName,
+  touchCustomerPresence,
   type LiveChatSession,
 } from '@/lib/live-chat'
 import { readGuestChatCookie } from '@/lib/live-chat-guest'
+import { isTypingActive } from '@/lib/visitor-telemetry'
 
 export async function GET() {
   const user = await getCurrentUser()
@@ -41,6 +43,10 @@ export async function GET() {
   }
 
   if (!session) return NextResponse.json({ session: null })
+
+  if (session.status === 'waiting' || session.status === 'active') {
+    await touchCustomerPresence(session.id).catch(() => {})
+  }
 
   let staff: {
     id: string
@@ -91,6 +97,8 @@ export async function GET() {
       acceptedAt: session.accepted_at,
       closedAt: session.closed_at,
       ratedAt: session.rated_at,
+      staffTyping: isTypingActive(session.staff_typing_at),
+      staffTypingName: session.staff_typing_name || staff?.displayName || null,
       isGuest,
       // Echo back the guest's pre-chat form so the overlay can show
       // "Hi {firstName}" without a second round-trip. Logged-in users

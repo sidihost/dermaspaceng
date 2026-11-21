@@ -125,11 +125,12 @@ export default function NewsletterSection() {
             {/* Image Side */}
             <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[340px] bg-[#FAF6FB] overflow-hidden">
               <Image
-                src="/images/newsletter-spa-branded.jpg"
+                src="/images/newsletter-spa-branded-hd.jpg"
                 alt="Dark-skinned woman resting peacefully in crisp white spa linens beside a white folded towel embroidered with the Dermaspace logo"
                 fill
-                loading="eager"
-                sizes="(max-width: 768px) 100vw, 512px"
+                priority
+                quality={95}
+                sizes="(max-width: 768px) 100vw, 1200px"
                 referrerPolicy="no-referrer"
                 className="object-cover object-center"
               />

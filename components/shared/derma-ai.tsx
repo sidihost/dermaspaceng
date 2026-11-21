@@ -31,6 +31,7 @@ import {
 import {
   useInlineLiveChat,
   InlineLiveHeaderControls,
+  InlineLiveOptionsPopup,
   InlineLiveFeed,
   RepAvatar,
   type FinalizedLiveSessionPayload,
@@ -7275,77 +7276,68 @@ export default function DermaAI({
                     stays quiet until you interact with it. */}
                 <div className="relative px-3.5 py-2.5 flex items-center justify-between gap-2 flex-shrink-0 bg-white border-b border-gray-100">
                   <div className="relative flex-1 flex items-center gap-2.5 min-w-0">
-                    <button
-                      onClick={() => setShowSidebar(!showSidebar)}
-                      className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
-                      aria-label="Toggle chat history"
-                    >
-                      {/* Anthropic / Claude-style hamburger: three
-                          stacked bars of UNEVEN width, instead of the
-                          generic Lucide `Menu` icon. Bars are now
-                          drawn at a 24×24 viewBox and rendered at
-                          22px so the trio is clearly readable on a
-                          phone screen — the previous 16×16 + 1.6
-                          stroke read as too thin against the white
-                          header. Width order: narrow → wide → mid,
-                          mirroring Claude's mark exactly. */}
-                      <svg
-                        width="22"
-                        height="22"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        aria-hidden="true"
-                        className="block"
+                    {!inlineLiveChat.isLiveMode && (
+                      <button
+                        onClick={() => setShowSidebar(!showSidebar)}
+                        className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
+                        aria-label="Toggle chat history"
                       >
-                        <rect x="3"  y="6"  width="13" height="2.2" rx="1.1" fill="currentColor" />
-                        <rect x="3"  y="11" width="18" height="2.2" rx="1.1" fill="currentColor" />
-                        <rect x="3"  y="16" width="9"  height="2.2" rx="1.1" fill="currentColor" />
-                      </svg>
-                    </button>
-                    {/* Circular brand avatar — switches cleanly to the
-                        live representative avatar while in human support mode. */}
+                        <svg
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          aria-hidden="true"
+                          className="block"
+                        >
+                          <rect x="3"  y="6"  width="13" height="2.2" rx="1.1" fill="currentColor" />
+                          <rect x="3"  y="11" width="18" height="2.2" rx="1.1" fill="currentColor" />
+                          <rect x="3"  y="16" width="9"  height="2.2" rx="1.1" fill="currentColor" />
+                        </svg>
+                      </button>
+                    )}
+                    {/* Single clean avatar — representative portrait or Customer Care headset in Live Chat mode; ButterflyLogo in Derma AI mode. */}
                     <div className="relative flex-shrink-0">
-                      {inlineLiveChat.isLiveMode && inlineLiveChat.staff ? (
-                        <RepAvatar
-                          src={inlineLiveChat.staff.avatarUrl}
-                          name={inlineLiveChat.staff.displayName}
-                          size={36}
-                          className="ring-2 ring-[#7B2D8E]/20"
-                        />
+                      {inlineLiveChat.isLiveMode ? (
+                        inlineLiveChat.staff ? (
+                          <RepAvatar
+                            src={inlineLiveChat.staff.avatarUrl}
+                            name={inlineLiveChat.staff.displayName}
+                            size={40}
+                            className="border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center">
+                            <Headphones className="w-4.5 h-4.5" />
+                          </div>
+                        )
                       ) : (
                         <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                           <ButterflyLogo className="w-4.5 h-4.5 text-white" />
                         </div>
                       )}
-                      {inlineLiveChat.isLiveMode && (
-                        <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#7B2D8E] ring-2 ring-white" />
-                      )}
                     </div>
                     <div className="min-w-0 leading-tight">
-                      <h3 className="font-semibold text-gray-900 text-[14px] tracking-tight truncate whitespace-nowrap">
+                      <h3 className="font-semibold text-gray-900 text-[15px] tracking-tight truncate whitespace-nowrap">
                         {inlineLiveChat.isLiveMode
                           ? inlineLiveChat.staff?.displayName || 'Customer Care'
                           : 'Derma AI'}
                       </h3>
-                      {/* Dynamic status line */}
                       {(inlineLiveChat.isLiveMode ||
                         isLoading ||
                         isSpeaking ||
                         memories.length > 0) && (
-                        <p className="text-[11px] leading-none mt-0.5 truncate">
+                        <p className="text-[12.5px] leading-none mt-1 truncate">
                           {inlineLiveChat.isLiveMode ? (
-                            <span className="text-[#7B2D8E] font-medium">
-                              {inlineLiveChat.status === 'active'
-                                ? `Live · ${
-                                    inlineLiveChat.session
-                                      ? resolveSupportId(
-                                          inlineLiveChat.session.supportCode,
-                                          inlineLiveChat.session.id,
-                                        )
-                                      : 'Customer Care'
-                                  }`
-                                : 'Connecting to an agent…'}
-                            </span>
+                            inlineLiveChat.status === 'active' ? (
+                              <span className="text-[#16A34A] font-medium">
+                                Available
+                              </span>
+                            ) : (
+                              <span className="text-[#7B2D8E] font-medium">
+                                Connecting…
+                              </span>
+                            )
                           ) : isLoading ? (
                             <span className="text-gray-500">Thinking…</span>
                           ) : isSpeaking ? (
@@ -7361,7 +7353,7 @@ export default function DermaAI({
                   </div>
 
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
-                    {inlineLiveChat.isLiveMode && (
+                    {inlineLiveChat.isLiveMode ? (
                       <InlineLiveHeaderControls
                         optionsOpen={inlineLiveChat.optionsOpen}
                         onToggleOptions={() => inlineLiveChat.setOptionsOpen((v) => !v)}
@@ -7372,123 +7364,75 @@ export default function DermaAI({
                         }}
                         onCancelLeave={() => inlineLiveChat.setConfirmLeaveOpen(false)}
                         onEndLiveChat={inlineLiveChat.endLiveChat}
+                        onMinimize={
+                          !isPageMode
+                            ? () => {
+                                inlineLiveChat.setOptionsOpen(false)
+                                setIsOpen(false)
+                                setShowSidebar(false)
+                              }
+                            : undefined
+                        }
                       />
-                    )}
-                    {/* Derma AI Live used to live here as a Phone icon
-                        in the header. We moved it into the composer
-                        (next to Send) so the entry-point sits exactly
-                        where Gemini puts its Live button — at the user's
-                        thumb, not at the top of the chat. The header now
-                        only carries the avatar / settings entry-point. */}
-                    {/* The global speaker toggle previously lived
-                        here. It was removed — each assistant reply
-                        now has its own Speak button, which is both
-                        less surprising (no audio unless the user
-                        explicitly asks) and obviates the global on/off
-                        toggle in the header. The auto-read capability
-                        still exists for users who want it — it's
-                        controlled from Settings → Capabilities. */}
-                    {/* User avatar → opens the in-chat settings sheet.
-                        Wrapped in a relatively-positioned shell so we
-                        can stack two animated brand-coloured rings
-                        behind it: a slow pulse and a faster orbiting
-                        conic spinner that lights up while the
-                        assistant is thinking or speaking. Both rings
-                        are decorative and pointer-none so the avatar
-                        button keeps working as a hit target. The
-                        avatar itself stays the same (image / initial
-                        / butterfly fallback) and now has a slightly
-                        thicker brand ring so the animation reads as
-                        emanating from the avatar, not floating
-                        separately. */}
-                    <span className="relative ml-0.5 inline-flex items-center justify-center w-9 h-9">
-                      {/* Quiet idle halo. Single soft brand wash —
-                          NO pulsing ping any more. The previous
-                          always-on `animate-ping` made the avatar
-                          read as a notification badge ("you have a
-                          new message"), even when nothing was
-                          happening. The avatar now stays calm at
-                          rest and only animates when the assistant
-                          is actually working. */}
-                      {/* Stronger brand wash so the avatar reads
-                          immediately as Dermaspace-purple at a glance
-                          (was /10 — almost invisible against white). */}
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-[-2px] rounded-full bg-[#7B2D8E]/20"
-                      />
-                      {/* Active orbit — single brand-purple arc that
-                          sweeps around the avatar only while the
-                          assistant is thinking or speaking. Mirrors
-                          the analysis ring on the Live self-view so
-                          all "AI working" signals across the panel
-                          share one visual language. */}
-                      {(isLoading || isSpeaking) && (
-                        <span
-                          aria-hidden="true"
-                          className="absolute inset-[-3px] rounded-full pointer-events-none"
-                          style={{
-                            background:
-                              'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.2) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.2) 150deg, rgba(123,45,142,0) 200deg)',
-                            animation: 'derma-live-scan 1.8s linear infinite',
-                            mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                            WebkitMask:
-                              'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                          }}
-                        />
-                      )}
-                      {/* Avatar button — now ALWAYS sits on a brand
-                          purple base (with a thicker brand ring) so
-                          it reads instantly as the Dermaspace AI
-                          entry-point against the white header. Photo
-                          avatars still cover the surface; initials
-                          and the settings fallback render in white
-                          on purple, matching the chat header avatar
-                          a few pixels to the left. */}
-                      <button
-                        onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
-                        // Shadow intentionally removed — the brand
-                        // ring + solid purple fill already give the
-                        // avatar enough lift against the white
-                        // header, and the prior drop-shadow read as
-                        // a subtle "ring" the user wanted gone.
-                        className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/70 bg-[#7B2D8E] hover:ring-[#7B2D8E] transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] flex items-center justify-center"
-                        aria-label="Open Derma AI settings"
-                        title="Settings"
-                      >
-                        {userInfo.avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={userInfo.avatarUrl}
-                            alt={userInfo.name ? `${userInfo.name} avatar` : 'Your avatar'}
-                            className="w-full h-full object-cover"
+                    ) : (
+                      <>
+                        <span className="relative ml-0.5 inline-flex items-center justify-center w-9 h-9">
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-[-2px] rounded-full bg-[#7B2D8E]/20"
                           />
-                        ) : userInfo.name ? (
-                          <span className="text-[11px] font-bold text-white">
-                            {userInfo.name.charAt(0).toUpperCase()}
-                          </span>
-                        ) : (
-                          <SettingsIcon className="w-3.5 h-3.5 text-white" />
+                          {(isLoading || isSpeaking) && (
+                            <span
+                              aria-hidden="true"
+                              className="absolute inset-[-3px] rounded-full pointer-events-none"
+                              style={{
+                                background:
+                                  'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.2) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.2) 150deg, rgba(123,45,142,0) 200deg)',
+                                animation: 'derma-live-scan 1.8s linear infinite',
+                                mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                                WebkitMask:
+                                  'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                              }}
+                            />
+                          )}
+                          <button
+                            onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
+                            className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/70 bg-[#7B2D8E] hover:ring-[#7B2D8E] transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] flex items-center justify-center"
+                            aria-label="Open Derma AI settings"
+                            title="Settings"
+                          >
+                            {userInfo.avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={userInfo.avatarUrl}
+                                alt={userInfo.name ? `${userInfo.name} avatar` : 'Your avatar'}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : userInfo.name ? (
+                              <span className="text-[11px] font-bold text-white">
+                                {userInfo.name.charAt(0).toUpperCase()}
+                              </span>
+                            ) : (
+                              <SettingsIcon className="w-3.5 h-3.5 text-white" />
+                            )}
+                          </button>
+                        </span>
+                        {!isPageMode && (
+                          <button
+                            onClick={() => { setIsOpen(false); setShowSidebar(false); }}
+                            className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
+                            aria-label="Close chat"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         )}
-                      </button>
-                    </span>
-                    {!isPageMode && (
-                      <button
-                        onClick={() => { setIsOpen(false); setShowSidebar(false); }}
-                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
-                        aria-label="Close chat"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {/* Remembered toast — quiet, in-header chip that slides
-                    in for ~2.5s whenever the model calls saveMemory. It
-                    sits under the header (positioned absolutely) so it
-                    doesn't shift the conversation layout. */}
-                {recentlyRemembered && (
+                {/* Remembered toast */}
+                {recentlyRemembered && !inlineLiveChat.isLiveMode && (
                   <div className="relative z-10 mx-3 -mt-px" aria-live="polite">
                     <div className="bg-[#7B2D8E]/[0.06] border-x border-b border-[#7B2D8E]/15 rounded-b-xl px-3 py-1.5 flex items-center gap-2 animate-[derma-msg-in_0.3s_ease-out_both]">
                       <span className="w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
@@ -7501,22 +7445,23 @@ export default function DermaAI({
                   </div>
                 )}
 
-                {/* Messages — soft neutral canvas with a barely-there
-                    brand wash at the very top so the header blends into
-                    the conversation instead of slicing a hard line. The
-                    bubbles themselves do the heavy visual lifting.
-                    Text-size classes are applied on the outer scroll
-                    container so assistant + user bubbles scale together
-                    (rem-based via Tailwind's base scale). */}
-                <div
-                  className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50 relative ${
-                    textSize === 'small'
-                      ? 'text-[13px]'
-                      : textSize === 'large'
-                        ? 'text-[16px]'
-                        : 'text-[14px]'
-                  }`}
-                >
+                {/* Relative shell for messages + floating Live Chat Options popup */}
+                <div className="relative flex-1 min-h-0 flex flex-col">
+                  <InlineLiveOptionsPopup
+                    open={Boolean(inlineLiveChat.isLiveMode && inlineLiveChat.optionsOpen)}
+                    session={inlineLiveChat.session}
+                    messages={inlineLiveChat.messages}
+                    onClose={() => inlineLiveChat.setOptionsOpen(false)}
+                  />
+                  <div
+                    className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50 relative ${
+                      textSize === 'small'
+                        ? 'text-[13px]'
+                        : textSize === 'large'
+                          ? 'text-[16px]'
+                          : 'text-[14px]'
+                    }`}
+                  >
                   {/* Welcome hero — replaces the ordinary greeting bubble
                       when this is a brand new chat (just the assistant
                       intro, no user turns yet). A large, warm, name-led
@@ -7598,6 +7543,9 @@ export default function DermaAI({
                       and stays comfortable on tablets / desktop. */}
                   {!liveHintDismissed &&
                     isOpen &&
+                    !inlineLiveChat.isLiveMode &&
+                    !inlineLiveChat.guestFormOpen &&
+                    !inlineLiveChat.showRating &&
                     messages.length === 1 &&
                     messages[0]?.role === 'assistant' &&
                     !isLoading &&
@@ -8408,10 +8356,10 @@ export default function DermaAI({
                     messages={inlineLiveChat.messages}
                     connecting={inlineLiveChat.connecting}
                     justConnected={inlineLiveChat.justConnected}
+                    staffTyping={inlineLiveChat.staffTyping}
+                    staffTypingName={inlineLiveChat.staffTypingName}
                     error={inlineLiveChat.error}
                     onClearError={inlineLiveChat.clearError}
-                    optionsOpen={inlineLiveChat.optionsOpen}
-                    onCloseOptions={() => inlineLiveChat.setOptionsOpen(false)}
                     confirmLeaveOpen={inlineLiveChat.confirmLeaveOpen}
                     onCancelLeave={() => inlineLiveChat.setConfirmLeaveOpen(false)}
                     onConfirmLeave={inlineLiveChat.endLiveChat}
@@ -8437,6 +8385,7 @@ export default function DermaAI({
                   />
 
                   <div ref={messagesEndRef} />
+                </div>
                 </div>
 
                 {/* Long-press message actions ��� a bottom sheet that
@@ -9589,25 +9538,37 @@ export default function DermaAI({
                         <Paperclip className="w-4 h-4" />
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={toggleListening}
-                        className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
-                          isListening
-                            ? 'bg-[#7B2D8E] text-white'
-                            : 'text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
-                        }`}
-                        aria-label={isListening ? 'Stop listening' : 'Start listening'}
-                        title={isListening ? 'Listening…' : 'Voice input'}
-                      >
-                                      {isListening ? <AudioLines className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                      </button>
+                      {!inlineLiveChat.isLiveMode && (
+                        <button
+                          type="button"
+                          onClick={toggleListening}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
+                            isListening
+                              ? 'bg-[#7B2D8E] text-white'
+                              : 'text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
+                          }`}
+                          aria-label={isListening ? 'Stop listening' : 'Start listening'}
+                          title={isListening ? 'Listening…' : 'Voice input'}
+                        >
+                          {isListening ? <AudioLines className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                        </button>
+                      )}
 
                       <input
                         ref={inputRef}
                         type="text"
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => {
+                          setInput(e.target.value)
+                          if (inlineLiveChat.isLiveMode) {
+                            inlineLiveChat.notifyCustomerTyping(e.target.value.trim().length > 0)
+                          }
+                        }}
+                        onBlur={() => {
+                          if (inlineLiveChat.isLiveMode) {
+                            inlineLiveChat.notifyCustomerTyping(false)
+                          }
+                        }}
                         placeholder={
                           inlineLiveChat.isLiveMode
                             ? inlineLiveChat.status === 'active'
@@ -9655,29 +9616,52 @@ export default function DermaAI({
                     )}
                   </form>
 
-                  {/* Footnote — subtle reassurance that the assistant
-                      remembers across sessions + a quick link to manage
-                      memory. Keeps the composer honest about privacy. */}
-                  <div className="flex items-center justify-center gap-1.5 mt-2 px-4">
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        memories.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300'
-                      }`}
-                      aria-hidden="true"
-                    />
-                    <p className="text-center text-[10px] text-gray-400 leading-tight">
-                      {memories.length > 0
-                        ? `Memory on · ${memories.length} remembered`
-                        : 'Derma remembers your preferences across chats'}
-                      {' · '}
-                      <Link
-                        href="/dashboard/settings?section=assistant"
-                        className="underline decoration-dotted underline-offset-2 hover:text-[#7B2D8E]"
-                      >
-                        manage
-                      </Link>
-                    </p>
-                  </div>
+                  {/* Footnote — clean Live Support ID in live mode; memory privacy caption in AI mode */}
+                  {inlineLiveChat.isLiveMode ? (
+                    <div className="flex items-center justify-center gap-1.5 mt-2 pb-1 px-4">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          inlineLiveChat.status === 'active' ? 'bg-[#16A34A]' : 'bg-[#7B2D8E]'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <p className="text-center text-[10.5px] text-gray-500 leading-tight">
+                        Dermaspace Live Support
+                        {inlineLiveChat.session && (
+                          <>
+                            {' · '}
+                            <span className="font-mono text-[#5A1D6A] font-medium">
+                              {resolveSupportId(
+                                inlineLiveChat.session.supportCode,
+                                inlineLiveChat.session.id,
+                              )}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1.5 mt-2 px-4">
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          memories.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                        }`}
+                        aria-hidden="true"
+                      />
+                      <p className="text-center text-[10px] text-gray-400 leading-tight">
+                        {memories.length > 0
+                          ? `Memory on · ${memories.length} remembered`
+                          : 'Derma remembers your preferences across chats'}
+                        {' · '}
+                        <Link
+                          href="/dashboard/settings?section=assistant"
+                          className="underline decoration-dotted underline-offset-2 hover:text-[#7B2D8E]"
+                        >
+                          manage
+                        </Link>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </>
             )}

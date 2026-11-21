@@ -4,7 +4,9 @@ import {
   formatChatTimestamp,
   formatLiveChatTranscriptText,
   formatVisitorLocation,
+  getVisitorPresence,
   inferLocationFromTimezone,
+  isTypingActive,
   parseVisitorUserAgent,
   sanitizeVisitorHints,
 } from './visitor-telemetry'
@@ -113,4 +115,43 @@ test('formatChatTimestamp & formatLiveChatTranscriptText format clean support tr
   assert.ok(text.includes('--- Adaeze joined the chat ---'))
   assert.ok(text.includes('Amara Obi: Hello, can I reschedule?'))
   assert.ok(text.includes('Adaeze: Of course! Let me check your booking.'))
+})
+
+test('isTypingActive detects active vs expired typing timestamps', () => {
+  const now = Date.parse('2026-11-21T12:00:00.000Z')
+  assert.equal(isTypingActive('2026-11-21T11:59:57.000Z', now), true)
+  assert.equal(isTypingActive('2026-11-21T11:59:50.000Z', now), false)
+  assert.equal(isTypingActive(null, now), false)
+  assert.equal(isTypingActive('not-a-date', now), false)
+})
+
+test('getVisitorPresence classifies online, away, offline, and closed sessions', () => {
+  const now = Date.parse('2026-11-21T12:00:00.000Z')
+
+  const online = getVisitorPresence('2026-11-21T11:59:48.000Z', 'active', now)
+  assert.equal(online.online, true)
+  assert.equal(online.isOnline, true)
+  assert.equal(online.state, 'online')
+  assert.equal(online.label, 'Online now')
+
+  const away = getVisitorPresence({
+    status: 'waiting',
+    lastSeenAt: '2026-11-21T11:59:10.000Z',
+    nowMs: now,
+  })
+  assert.equal(away.online, false)
+  assert.equal(away.isOnline, false)
+  assert.equal(away.state, 'away')
+  assert.equal(away.status, 'idle')
+  assert.equal(away.label, 'Away')
+
+  const offlineRecent = getVisitorPresence('2026-11-21T11:54:00.000Z', 'active', now)
+  assert.equal(offlineRecent.online, false)
+  assert.equal(offlineRecent.state, 'offline')
+  assert.equal(offlineRecent.label, 'Last seen 6m ago')
+
+  const closedSession = getVisitorPresence('2026-11-21T11:59:59.000Z', 'closed', now)
+  assert.equal(closedSession.online, false)
+  assert.equal(closedSession.state, 'offline')
+  assert.equal(closedSession.label, 'Offline')
 })

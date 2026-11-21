@@ -120,8 +120,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Radiance Starts Here",
     description:
       "Transform your skin with our expert facial treatments. From deep cleansing to advanced therapies, we offer solutions for every skin type and concern.",
-    image:
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp",
+    image: "/images/facial-treatment-hd.jpg",
     treatments: [
       {
         id: "deep-cleansing-facial",
@@ -1231,8 +1230,7 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
     tagline: "Beauty at Your Fingertips",
     description:
       "Pamper your hands and feet with our premium nail services. We use only the finest products for beautiful, healthy nails.",
-    image:
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp",
+    image: "/images/nail-care-hd.jpg",
     treatments: [
       {
         id: "classic-manicure",

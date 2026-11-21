@@ -25,14 +25,7 @@ import {
   CalendarDays,
   Activity,
 } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { useNotify } from '@/components/shared/notify'
 
@@ -176,7 +169,6 @@ export default function StaffProfilePage() {
     description: string
     confirmLabel: string
   } | null>(null)
-  const [suspendReason, setSuspendReason] = useState('')
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -768,70 +760,42 @@ export default function StaffProfilePage() {
         )}
       </div>
 
-      {/* In-page confirmation modal (replaces browser confirm()) */}
-      <Dialog
+      {/* Brand-Purple Confirmation Popup */}
+      <ConfirmDialog
         open={!!confirmAction}
-        onOpenChange={(o) => {
-          if (!o && !acting) {
+        onOpenChange={(open) => {
+          if (!open && !acting) {
             setConfirmAction(null)
-            setSuspendReason('')
           }
         }}
-      >
-        <DialogContent className="sm:max-w-md border border-gray-200 bg-white shadow-none rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>{confirmAction?.title}</DialogTitle>
-            <DialogDescription>{confirmAction?.description}</DialogDescription>
-          </DialogHeader>
-          {confirmAction?.action === 'toggle_active' && confirmAction.value === false && (
-            <div className="space-y-1.5">
-              <label
-                htmlFor="staff-suspend-reason"
-                className="block text-xs font-medium text-gray-700"
-              >
-                Administrative note <span className="text-gray-400 font-normal">(optional, shown in staff suspension email)</span>
-              </label>
-              <textarea
-                id="staff-suspend-reason"
-                rows={3}
-                maxLength={300}
-                value={suspendReason}
-                onChange={(e) => setSuspendReason(e.target.value)}
-                placeholder="Share a brief reason so the staff member knows why access was paused..."
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E] resize-none"
-              />
-            </div>
-          )}
-          <DialogFooter className="gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={acting}
-              onClick={() => {
-                setConfirmAction(null)
-                setSuspendReason('')
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              disabled={acting}
-              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
-              onClick={() => {
-                if (!confirmAction) return
-                if (confirmAction.action === 'service_perm') {
-                  void handleToggleServicePermission(Boolean(confirmAction.value))
-                } else {
-                  void handleAction(confirmAction.action, confirmAction.value, suspendReason)
-                }
-              }}
-            >
-              {acting ? 'Working…' : confirmAction?.confirmLabel}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title={confirmAction?.title || 'Confirm action'}
+        description={confirmAction?.description || ''}
+        confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
+        cancelLabel="Cancel"
+        icon={
+          confirmAction?.action === 'toggle_active'
+            ? confirmAction.value === false
+              ? UserX
+              : UserCheck
+            : confirmAction?.action === 'service_perm'
+              ? ShieldCheck
+              : Shield
+        }
+        busy={acting}
+        optionalReason={
+          confirmAction?.action === 'toggle_active' && confirmAction.value === false
+        }
+        reasonLabel="Administrative note (optional — shown in staff suspension email)"
+        reasonPlaceholder="Share a brief reason so the staff member knows why access was paused..."
+        onConfirm={(reason) => {
+          if (!confirmAction) return
+          if (confirmAction.action === 'service_perm') {
+            void handleToggleServicePermission(Boolean(confirmAction.value))
+          } else {
+            void handleAction(confirmAction.action, confirmAction.value, reason || '')
+          }
+        }}
+      />
     </div>
   )
 }

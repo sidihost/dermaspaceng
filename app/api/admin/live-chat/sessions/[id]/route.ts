@@ -10,6 +10,7 @@ import {
   staffDisplayName,
 } from '@/lib/live-chat'
 import { logStaffActivity } from '@/lib/activity-log'
+import { getVisitorPresence, isTypingActive } from '@/lib/visitor-telemetry'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -26,7 +27,22 @@ export async function GET(_req: Request, { params }: Params) {
   const view = await getFullSessionView(id)
   if (!view) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  return NextResponse.json(view)
+  const presence = getVisitorPresence({
+    status: view.session.status,
+    lastSeenAt: view.session.customer_last_seen_at,
+    lastActivityAt: view.session.last_activity_at,
+  })
+  const customerTyping = isTypingActive(view.session.customer_typing_at)
+
+  return NextResponse.json(
+    {
+      ...view,
+      customerTyping,
+      customerLastSeenAt: view.session.customer_last_seen_at ?? null,
+      presence,
+    },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
 
 export async function PATCH(req: Request, { params }: Params) {

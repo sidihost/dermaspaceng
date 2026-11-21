@@ -1,9 +1,10 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { ServiceHero } from '@/components/services/service-hero'
-import { Clock, ArrowRight, Flame, Flower2, Hand, Footprints, Gem } from 'lucide-react'
+import { Clock, ArrowRight, CheckCircle2, Flame, Flower2, Hand, Footprints, Gem } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Nail Care Services',
@@ -60,6 +61,59 @@ export default function NailCarePage() {
         title="Nail Care"
         subtitle="Professional nail services for beautiful, healthy hands and feet"
       />
+
+      {/* In the Nail Lounge Spotlight */}
+      <section className="py-10 bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid md:grid-cols-[290px_1fr] gap-6 md:gap-10 items-center rounded-2xl border border-gray-200 bg-[#FAF6FB] p-5 sm:p-7">
+            <div className="relative aspect-[3/4] w-full max-w-[290px] mx-auto md:mx-0 rounded-xl overflow-hidden border border-gray-200 bg-white">
+              <Image
+                src="/images/nail-care-hd.jpg"
+                alt="Dermaspace nail technician performing a relaxing spa pedicure"
+                fill
+                quality={95}
+                sizes="(max-width: 768px) 100vw, 440px"
+                referrerPolicy="no-referrer"
+                className="object-cover object-[center_38%]"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B2D8E] mb-2">
+                Inside the Nail Lounge
+              </p>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
+                Unhurried hand and foot care, finished cleanly
+              </h2>
+              <p className="text-sm text-gray-600 leading-relaxed mb-5 max-w-xl">
+                Sink into our calm pedicure lounge for warm botanical foot soaks, thorough cuticle work, callus smoothing, and long-wearing polish. Every instrument is sterilized between guests for hygienic, restorative care.
+              </p>
+
+              <ul className="grid sm:grid-cols-2 gap-2.5 mb-6 text-xs text-gray-700">
+                {[
+                  'Warm foot soaks, exfoliation & soothing massage',
+                  'Hot-wax paraffin and jelly pedicure rituals',
+                  'Thorough tool sterilization between every guest',
+                  'Classic polish & chip-resistant LED gel finishes',
+                ].map((point) => (
+                  <li key={point} className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#7B2D8E] shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <Link
+                href="/booking"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] transition-colors"
+              >
+                Book Nail Care
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Treatments Grid */}
       <section className="py-16 bg-gray-50">

@@ -29,7 +29,11 @@ import {
 import { cn } from '@/lib/utils'
 import { getReceiptHref } from '@/lib/receipt-access'
 import { getTicketStatusMeta } from '@/lib/support-and-chat'
-import { formatChatTimestamp, type VisitorMetadata } from '@/lib/visitor-telemetry'
+import {
+  formatChatTimestamp,
+  type VisitorMetadata,
+  type VisitorPresenceInfo,
+} from '@/lib/visitor-telemetry'
 
 export interface InspectorContextData {
   isGuest?: boolean
@@ -84,6 +88,9 @@ interface LiveChatInspectorProps {
   rating: number | null
   ratingComment: string | null
   visitorFallback?: Partial<VisitorMetadata> | null
+  presence?: VisitorPresenceInfo | null
+  customerTyping?: boolean
+  assignedStaffName?: string | null
   data: InspectorContextData | undefined
   loading: boolean
   onDownloadTranscript: () => void
@@ -116,6 +123,9 @@ export function LiveChatInspector({
   rating,
   ratingComment,
   visitorFallback,
+  presence,
+  customerTyping = false,
+  assignedStaffName,
   data,
   loading,
   onDownloadTranscript,
@@ -185,10 +195,12 @@ export function LiveChatInspector({
       <div className="h-[68px] shrink-0 px-4 border-b border-gray-200 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-[13px] font-semibold text-gray-900 truncate">
-            {effectiveGuest ? 'Visitor & Contact Details' : 'Customer Profile'}
+            {effectiveGuest ? 'Profile Details' : 'Customer Profile'}
           </h2>
           <p className="text-[11px] text-gray-500 truncate mt-0.5">
-            {effectiveGuest ? 'Anonymous guest session' : 'Registered Dermaspace member'}
+            {effectiveGuest
+              ? 'Anonymous visitor · Not signed in'
+              : 'Registered Dermaspace member'}
           </p>
         </div>
         {onClose && (
@@ -208,27 +220,42 @@ export function LiveChatInspector({
         {/* Identity & Contact */}
         <section className="p-4 space-y-3.5">
           <div className="flex items-center gap-3">
-            {customerAvatarUrl ? (
-              <Image
-                src={customerAvatarUrl}
-                alt={customerName}
-                width={44}
-                height={44}
-                referrerPolicy="no-referrer"
-                className="w-11 h-11 rounded-full object-cover border border-gray-200 shrink-0"
-              />
-            ) : (
-              <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[13px] font-semibold shrink-0">
-                {initials}
-              </div>
-            )}
+            <div className="relative shrink-0">
+              {customerAvatarUrl ? (
+                <Image
+                  src={customerAvatarUrl}
+                  alt={customerName}
+                  width={44}
+                  height={44}
+                  referrerPolicy="no-referrer"
+                  className="w-11 h-11 rounded-full object-cover border border-gray-200"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[13px] font-semibold">
+                  {initials}
+                </div>
+              )}
+              {presence && (
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
+                    presence.state === 'online'
+                      ? 'bg-[#16A34A]'
+                      : presence.state === 'away'
+                        ? 'bg-[#7B2D8E]'
+                        : 'bg-gray-300',
+                  )}
+                />
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-[14px] font-semibold text-gray-900 truncate">
                 {customerName}
               </p>
-              <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-0.5">
+              <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-[11px] text-gray-500 mt-0.5">
                 <span className={effectiveGuest ? 'text-[#7B2D8E] font-medium' : 'text-gray-600'}>
-                  {effectiveGuest ? 'Anonymous Visitor' : 'Member'}
+                  {effectiveGuest ? 'Anonymous · Not signed in' : 'Member'}
                 </span>
                 <span aria-hidden="true">·</span>
                 <span className="font-mono text-[#5A1D6A] font-medium">
@@ -237,6 +264,39 @@ export function LiveChatInspector({
               </div>
             </div>
           </div>
+
+          {presence && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'w-2 h-2 rounded-full shrink-0',
+                    presence.state === 'online'
+                      ? 'bg-[#16A34A]'
+                      : presence.state === 'away'
+                        ? 'bg-[#7B2D8E]/60'
+                        : 'bg-gray-300',
+                  )}
+                />
+                <span
+                  className={cn(
+                    'text-[12px] font-semibold truncate',
+                    presence.state === 'online'
+                      ? 'text-[#16A34A]'
+                      : presence.state === 'away'
+                        ? 'text-[#5A1D6A]'
+                        : 'text-gray-500',
+                  )}
+                >
+                  {presence.label}
+                </span>
+              </div>
+              <span className="text-[10.5px] text-gray-400 shrink-0">
+                {presence.isOnline ? 'Live' : 'Status'}
+              </span>
+            </div>
+          )}
 
           <div className="space-y-2 pt-0.5">
             <DetailRow
@@ -274,6 +334,13 @@ export function LiveChatInspector({
               label="Started"
               value={formatChatTimestamp(escalatedAt) || 'Just now'}
             />
+            {assignedStaffName && (
+              <DetailRow
+                icon={<UserRound className="w-3.5 h-3.5" />}
+                label="Assigned rep"
+                value={assignedStaffName}
+              />
+            )}
           </div>
         </section>
 
@@ -343,6 +410,13 @@ export function LiveChatInspector({
                   )}
                 </div>
               </div>
+            )}
+            {visitor.referrer && (
+              <DetailRow
+                icon={<ExternalLink className="w-3.5 h-3.5" />}
+                label="Referrer"
+                value={visitor.referrer}
+              />
             )}
             {visitor.ip && (
               <DetailRow

@@ -18,7 +18,12 @@ function normalisePreferredLocation(value?: string | null): 'Ikoyi' | 'Victoria 
   return null
 }
 
-const allGalleryItems = [
+const allGalleryItems: {
+  src: string
+  alt: string
+  location: 'Victoria Island' | 'Ikoyi'
+  imagePosition?: string
+}[] = [
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
     alt: 'Reception Area',
@@ -28,6 +33,18 @@ const allGalleryItems = [
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3360.JPG-bJ57ZV3Wl1GImeuHYSeNTlnS0GUCVs.jpeg',
     alt: 'Reception',
     location: 'Ikoyi',
+  },
+  {
+    src: '/images/facial-treatment-hd.jpg',
+    alt: 'Ultrasonic Facial Care',
+    location: 'Victoria Island',
+    imagePosition: 'object-[center_18%]',
+  },
+  {
+    src: '/images/nail-care-hd.jpg',
+    alt: 'Spa Pedicure & Nail Care',
+    location: 'Ikoyi',
+    imagePosition: 'object-[center_38%]',
   },
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%287%29-uPAMd1wS5LKr1CBsxxlm5KUOF1iMIh.jpg',
@@ -208,7 +225,8 @@ export default function GalleryPreview() {
                     src={item.src}
                     alt={item.alt}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                    referrerPolicy="no-referrer"
+                    className={`object-cover ${item.imagePosition ?? 'object-center'} transition-transform duration-500 group-hover:scale-105`}
                     sizes="(max-width: 640px) 85vw, (max-width: 768px) 70vw, (max-width: 1024px) 45vw, 30vw"
                   />
                   
@@ -327,6 +345,7 @@ export default function GalleryPreview() {
                 src={galleryItems[modalIndex].src}
                 alt={galleryItems[modalIndex].alt}
                 fill
+                referrerPolicy="no-referrer"
                 className="object-contain"
                 sizes="100vw"
                 priority
@@ -370,7 +389,8 @@ export default function GalleryPreview() {
                       src={item.src}
                       alt={item.alt}
                       fill
-                      className="object-cover"
+                      referrerPolicy="no-referrer"
+                      className={`object-cover ${item.imagePosition ?? 'object-center'}`}
                       sizes="64px"
                     />
                   </button>

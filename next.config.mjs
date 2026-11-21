@@ -24,6 +24,7 @@ const nextConfig = {
   // where most of the spa's photography lives).
   images: {
     formats: ['image/webp'],
+    qualities: [75, 90, 95],
     remotePatterns: [
       // Vercel Blob public buckets — where all the spa's uploaded
       // photography / gallery / service artwork is stored.

@@ -395,7 +395,7 @@ export function ClientPaymentsTab({ clientId, clientName }: ClientPaymentsTabPro
             <Button
               onClick={handleConfirmCancel}
               disabled={cancelling}
-              className="bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white gap-1.5"
             >
               {cancelling ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

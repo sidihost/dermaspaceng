@@ -56,6 +56,10 @@ export interface LiveChatSession {
   visitor_referrer?: string | null
   visitor_language?: string | null
   visitor_screen?: string | null
+  staff_typing_at?: string | null
+  staff_typing_name?: string | null
+  customer_typing_at?: string | null
+  customer_last_seen_at?: string | null
 }
 
 export interface LiveChatMessage {
@@ -151,6 +155,22 @@ export function ensureLiveChatSupportCodeColumn(): Promise<void> {
       await sql`
         ALTER TABLE live_chat_sessions
         ADD COLUMN IF NOT EXISTS visitor_screen TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS staff_typing_at TIMESTAMPTZ
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS staff_typing_name TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS customer_typing_at TIMESTAMPTZ
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS customer_last_seen_at TIMESTAMPTZ
       `
       // Backfill any pre-existing sessions so every row in Postgres has a real,
       // searchable Support ID stored in the database (collision-safe).
@@ -680,7 +700,17 @@ export async function addMessage(
     await sql`
       UPDATE live_chat_sessions
          SET last_activity_at = NOW(),
-             first_reply_at = COALESCE(first_reply_at, NOW())
+             first_reply_at = COALESCE(first_reply_at, NOW()),
+             staff_typing_at = NULL,
+             staff_typing_name = NULL
+       WHERE id = ${sessionId}
+    `
+  } else if (senderRole === 'user') {
+    await sql`
+      UPDATE live_chat_sessions
+         SET last_activity_at = NOW(),
+             customer_typing_at = NULL,
+             customer_last_seen_at = NOW()
        WHERE id = ${sessionId}
     `
   } else {
@@ -724,6 +754,63 @@ export async function addMessage(
   }
 
   return inserted
+}
+
+export async function touchCustomerPresence(sessionId: string): Promise<void> {
+  await ensureLiveChatSupportCodeColumn()
+  await sql`
+    UPDATE live_chat_sessions
+       SET customer_last_seen_at = NOW()
+     WHERE id = ${sessionId}
+       AND status IN ('waiting', 'active')
+  `
+}
+
+export async function setCustomerTyping(
+  sessionId: string,
+  isTyping: boolean,
+): Promise<void> {
+  await ensureLiveChatSupportCodeColumn()
+  if (isTyping) {
+    await sql`
+      UPDATE live_chat_sessions
+         SET customer_typing_at = NOW(),
+             customer_last_seen_at = NOW()
+       WHERE id = ${sessionId}
+         AND status IN ('waiting', 'active')
+    `
+  } else {
+    await sql`
+      UPDATE live_chat_sessions
+         SET customer_typing_at = NULL,
+             customer_last_seen_at = NOW()
+       WHERE id = ${sessionId}
+    `
+  }
+}
+
+export async function setStaffTyping(
+  sessionId: string,
+  isTyping: boolean,
+  displayName?: string | null,
+): Promise<void> {
+  await ensureLiveChatSupportCodeColumn()
+  if (isTyping) {
+    await sql`
+      UPDATE live_chat_sessions
+         SET staff_typing_at = NOW(),
+             staff_typing_name = ${displayName ?? null}
+       WHERE id = ${sessionId}
+         AND status IN ('waiting', 'active')
+    `
+  } else {
+    await sql`
+      UPDATE live_chat_sessions
+         SET staff_typing_at = NULL,
+             staff_typing_name = NULL
+       WHERE id = ${sessionId}
+    `
+  }
 }
 
 export async function getMessages(

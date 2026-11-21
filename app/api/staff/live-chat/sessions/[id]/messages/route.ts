@@ -6,6 +6,7 @@ import {
   getSessionById,
   markUserMessagesRead,
 } from '@/lib/live-chat'
+import { getVisitorPresence, isTypingActive } from '@/lib/visitor-telemetry'
 
 // ---------------------------------------------------------------------------
 // Staff-side messages endpoint.
@@ -41,7 +42,14 @@ export async function GET(req: Request, { params }: Params) {
     await markUserMessagesRead(session.id)
   }
 
-  return NextResponse.json({ messages })
+  return NextResponse.json({
+    messages,
+    customerTyping: isTypingActive(session.customer_typing_at),
+    presence: getVisitorPresence(
+      session.customer_last_seen_at ?? session.last_activity_at,
+      session.status,
+    ),
+  })
 }
 
 export async function POST(req: Request, { params }: Params) {

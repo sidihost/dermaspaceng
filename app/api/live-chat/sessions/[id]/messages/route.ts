@@ -5,8 +5,10 @@ import {
   getMessages,
   getSessionById,
   markStaffMessagesRead,
+  touchCustomerPresence,
 } from '@/lib/live-chat'
 import { authoriseSessionAccess } from '@/lib/live-chat-guest'
+import { isTypingActive } from '@/lib/visitor-telemetry'
 
 // ---------------------------------------------------------------------------
 // GET    → poll messages (optionally `?since=<iso>` for incremental fetch).
@@ -38,10 +40,17 @@ export async function GET(req: Request, { params }: Params) {
   const messages = await getMessages(session.id, since)
 
   // Mark all staff replies as read by the user side. Powers the unread
-  // badge on the staff dashboard.
+  // badge on the staff dashboard. Also update customer online presence.
   await markStaffMessagesRead(session.id)
+  if (session.status === 'waiting' || session.status === 'active') {
+    await touchCustomerPresence(session.id).catch(() => {})
+  }
 
-  return NextResponse.json({ messages })
+  return NextResponse.json({
+    messages,
+    staffTyping: isTypingActive(session.staff_typing_at),
+    staffTypingName: session.staff_typing_name || null,
+  })
 }
 
 export async function POST(req: Request, { params }: Params) {

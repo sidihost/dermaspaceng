@@ -331,3 +331,127 @@ export function formatLiveChatTranscriptText(input: {
 
   return lines.join('\n')
 }
+
+export interface VisitorPresenceInfo {
+  isOnline: boolean
+  online: boolean
+  state: 'online' | 'away' | 'offline'
+  status: 'online' | 'idle' | 'offline'
+  label: string
+}
+
+export interface VisitorPresenceOptions {
+  status?: string | null
+  lastSeenAt?: string | null
+  lastActivityAt?: string | null
+  nowMs?: number
+}
+
+/**
+ * Returns true if a typing heartbeat timestamp is within the active typing window.
+ */
+export function isTypingActive(
+  typingAt: string | null | undefined,
+  nowMs: number = Date.now(),
+  windowMs = 6500,
+): boolean {
+  if (!typingAt) return false
+  const t = new Date(typingAt).getTime()
+  if (!Number.isFinite(t)) return false
+  const delta = nowMs - t
+  return delta >= -2000 && delta <= windowMs
+}
+
+/**
+ * Computes live visitor presence ("Online now", "Away", "Last seen Xm ago", "Offline")
+ * from customer_last_seen_at / fallback activity timestamp and session status.
+ */
+export function getVisitorPresence(
+  inputOrLastSeen: string | null | undefined | VisitorPresenceOptions,
+  sessionStatus?: string | null,
+  nowMsArg?: number,
+): VisitorPresenceInfo {
+  const isObj =
+    typeof inputOrLastSeen === 'object' && inputOrLastSeen !== null
+  const lastSeenAt = isObj
+    ? inputOrLastSeen.lastSeenAt ?? inputOrLastSeen.lastActivityAt ?? null
+    : inputOrLastSeen
+  const status = isObj ? inputOrLastSeen.status : sessionStatus
+  const nowMs = isObj ? (inputOrLastSeen.nowMs ?? Date.now()) : (nowMsArg ?? Date.now())
+
+  if (status === 'closed' || status === 'abandoned') {
+    return {
+      isOnline: false,
+      online: false,
+      state: 'offline',
+      status: 'offline',
+      label: 'Offline',
+    }
+  }
+  if (!lastSeenAt) {
+    return {
+      isOnline: false,
+      online: false,
+      state: 'offline',
+      status: 'offline',
+      label: 'Offline',
+    }
+  }
+  const t = new Date(lastSeenAt).getTime()
+  if (!Number.isFinite(t)) {
+    return {
+      isOnline: false,
+      online: false,
+      state: 'offline',
+      status: 'offline',
+      label: 'Offline',
+    }
+  }
+  const diffSec = Math.max(0, Math.floor((nowMs - t) / 1000))
+  if (diffSec <= 25) {
+    return {
+      isOnline: true,
+      online: true,
+      state: 'online',
+      status: 'online',
+      label: 'Online now',
+    }
+  }
+  if (diffSec <= 120) {
+    return {
+      isOnline: false,
+      online: false,
+      state: 'away',
+      status: 'idle',
+      label: 'Away',
+    }
+  }
+  if (diffSec < 3600) {
+    const mins = Math.floor(diffSec / 60)
+    return {
+      isOnline: false,
+      online: false,
+      state: 'offline',
+      status: 'offline',
+      label: `Last seen ${mins}m ago`,
+    }
+  }
+  const hrs = Math.floor(diffSec / 3600)
+  if (hrs < 24) {
+    return {
+      isOnline: false,
+      online: false,
+      state: 'offline',
+      status: 'offline',
+      label: `Last seen ${hrs}h ago`,
+    }
+  }
+  return {
+    isOnline: false,
+    online: false,
+    state: 'offline',
+    status: 'offline',
+    label: 'Offline',
+  }
+}
+

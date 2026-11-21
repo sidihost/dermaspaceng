@@ -12,20 +12,23 @@ const services = [
     desc: 'Massages, scrubs and steam',
     tag: 'Relax & restore',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
+    imagePosition: 'object-center',
     href: '/services/body-treatments',
   },
   {
     title: 'Facial Treatments',
     desc: 'Cleansing, peels and acne care',
     tag: 'Skin health',
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
+    image: '/images/facial-treatment-hd.jpg',
+    imagePosition: 'object-[center_18%]',
     href: '/services/facial-treatments',
   },
   {
     title: 'Nail Care',
     desc: 'Mani, pedi, gel and soak-off',
     tag: 'Hands & feet',
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
+    image: '/images/nail-care-hd.jpg',
+    imagePosition: 'object-[center_38%]',
     href: '/services/nail-care',
   },
   {
@@ -33,6 +36,7 @@ const services = [
     desc: 'Full body, Brazilian and face',
     tag: 'Smooth finish',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
+    imagePosition: 'object-center',
     href: '/services/waxing',
   },
 ]
@@ -64,8 +68,10 @@ export default function ServicesSection() {
                   src={service.image}
                   alt={service.title}
                   fill
-                  sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  quality={95}
+                  sizes="(min-width: 1024px) 828px, (min-width: 640px) 50vw, 100vw"
+                  referrerPolicy="no-referrer"
+                  className={`object-cover ${service.imagePosition} transition-transform duration-700 group-hover:scale-110`}
                 />
 
                 {/* Gradient scrim so the white text stays legible over any image */}

@@ -22,6 +22,7 @@ const serviceCategories = [
     preferenceKeys: ['Body Treatments', 'Massages'], // Matches dashboard preferences
     description: 'Indulge in luxurious body treatments for complete relaxation including massages, body scrubs, and therapeutic sessions.',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
+    imagePosition: 'object-center',
     href: '/services/body-treatments',
     treatments: ['Hot Stone Massage', 'Thai Massage', 'Sports Massage', 'Detox Body Scrub', 'Pregnancy Massage', 'Reflexology'],
     duration: 'From 60 mins',
@@ -31,7 +32,8 @@ const serviceCategories = [
     title: 'Facial Treatments',
     preferenceKeys: ['Facials'], // Matches dashboard preferences
     description: 'Rejuvenate your skin with our expert facial therapies ranging from deep cleansing to advanced chemical peels.',
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
+    image: '/images/facial-treatment-hd.jpg',
+    imagePosition: 'object-[center_18%]',
     href: '/services/facial-treatments',
     treatments: ['Deep Cleansing Facial', 'Hydra Facial', 'Acne Facial', 'Microneedling', 'Chemical Peels', 'Signature Facial'],
     duration: 'From 45 mins',
@@ -41,7 +43,8 @@ const serviceCategories = [
     title: 'Nail Care',
     preferenceKeys: ['Manicure & Pedicure'], // Matches dashboard preferences
     description: 'Perfect manicures and pedicures for beautiful, healthy nails with premium products and expert techniques.',
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
+    image: '/images/nail-care-hd.jpg',
+    imagePosition: 'object-[center_38%]',
     href: '/services/nail-care',
     treatments: ['Hot Wax Mani-Pedi', 'Jelly Pedicure', 'Classic Manicure', 'Classic Pedicure', 'Gel Polish', 'Nail Art'],
     duration: 'From 30 mins',
@@ -52,6 +55,7 @@ const serviceCategories = [
     preferenceKeys: ['Waxing'], // Matches dashboard preferences
     description: 'Smooth, hair-free skin with gentle waxing services using premium strip wax and hot wax techniques.',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
+    imagePosition: 'object-center',
     href: '/services/waxing',
     treatments: ['Full Body Wax', 'Brazilian Wax', 'Bikini Wax', 'Arm Wax', 'Leg Wax', 'Underarm Wax'],
     duration: 'From 15 mins',
@@ -151,37 +155,27 @@ export default function ServicesPageContent() {
               <Link
                 key={category.title}
                 href={category.href}
-                className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-[#7B2D8E]/30 transition-all"
+                className="group grid sm:grid-cols-[190px_1fr] bg-white rounded-2xl border border-gray-200 overflow-hidden hover:border-[#7B2D8E]/40 transition-colors"
               >
-                {/* Image */}
-                <div className="relative h-48 overflow-hidden">
+                {/* Portrait-friendly Media Column */}
+                <div className="relative aspect-[4/3] sm:aspect-auto sm:min-h-[248px] overflow-hidden bg-[#FAF6FB]">
                   <Image
                     src={category.image}
                     alt={category.title}
                     fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
+                    quality={95}
+                    sizes="(max-width: 640px) 100vw, 320px"
                     referrerPolicy="no-referrer"
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    className={`object-cover ${category.imagePosition} group-hover:scale-105 transition-transform duration-500`}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                  
-                  {/* Badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 bg-white/90 rounded-full">
+
+                  {/* Rating Chip */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 bg-white rounded-full border border-gray-200">
                     <Star className="w-3 h-3 text-[#7B2D8E] fill-current" />
-                    <span className="text-xs font-semibold text-gray-900">{category.rating}</span>
+                    <span className="text-xs font-semibold text-gray-900 tabular-nums">{category.rating}</span>
                   </div>
 
-                  {/* Preferred badge for logged-in users. Kept on the
-                      left so it doesn't collide with the favorite heart. */}
-                  {isLoggedIn && preferences?.preferredServices?.some(pref => category.preferenceKeys.includes(pref)) && (
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-[#7B2D8E] text-white text-xs font-medium rounded-full">
-                      Your Favorite
-                    </div>
-                  )}
-
-                  {/* Favorite / save-for-later control. Uses the category's
-                      href as the itemId so the same pick shows up on the
-                      homepage heart too. */}
+                  {/* Favorite control */}
                   <div className="absolute top-3 right-3 z-10">
                     <FavoriteButton
                       itemType="category"
@@ -191,41 +185,50 @@ export default function ServicesPageContent() {
                       variant="overlay"
                     />
                   </div>
-                  
-                  {/* Title on image */}
-                  <div className="absolute bottom-3 left-4">
-                    <h2 className="text-lg font-bold text-white">{category.title}</h2>
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#7B2D8E] rounded-full">
-                      <Clock className="w-2.5 h-2.5 text-white" />
-                      <span className="text-[10px] font-medium text-white">{category.duration}</span>
-                    </div>
-                  </div>
                 </div>
 
-                {/* Content */}
-                <div className="p-4">
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {category.description}
-                  </p>
+                {/* Content Column */}
+                <div className="p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-md text-[11px] font-medium text-[#7B2D8E]">
+                        <Clock className="w-3 h-3 text-[#7B2D8E]" />
+                        {category.duration}
+                      </span>
+                      {isLoggedIn && preferences?.preferredServices?.some(pref => category.preferenceKeys.includes(pref)) && (
+                        <span className="px-2 py-0.5 bg-[#7B2D8E] text-white text-[10px] font-semibold rounded-md">
+                          Your Favorite
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Treatments Tags */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {category.treatments.slice(0, 3).map((treatment) => (
-                      <span 
-                        key={treatment}
-                        className="px-2 py-0.5 text-[10px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/5 rounded"
-                      >
-                        {treatment}
-                      </span>
-                    ))}
-                    {category.treatments.length > 3 && (
-                      <span className="px-2 py-0.5 text-[10px] font-medium text-gray-500 bg-gray-100 rounded">
-                        +{category.treatments.length - 3} more
-                      </span>
-                    )}
+                    <h2 className="text-lg font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1.5">
+                      {category.title}
+                    </h2>
+
+                    <p className="text-sm text-gray-600 mb-3.5 line-clamp-2 leading-relaxed">
+                      {category.description}
+                    </p>
+
+                    {/* Treatments Tags */}
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {category.treatments.slice(0, 3).map((treatment) => (
+                        <span
+                          key={treatment}
+                          className="px-2 py-0.5 text-[11px] font-medium text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/15 rounded-md"
+                        >
+                          {treatment}
+                        </span>
+                      ))}
+                      {category.treatments.length > 3 && (
+                        <span className="px-2 py-0.5 text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-200 rounded-md">
+                          +{category.treatments.length - 3} more
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-1 text-sm font-medium text-[#7B2D8E] group-hover:gap-2 transition-all">
+                  <div className="flex items-center gap-1 text-sm font-semibold text-[#7B2D8E] group-hover:gap-2 transition-all pt-3 border-t border-gray-100">
                     View Details
                     <ArrowRight className="w-4 h-4" />
                   </div>

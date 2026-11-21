@@ -50,10 +50,13 @@ import {
 import {
   formatChatTimestamp,
   formatLiveChatTranscriptText,
+  getVisitorPresence,
   type VisitorMetadata,
+  type VisitorPresenceInfo,
 } from '@/lib/visitor-telemetry'
 import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
 import { useNotify } from '@/components/shared/notify'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   Dialog,
   DialogContent,
@@ -91,6 +94,8 @@ interface QueueItem {
   escalated_at: string
   accepted_at: string | null
   last_activity_at: string
+  customer_last_seen_at?: string | null
+  customer_typing_at?: string | null
   user_first_name: string
   user_last_name: string
   user_avatar_url: string | null
@@ -120,6 +125,9 @@ interface FullSession {
   escalated_at: string
   accepted_at: string | null
   closed_at: string | null
+  last_activity_at?: string | null
+  customer_last_seen_at?: string | null
+  customer_typing_at?: string | null
   service_rating: number | null
   staff_rating: number | null
   rating_comment: string | null
@@ -572,6 +580,11 @@ function InboxRow({
   const isGuest = Boolean(item.is_guest || !item.user_id)
   const isWaiting = item.status === 'waiting'
   const waited = formatRelativeWait(item.last_activity_at || item.escalated_at)
+  const itemPresence = getVisitorPresence({
+    status: item.status,
+    lastSeenAt: item.customer_last_seen_at,
+    lastActivityAt: item.last_activity_at,
+  })
 
   return (
     <button
@@ -612,12 +625,13 @@ function InboxRow({
         )}
         <span
           aria-hidden="true"
+          title={itemPresence.label}
           className={cn(
             'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
-            isWaiting
-              ? 'bg-[#7B2D8E]'
-              : item.status === 'active'
-                ? 'bg-[#16A34A]'
+            itemPresence.state === 'online'
+              ? 'bg-[#16A34A]'
+              : isWaiting
+                ? 'bg-[#7B2D8E]'
                 : 'bg-gray-300',
           )}
         />
@@ -721,7 +735,11 @@ function ConversationStage({
 }) {
   const notify = useNotify()
 
-  const sessionQuery = useSWR<{ session: FullSession }>(
+  const sessionQuery = useSWR<{
+    session: FullSession
+    customerTyping?: boolean
+    presence?: VisitorPresenceInfo
+  }>(
     sessionId ? `/api/staff/live-chat/sessions/${sessionId}` : null,
     fetcher,
     { refreshInterval: 5000 },
@@ -740,12 +758,54 @@ function ConversationStage({
   const [copiedId, setCopiedId] = useState(false)
   const [showQuickReplies, setShowQuickReplies] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [customerTyping, setCustomerTyping] = useState(false)
+  const [livePresence, setLivePresence] = useState<VisitorPresenceInfo | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
+  const typingSentAtRef = useRef<number>(0)
+  const typingIdleTimerRef = useRef<number | null>(null)
 
   const [messages, setMessages] = useState<Message[]>([])
   const lastSeenRef = useRef<string | null>(null)
   const seenMsgIdsRef = useRef<Set<string>>(new Set())
+
+  const postStaffTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!sessionId) return
+      fetch(`/api/staff/live-chat/sessions/${sessionId}/typing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isTyping, displayName: myDisplayName || undefined }),
+      }).catch(() => {})
+    },
+    [sessionId, myDisplayName],
+  )
+
+  const notifyStaffTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!sessionId) return
+      if (typingIdleTimerRef.current) {
+        window.clearTimeout(typingIdleTimerRef.current)
+        typingIdleTimerRef.current = null
+      }
+      if (!isTyping) {
+        typingSentAtRef.current = 0
+        postStaffTyping(false)
+        return
+      }
+      const now = Date.now()
+      if (now - typingSentAtRef.current >= 2200) {
+        typingSentAtRef.current = now
+        postStaffTyping(true)
+      }
+      typingIdleTimerRef.current = window.setTimeout(() => {
+        typingSentAtRef.current = 0
+        postStaffTyping(false)
+      }, 4500)
+    },
+    [sessionId, postStaffTyping],
+  )
 
   const refetchAll = useCallback(async (id: string) => {
     const res = await fetch(
@@ -753,9 +813,15 @@ function ConversationStage({
       { credentials: 'include', cache: 'no-store' },
     )
     if (!res.ok) return
-    const json = (await res.json()) as { messages: Message[] }
+    const json = (await res.json()) as {
+      messages: Message[]
+      customerTyping?: boolean
+      presence?: VisitorPresenceInfo
+    }
     seenMsgIdsRef.current = new Set(json.messages.map((m) => m.id))
     setMessages(json.messages)
+    setCustomerTyping(Boolean(json.customerTyping))
+    if (json.presence) setLivePresence(json.presence)
     const last = json.messages[json.messages.length - 1]
     lastSeenRef.current = last?.created_at || null
   }, [])
@@ -766,13 +832,20 @@ function ConversationStage({
     setError(null)
     setEndDialogOpen(false)
     setShowQuickReplies(false)
+    setCustomerTyping(false)
+    setLivePresence(null)
     setMessages([])
     seenMsgIdsRef.current = new Set()
     lastSeenRef.current = null
+    typingSentAtRef.current = 0
+    if (typingIdleTimerRef.current) {
+      window.clearTimeout(typingIdleTimerRef.current)
+      typingIdleTimerRef.current = null
+    }
     if (sessionId) void refetchAll(sessionId)
   }, [sessionId, refetchAll])
 
-  // Incremental message polling (1.5s)
+  // Incremental message + presence + typing polling (1.5s)
   useEffect(() => {
     if (!sessionId) return
     let cancelled = false
@@ -788,7 +861,13 @@ function ConversationStage({
           { credentials: 'include', cache: 'no-store' },
         )
         if (!res.ok || cancelled) return
-        const json = (await res.json()) as { messages: Message[] }
+        const json = (await res.json()) as {
+          messages: Message[]
+          customerTyping?: boolean
+          presence?: VisitorPresenceInfo
+        }
+        setCustomerTyping(Boolean(json.customerTyping))
+        if (json.presence) setLivePresence(json.presence)
         if (json.messages.length === 0) return
 
         let hasNewUserMessage = false
@@ -824,14 +903,26 @@ function ConversationStage({
     }
   }, [sessionId])
 
-  // Smooth auto-scroll when new messages arrive
+  // Smooth auto-scroll when new messages arrive or visitor starts typing
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [messages.length])
+  }, [messages.length, customerTyping])
 
   const session = sessionQuery.data?.session
+  const effectivePresence: VisitorPresenceInfo | null = useMemo(() => {
+    if (livePresence) return livePresence
+    if (sessionQuery.data?.presence) return sessionQuery.data.presence
+    if (!session) return null
+    return getVisitorPresence({
+      status: session.status,
+      lastSeenAt: session.customer_last_seen_at,
+      lastActivityAt: session.last_activity_at,
+    })
+  }, [livePresence, sessionQuery.data?.presence, session])
+  const effectiveCustomerTyping =
+    customerTyping || Boolean(sessionQuery.data?.customerTyping)
 
   const accept = useCallback(async () => {
     if (!sessionId) return
@@ -937,6 +1028,7 @@ function ConversationStage({
       }
       setDraft('')
       setShowQuickReplies(false)
+      notifyStaffTyping(false)
       const json = (await res.json().catch(() => null)) as {
         message: Message
       } | null
@@ -954,7 +1046,7 @@ function ConversationStage({
     } finally {
       setSending(false)
     }
-  }, [draft, sessionId, sending])
+  }, [draft, sessionId, sending, notifyStaffTyping])
 
   // Empty state (no conversation selected)
   if (!sessionId) {
@@ -1092,6 +1184,7 @@ function ConversationStage({
               lastName={session.user.lastName}
               url={session.user.avatarUrl}
               status={session.status}
+              presenceState={effectivePresence?.state}
             />
 
             <div className="min-w-0">
@@ -1110,18 +1203,19 @@ function ConversationStage({
                 <span
                   className={cn(
                     'font-medium shrink-0',
-                    session.status === 'active'
+                    effectivePresence?.state === 'online'
                       ? 'text-[#16A34A]'
                       : isWaiting
                         ? 'text-[#7B2D8E]'
                         : 'text-gray-500',
                   )}
                 >
-                  {session.status === 'active'
-                    ? 'Active'
-                    : isWaiting
-                      ? 'Waiting in queue'
-                      : 'Ended'}
+                  {isClosed
+                    ? 'Ended'
+                    : effectivePresence?.label ||
+                      (session.status === 'active'
+                        ? 'Online'
+                        : 'Waiting in queue')}
                 </span>
                 <span className="text-gray-300" aria-hidden="true">
                   ·
@@ -1167,7 +1261,7 @@ function ConversationStage({
                 type="button"
                 onClick={() => setEndDialogOpen(true)}
                 disabled={closing}
-                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full border border-gray-200 bg-white text-[12px] font-semibold text-gray-700 hover:text-[#C63D3D] hover:border-[#C63D3D]/35 hover:bg-[#FDF2F2] transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full border border-[#7B2D8E]/25 bg-white text-[12px] font-semibold text-[#5A1D6A] hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/50 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <PhoneOff className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">End chat</span>
@@ -1267,6 +1361,40 @@ function ConversationStage({
                 </div>
               )
             })}
+
+            {effectiveCustomerTyping && !isClosed && (
+              <div
+                className="flex items-end gap-2.5 pt-3"
+                role="status"
+                aria-live="polite"
+                aria-label={`${session.user.firstName || 'Visitor'} is replying`}
+              >
+                <div className="w-7 shrink-0">
+                  {session.user.avatarUrl ? (
+                    <Image
+                      src={session.user.avatarUrl}
+                      alt={customerFullName}
+                      width={28}
+                      height={28}
+                      referrerPolicy="no-referrer"
+                      className="w-7 h-7 rounded-full object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[10px] font-semibold">
+                      {(customerFullName?.[0] || '?').toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md inline-flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/70 animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/45 animate-bounce" />
+                  <span className="sr-only">
+                    {session.user.firstName || 'Visitor'} is replying
+                  </span>
+                </div>
+              </div>
+            )}
 
             {isWaiting && (
               <div className="flex justify-center pt-5">
@@ -1401,7 +1529,12 @@ function ConversationStage({
                   <textarea
                     ref={composerRef}
                     value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setDraft(val)
+                      notifyStaffTyping(val.trim().length > 0)
+                    }}
+                    onBlur={() => notifyStaffTyping(false)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
@@ -1448,6 +1581,9 @@ function ConversationStage({
             rating={session.service_rating}
             ratingComment={session.rating_comment}
             visitorFallback={session.visitor}
+            presence={effectivePresence}
+            customerTyping={effectiveCustomerTyping}
+            assignedStaffName={session.staff?.displayName || null}
             data={contextQuery.data}
             loading={contextQuery.isLoading}
             onDownloadTranscript={downloadTranscript}
@@ -1476,6 +1612,9 @@ function ConversationStage({
               rating={session.service_rating}
               ratingComment={session.rating_comment}
               visitorFallback={session.visitor}
+              presence={effectivePresence}
+              customerTyping={effectiveCustomerTyping}
+              assignedStaffName={session.staff?.displayName || null}
               data={contextQuery.data}
               loading={contextQuery.isLoading}
               onDownloadTranscript={downloadTranscript}
@@ -1485,40 +1624,26 @@ function ConversationStage({
         </div>
       )}
 
-      {/* Flat End Chat Confirmation Dialog */}
-      <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
-          <DialogHeader>
-            <DialogTitle className="text-[17px] font-semibold text-gray-900">
-              End this live chat?
-            </DialogTitle>
-            <DialogDescription className="text-[13px] text-gray-500 mt-1.5 leading-relaxed">
-              Ending <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
-              with {customerFullName} will close the live session, prompt the visitor for feedback,
-              and send their chat transcript by email.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setEndDialogOpen(false)}
-              disabled={closing}
-              className="px-4 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
-            >
-              Keep chatting
-            </button>
-            <button
-              type="button"
-              onClick={() => void closeChat()}
-              disabled={closing}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#C63D3D] hover:bg-[#A83232] text-white text-[13px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
-            >
-              {closing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              End chat
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Brand-Purple End Chat Confirmation Popup */}
+      <ConfirmDialog
+        open={endDialogOpen}
+        onOpenChange={setEndDialogOpen}
+        title="End this live chat?"
+        description={
+          <>
+            Ending{' '}
+            <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
+            with <span className="font-semibold text-gray-900">{customerFullName}</span>{' '}
+            will close the live session, invite the visitor to leave feedback, and send
+            their transcript by email.
+          </>
+        }
+        confirmLabel="End chat"
+        cancelLabel="Keep chatting"
+        icon={PhoneOff}
+        busy={closing}
+        onConfirm={() => void closeChat()}
+      />
     </>
   )
 }
@@ -1532,13 +1657,27 @@ function UserAvatar({
   lastName,
   url,
   status,
+  presenceState,
 }: {
   firstName: string
   lastName: string
   url: string | null
   status: FullSession['status']
+  presenceState?: VisitorPresenceInfo['state']
 }) {
   const initials = `${firstName?.[0] || '?'}${lastName?.[0] || ''}`.toUpperCase()
+  const dotClass =
+    presenceState === 'online'
+      ? 'bg-[#16A34A]'
+      : presenceState === 'away'
+        ? 'bg-[#7B2D8E]'
+        : presenceState === 'offline'
+          ? 'bg-gray-300'
+          : status === 'active'
+            ? 'bg-[#16A34A]'
+            : status === 'waiting'
+              ? 'bg-[#7B2D8E]'
+              : 'bg-gray-300'
   return (
     <div className="relative shrink-0">
       {url ? (
@@ -1559,11 +1698,7 @@ function UserAvatar({
         aria-hidden="true"
         className={cn(
           'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
-          status === 'active'
-            ? 'bg-[#16A34A]'
-            : status === 'waiting'
-              ? 'bg-[#7B2D8E]'
-              : 'bg-gray-300',
+          dotClass,
         )}
       />
     </div>
@@ -1596,25 +1731,30 @@ function MessageRow({
   // divider for leave/ended/general events (matching the reference screenshots).
   if (message.sender_role === 'system') {
     if (isJoinMilestone(message.body)) {
+      const actionMatch = message.body.match(/\b(joined the chat|took over the chat)\b/i)
+      const milestoneAction = actionMatch ? actionMatch[1].toLowerCase() : 'joined the chat'
       const milestoneName =
         message.body.replace(/\s+(joined|took over)\b.*$/i, '').trim() ||
         staffFallback?.displayName ||
         'Customer Care'
       return (
         <div className="py-4 text-center">
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-2.5">
             <RepAvatar
               src={message.sender_avatar_url || staffFallback?.avatarUrl}
               name={milestoneName}
-              size={48}
-              className="border-2 border-[#7B2D8E]/20"
+              size={64}
+              className="border border-gray-200"
             />
           </div>
-          <p className="text-[14px] font-semibold text-gray-900">
-            {message.body}
+          <p className="text-[15px] font-semibold text-gray-800 leading-snug">
+            {milestoneName}
+          </p>
+          <p className="text-[15px] font-semibold text-gray-800 leading-snug">
+            {milestoneAction}
           </p>
           {stamp && (
-            <p className="text-[11px] text-gray-400 mt-0.5 tabular-nums">
+            <p className="text-[11.5px] text-gray-500 mt-1 tabular-nums">
               {stamp}
             </p>
           )}

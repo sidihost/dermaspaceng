@@ -115,24 +115,26 @@ export default function AboutPage() {
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div className="relative">
               <div className="grid grid-cols-2 gap-3">
-                <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
+                <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-gray-200">
                   <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
-                    alt="Dermaspace Spa Interior"
+                    src="/images/nail-care-hd.jpg"
+                    alt="Dermaspace Pedicure & Nail Care"
                     fill
-                    sizes="(max-width: 1024px) 50vw, 256px"
+                    quality={95}
+                    sizes="(max-width: 1024px) 50vw, 380px"
                     referrerPolicy="no-referrer"
-                    className="object-cover"
+                    className="object-cover object-[center_38%]"
                   />
                 </div>
-                <div className="relative aspect-[3/4] rounded-xl overflow-hidden mt-6">
+                <div className="relative aspect-[3/4] rounded-xl overflow-hidden border border-gray-200 mt-6">
                   <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp"
-                    alt="Facial Treatment"
+                    src="/images/facial-treatment-hd.jpg"
+                    alt="Dermaspace Facial Treatment"
                     fill
-                    sizes="(max-width: 1024px) 50vw, 256px"
+                    quality={95}
+                    sizes="(max-width: 1024px) 50vw, 380px"
                     referrerPolicy="no-referrer"
-                    className="object-cover"
+                    className="object-cover object-[center_18%]"
                   />
                 </div>
               </div>

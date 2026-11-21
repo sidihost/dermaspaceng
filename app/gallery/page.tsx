@@ -31,6 +31,7 @@ type Room = {
   alt: string
   category: LocationKey
   caption: string
+  imagePosition?: string
 }
 
 const rooms: Room[] = [
@@ -70,6 +71,13 @@ const rooms: Room[] = [
     alt: 'Treatment Room',
     category: 'Victoria Island',
     caption: 'Private facial and skincare treatment room.',
+  },
+  {
+    src: '/images/facial-treatment-hd.jpg',
+    alt: 'Ultrasonic Facial Session',
+    category: 'Victoria Island',
+    caption: 'Deep pore cleansing and exfoliation performed by our licensed estheticians.',
+    imagePosition: 'object-[center_22%]',
   },
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2810%29-ricU7Xkvb3qtQvdn6XRwTUFco8ZQWW.jpg',
@@ -119,6 +127,13 @@ const rooms: Room[] = [
     alt: 'Pedicure Lounge',
     category: 'Ikoyi',
     caption: 'Comfortable pedicure lounge for quiet relaxation.',
+  },
+  {
+    src: '/images/nail-care-hd.jpg',
+    alt: 'Spa Pedicure & Nail Care',
+    category: 'Ikoyi',
+    caption: 'Unhurried botanical foot soak and manicure-pedicure care by our nail specialists.',
+    imagePosition: 'object-[center_42%]',
   },
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3371.JPG-KIOf6sbksYGE8PoJuir8tfR9EQfobA.jpeg',
@@ -495,7 +510,7 @@ export default function GalleryPage() {
                       priority={i < 3}
                       referrerPolicy="no-referrer"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className={`object-cover ${room.imagePosition ?? 'object-center'} transition-transform duration-500 group-hover:scale-105`}
                     />
                     <span className="absolute top-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm text-white border border-white/20 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       <Expand className="w-4 h-4" />

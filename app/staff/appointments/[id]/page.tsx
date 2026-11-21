@@ -670,7 +670,7 @@ export default function StaffAppointmentDetailPage({
                 await patch("set_status", { status: "cancelled", reason: cancelReason.trim() })
                 setCancelOpen(false)
               }}
-              className="bg-rose-600 hover:bg-rose-700 text-white"
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
             >
               {updating ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
               Confirm cancellation

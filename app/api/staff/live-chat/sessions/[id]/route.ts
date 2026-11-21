@@ -14,7 +14,11 @@ import {
   addMessage,
 } from '@/lib/live-chat'
 import { logStaffActivity } from '@/lib/activity-log'
-import { parseVisitorUserAgent } from '@/lib/visitor-telemetry'
+import {
+  getVisitorPresence,
+  isTypingActive,
+  parseVisitorUserAgent,
+} from '@/lib/visitor-telemetry'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -87,6 +91,12 @@ export async function GET(_req: Request, { params }: Params) {
       staff_rating: r.staff_rating,
       rating_comment: r.rating_comment,
       isGuest: Boolean(r.is_guest),
+      customerTyping: isTypingActive((r.customer_typing_at as string | null) ?? null),
+      customerLastSeenAt: (r.customer_last_seen_at as string | null) ?? (r.last_activity_at as string | null) ?? null,
+      presence: getVisitorPresence(
+        (r.customer_last_seen_at as string | null) ?? (r.last_activity_at as string | null) ?? null,
+        (r.status as string | null) ?? null,
+      ),
       visitor: {
         location: (r.visitor_location as string | null) ?? null,
         ip: (r.visitor_ip as string | null) ?? null,

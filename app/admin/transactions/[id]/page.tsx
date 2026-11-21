@@ -462,7 +462,7 @@ export default function TransactionDetailPage() {
                 type="button"
                 disabled={cancelling}
                 onClick={handleCancelPayment}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-rose-600 text-white text-sm font-medium hover:bg-rose-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-60 cursor-pointer"
               >
                 {cancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
                 Confirm cancel

@@ -291,11 +291,7 @@ export default function ApprovalsPage() {
             <Button
               onClick={submitReview}
               disabled={submitting}
-              className={
-                reviewAction === 'approved'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-red-600 hover:bg-red-700'
-              }
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
             >
               {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {reviewAction === 'approved' ? 'Approve' : 'Reject'}

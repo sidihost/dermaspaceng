@@ -7,10 +7,18 @@ test('every service catalog category has a non-empty image URL or path', () => {
   for (const cat of SERVICES_CATALOG) {
     assert.ok(cat.image && cat.image.trim().length > 0, `${cat.slug} missing image`)
     assert.ok(
-      cat.image.startsWith('/images/') || cat.image.startsWith('https://'),
+      cat.image.startsWith('/images/') || cat.image.startsWith('/assets/') || cat.image.startsWith('https://'),
       `${cat.slug} has unexpected image format: ${cat.image}`,
     )
   }
+})
+
+test('facial-treatments and nail-care use authentic Dermaspace treatment photography', () => {
+  const facial = getCategoryBySlug('facial-treatments')
+  const nail = getCategoryBySlug('nail-care')
+  assert.ok(facial && nail)
+  assert.equal(facial.image, '/images/facial-treatment-hd.jpg')
+  assert.equal(nail.image, '/images/nail-care-hd.jpg')
 })
 
 test('bulk-packages uses real Dermaspace photography instead of placeholder bottle graphic', () => {

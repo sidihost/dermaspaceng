@@ -179,9 +179,10 @@ function CarouselCard({
           src={image}
           alt={title}
           fill
-          sizes="184px"
+          quality={95}
+          sizes="480px"
           referrerPolicy="no-referrer"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
+          className="object-cover object-[center_24%] transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
         {/* Rank badge — top-left. Top three carry a contextual icon. */}

@@ -298,11 +298,12 @@ export function NewsletterPopup() {
         {/* Editorial sanctuary photo panel */}
         <div className="relative h-64 sm:h-72 md:h-auto md:min-h-[390px] bg-[#FAF6FB] border-b md:border-b-0 md:border-r border-[#7B2D8E]/15 overflow-hidden">
           <Image
-            src="/images/newsletter-spa-portrait-clean.jpg"
+            src="/images/newsletter-spa-portrait-hd.jpg"
             alt="Dark-skinned woman with luminous skin wearing a crisp white waffle spa robe and a plum silk drape"
             fill
-            loading="eager"
-            sizes="(max-width: 768px) 100vw, 320px"
+            priority
+            quality={95}
+            sizes="(max-width: 768px) 100vw, 480px"
             referrerPolicy="no-referrer"
             className="object-cover object-[center_20%]"
           />

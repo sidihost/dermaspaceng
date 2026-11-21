@@ -21,20 +21,21 @@ import {
   Headphones,
   Loader2,
   Mail,
-  Settings2,
+  Minus,
+  Settings,
   Star,
-  ThumbsUp,
   Ticket,
   Volume2,
   VolumeX,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   buildLiveChatTranscriptDownloadText,
-  getHandoffAutoMessage,
   resolveSupportId,
 } from '@/lib/support-and-chat'
+import { formatChatTimestamp } from '@/lib/visitor-telemetry'
 import {
   fetchLiveChatSoundPreference,
   playLiveChatChime,
@@ -63,6 +64,8 @@ export interface InlineLiveStaff {
 export interface InlineLivePayload {
   session: InlineLiveSession | null
   staff: InlineLiveStaff | null
+  staffTyping?: boolean
+  staffTypingName?: string | null
 }
 
 export interface InlineLiveMessage {
@@ -217,6 +220,11 @@ export function useInlineLiveChat({
   const [error, setError] = useState<string | null>(null)
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
+  const [staffTyping, setStaffTyping] = useState(false)
+  const [staffTypingName, setStaffTypingName] = useState<string | null>(null)
+  const customerTypingLastSentRef = useRef<number>(0)
+  const customerTypingTimeoutRef = useRef<number | null>(null)
+  const customerTypingActiveRef = useRef<boolean>(false)
 
   // Inline guest pre-chat state
   const [guestFormOpen, setGuestFormOpen] = useState(false)
@@ -267,6 +275,9 @@ export function useInlineLiveChat({
     return () => {
       if (ratingDoneTimeoutRef.current !== null) {
         window.clearTimeout(ratingDoneTimeoutRef.current)
+      }
+      if (customerTypingTimeoutRef.current !== null) {
+        window.clearTimeout(customerTypingTimeoutRef.current)
       }
     }
   }, [])
@@ -399,9 +410,13 @@ export function useInlineLiveChat({
 
       activeRef.current = json
       setActive(json)
+      setStaffTyping(Boolean(json.staffTyping))
+      setStaffTypingName(json.staffTypingName ?? null)
       if (json.session?.status === 'closed' && !json.session.ratedAt) {
         setConfirmLeaveOpen(false)
         setOptionsOpen(false)
+        setStaffTyping(false)
+        setStaffTypingName(null)
         setRatingDone(false)
         setRatingSessionId(json.session.id)
         setRatingSupportCode(
@@ -458,9 +473,16 @@ export function useInlineLiveChat({
           { credentials: 'include', cache: 'no-store' },
         )
         if (!res.ok) return
-        const json = (await res.json()) as { messages?: InlineLiveMessage[] }
+        const json = (await res.json()) as {
+          messages?: InlineLiveMessage[]
+          staffTyping?: boolean
+          staffTypingName?: string | null
+        }
         const incoming = json.messages ?? []
         if (cancelled) return
+
+        setStaffTyping(Boolean(json.staffTyping))
+        setStaffTypingName(json.staffTypingName ?? null)
 
         const wasHydrated = hydratedSessionRef.current === sessionId
         hydratedSessionRef.current = sessionId
@@ -498,12 +520,63 @@ export function useInlineLiveChat({
       }
     }
     pollMessages()
-    const id = window.setInterval(pollMessages, 2500)
+    const id = window.setInterval(pollMessages, 1800)
     return () => {
       cancelled = true
       window.clearInterval(id)
     }
   }, [enabled, sessionId, isLiveMode, isOpen, onSessionChange])
+
+  // Throttled customer typing heartbeat -> staff & admin see "Visitor is typing…"
+  const notifyCustomerTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!sessionId || !isLiveMode) return
+      const now = Date.now()
+      if (customerTypingTimeoutRef.current !== null) {
+        window.clearTimeout(customerTypingTimeoutRef.current)
+        customerTypingTimeoutRef.current = null
+      }
+
+      if (isTyping) {
+        customerTypingTimeoutRef.current = window.setTimeout(() => {
+          customerTypingTimeoutRef.current = null
+          if (!customerTypingActiveRef.current) return
+          customerTypingActiveRef.current = false
+          fetch(`/api/live-chat/sessions/${sessionId}/typing`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ isTyping: false }),
+          }).catch(() => {})
+        }, 4200)
+
+        if (
+          customerTypingActiveRef.current &&
+          now - customerTypingLastSentRef.current < 2400
+        ) {
+          return
+        }
+        customerTypingActiveRef.current = true
+        customerTypingLastSentRef.current = now
+        fetch(`/api/live-chat/sessions/${sessionId}/typing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ isTyping: true }),
+        }).catch(() => {})
+      } else if (customerTypingActiveRef.current) {
+        customerTypingActiveRef.current = false
+        customerTypingLastSentRef.current = 0
+        fetch(`/api/live-chat/sessions/${sessionId}/typing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ isTyping: false }),
+        }).catch(() => {})
+      }
+    },
+    [sessionId, isLiveMode],
+  )
 
   // Trigger live representative handoff
   const triggerHandoff = useCallback(
@@ -698,6 +771,11 @@ export function useInlineLiveChat({
     async (rawBody: string): Promise<boolean> => {
       const body = rawBody.trim()
       if (!body || !sessionId || sending) return false
+      customerTypingActiveRef.current = false
+      if (customerTypingTimeoutRef.current !== null) {
+        window.clearTimeout(customerTypingTimeoutRef.current)
+        customerTypingTimeoutRef.current = null
+      }
       unlockLiveChatAudio()
       setSending(true)
       setError(null)
@@ -933,6 +1011,8 @@ export function useInlineLiveChat({
     connecting,
     sending,
     justConnected,
+    staffTyping,
+    staffTypingName,
     error,
     optionsOpen,
     setOptionsOpen,
@@ -964,6 +1044,7 @@ export function useInlineLiveChat({
     submitGuestHandoff,
     cancelGuestHandoff,
     sendLiveMessage,
+    notifyCustomerTyping,
     endLiveChat,
     submitRating,
     skipRating,
@@ -983,6 +1064,7 @@ export function InlineLiveHeaderControls({
   onRequestLeave,
   onCancelLeave,
   onEndLiveChat,
+  onMinimize,
 }: {
   optionsOpen?: boolean
   onToggleOptions?: () => void
@@ -990,44 +1072,263 @@ export function InlineLiveHeaderControls({
   onRequestLeave?: () => void
   onCancelLeave?: () => void
   onEndLiveChat: () => void
+  onMinimize?: () => void
 }) {
   return (
-    <div className="flex items-center gap-1 mr-1">
+    <div className="flex items-center gap-1">
       {onToggleOptions && (
         <button
           type="button"
           onClick={onToggleOptions}
           aria-label="Live chat options"
           aria-expanded={optionsOpen}
-          title="Chat options"
+          title="Live chat options"
           className={cn(
-            'w-8 h-8 rounded-full inline-flex items-center justify-center border transition-colors shrink-0',
+            'w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors shrink-0 cursor-pointer',
             optionsOpen
-              ? 'bg-[#FAF6FB] border-[#7B2D8E]/40 text-[#7B2D8E]'
-              : 'bg-white border-gray-200 text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/30',
+              ? 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25'
+              : 'bg-gray-100 text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
           )}
         >
-          <Settings2 className="w-3.5 h-3.5" />
+          <Settings className="w-[18px] h-[18px]" />
         </button>
       )}
-      {confirmLeaveOpen ? (
+      {onMinimize && (
         <button
           type="button"
-          onClick={() => (onCancelLeave ? onCancelLeave() : onEndLiveChat())}
-          className="text-[11px] font-medium text-gray-600 px-2.5 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-50 whitespace-nowrap"
+          onClick={onMinimize}
+          aria-label="Minimize chat"
+          title="Minimize"
+          className="w-9 h-9 rounded-full inline-flex items-center justify-center text-gray-700 hover:bg-gray-100 hover:text-[#7B2D8E] transition-colors shrink-0 cursor-pointer"
         >
-          Back to chat
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => (onRequestLeave ? onRequestLeave() : onEndLiveChat())}
-          className="text-[11px] font-semibold text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/25 hover:border-[#7B2D8E]/50 px-2.5 py-1 rounded-full transition-colors whitespace-nowrap"
-        >
-          End chat
+          <Minus className="w-4 h-4" />
         </button>
       )}
+      <button
+        type="button"
+        onClick={() =>
+          confirmLeaveOpen
+            ? onCancelLeave
+              ? onCancelLeave()
+              : onEndLiveChat()
+            : onRequestLeave
+              ? onRequestLeave()
+              : onEndLiveChat()
+        }
+        aria-label="End live chat"
+        title="End chat"
+        className="w-9 h-9 rounded-full inline-flex items-center justify-center text-gray-700 hover:bg-[#FAF6FB] hover:text-[#7B2D8E] transition-colors shrink-0 cursor-pointer"
+      >
+        <X className="w-[18px] h-[18px]" />
+      </button>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// InlineLiveOptionsPopup — flat floating popup anchored directly below the
+// live chat header (Support ID, Download transcript, Email transcript, Sound)
+// ---------------------------------------------------------------------------
+
+export function InlineLiveOptionsPopup({
+  open,
+  session,
+  messages,
+  onClose,
+}: {
+  open: boolean
+  session: InlineLiveSession | null
+  messages: InlineLiveMessage[]
+  onClose: () => void
+}) {
+  const [copiedId, setCopiedId] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [emailedTranscript, setEmailedTranscript] = useState(false)
+  const [emailingTranscript, setEmailingTranscript] = useState(false)
+
+  const supportCode = session
+    ? resolveSupportId(session.supportCode, session.id)
+    : null
+
+  useEffect(() => {
+    if (!open) return
+    let activeMount = true
+    void fetchLiveChatSoundPreference('customer').then((enabled) => {
+      if (activeMount) setSoundEnabled(enabled)
+    })
+    return () => {
+      activeMount = false
+    }
+  }, [open])
+
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    void saveLiveChatSoundPreference('customer', next)
+    if (next) {
+      unlockLiveChatAudio()
+      window.setTimeout(() => playLiveChatChime('reply'), 30)
+    }
+  }, [soundEnabled])
+
+  const copySupportCode = useCallback(() => {
+    if (!supportCode || typeof navigator === 'undefined' || !navigator.clipboard)
+      return
+    navigator.clipboard
+      .writeText(supportCode)
+      .then(() => {
+        setCopiedId(true)
+        window.setTimeout(() => setCopiedId(false), 1800)
+      })
+      .catch(() => {})
+  }, [supportCode])
+
+  const handleDownloadTranscript = useCallback(() => {
+    triggerTranscriptTextDownload(supportCode || 'DS-LC', messages)
+    onClose()
+  }, [supportCode, messages, onClose])
+
+  const handleEmailTranscript = useCallback(async () => {
+    if (!session?.id || emailingTranscript) return
+    setEmailingTranscript(true)
+    try {
+      const res = await fetch(`/api/live-chat/sessions/${session.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'email_transcript' }),
+      })
+      if (res.ok) {
+        setEmailedTranscript(true)
+        window.setTimeout(() => setEmailedTranscript(false), 3000)
+      }
+    } catch {
+      /* ignore transient */
+    } finally {
+      setEmailingTranscript(false)
+    }
+  }, [session?.id, emailingTranscript])
+
+  if (!open || !session) return null
+
+  return (
+    <>
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className="absolute inset-0 z-30 bg-gray-900/20"
+      />
+      <div
+        role="dialog"
+        aria-label="Live chat options"
+        data-testid="live-chat-options-panel"
+        className="absolute inset-x-3 top-2 z-40 rounded-2xl bg-white border border-gray-200 divide-y divide-gray-100 overflow-hidden animate-[derma-msg-in_0.16s_ease-out]"
+      >
+        <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#FAF6FB]">
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-semibold text-gray-900">
+              Live chat options
+            </p>
+            {supportCode && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Ticket className="w-3 h-3 text-[#7B2D8E] shrink-0" />
+                <span
+                  data-testid="live-chat-support-id"
+                  className="font-mono text-[11px] font-semibold text-[#5A1D6A]"
+                >
+                  {supportCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={copySupportCode}
+                  className="inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] ml-1 cursor-pointer"
+                >
+                  {copiedId ? (
+                    <>
+                      <Check className="w-3 h-3" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close live chat options"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-white transition-colors shrink-0 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleDownloadTranscript}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left text-[13px] font-medium text-gray-800 hover:bg-[#FAF6FB] transition-colors cursor-pointer"
+        >
+          <span className="inline-flex items-center gap-2.5">
+            <FileText className="w-4 h-4 text-[#7B2D8E]" />
+            Download chat transcript
+          </span>
+          <Download className="w-3.5 h-3.5 text-gray-400" />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleEmailTranscript}
+          disabled={emailingTranscript}
+          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left text-[13px] font-medium text-gray-800 hover:bg-[#FAF6FB] transition-colors disabled:opacity-50 cursor-pointer"
+        >
+          <span className="inline-flex items-center gap-2.5">
+            <Mail className="w-4 h-4 text-[#7B2D8E]" />
+            {emailedTranscript
+              ? 'Transcript sent to your email'
+              : emailingTranscript
+                ? 'Sending transcript…'
+                : 'Email chat transcript'}
+          </span>
+          {emailedTranscript && <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />}
+        </button>
+
+        <div className="flex items-center justify-between gap-2 px-4 py-3">
+          <span className="inline-flex items-center gap-2.5 text-[13px] font-medium text-gray-800">
+            {soundEnabled ? (
+              <Volume2 className="w-4 h-4 text-[#7B2D8E]" />
+            ) : (
+              <VolumeX className="w-4 h-4 text-gray-400" />
+            )}
+            Notifications
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={soundEnabled}
+            data-testid="live-chat-sound-toggle"
+            onClick={toggleSound}
+            className={cn(
+              'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors cursor-pointer',
+              soundEnabled
+                ? 'bg-[#7B2D8E] border-[#7B2D8E]'
+                : 'bg-gray-200 border-gray-200',
+            )}
+          >
+            <span
+              className={cn(
+                'inline-block h-4 w-4 rounded-full bg-white transition-transform',
+                soundEnabled ? 'translate-x-5' : 'translate-x-1',
+              )}
+            />
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -1042,11 +1343,10 @@ export function InlineLiveFeed({
   staff,
   messages,
   connecting,
-  justConnected,
+  staffTyping = false,
+  staffTypingName = null,
   error,
   onClearError,
-  optionsOpen = false,
-  onCloseOptions,
   confirmLeaveOpen = false,
   onCancelLeave,
   onConfirmLeave,
@@ -1074,7 +1374,9 @@ export function InlineLiveFeed({
   staff: InlineLiveStaff | null
   messages: InlineLiveMessage[]
   connecting: boolean
-  justConnected: boolean
+  justConnected?: boolean
+  staffTyping?: boolean
+  staffTypingName?: string | null
   error: string | null
   onClearError: () => void
   optionsOpen?: boolean
@@ -1106,11 +1408,6 @@ export function InlineLiveFeed({
   onSubmitRating: () => void
   onSkipRating: () => void
 }) {
-  const [copiedId, setCopiedId] = useState(false)
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const [emailedTranscript, setEmailedTranscript] = useState(false)
-  const [emailingTranscript, setEmailingTranscript] = useState(false)
-
   const isWaiting = session?.status === 'waiting'
   const isActive = session?.status === 'active'
   const isClosed = session?.status === 'closed' || session?.status === 'abandoned'
@@ -1118,64 +1415,6 @@ export function InlineLiveFeed({
   const supportCode = session
     ? resolveSupportId(session.supportCode, session.id)
     : ratingSupportCode || null
-
-  useEffect(() => {
-    let activeMount = true
-    void fetchLiveChatSoundPreference('customer').then((enabled) => {
-      if (activeMount) setSoundEnabled(enabled)
-    })
-    return () => {
-      activeMount = false
-    }
-  }, [])
-
-  const toggleSound = useCallback(() => {
-    const next = !soundEnabled
-    setSoundEnabled(next)
-    void saveLiveChatSoundPreference('customer', next)
-    if (next) {
-      unlockLiveChatAudio()
-      window.setTimeout(() => playLiveChatChime('reply'), 30)
-    }
-  }, [soundEnabled])
-
-  const copySupportCode = useCallback(() => {
-    if (!supportCode || typeof navigator === 'undefined' || !navigator.clipboard)
-      return
-    navigator.clipboard
-      .writeText(supportCode)
-      .then(() => {
-        setCopiedId(true)
-        window.setTimeout(() => setCopiedId(false), 2000)
-      })
-      .catch(() => {})
-  }, [supportCode])
-
-  const handleDownloadTranscript = useCallback(() => {
-    triggerTranscriptTextDownload(supportCode || 'DS-LC', messages)
-  }, [supportCode, messages])
-
-  const handleEmailTranscript = useCallback(async () => {
-    const targetId = session?.id || ratingSessionId
-    if (!targetId || emailingTranscript) return
-    setEmailingTranscript(true)
-    try {
-      const res = await fetch(`/api/live-chat/sessions/${targetId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'email_transcript' }),
-      })
-      if (res.ok) {
-        setEmailedTranscript(true)
-        window.setTimeout(() => setEmailedTranscript(false), 3000)
-      }
-    } catch {
-      /* ignore transient */
-    } finally {
-      setEmailingTranscript(false)
-    }
-  }, [session?.id, ratingSessionId, emailingTranscript])
 
   const visibleMessages = useMemo(
     () =>
@@ -1200,218 +1439,39 @@ export function InlineLiveFeed({
     return null
   }
 
+  const typingLabel =
+    (staffTypingName || staff?.displayName || 'Customer Care').replace(/\.$/, '')
+
   return (
     <div className="space-y-3 pt-1" data-testid="inline-live-chat-feed">
-      {/* Live connection banner */}
-      {(connecting || isLive) && (
-        <div className="rounded-2xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3.5 py-3 space-y-2.5">
-          <div className="flex items-center gap-3">
-            {staff ? (
-              <RepAvatar
-                src={staff.avatarUrl}
-                name={staff.displayName}
-                size={40}
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center shrink-0">
-                {connecting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Headphones className="w-4 h-4" />
-                )}
-              </div>
-            )}
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-[#7B2D8E] shrink-0" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7B2D8E] truncate">
-                  {isActive
-                    ? justConnected
-                      ? 'Representative joined'
-                      : 'Live Customer Care'
-                    : 'Connecting to an agent'}
-                </p>
-              </div>
-              <p className="text-[12.5px] text-gray-700 leading-snug mt-0.5">
-                {isActive
-                  ? getHandoffAutoMessage('active', staff?.displayName)
-                  : 'You are in the queue — feel free to add any details below while we connect you.'}
-              </p>
-            </div>
+      {/* Quiet waiting status — NO duplicate second header card */}
+      {(connecting || isWaiting) && (
+        <div className="py-2 text-center" data-testid="live-chat-waiting-notice">
+          <div className="inline-flex items-center gap-2 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3.5 py-1.5 text-[11.5px] font-medium text-[#5A1D6A]">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
+            <span>
+              Waiting for a representative
+              {supportCode ? ` · ${supportCode}` : '…'}
+            </span>
           </div>
-
-          {supportCode && (
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#7B2D8E]/15">
-              <div className="inline-flex items-center gap-1.5 min-w-0">
-                <Ticket className="w-3.5 h-3.5 text-[#7B2D8E] shrink-0" />
-                <span className="text-[11px] text-gray-500 whitespace-nowrap">
-                  Support ID
-                </span>
-                <span
-                  data-testid="live-chat-support-id"
-                  className="font-mono text-[11.5px] font-semibold text-[#5A1D6A] tracking-wide truncate"
-                >
-                  {supportCode}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={toggleSound}
-                  aria-label={
-                    soundEnabled ? 'Mute reply sound' : 'Unmute reply sound'
-                  }
-                  title={soundEnabled ? 'Sound on' : 'Sound muted'}
-                  data-testid="live-chat-sound-toggle"
-                  className="inline-flex items-center justify-center rounded-full bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 p-1 text-[#5A1D6A] transition-colors shrink-0"
-                >
-                  {soundEnabled ? (
-                    <Volume2 className="w-3 h-3 text-[#7B2D8E]" />
-                  ) : (
-                    <VolumeX className="w-3 h-3 text-gray-400" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={copySupportCode}
-                  className="inline-flex items-center gap-1 rounded-full bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2.5 py-0.5 text-[10.5px] font-semibold text-[#5A1D6A] transition-colors shrink-0"
-                >
-                  {copiedId ? (
-                    <>
-                      <Check className="w-3 h-3 text-[#7B2D8E]" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3 text-[#7B2D8E]" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
+          <p className="text-[11px] text-gray-500 mt-1.5">
+            Feel free to share details below while we connect you.
+          </p>
         </div>
       )}
 
-      {/* Flat inline chat options panel (Transcript download, Email, Notifications) */}
-      {isLive && optionsOpen && (
-        <div
-          data-testid="live-chat-options-panel"
-          className="rounded-2xl bg-white border border-[#7B2D8E]/25 divide-y divide-gray-100 overflow-hidden"
-        >
-          <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#FAF6FB]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7B2D8E]">
-              Live chat options
-            </p>
-            {onCloseOptions && (
-              <button
-                type="button"
-                onClick={onCloseOptions}
-                aria-label="Close chat options"
-                className="p-1 rounded-full text-gray-500 hover:text-[#7B2D8E]"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleDownloadTranscript}
-            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left text-[12.5px] font-medium text-gray-800 hover:bg-[#FAF6FB] transition-colors"
-          >
-            <span className="inline-flex items-center gap-2">
-              <FileText className="w-4 h-4 text-[#7B2D8E]" />
-              Download chat transcript
-            </span>
-            <Download className="w-3.5 h-3.5 text-gray-400" />
-          </button>
-          <button
-            type="button"
-            onClick={handleEmailTranscript}
-            disabled={emailingTranscript}
-            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-left text-[12.5px] font-medium text-gray-800 hover:bg-[#FAF6FB] transition-colors disabled:opacity-50"
-          >
-            <span className="inline-flex items-center gap-2">
-              <Mail className="w-4 h-4 text-[#7B2D8E]" />
-              {emailedTranscript
-                ? 'Transcript sent to your email'
-                : emailingTranscript
-                  ? 'Sending transcript…'
-                  : 'Email chat transcript'}
-            </span>
-          </button>
-          <div className="flex items-center justify-between gap-2 px-3.5 py-2.5">
-            <span className="inline-flex items-center gap-2 text-[12.5px] font-medium text-gray-800">
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-[#7B2D8E]" />
-              ) : (
-                <VolumeX className="w-4 h-4 text-gray-400" />
-              )}
-              Sound notifications
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={soundEnabled}
-              onClick={toggleSound}
-              className={cn(
-                'relative inline-flex h-5 w-9 items-center rounded-full border transition-colors',
-                soundEnabled
-                  ? 'bg-[#7B2D8E] border-[#7B2D8E]'
-                  : 'bg-gray-200 border-gray-200',
-              )}
-            >
-              <span
-                className={cn(
-                  'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                  soundEnabled ? 'translate-x-4' : 'translate-x-0.5',
-                )}
-              />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Flat Leave Chat confirmation step (inspired by reference flow in Dermaspace brand) */}
-      {isLive && confirmLeaveOpen && (
-        <div
-          data-testid="live-chat-leave-confirm"
-          className="rounded-2xl bg-white border border-[#7B2D8E]/30 p-4 space-y-3"
-        >
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center shrink-0">
-              <ThumbsUp className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-gray-900">
-                Leave this live chat?
-              </p>
-              <p className="text-[12px] text-gray-600 mt-0.5 leading-relaxed">
-                Leaving will end the live session. Your messages will stay right
-                here in this conversation so Derma AI can continue helping you.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onCancelLeave}
-              className="flex-1 rounded-full border border-gray-200 bg-white hover:bg-gray-50 px-3.5 py-2 text-[12px] font-semibold text-gray-700 transition-colors"
-            >
-              Go back
-            </button>
-            <button
-              type="button"
-              onClick={onConfirmLeave}
-              className="flex-1 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-3.5 py-2 text-[12px] font-semibold text-white transition-colors"
-            >
-              Leave chat
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Brand-purple ConfirmDialog for leaving live chat (matches reference sheet) */}
+      <ConfirmDialog
+        open={Boolean(isLive && confirmLeaveOpen)}
+        title="Leave this live chat?"
+        description="Leaving will end your live support session. Your conversation stays right here so Derma AI can keep helping you."
+        confirmLabel="Leave chat"
+        cancelLabel="Go back"
+        variant="brand"
+        icon={<Headphones className="w-5 h-5" />}
+        onConfirm={() => onConfirmLeave?.()}
+        onCancel={() => onCancelLeave?.()}
+      />
 
       {/* Inline guest details form */}
       {guestFormOpen && (
@@ -1424,11 +1484,44 @@ export function InlineLiveFeed({
       )}
 
       {/* Live messages — stay mounted even after status transitions to closed */}
-      {(isLive || isClosed || showRating) && visibleMessages.length > 0 && (
-        <div className="space-y-2.5" data-testid="live-chat-messages-list">
-          {visibleMessages.map((m) => (
-            <InlineLiveBubble key={m.id} message={m} staff={staff} />
-          ))}
+      {(isLive || isClosed || showRating) && visibleMessages.length > 0 && (() => {
+        const firstJoinIdx = visibleMessages.findIndex(
+          (msg) => msg.sender_role === 'system' && isJoinMilestoneText(msg.body),
+        )
+        return (
+          <div className="space-y-3" data-testid="live-chat-messages-list">
+            {visibleMessages.map((m, idx) => (
+              <InlineLiveBubble
+                key={m.id}
+                message={m}
+                staff={staff}
+                showAiLeftDivider={idx === firstJoinIdx}
+              />
+            ))}
+          </div>
+        )
+      })()}
+
+      {/* Live typing indicator — classic 3-dot reply bubble, no "typing" text */}
+      {isActive && staffTyping && (
+        <div
+          className="flex items-end gap-2 pt-0.5"
+          data-testid="live-chat-staff-typing"
+          role="status"
+          aria-live="polite"
+          aria-label={`${typingLabel} is replying`}
+        >
+          <RepAvatar
+            src={staff?.avatarUrl}
+            name={typingLabel}
+            size={28}
+          />
+          <div className="inline-flex items-center gap-1.5 bg-[#FAF6FB] border border-[#7B2D8E]/15 px-4 py-3.5 rounded-2xl rounded-bl-sm">
+            <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/35 animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/65 animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-bounce" />
+            <span className="sr-only">{typingLabel} is replying</span>
+          </div>
         </div>
       )}
 
@@ -1440,7 +1533,7 @@ export function InlineLiveFeed({
             type="button"
             onClick={onClearError}
             aria-label="Dismiss notice"
-            className="p-0.5 rounded-full hover:bg-[#C63D3D]/10 shrink-0"
+            className="p-0.5 rounded-full hover:bg-[#C63D3D]/10 shrink-0 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -1470,36 +1563,90 @@ export function InlineLiveFeed({
   )
 }
 
+function isJoinMilestoneText(body: string): boolean {
+  return /\b(joined the chat|took over the chat)\b/i.test(body)
+}
+
 function InlineLiveBubble({
   message,
   staff,
+  showAiLeftDivider = false,
 }: {
   message: InlineLiveMessage
   staff: InlineLiveStaff | null
+  showAiLeftDivider?: boolean
 }) {
-  const time = useMemo(() => {
-    try {
-      return new Date(message.created_at).toLocaleTimeString('en-NG', {
-        hour: 'numeric',
-        minute: '2-digit',
-      })
-    } catch {
-      return ''
-    }
-  }, [message.created_at])
+  const stamp = useMemo(
+    () => formatChatTimestamp(message.created_at),
+    [message.created_at],
+  )
 
   if (message.sender_role === 'system') {
+    if (isJoinMilestoneText(message.body)) {
+      const actionMatch = message.body.match(/\b(joined the chat|took over the chat)\b/i)
+      const milestoneAction = actionMatch ? actionMatch[1].toLowerCase() : 'joined the chat'
+      const milestoneName =
+        message.body.replace(/\s+(joined|took over)\b.*$/i, '').trim() ||
+        staff?.displayName ||
+        'Customer Care'
+
+      return (
+        <div className="space-y-4 py-3" data-testid="live-chat-join-milestone">
+          <div className="text-center">
+            <div className="flex justify-center mb-2.5">
+              <RepAvatar
+                src={message.sender_avatar_url || staff?.avatarUrl}
+                name={milestoneName}
+                size={68}
+                className="border border-gray-200"
+              />
+            </div>
+            <p className="text-[15.5px] font-semibold text-gray-800 leading-snug">
+              {milestoneName}
+            </p>
+            <p className="text-[15.5px] font-semibold text-gray-800 leading-snug">
+              {milestoneAction}
+            </p>
+            {stamp && (
+              <p className="text-[11.5px] text-gray-500 mt-1 tabular-nums">
+                {stamp}
+              </p>
+            )}
+          </div>
+
+          {showAiLeftDivider && (
+            <div className="pt-0.5" data-testid="live-chat-ai-left-divider">
+              <div className="flex items-center gap-3 px-2">
+                <span className="w-8 h-px bg-gray-300 shrink-0" />
+                <span className="flex-1 text-[13px] font-normal text-gray-600 text-center">
+                  Derma AI left the chat
+                </span>
+                <span className="w-8 h-px bg-gray-300 shrink-0" />
+              </div>
+              {stamp && (
+                <p className="text-[11.5px] text-gray-500 text-center mt-1 tabular-nums">
+                  {stamp}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+
     return (
-      <div className="py-1.5" data-testid="live-chat-system-divider">
-        <div className="flex items-center gap-2.5">
-          <span className="flex-1 h-px bg-[#7B2D8E]/15" />
-          <span className="text-[11px] font-medium text-[#5A1D6A] text-center px-2">
+      <div className="py-2" data-testid="live-chat-system-divider">
+        <div className="flex items-center gap-3 px-2">
+          <span className="flex-1 h-px bg-gray-200" />
+          <span className="text-[12px] font-medium text-gray-600 text-center px-1">
             {message.body}
           </span>
-          <span className="flex-1 h-px bg-[#7B2D8E]/15" />
+          <span className="flex-1 h-px bg-gray-200" />
         </div>
-        {time && (
-          <p className="text-[10px] text-gray-400 text-center mt-0.5">{time}</p>
+        {stamp && (
+          <p className="text-[11px] text-gray-400 text-center mt-1 tabular-nums">
+            {stamp}
+          </p>
         )}
       </div>
     )
@@ -1518,16 +1665,15 @@ function InlineLiveBubble({
       >
         <RepAvatar src={senderAvatarUrl} name={senderName} size={28} />
         <div className="max-w-[82%] min-w-0">
-          <p className="text-[10px] font-medium text-[#7B2D8E] ml-2 mb-0.5">
-            {senderName}
-          </p>
-          <div className="bg-white border border-gray-200 px-3.5 py-2 rounded-2xl rounded-bl-sm">
-            <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap break-words leading-relaxed">
+          <div className="bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3.5 py-2.5 rounded-2xl rounded-bl-sm">
+            <p className="text-[14px] text-gray-900 whitespace-pre-wrap break-words leading-relaxed">
               {message.body}
             </p>
           </div>
-          {time && (
-            <p className="text-[10px] text-gray-400 mt-1 ml-2">{time}</p>
+          {stamp && (
+            <p className="text-[11px] text-gray-500 mt-1 ml-1 tabular-nums">
+              {stamp}
+            </p>
           )}
         </div>
       </div>
@@ -1542,9 +1688,9 @@ function InlineLiveBubble({
             {message.body}
           </p>
         </div>
-        {time && (
-          <p className="text-[10px] text-gray-400 mt-1 mr-2 text-right">
-            {time}
+        {stamp && (
+          <p className="text-[10px] text-gray-400 mt-1 mr-2 text-right tabular-nums">
+            {stamp}
           </p>
         )}
       </div>
