@@ -1,60 +1,71 @@
 'use client'
 
 // ---------------------------------------------------------------------------
-// Staff Live Chat console.
+// Staff Live Chat Software Console
 // ---------------------------------------------------------------------------
-// Two-column layout:
-//   * Left  — queue (waiting + my active sessions), avatar/display-name
-//             editor, presence indicator.
-//   * Right — selected conversation (messages, composer, accept/close)
-//             with a stacked customer-context panel for quick lookups.
-//
-// The page polls the queue every 5s and the open conversation's messages
-// every 3s. SWR with `refreshInterval` is the simplest tool that gives
-// us cross-tab dedup and revalidation on focus.
+// Full-height, full-bleed 3-pane workspace:
+//   1. Left Inbox Rail   — search, segmented queue tabs (All / Waiting / Mine
+//                          / Team), unread counts, visitor location preview,
+//                          sound toggle & front-desk identity dialog.
+//   2. Center Stage      — crisp conversation header, centered join/handover
+//                          milestones, hairline leave/end dividers, grouped
+//                          message bubbles, quick replies & composer.
+//   3. Right Inspector   — Visitor Environment (Location, Browser, OS, Device,
+//                          Screen, Timezone, Current Page, IP) for anonymous
+//                          guests & members, plus Wallet / Bookings / Txns.
 // ---------------------------------------------------------------------------
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import {
-  Loader2,
-  Send,
-  Check,
-  ChevronRight,
-  Settings,
-  X,
-  Wallet,
-  CalendarDays,
-  Mail,
-  Phone,
-  Headphones,
   AlertCircle,
-  Receipt,
   ArrowLeft,
-  UserRound,
-  Search,
-  Copy,
   ArrowRightLeft,
-  Ticket,
+  Check,
+  Download,
+  Globe,
+  Headphones,
+  Loader2,
+  MapPin,
+  MessageSquareText,
+  PanelRight,
+  PhoneOff,
+  Search,
+  Send,
+  Settings,
+  Star,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getReceiptHref } from '@/lib/receipt-access'
-import {
-  getLiveChatStatusMeta,
-  getTicketStatusMeta,
-  resolveSupportId,
-} from '@/lib/support-and-chat'
+import { resolveSupportId } from '@/lib/support-and-chat'
 import {
   fetchLiveChatSoundPreference,
   playLiveChatChime,
   saveLiveChatSoundPreference,
   unlockLiveChatAudio,
 } from '@/lib/live-chat-sound'
+import {
+  formatChatTimestamp,
+  formatLiveChatTranscriptText,
+  type VisitorMetadata,
+} from '@/lib/visitor-telemetry'
 import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
+import { useNotify } from '@/components/shared/notify'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  LiveChatInspector,
+  type InspectorContextData,
+} from '@/components/staff/live-chat-inspector'
 
 const fetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((r) => {
@@ -62,12 +73,16 @@ const fetcher = (url: string) =>
     return r.json()
   })
 
-// --- Shared types ---------------------------------------------------------
+// --- Types ----------------------------------------------------------------
 
 interface QueueItem {
   id: string
   support_code?: string | null
   user_id: string | null
+  is_guest?: boolean
+  visitor_location?: string | null
+  visitor_browser?: string | null
+  visitor_device?: string | null
   assigned_staff_id?: string | null
   assigned_staff_name?: string | null
   assigned_staff_avatar_url?: string | null
@@ -99,6 +114,7 @@ interface FullSession {
   support_code?: string | null
   assigned_staff_id?: string | null
   isAssignedToMe?: boolean
+  isGuest?: boolean
   status: 'waiting' | 'active' | 'closed' | 'abandoned'
   initial_topic: string | null
   escalated_at: string
@@ -107,6 +123,7 @@ interface FullSession {
   service_rating: number | null
   staff_rating: number | null
   rating_comment: string | null
+  visitor?: Partial<VisitorMetadata> | null
   user: {
     firstName: string
     lastName: string
@@ -128,12 +145,74 @@ interface StaffProfile {
   status?: string
 }
 
-// --- Page -----------------------------------------------------------------
+type InboxTab = 'all' | 'waiting' | 'mine' | 'team'
+
+const QUICK_REPLIES = [
+  {
+    label: 'Warm greeting',
+    build: (repName: string) =>
+      `Hello! My name is ${repName || 'Customer Care'}, and I will be happy to assist you today.`,
+  },
+  {
+    label: 'Checking booking',
+    build: () =>
+      'Thank you for sharing those details. Please give me a moment while I check your booking.',
+  },
+  {
+    label: 'Payment check',
+    build: () =>
+      'I am reviewing your payment record right now and will update you shortly.',
+  },
+  {
+    label: 'Anything else?',
+    build: () =>
+      'Is there anything else I can help you with today before we wrap up?',
+  },
+] as const
+
+const AVATAR_SLUGS = [
+  'f1',
+  'f2',
+  'f3',
+  'f4',
+  'f5',
+  'f6',
+  'f7',
+  'f8',
+  'f9',
+  'f10',
+  'f11',
+] as const
+
+function formatRelativeWait(iso: string | null | undefined): string {
+  if (!iso) return ''
+  try {
+    const ms = Date.now() - new Date(iso).getTime()
+    const min = Math.max(0, Math.floor(ms / 60000))
+    if (min < 1) return 'now'
+    if (min < 60) return `${min}m`
+    const h = Math.floor(min / 60)
+    if (h < 24) return `${h}h`
+    return `${Math.floor(h / 24)}d`
+  } catch {
+    return ''
+  }
+}
+
+function isJoinMilestone(body: string): boolean {
+  return /\b(joined the chat|took over the chat)\b/i.test(body)
+}
+
+// --- Main Page ------------------------------------------------------------
 
 export default function StaffLiveChatPage() {
+  const notify = useNotify()
   const [selected, setSelected] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showProfileSheet, setShowProfileSheet] = useState(false)
+  const [inboxTab, setInboxTab] = useState<InboxTab>('all')
+  const [showProfileDialog, setShowProfileDialog] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(true)
+  const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false)
 
   const trimmedQuery = searchQuery.trim()
   const queueUrl =
@@ -175,10 +254,13 @@ export default function StaffLiveChatPage() {
     if (next) {
       unlockLiveChatAudio()
       window.setTimeout(() => playLiveChatChime('reply'), 30)
+      notify.info('Sound enabled', 'You will hear alerts for new chats and replies.')
+    } else {
+      notify.info('Sound muted', 'Notification chimes are muted.')
     }
-  }, [soundEnabled])
+  }, [soundEnabled, notify])
 
-  // Play a gentle queue chime when a brand-new customer enters the waiting line.
+  // Gentle chime when a new customer joins the waiting queue
   useEffect(() => {
     const waiting = queueQuery.data?.waiting
     if (!waiting) return
@@ -199,445 +281,452 @@ export default function StaffLiveChatPage() {
     }
   }, [queueQuery.data?.waiting])
 
-  // Auto-select first active or waiting session on desktop only so mobile/tablet
-  // users land on the queue list first and tap into a conversation intentionally.
+  // Auto-select first open session on desktop only
   useEffect(() => {
     if (selected) return
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return
     const data = queueQuery.data
     if (!data) return
-    const candidate = data.mine[0] || data.waiting[0] || data.others?.[0]
+    const candidate = data.waiting[0] || data.mine[0] || data.others?.[0]
     if (candidate) setSelected(candidate.id)
   }, [selected, queueQuery.data])
 
-  return (
-    <div className="space-y-4 lg:space-y-6">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Live Chat</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Customers connect from Derma AI when they need a real person.
-            Pick up a chat, or look up any Support ID to review history and take over.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={soundEnabled ? 'Mute notification sounds' : 'Unmute notification sounds'}
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-[12px] font-semibold transition-colors',
-              soundEnabled
-                ? 'border-[#7B2D8E]/25 bg-[#FAF6FB] text-[#5A1D6A] hover:border-[#7B2D8E]/45'
-                : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300',
-            )}
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-3.5 h-3.5 text-[#7B2D8E]" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-gray-400" />
-            )}
-            <span className="hidden sm:inline">{soundEnabled ? 'Sound on' : 'Muted'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              unlockLiveChatAudio()
-              setShowProfileSheet(true)
-            }}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 text-[12px] font-semibold text-gray-700 hover:text-[#7B2D8E] shrink-0"
-          >
-            {profileQuery.data?.profile ? (
-              <RepAvatar
-                src={profileQuery.data.profile.avatarUrl}
-                name={profileQuery.data.profile.displayName}
-                size={22}
-              />
-            ) : (
-              <Settings className="w-4 h-4" />
-            )}
-            <span className="truncate max-w-[160px]">
-              {profileQuery.data?.profile?.displayName || 'Set your avatar'}
-            </span>
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[340px,1fr] gap-4 items-start">
-        <div className={cn(selected ? 'hidden lg:block' : 'block')}>
-          <QueueColumn
-            loading={queueQuery.isLoading}
-            waiting={queueQuery.data?.waiting || []}
-            mine={queueQuery.data?.mine || []}
-            others={queueQuery.data?.others || []}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            searchResults={queueQuery.data?.searchResults || []}
-            selected={selected}
-            onSelect={(id) => {
-              unlockLiveChatAudio()
-              setSelected(id)
-            }}
-          />
-        </div>
-
-        <div className={cn(selected ? 'block' : 'hidden lg:block')}>
-          <ConversationColumn
-            sessionId={selected}
-            currentUserId={queueQuery.data?.currentUserId || null}
-            onBack={() => setSelected(null)}
-            onAccepted={() => queueQuery.mutate()}
-            onClosed={() => {
-              queueQuery.mutate()
-              setSelected(null)
-            }}
-            myDisplayName={profileQuery.data?.profile.displayName || ''}
-          />
-        </div>
-      </div>
-
-      {showProfileSheet && (
-        <ProfileSheet
-          profile={profileQuery.data?.profile || null}
-          onClose={() => setShowProfileSheet(false)}
-          onSaved={() => {
-            profileQuery.mutate()
-            globalMutate('/api/staff/live-chat/queue')
-          }}
-        />
-      )}
-    </div>
+  const waiting = useMemo(() => queueQuery.data?.waiting || [], [queueQuery.data?.waiting])
+  const mine = useMemo(() => queueQuery.data?.mine || [], [queueQuery.data?.mine])
+  const others = useMemo(() => queueQuery.data?.others || [], [queueQuery.data?.others])
+  const searchResults = useMemo(
+    () => queueQuery.data?.searchResults || [],
+    [queueQuery.data?.searchResults],
   )
-}
+  const totalOpen = waiting.length + mine.length + others.length
 
-// ---------------------------------------------------------------------------
-// QueueColumn — Support ID search + Waiting + Your active chats + Team active
-// ---------------------------------------------------------------------------
-
-function QueueColumn({
-  loading,
-  waiting,
-  mine,
-  others,
-  searchQuery,
-  onSearchChange,
-  searchResults,
-  selected,
-  onSelect,
-}: {
-  loading: boolean
-  waiting: QueueItem[]
-  mine: QueueItem[]
-  others: QueueItem[]
-  searchQuery: string
-  onSearchChange: (v: string) => void
-  searchResults: QueueItem[]
-  selected: string | null
-  onSelect: (id: string) => void
-}) {
-  const isSearching = searchQuery.trim().length >= 2
+  const visibleRows = useMemo(() => {
+    if (trimmedQuery.length >= 2) return searchResults
+    if (inboxTab === 'waiting') return waiting
+    if (inboxTab === 'mine') return mine
+    if (inboxTab === 'team') return others
+    return [...waiting, ...mine, ...others]
+  }, [trimmedQuery, searchResults, inboxTab, waiting, mine, others])
 
   return (
-    <aside className="bg-white rounded-2xl border border-gray-200 p-2 lg:max-h-[calc(100dvh-190px)] lg:overflow-y-auto">
-      <div className="px-1.5 pt-1 pb-2 border-b border-gray-100">
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Lookup Support ID (DS-LC-…) or client"
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 pl-8 pr-7 py-2 text-base sm:text-[12px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none"
-          />
-          {searchQuery && (
+    <div className="flex-1 min-h-0 flex overflow-hidden bg-white">
+      {/* =================================================================
+          PANE 1 — LEFT INBOX RAIL
+      ================================================================= */}
+      <aside
+        className={cn(
+          'w-full lg:w-[320px] xl:w-[344px] shrink-0 flex flex-col border-r border-gray-200 bg-white min-h-0',
+          selected ? 'hidden lg:flex' : 'flex',
+        )}
+      >
+        {/* Rail Header */}
+        <div className="h-[68px] shrink-0 px-4 border-b border-gray-200 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-[16px] font-semibold text-gray-900 tracking-tight truncate">
+                Live Chat
+              </h1>
+              <span className="text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+                {totalOpen} open
+              </span>
+            </div>
+            <p className="text-[11px] text-gray-500 truncate mt-0.5">
+              {waiting.length > 0
+                ? `${waiting.length} waiting in queue`
+                : 'Front-desk support inbox'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
-              onClick={() => onSearchChange('')}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-600"
+              onClick={toggleSound}
+              aria-label={soundEnabled ? 'Mute notification sounds' : 'Unmute notification sounds'}
+              title={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
+              className={cn(
+                'w-9 h-9 rounded-full border flex items-center justify-center transition-colors cursor-pointer',
+                soundEnabled
+                  ? 'border-[#7B2D8E]/25 bg-[#FAF6FB] text-[#7B2D8E] hover:border-[#7B2D8E]/50'
+                  : 'border-gray-200 bg-white text-gray-400 hover:text-gray-700',
+              )}
             >
-              <X className="w-3 h-3" />
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                unlockLiveChatAudio()
+                setShowProfileDialog(true)
+              }}
+              aria-label="Edit your front-desk identity"
+              title={profileQuery.data?.profile?.displayName || 'Edit identity'}
+              className="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] transition-colors cursor-pointer"
+            >
+              {profileQuery.data?.profile ? (
+                <RepAvatar
+                  src={profileQuery.data.profile.avatarUrl}
+                  name={profileQuery.data.profile.displayName}
+                  size={26}
+                />
+              ) : (
+                <span className="w-6 h-6 rounded-full bg-[#FAF6FB] text-[#7B2D8E] flex items-center justify-center">
+                  <Settings className="w-3.5 h-3.5" />
+                </span>
+              )}
+              <span className="text-[11.5px] font-medium text-gray-700 max-w-[78px] truncate">
+                {profileQuery.data?.profile?.displayName || 'Identity'}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Search + Segmented Filter Tabs */}
+        <div className="px-3.5 pt-3 pb-2.5 border-b border-gray-100 space-y-2.5 shrink-0">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search Support ID, client, or topic…"
+              className="w-full rounded-xl border border-gray-200 bg-[#FBF9FC] pl-8 pr-8 py-2 text-base sm:text-[12.5px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-700 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {trimmedQuery.length < 2 && (
+            <div
+              role="tablist"
+              aria-label="Conversation queue filters"
+              className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-[#FAF6FB] border border-gray-200/80"
+            >
+              {(
+                [
+                  { id: 'all', label: 'All', count: totalOpen },
+                  { id: 'waiting', label: 'Queue', count: waiting.length },
+                  { id: 'mine', label: 'Mine', count: mine.length },
+                  { id: 'team', label: 'Team', count: others.length },
+                ] as const
+              ).map((tab) => {
+                const active = inboxTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setInboxTab(tab.id)}
+                    className={cn(
+                      'px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer',
+                      active
+                        ? 'bg-[#7B2D8E] text-white'
+                        : 'text-gray-600 hover:text-[#5A1D6A]',
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={cn(
+                        'text-[10px] tabular-nums',
+                        active ? 'text-white/85' : 'text-gray-400',
+                      )}
+                    >
+                      {tab.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           )}
         </div>
-      </div>
 
-      {isSearching ? (
-        <Section title="Support ID & search results" count={searchResults.length} accent>
-          {loading && searchResults.length === 0 ? (
-            <SectionEmpty label="Searching conversations…" />
-          ) : searchResults.length === 0 ? (
-            <SectionEmpty label="No live chat matched that Support ID or name." />
+        {/* Conversation List */}
+        <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+          {queueQuery.isLoading && visibleRows.length === 0 ? (
+            <div className="py-12 text-center text-[12px] text-gray-400">
+              <Loader2 className="w-4 h-4 animate-spin text-[#7B2D8E] mx-auto mb-2" />
+              Loading conversations…
+            </div>
+          ) : visibleRows.length === 0 ? (
+            <div className="py-14 px-6 text-center">
+              <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
+                <Headphones className="w-5 h-5" />
+              </div>
+              <p className="text-[13px] font-semibold text-gray-900">
+                {trimmedQuery.length >= 2
+                  ? 'No matching chats'
+                  : inboxTab === 'waiting'
+                    ? 'Queue is clear'
+                    : inboxTab === 'mine'
+                      ? 'No active chats assigned'
+                      : inboxTab === 'team'
+                        ? 'No team chats right now'
+                        : 'No open live chats'}
+              </p>
+              <p className="text-[11.5px] text-gray-500 mt-1 leading-relaxed">
+                {trimmedQuery.length >= 2
+                  ? 'Try another Support ID (DS-LC-…), client name, or email.'
+                  : 'New customer requests from Derma AI appear here automatically.'}
+              </p>
+            </div>
           ) : (
-            searchResults.map((q) => (
-              <QueueRow
-                key={q.id}
-                item={q}
-                selected={selected === q.id}
-                onSelect={() => onSelect(q.id)}
-                showAssignedRep
+            visibleRows.map((item) => (
+              <InboxRow
+                key={item.id}
+                item={item}
+                selected={selected === item.id}
+                onSelect={() => {
+                  unlockLiveChatAudio()
+                  setSelected(item.id)
+                  setMobileInspectorOpen(false)
+                }}
               />
             ))
           )}
-        </Section>
-      ) : (
-        <>
-          <Section title="Waiting" count={waiting.length} accent>
-            {loading && waiting.length === 0 ? (
-              <SectionEmpty label="Loading queue…" />
-            ) : waiting.length === 0 ? (
-              <SectionEmpty label="No customers in line." />
-            ) : (
-              waiting.map((q) => (
-                <QueueRow
-                  key={q.id}
-                  item={q}
-                  selected={selected === q.id}
-                  onSelect={() => onSelect(q.id)}
-                />
-              ))
-            )}
-          </Section>
-          <Section title="Your active chats" count={mine.length}>
-            {mine.length === 0 ? (
-              <SectionEmpty label="No active conversations." />
-            ) : (
-              mine.map((q) => (
-                <QueueRow
-                  key={q.id}
-                  item={q}
-                  selected={selected === q.id}
-                  onSelect={() => onSelect(q.id)}
-                />
-              ))
-            )}
-          </Section>
-          <Section title="Team active (handover)" count={others.length}>
-            {others.length === 0 ? (
-              <SectionEmpty label="No chats with other reps right now." />
-            ) : (
-              others.map((q) => (
-                <QueueRow
-                  key={q.id}
-                  item={q}
-                  selected={selected === q.id}
-                  onSelect={() => onSelect(q.id)}
-                  showAssignedRep
-                />
-              ))
-            )}
-          </Section>
-        </>
-      )}
-    </aside>
-  )
-}
+        </div>
+      </aside>
 
-function Section({
-  title,
-  count,
-  accent,
-  children,
-}: {
-  title: string
-  count: number
-  accent?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div className="px-1.5 pt-3">
-      <div className="flex items-center justify-between mb-2 px-1.5">
-        <p
-          className={cn(
-            'text-[10px] font-semibold tracking-[0.16em] uppercase',
-            accent ? 'text-[#7B2D8E]' : 'text-gray-500',
-          )}
-        >
-          {title}
-        </p>
-        <span
-          className={cn(
-            'text-[10px] font-semibold rounded-full px-2 py-0.5',
-            accent && count > 0
-              ? 'bg-[#7B2D8E] text-white'
-              : 'bg-gray-100 text-gray-500',
-          )}
-        >
-          {count}
-        </span>
+      {/* =================================================================
+          PANE 2 + PANE 3 — CONVERSATION STAGE & VISITOR INSPECTOR
+      ================================================================= */}
+      <div
+        className={cn(
+          'flex-1 min-w-0 flex overflow-hidden bg-[#FBF9FC]',
+          selected ? 'flex' : 'hidden lg:flex',
+        )}
+      >
+        <ConversationStage
+          sessionId={selected}
+          currentUserId={queueQuery.data?.currentUserId || null}
+          myDisplayName={profileQuery.data?.profile?.displayName || ''}
+          inspectorOpen={inspectorOpen}
+          mobileInspectorOpen={mobileInspectorOpen}
+          onToggleInspector={() => {
+            if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+              setMobileInspectorOpen((v) => !v)
+            } else {
+              setInspectorOpen((v) => !v)
+            }
+          }}
+          onCloseMobileInspector={() => setMobileInspectorOpen(false)}
+          onBack={() => {
+            setSelected(null)
+            setMobileInspectorOpen(false)
+          }}
+          onAccepted={() => queueQuery.mutate()}
+          onClosed={() => {
+            queueQuery.mutate()
+            setSelected(null)
+            setMobileInspectorOpen(false)
+          }}
+          waitingCount={waiting.length}
+        />
       </div>
-      <div className="space-y-1">{children}</div>
+
+      {/* Staff Identity Dialog */}
+      <ProfileDialog
+        open={showProfileDialog}
+        profile={profileQuery.data?.profile || null}
+        onOpenChange={setShowProfileDialog}
+        onSaved={() => {
+          profileQuery.mutate()
+          globalMutate('/api/staff/live-chat/queue')
+          notify.success(
+            'Identity updated',
+            'Your display name and avatar are live for new replies.',
+          )
+        }}
+      />
     </div>
   )
 }
 
-function SectionEmpty({ label }: { label: string }) {
-  return (
-    <p className="text-[12px] text-gray-400 px-3 py-4 text-center">{label}</p>
-  )
-}
+// ---------------------------------------------------------------------------
+// InboxRow
+// ---------------------------------------------------------------------------
 
-function QueueRow({
+function InboxRow({
   item,
   selected,
   onSelect,
-  showAssignedRep = false,
 }: {
   item: QueueItem
   selected: boolean
   onSelect: () => void
-  showAssignedRep?: boolean
 }) {
+  const fullName = `${item.user_first_name || 'Guest'} ${item.user_last_name || ''}`.trim()
   const initials = `${item.user_first_name?.[0] || '?'}${item.user_last_name?.[0] || ''}`.toUpperCase()
   const supportCode = resolveSupportId(item.support_code, item.id)
-  const waited = useMemo(() => {
-    try {
-      const ms = Date.now() - new Date(item.escalated_at).getTime()
-      const min = Math.max(0, Math.floor(ms / 60000))
-      if (min < 1) return 'just now'
-      if (min < 60) return `${min}m`
-      const h = Math.floor(min / 60)
-      return `${h}h ${min % 60}m`
-    } catch {
-      return ''
-    }
-  }, [item.escalated_at])
+  const isGuest = Boolean(item.is_guest || !item.user_id)
+  const isWaiting = item.status === 'waiting'
+  const waited = formatRelativeWait(item.last_activity_at || item.escalated_at)
 
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        'w-full text-left flex items-start gap-3 rounded-xl px-2.5 py-2.5 transition-colors group',
+        'w-full text-left px-3.5 py-3 flex items-start gap-3 transition-colors cursor-pointer',
         selected
-          ? 'bg-[#7B2D8E] text-white'
-          : 'hover:bg-gray-50 text-gray-700',
+          ? 'bg-[#FAF6FB]'
+          : 'bg-white hover:bg-[#FBF9FC]',
       )}
     >
-      <div
-        className={cn(
-          'shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold ring-1',
-          selected
-            ? 'bg-white/20 text-white ring-white/30'
-            : 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/10',
-        )}
-      >
+      {/* Avatar + live status indicator */}
+      <div className="relative shrink-0 mt-0.5">
         {item.user_avatar_url ? (
           <Image
             src={item.user_avatar_url}
-            alt=""
-            width={36}
-            height={36}
+            alt={fullName}
+            width={40}
+            height={40}
             referrerPolicy="no-referrer"
-            className="w-9 h-9 rounded-full object-cover"
+            className={cn(
+              'w-10 h-10 rounded-full object-cover border',
+              selected ? 'border-[#7B2D8E]/40' : 'border-gray-200',
+            )}
           />
         ) : (
-          initials
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p
+          <div
             className={cn(
-              'text-[13px] font-semibold truncate',
-              selected ? 'text-white' : 'text-gray-900',
+              'w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-semibold border',
+              selected
+                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
+                : 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/20',
             )}
           >
-            {item.user_first_name} {item.user_last_name}
-          </p>
-          {item.unread_user_messages > 0 && (
-            <span
+            {initials}
+          </div>
+        )}
+        <span
+          aria-hidden="true"
+          className={cn(
+            'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
+            isWaiting
+              ? 'bg-[#7B2D8E]'
+              : item.status === 'active'
+                ? 'bg-[#16A34A]'
+                : 'bg-gray-300',
+          )}
+        />
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p
               className={cn(
-                'shrink-0 text-[10px] font-bold rounded-full px-1.5 py-px',
-                selected ? 'bg-white text-[#7B2D8E]' : 'bg-[#7B2D8E] text-white',
+                'text-[13.5px] font-semibold truncate',
+                selected ? 'text-[#5A1D6A]' : 'text-gray-900',
               )}
             >
-              {item.unread_user_messages}
-            </span>
-          )}
-        </div>
-        <p
-          className={cn(
-            'text-[10px] font-mono font-semibold tracking-wide mt-0.5',
-            selected ? 'text-white/90' : 'text-[#7B2D8E]',
-          )}
-        >
-          {supportCode}
-        </p>
-        <p
-          className={cn(
-            'text-[11px] leading-snug line-clamp-1 mt-0.5',
-            selected ? 'text-white/80' : 'text-gray-500',
-          )}
-        >
-          {item.initial_topic || 'No topic provided'}
-        </p>
-        {showAssignedRep && item.assigned_staff_name ? (
-          <div className="flex items-center gap-1.5 mt-1">
-            <RepAvatar
-              src={item.assigned_staff_avatar_url}
-              name={item.assigned_staff_name}
-              size={16}
-            />
-            <span
-              className={cn(
-                'text-[10px] truncate',
-                selected ? 'text-white/85' : 'text-gray-500',
-              )}
-            >
-              With {item.assigned_staff_name} · {item.status}
+              {fullName}
+            </p>
+            {isGuest && (
+              <span className="text-[10px] font-medium text-[#7B2D8E] shrink-0">
+                · Guest
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {item.unread_user_messages > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold inline-flex items-center justify-center tabular-nums">
+                {item.unread_user_messages}
+              </span>
+            )}
+            <span className="text-[10.5px] text-gray-400 tabular-nums">
+              {waited}
             </span>
           </div>
-        ) : (
-          <p
-            className={cn(
-              'text-[10px] mt-0.5',
-              selected ? 'text-white/70' : 'text-gray-400',
-            )}
-          >
-            {item.status === 'waiting'
-              ? `Waiting ${waited}`
-              : item.status === 'active'
-                ? `Active · ${waited}`
-                : `${item.status} · ${waited}`}
-          </p>
-        )}
+        </div>
+
+        <p className="text-[12px] text-gray-600 line-clamp-1 mt-0.5 leading-snug">
+          {item.initial_topic || 'Customer inquiry'}
+        </p>
+
+        <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-gray-400 truncate">
+          <span className="font-mono font-medium text-[#7B2D8E]">
+            {supportCode}
+          </span>
+          {item.visitor_location && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-0.5 text-gray-500 truncate">
+                <MapPin className="w-2.5 h-2.5 text-[#7B2D8E] shrink-0" />
+                <span className="truncate">{item.visitor_location}</span>
+              </span>
+            </>
+          )}
+          {!item.visitor_location && item.assigned_staff_name && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="truncate text-gray-500">
+                With {item.assigned_staff_name}
+              </span>
+            </>
+          )}
+          {!item.visitor_location && !item.assigned_staff_name && isWaiting && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span className="text-[#7B2D8E] font-medium">Waiting</span>
+            </>
+          )}
+        </div>
       </div>
-      <ChevronRight
-        className={cn(
-          'w-4 h-4 mt-3 shrink-0 transition-opacity',
-          selected ? 'text-white' : 'text-gray-300 group-hover:text-gray-500',
-        )}
-      />
     </button>
   )
 }
 
 // ---------------------------------------------------------------------------
-// ConversationColumn
+// ConversationStage (Center Pane + Docked / Drawer Right Inspector)
 // ---------------------------------------------------------------------------
 
-function ConversationColumn({
+function ConversationStage({
   sessionId,
   currentUserId,
+  myDisplayName,
+  inspectorOpen,
+  mobileInspectorOpen,
+  onToggleInspector,
+  onCloseMobileInspector,
   onBack,
   onAccepted,
   onClosed,
-  myDisplayName,
+  waitingCount,
 }: {
   sessionId: string | null
   currentUserId: string | null
+  myDisplayName: string
+  inspectorOpen: boolean
+  mobileInspectorOpen: boolean
+  onToggleInspector: () => void
+  onCloseMobileInspector: () => void
   onBack: () => void
   onAccepted: () => void
   onClosed: () => void
-  myDisplayName: string
+  waitingCount: number
 }) {
+  const notify = useNotify()
+
   const sessionQuery = useSWR<{ session: FullSession }>(
     sessionId ? `/api/staff/live-chat/sessions/${sessionId}` : null,
     fetcher,
     { refreshInterval: 5000 },
   )
-  const contextQuery = useSWR(
+  const contextQuery = useSWR<InspectorContextData>(
     sessionId ? `/api/staff/live-chat/sessions/${sessionId}/user-context` : null,
     fetcher,
   )
@@ -647,35 +736,13 @@ function ConversationColumn({
   const [accepting, setAccepting] = useState(false)
   const [takingOver, setTakingOver] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [confirmEnd, setConfirmEnd] = useState(false)
+  const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
-  const [showMobileContext, setShowMobileContext] = useState(false)
+  const [showQuickReplies, setShowQuickReplies] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
-  // ---------------------------------------------------------------------
-  // Incremental message polling.
-  //
-  // The previous implementation refetched the entire conversation every
-  // 3000ms via SWR. That burns bandwidth (every message of a hundred-
-  // message session re-streams over the wire each tick), forces React
-  // to reconcile the entire list every cycle, and produced the "messages
-  // don't deliver in real time" feel customers and staff complained
-  // about.
-  //
-  // New flow — same shape as the customer overlay (components/shared/
-  // live-chat-overlay.tsx):
-  //   1. Fetch the full transcript once when sessionId changes.
-  //   2. After that, poll with ?since=<latest message timestamp> every
-  //      1500ms and merge the delta into local state.
-  //   3. Optimistically append staff-authored messages on send so the
-  //      composer feels instant; the next poll dedupes by message id.
-  //
-  // 1500ms feels effectively real-time to a human while keeping the
-  // backend load proportional to *new traffic* rather than session
-  // length. Pause polling when the document isn't visible so a backgrounded
-  // tab doesn't hammer the API.
-  // ---------------------------------------------------------------------
   const [messages, setMessages] = useState<Message[]>([])
   const lastSeenRef = useRef<string | null>(null)
   const seenMsgIdsRef = useRef<Set<string>>(new Set())
@@ -683,7 +750,7 @@ function ConversationColumn({
   const refetchAll = useCallback(async (id: string) => {
     const res = await fetch(
       `/api/staff/live-chat/sessions/${id}/messages`,
-      { credentials: 'include' },
+      { credentials: 'include', cache: 'no-store' },
     )
     if (!res.ok) return
     const json = (await res.json()) as { messages: Message[] }
@@ -693,19 +760,19 @@ function ConversationColumn({
     lastSeenRef.current = last?.created_at || null
   }, [])
 
-  // Reset state when switching session.
+  // Reset state on session switch
   useEffect(() => {
     setDraft('')
     setError(null)
-    setConfirmEnd(false)
-    setShowMobileContext(false)
+    setEndDialogOpen(false)
+    setShowQuickReplies(false)
     setMessages([])
     seenMsgIdsRef.current = new Set()
     lastSeenRef.current = null
-    if (sessionId) refetchAll(sessionId)
+    if (sessionId) void refetchAll(sessionId)
   }, [sessionId, refetchAll])
 
-  // Incremental tick.
+  // Incremental message polling (1.5s)
   useEffect(() => {
     if (!sessionId) return
     let cancelled = false
@@ -718,7 +785,7 @@ function ConversationColumn({
           : ''
         const res = await fetch(
           `/api/staff/live-chat/sessions/${sessionId}/messages${since}`,
-          { credentials: 'include' },
+          { credentials: 'include', cache: 'no-store' },
         )
         if (!res.ok || cancelled) return
         const json = (await res.json()) as { messages: Message[] }
@@ -728,9 +795,7 @@ function ConversationColumn({
         for (const m of json.messages) {
           if (!seenMsgIdsRef.current.has(m.id)) {
             seenMsgIdsRef.current.add(m.id)
-            if (m.sender_role === 'user') {
-              hasNewUserMessage = true
-            }
+            if (m.sender_role === 'user') hasNewUserMessage = true
           }
         }
         if (hasNewUserMessage) {
@@ -738,8 +803,6 @@ function ConversationColumn({
         }
 
         setMessages((prev) => {
-          // Dedupe by id — same message id can come back if we already
-          // appended it optimistically on send.
           const seen = new Set(prev.map((m) => m.id))
           const merged = [...prev]
           for (const m of json.messages) {
@@ -750,7 +813,7 @@ function ConversationColumn({
         const last = json.messages[json.messages.length - 1]
         if (last) lastSeenRef.current = last.created_at
       } catch {
-        // Network blip — next tick retries.
+        // Retry next cycle
       }
     }
 
@@ -761,7 +824,7 @@ function ConversationColumn({
     }
   }, [sessionId])
 
-  // Auto-scroll on new messages.
+  // Smooth auto-scroll when new messages arrive
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
@@ -783,16 +846,20 @@ function ConversationColumn({
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        setError(json.error || 'Could not accept this chat.')
+        const msg = json.error || 'Could not accept this chat.'
+        setError(msg)
+        notify.error('Could not accept chat', msg)
         return
       }
       await sessionQuery.mutate()
       await refetchAll(sessionId)
       onAccepted()
+      notify.success('Chat accepted', 'You are now connected with the visitor.')
+      window.setTimeout(() => composerRef.current?.focus(), 60)
     } finally {
       setAccepting(false)
     }
-  }, [sessionId, sessionQuery, refetchAll, onAccepted])
+  }, [sessionId, sessionQuery, refetchAll, onAccepted, notify])
 
   const takeover = useCallback(async () => {
     if (!sessionId) return
@@ -807,37 +874,50 @@ function ConversationColumn({
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        setError(json.error || 'Could not take over this chat.')
+        const msg = json.error || 'Could not take over this chat.'
+        setError(msg)
+        notify.error('Takeover failed', msg)
         return
       }
       await sessionQuery.mutate()
       await refetchAll(sessionId)
       onAccepted()
+      notify.success('Chat assigned to you', 'Customer has been notified smoothly.')
+      window.setTimeout(() => composerRef.current?.focus(), 60)
     } finally {
       setTakingOver(false)
     }
-  }, [sessionId, sessionQuery, refetchAll, onAccepted])
+  }, [sessionId, sessionQuery, refetchAll, onAccepted, notify])
 
   const closeChat = useCallback(async () => {
     if (!sessionId) return
     setClosing(true)
-    setConfirmEnd(false)
+    setError(null)
     try {
-      await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
+      const res = await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ action: 'close' }),
       })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        const msg = json.error || 'Could not end this chat.'
+        setError(msg)
+        notify.error('Could not end chat', msg)
+        return
+      }
+      setEndDialogOpen(false)
+      notify.info('Live chat ended', 'The session has been closed and transcript dispatched.')
       onClosed()
     } finally {
       setClosing(false)
     }
-  }, [sessionId, onClosed])
+  }, [sessionId, onClosed, notify])
 
   const send = useCallback(async () => {
     const body = draft.trim()
-    if (!body || !sessionId) return
+    if (!body || !sessionId || sending) return
     setSending(true)
     setError(null)
     try {
@@ -852,44 +932,45 @@ function ConversationColumn({
       )
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
-        setError(json.error || 'Could not send.')
+        setError(json.error || 'Could not send message.')
         return
       }
       setDraft('')
-      // Optimistically append the staff message so the bubble appears
-      // the moment the server returns 200, instead of waiting up to
-      // 1.5s for the next poll. The dedupe-by-id in the polling tick
-      // handles the case where the same message comes back from the
-      // server on the next refresh.
-      const json = (await res.json().catch(() => null)) as
-        | { message: Message }
-        | null
+      setShowQuickReplies(false)
+      const json = (await res.json().catch(() => null)) as {
+        message: Message
+      } | null
       if (json?.message) {
+        seenMsgIdsRef.current.add(json.message.id)
         setMessages((prev) =>
-          prev.some((m) => m.id === json.message.id) ? prev : [...prev, json.message],
+          prev.some((m) => m.id === json.message.id)
+            ? prev
+            : [...prev, json.message],
         )
         lastSeenRef.current = json.message.created_at
       }
     } catch {
-      setError('Network error.')
+      setError('Network error while sending.')
     } finally {
       setSending(false)
     }
-  }, [draft, sessionId])
+  }, [draft, sessionId, sending])
 
+  // Empty state (no conversation selected)
   if (!sessionId) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 min-h-[420px] flex items-center justify-center">
-        <div className="text-center px-6">
-          <div className="w-14 h-14 mx-auto rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-            <Headphones className="w-6 h-6 text-[#7B2D8E]" />
+      <div className="flex-1 flex items-center justify-center p-8 bg-[#FBF9FC]">
+        <div className="text-center max-w-sm">
+          <div className="w-14 h-14 mx-auto rounded-full bg-white border border-gray-200 text-[#7B2D8E] flex items-center justify-center mb-4">
+            <Headphones className="w-6 h-6" />
           </div>
-          <p className="text-[14px] font-semibold text-gray-900">
-            No conversation selected
-          </p>
-          <p className="text-[12px] text-gray-500 mt-1 max-w-[280px] mx-auto">
-            Pick a customer from the queue to view the conversation. New
-            arrivals show up automatically every few seconds.
+          <h2 className="text-[16px] font-semibold text-gray-900">
+            Select a conversation
+          </h2>
+          <p className="text-[13px] text-gray-500 mt-1.5 leading-relaxed">
+            {waitingCount > 0
+              ? `${waitingCount} customer${waitingCount === 1 ? ' is' : 's are'} waiting in the queue. Pick a chat on the left to connect right away.`
+              : 'Choose any conversation from the inbox on the left to reply, inspect visitor details, or take over from a teammate.'}
           </p>
         </div>
       </div>
@@ -898,22 +979,31 @@ function ConversationColumn({
 
   if (sessionQuery.error) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 min-h-[420px] flex items-center justify-center">
-        <div className="text-center px-6 space-y-2">
-          <AlertCircle className="w-6 h-6 text-[#7B2D8E] mx-auto" />
-          <p className="text-[14px] font-semibold text-gray-900">
+      <div className="flex-1 flex items-center justify-center p-8 bg-[#FBF9FC]">
+        <div className="text-center max-w-xs space-y-2.5">
+          <AlertCircle className="w-7 h-7 text-[#7B2D8E] mx-auto" />
+          <p className="text-[15px] font-semibold text-gray-900">
             Could not load conversation
           </p>
-          <p className="text-[12px] text-gray-500 max-w-xs mx-auto">
-            This session may have been closed or you may not have permission to view it.
+          <p className="text-[12.5px] text-gray-500">
+            This session may have been removed or closed.
           </p>
-          <button
-            type="button"
-            onClick={() => sessionQuery.mutate()}
-            className="mt-2 inline-flex items-center rounded-full bg-[#7B2D8E] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#5A1D6A]"
-          >
-            Retry
-          </button>
+          <div className="pt-1 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="lg:hidden rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-semibold text-gray-700 cursor-pointer"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => sessionQuery.mutate()}
+              className="rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-4 py-1.5 text-xs font-semibold text-white transition-colors cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -921,8 +1011,11 @@ function ConversationColumn({
 
   if (sessionQuery.isLoading || !session) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 min-h-[420px] flex items-center justify-center">
-        <Loader2 className="w-5 h-5 text-[#7B2D8E] animate-spin" />
+      <div className="flex-1 flex items-center justify-center bg-[#FBF9FC]">
+        <div className="flex items-center gap-2 text-[13px] text-gray-500">
+          <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
+          Loading conversation…
+        </div>
       </div>
     )
   }
@@ -937,6 +1030,12 @@ function ConversationColumn({
     session.supportCode || session.support_code,
     session.id,
   )
+  const customerFullName =
+    `${session.user.firstName || 'Guest'} ${session.user.lastName || ''}`.trim()
+  const visitor = contextQuery.data?.visitor || session.visitor || null
+  const envSubtitle = [visitor?.location, visitor?.browser, visitor?.device]
+    .filter(Boolean)
+    .join(' · ')
 
   const copySupportCode = () => {
     if (typeof navigator === 'undefined' || !navigator.clipboard) return
@@ -944,312 +1043,529 @@ function ConversationColumn({
       .writeText(supportCode)
       .then(() => {
         setCopiedId(true)
+        notify.info('Support ID copied', supportCode)
         window.setTimeout(() => setCopiedId(false), 1800)
       })
       .catch(() => {})
   }
 
+  const downloadTranscript = () => {
+    const text = formatLiveChatTranscriptText({
+      supportCode,
+      customerName: customerFullName,
+      customerEmail: session.user.email,
+      topic: session.initial_topic,
+      status: session.status,
+      visitor,
+      messages,
+    })
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `dermaspace-chat-${supportCode.toLowerCase()}.txt`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    notify.success('Transcript downloaded', `${supportCode} saved as .txt.`)
+  }
+
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[1fr,300px] gap-4 items-start">
-      <div className="bg-white rounded-2xl border border-gray-200 flex flex-col h-[calc(100dvh-165px)] lg:h-[calc(100dvh-190px)] min-h-[440px] overflow-hidden">
-        {/* Header */}
-        <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-gray-100 shrink-0">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back to queue"
-            className="lg:hidden w-8 h-8 rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] text-gray-600 flex items-center justify-center shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <UserAvatar
-            firstName={session.user.firstName}
-            lastName={session.user.lastName}
-            url={session.user.avatarUrl}
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[13.5px] sm:text-[14px] font-semibold text-gray-900 truncate">
-                {session.user.firstName} {session.user.lastName}
-              </p>
-              <button
-                type="button"
-                onClick={copySupportCode}
-                title="Copy Support ID"
-                className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2 py-0.5 text-[10px] font-mono font-semibold text-[#5A1D6A] transition-colors"
-              >
-                <Ticket className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                {supportCode}
-                {copiedId ? (
-                  <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                ) : (
-                  <Copy className="w-2.5 h-2.5 text-[#7B2D8E]/70" />
+    <>
+      {/* Center Conversation Column */}
+      <section className="flex-1 min-w-0 flex flex-col h-full bg-[#FBF9FC] overflow-hidden">
+        {/* Crisp White Top Header (matching reference clarity) */}
+        <header className="h-[68px] shrink-0 bg-white border-b border-gray-200 px-3.5 sm:px-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to inbox"
+              className="lg:hidden w-9 h-9 rounded-full border border-gray-200 text-gray-600 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 flex items-center justify-center shrink-0 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+
+            <UserAvatar
+              firstName={session.user.firstName}
+              lastName={session.user.lastName}
+              url={session.user.avatarUrl}
+              status={session.status}
+            />
+
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h2 className="text-[15px] font-semibold text-gray-900 truncate">
+                  {customerFullName}
+                </h2>
+                {session.isGuest && (
+                  <span className="text-[11px] font-medium text-[#7B2D8E] shrink-0">
+                    Anonymous
+                  </span>
                 )}
-              </button>
-            </div>
-            <p className="text-[11px] text-gray-500 truncate mt-0.5">
-              {session.user.email}
-              {session.user.phone ? ` · ${session.user.phone}` : ''}
-            </p>
-          </div>
+              </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="hidden sm:block">
-              <StatusPill status={session.status} />
-            </div>
-
-            {!isWaiting && !isClosed && !isAssignedToOther && (
-              confirmEnd ? (
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={closeChat}
-                    disabled={closing}
-                    className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]"
-                  >
-                    {closing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Confirm'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmEnd(false)}
-                    disabled={closing}
-                    className="inline-flex items-center px-2 py-1.5 rounded-full text-[11px] font-medium text-gray-600 border border-gray-200 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
+              <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5 truncate">
+                <span
+                  className={cn(
+                    'font-medium shrink-0',
+                    session.status === 'active'
+                      ? 'text-[#16A34A]'
+                      : isWaiting
+                        ? 'text-[#7B2D8E]'
+                        : 'text-gray-500',
+                  )}
+                >
+                  {session.status === 'active'
+                    ? 'Active'
+                    : isWaiting
+                      ? 'Waiting in queue'
+                      : 'Ended'}
+                </span>
+                <span className="text-gray-300" aria-hidden="true">
+                  ·
+                </span>
                 <button
                   type="button"
-                  onClick={() => setConfirmEnd(true)}
-                  disabled={closing}
-                  className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-gray-600 hover:text-[#3E104B] border border-gray-200 hover:border-[#3E104B]/30 hover:bg-[#FAF6FB] transition-colors"
+                  onClick={copySupportCode}
+                  title="Copy Support ID"
+                  className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-[#5A1D6A] hover:text-[#7B2D8E] cursor-pointer shrink-0"
                 >
-                  End
+                  <span>{supportCode}</span>
+                  {copiedId && <Check className="w-3 h-3 text-[#7B2D8E]" />}
                 </button>
-              )
+                {envSubtitle && (
+                  <>
+                    <span className="hidden md:inline text-gray-300" aria-hidden="true">
+                      ·
+                    </span>
+                    <span className="hidden md:inline-flex items-center gap-1 text-gray-500 truncate">
+                      <Globe className="w-3 h-3 text-gray-400 shrink-0" />
+                      <span className="truncate">{envSubtitle}</span>
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Header Controls */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={downloadTranscript}
+              aria-label="Download chat transcript"
+              title="Download transcript"
+              className="w-9 h-9 rounded-full border border-gray-200 bg-white text-gray-600 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+
+            {!isWaiting && !isClosed && !isAssignedToOther && (
+              <button
+                type="button"
+                onClick={() => setEndDialogOpen(true)}
+                disabled={closing}
+                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full border border-gray-200 bg-white text-[12px] font-semibold text-gray-700 hover:text-[#C63D3D] hover:border-[#C63D3D]/35 hover:bg-[#FDF2F2] transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <PhoneOff className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">End chat</span>
+              </button>
             )}
 
             <button
               type="button"
-              onClick={() => setShowMobileContext((v) => !v)}
-              aria-label="Toggle customer info"
-              aria-expanded={showMobileContext}
+              onClick={onToggleInspector}
+              aria-label="Toggle visitor and customer details"
+              title="Toggle visitor & customer details"
               className={cn(
-                'xl:hidden w-8 h-8 rounded-full border flex items-center justify-center transition-colors',
-                showMobileContext
-                  ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-                  : 'border-gray-200 text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]',
+                'w-9 h-9 rounded-full border flex items-center justify-center transition-colors cursor-pointer',
+                inspectorOpen || mobileInspectorOpen
+                  ? 'border-[#7B2D8E]/30 bg-[#FAF6FB] text-[#7B2D8E]'
+                  : 'border-gray-200 bg-white text-gray-600 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40',
               )}
             >
-              <UserRound className="w-4 h-4" />
+              <PanelRight className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        {/* Collapsible customer context for < xl screens */}
-        {showMobileContext && (
-          <div className="xl:hidden border-b border-gray-100 max-h-[45dvh] overflow-y-auto bg-[#FAF6FB]/40 p-3">
-            <CustomerContextPanel
-              data={contextQuery.data}
-              loading={contextQuery.isLoading}
-              embedded
-            />
-          </div>
-        )}
-
-        {/* Current rep banner when viewing another rep's chat */}
+        {/* Handover or Topic Context Bar */}
         {isAssignedToOther && session.staff && (
-          <div className="px-3.5 sm:px-4 py-2 bg-[#FAF6FB] border-b border-[#7B2D8E]/15 flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <RepAvatar
-                src={session.staff.avatarUrl}
-                name={session.staff.displayName}
-                size={22}
-              />
-              <p className="text-[11.5px] text-[#5A1D6A] truncate">
-                Currently handled by <span className="font-semibold">{session.staff.displayName}</span> — reviewing full conversation history.
-              </p>
-            </div>
+          <div className="px-4 sm:px-5 py-2 bg-[#FAF6FB] border-b border-[#7B2D8E]/15 flex items-center gap-2.5 shrink-0">
+            <RepAvatar
+              src={session.staff.avatarUrl}
+              name={session.staff.displayName}
+              size={22}
+            />
+            <p className="text-[12px] text-[#5A1D6A] truncate">
+              Currently handled by{' '}
+              <span className="font-semibold">{session.staff.displayName}</span> —
+              reviewing conversation history.
+            </p>
           </div>
         )}
 
-        {/* Topic banner */}
         {session.initial_topic && (
-          <div className="px-3.5 sm:px-4 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10 text-[12px] text-[#5A1D6A] shrink-0">
-            {session.initial_topic}
+          <div className="px-4 sm:px-5 py-2 bg-white border-b border-gray-100 text-[12px] text-gray-600 flex items-center gap-2 shrink-0">
+            <span className="text-[11px] font-semibold text-[#7B2D8E] shrink-0">
+              Topic:
+            </span>
+            <span className="truncate">{session.initial_topic}</span>
           </div>
         )}
 
-        {/* Messages */}
+        {/* Messages Feed */}
         <div
           ref={scrollerRef}
-          className="flex-1 overflow-y-auto px-3.5 sm:px-4 py-4 space-y-3 bg-[#FAF8FC] min-h-0"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 min-h-0"
         >
-          {messages.map((m) => (
-            <MessageRow
-              key={m.id}
-              message={m}
-              currentUserId={currentUserId}
-              userName={session.user.firstName}
-              userAvatarUrl={session.user.avatarUrl}
-            />
-          ))}
-          {isWaiting && (
-            <div className="flex justify-center pt-2">
-              <div className="inline-flex items-center gap-2 text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 px-3 py-1.5 rounded-full">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Customer is waiting — accept to start chatting.
+          <div className="max-w-3xl mx-auto space-y-1">
+            {messages.map((m, idx) => {
+              const prev = idx > 0 ? messages[idx - 1] : null
+              const next = idx < messages.length - 1 ? messages[idx + 1] : null
+              const sameSenderAsPrev = Boolean(
+                prev &&
+                  prev.sender_role !== 'system' &&
+                  m.sender_role !== 'system' &&
+                  prev.sender_role === m.sender_role &&
+                  (prev.sender_id || null) === (m.sender_id || null) &&
+                  Math.abs(
+                    new Date(m.created_at).getTime() -
+                      new Date(prev.created_at).getTime(),
+                  ) < 180000,
+              )
+              const sameSenderAsNext = Boolean(
+                next &&
+                  next.sender_role !== 'system' &&
+                  m.sender_role !== 'system' &&
+                  next.sender_role === m.sender_role &&
+                  (next.sender_id || null) === (m.sender_id || null) &&
+                  Math.abs(
+                    new Date(next.created_at).getTime() -
+                      new Date(m.created_at).getTime(),
+                  ) < 180000,
+              )
+
+              return (
+                <div
+                  key={m.id}
+                  className={cn(
+                    sameSenderAsPrev ? 'pt-0.5' : idx === 0 ? '' : 'pt-3.5',
+                  )}
+                >
+                  <MessageRow
+                    message={m}
+                    currentUserId={currentUserId}
+                    userName={customerFullName}
+                    userAvatarUrl={session.user.avatarUrl}
+                    staffFallback={session.staff}
+                    isFirstInGroup={!sameSenderAsPrev}
+                    isLastInGroup={!sameSenderAsNext}
+                  />
+                </div>
+              )
+            })}
+
+            {isWaiting && (
+              <div className="flex justify-center pt-5">
+                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-4 py-2 rounded-full">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
+                  Visitor is waiting — accept below to join the chat.
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Action bar */}
-        <div className="border-t border-gray-100 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:pb-2.5 bg-white shrink-0">
-          {error && (
-            <div className="mb-2 px-2.5 py-1.5 rounded-lg bg-[#FAF6FB] border border-[#3E104B]/20 text-[11px] text-[#3E104B] flex items-center gap-2">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {error}
-            </div>
-          )}
-          {isWaiting ? (
+        {/* Composer / Action Bar */}
+        <div className="shrink-0 bg-white border-t border-gray-200 px-3.5 sm:px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
+          <div className="max-w-3xl mx-auto">
+            {error && (
+              <div className="mb-2.5 px-3 py-2 rounded-xl bg-[#FDF2F2] border border-[#C63D3D]/25 text-[12px] text-[#C63D3D] flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {error}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  aria-label="Dismiss error"
+                  className="p-0.5 text-[#C63D3D]/70 hover:text-[#C63D3D] cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {isWaiting ? (
+              <button
+                type="button"
+                onClick={accept}
+                disabled={accepting}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {accepting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Accept &amp; join as {myDisplayName || 'representative'}
+              </button>
+            ) : isAssignedToOther ? (
+              <div className="space-y-2">
+                <p className="text-[11.5px] text-gray-500 text-center">
+                  Taking over reassigns{' '}
+                  <span className="font-mono font-semibold text-[#5A1D6A]">
+                    {supportCode}
+                  </span>{' '}
+                  to you and notifies the visitor smoothly.
+                </p>
+                <button
+                  type="button"
+                  onClick={takeover}
+                  disabled={takingOver}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                >
+                  {takingOver ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <ArrowRightLeft className="w-4 h-4" />
+                  )}
+                  Take over chat as {myDisplayName || 'representative'}
+                </button>
+              </div>
+            ) : isClosed ? (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 py-0.5">
+                <div className="flex items-center gap-2.5 text-[12.5px] text-gray-600">
+                  <span>This conversation has ended.</span>
+                  {session.service_rating != null && (
+                    <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] tabular-nums">
+                      <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
+                      {session.service_rating}/5
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={takeover}
+                  disabled={takingOver}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[#5A1D6A] hover:text-white px-4 py-2 text-[12px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                >
+                  {takingOver ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                  )}
+                  Reopen &amp; take over
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {showQuickReplies && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {QUICK_REPLIES.map((qr) => (
+                      <button
+                        key={qr.label}
+                        type="button"
+                        onClick={() => {
+                          setDraft(qr.build(myDisplayName))
+                          setShowQuickReplies(false)
+                          composerRef.current?.focus()
+                        }}
+                        className="px-3 py-1.5 rounded-full border border-[#7B2D8E]/25 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[11.5px] font-medium text-[#5A1D6A] hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        {qr.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-[#FBF9FC] focus-within:bg-white focus-within:border-[#7B2D8E] px-2.5 py-2 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickReplies((v) => !v)}
+                    aria-label="Toggle quick replies"
+                    title="Quick replies"
+                    className={cn(
+                      'w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer',
+                      showQuickReplies
+                        ? 'bg-[#7B2D8E] text-white'
+                        : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#FAF6FB]',
+                    )}
+                  >
+                    <MessageSquareText className="w-4 h-4" />
+                  </button>
+
+                  <textarea
+                    ref={composerRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        void send()
+                      }
+                    }}
+                    placeholder={`Reply to ${session.user.firstName || 'visitor'}…`}
+                    rows={1}
+                    className="flex-1 min-w-0 resize-none bg-transparent py-1.5 px-1 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none max-h-32 leading-relaxed"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => void send()}
+                    disabled={!draft.trim() || sending}
+                    aria-label="Send message"
+                    className="shrink-0 w-9 h-9 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 transition-colors cursor-pointer"
+                  >
+                    {sending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Docked Right Inspector (xl+) */}
+      {inspectorOpen && (
+        <div className="hidden xl:block w-[328px] 2xl:w-[348px] shrink-0 border-l border-gray-200 h-full overflow-hidden">
+          <LiveChatInspector
+            customerName={customerFullName}
+            customerEmail={session.user.email}
+            customerPhone={session.user.phone}
+            customerAvatarUrl={session.user.avatarUrl}
+            supportCode={supportCode}
+            isGuest={Boolean(session.isGuest)}
+            topic={session.initial_topic}
+            escalatedAt={session.escalated_at}
+            rating={session.service_rating}
+            ratingComment={session.rating_comment}
+            visitorFallback={session.visitor}
+            data={contextQuery.data}
+            loading={contextQuery.isLoading}
+            onDownloadTranscript={downloadTranscript}
+          />
+        </div>
+      )}
+
+      {/* Slide-over Inspector Drawer for < xl viewports */}
+      {mobileInspectorOpen && (
+        <div className="xl:hidden fixed inset-0 z-50 flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={onCloseMobileInspector}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-[360px] h-full bg-white border-l border-gray-200">
+            <LiveChatInspector
+              customerName={customerFullName}
+              customerEmail={session.user.email}
+              customerPhone={session.user.phone}
+              customerAvatarUrl={session.user.avatarUrl}
+              supportCode={supportCode}
+              isGuest={Boolean(session.isGuest)}
+              topic={session.initial_topic}
+              escalatedAt={session.escalated_at}
+              rating={session.service_rating}
+              ratingComment={session.rating_comment}
+              visitorFallback={session.visitor}
+              data={contextQuery.data}
+              loading={contextQuery.isLoading}
+              onDownloadTranscript={downloadTranscript}
+              onClose={onCloseMobileInspector}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Flat End Chat Confirmation Dialog */}
+      <Dialog open={endDialogOpen} onOpenChange={setEndDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
+          <DialogHeader>
+            <DialogTitle className="text-[17px] font-semibold text-gray-900">
+              End this live chat?
+            </DialogTitle>
+            <DialogDescription className="text-[13px] text-gray-500 mt-1.5 leading-relaxed">
+              Ending <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
+              with {customerFullName} will close the live session, prompt the visitor for feedback,
+              and send their chat transcript by email.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <button
               type="button"
-              onClick={accept}
-              disabled={accepting}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] text-white py-2.5 text-[13px] font-semibold hover:bg-[#5A1D6A] disabled:opacity-60"
+              onClick={() => setEndDialogOpen(false)}
+              disabled={closing}
+              className="px-4 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors cursor-pointer"
             >
-              {accepting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Check className="w-4 h-4" />
-              )}
-              Accept &amp; join as {myDisplayName || 'representative'}
+              Keep chatting
             </button>
-          ) : isAssignedToOther ? (
-            <div className="space-y-2">
-              <p className="text-[11px] text-gray-500 text-center">
-                Taking over reassigns <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span> to you and notifies the customer while preserving all previous messages.
-              </p>
-              <button
-                type="button"
-                onClick={takeover}
-                disabled={takingOver}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] text-white py-2.5 text-[13px] font-semibold hover:bg-[#5A1D6A] disabled:opacity-60"
-              >
-                {takingOver ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ArrowRightLeft className="w-4 h-4" />
-                )}
-                Take over chat as {myDisplayName || 'representative'}
-              </button>
-            </div>
-          ) : isClosed ? (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 py-1">
-              <div className="text-[12px] text-gray-500">
-                This chat has ended.
-                {session.staff_rating != null && (
-                  <span className="ml-2 font-medium text-[#5A1D6A]">
-                    Rated {session.staff_rating}/5
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={takeover}
-                disabled={takingOver}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[#5A1D6A] hover:text-white px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors disabled:opacity-60"
-              >
-                {takingOver ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ArrowRightLeft className="w-3.5 h-3.5" />
-                )}
-                Reopen &amp; take over
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-end gap-2">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    send()
-                  }
-                }}
-                placeholder="Reply to the customer…"
-                rows={1}
-                className="flex-1 min-w-0 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-3.5 sm:px-4 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50 max-h-32"
-              />
-              <button
-                type="button"
-                onClick={send}
-                disabled={!draft.trim() || sending}
-                className="shrink-0 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 hover:bg-[#5A1D6A] transition-colors"
-                aria-label="Send"
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Customer context column (xl+ desktop; smaller screens use header toggle) */}
-      <div className="hidden xl:block">
-        <CustomerContextPanel data={contextQuery.data} loading={contextQuery.isLoading} />
-      </div>
-    </div>
+            <button
+              type="button"
+              onClick={() => void closeChat()}
+              disabled={closing}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#C63D3D] hover:bg-[#A83232] text-white text-[13px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+            >
+              {closing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              End chat
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
-function StatusPill({ status }: { status: FullSession['status'] }) {
-  const cfg = getLiveChatStatusMeta(status)
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider rounded-full border px-2.5 py-1 whitespace-nowrap',
-        cfg.badgeClass,
-      )}
-    >
-      <span className={cn('h-1.5 w-1.5 rounded-full', cfg.dotClass)} />
-      {cfg.label}
-    </span>
-  )
-}
+// ---------------------------------------------------------------------------
+// Avatars & Reference-Style Message Rows
+// ---------------------------------------------------------------------------
 
 function UserAvatar({
   firstName,
   lastName,
   url,
+  status,
 }: {
   firstName: string
   lastName: string
   url: string | null
+  status: FullSession['status']
 }) {
-  if (url) {
-    return (
-      <Image
-        src={url}
-        alt={firstName}
-        width={40}
-        height={40}
-        className="w-10 h-10 rounded-full object-cover ring-2 ring-[#7B2D8E]/10"
-      />
-    )
-  }
   const initials = `${firstName?.[0] || '?'}${lastName?.[0] || ''}`.toUpperCase()
   return (
-    <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center text-[12px] font-semibold ring-2 ring-[#7B2D8E]/10">
-      {initials}
+    <div className="relative shrink-0">
+      {url ? (
+        <Image
+          src={url}
+          alt={firstName}
+          width={40}
+          height={40}
+          referrerPolicy="no-referrer"
+          className="w-10 h-10 rounded-full object-cover border border-gray-200"
+        />
+      ) : (
+        <div className="w-10 h-10 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[12px] font-semibold">
+          {initials}
+        </div>
+      )}
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
+          status === 'active'
+            ? 'bg-[#16A34A]'
+            : status === 'waiting'
+              ? 'bg-[#7B2D8E]'
+              : 'bg-gray-300',
+        )}
+      />
     </div>
   )
 }
@@ -1259,396 +1575,172 @@ function MessageRow({
   currentUserId,
   userName,
   userAvatarUrl,
+  staffFallback,
+  isFirstInGroup,
+  isLastInGroup,
 }: {
   message: Message
   currentUserId: string | null
   userName: string
   userAvatarUrl: string | null
+  staffFallback: FullSession['staff']
+  isFirstInGroup: boolean
+  isLastInGroup: boolean
 }) {
-  const time = useMemo(() => {
-    try {
-      return new Date(message.created_at).toLocaleTimeString('en-NG', {
-        hour: 'numeric',
-        minute: '2-digit',
-      })
-    } catch {
-      return ''
-    }
-  }, [message.created_at])
+  const stamp = useMemo(
+    () => formatChatTimestamp(message.created_at),
+    [message.created_at],
+  )
 
+  // System messages — centered avatar milestone for joins, horizontal hairline
+  // divider for leave/ended/general events (matching the reference screenshots).
   if (message.sender_role === 'system') {
-    return (
-      <div className="flex justify-center">
-        <div className="inline-flex items-center gap-1.5 text-[11px] text-[#5A1D6A] bg-white border border-[#7B2D8E]/15 px-3 py-1 rounded-full text-center">
-          {message.body}
+    if (isJoinMilestone(message.body)) {
+      const milestoneName =
+        message.body.replace(/\s+(joined|took over)\b.*$/i, '').trim() ||
+        staffFallback?.displayName ||
+        'Customer Care'
+      return (
+        <div className="py-4 text-center">
+          <div className="flex justify-center mb-2">
+            <RepAvatar
+              src={message.sender_avatar_url || staffFallback?.avatarUrl}
+              name={milestoneName}
+              size={48}
+              className="border-2 border-[#7B2D8E]/20"
+            />
+          </div>
+          <p className="text-[14px] font-semibold text-gray-900">
+            {message.body}
+          </p>
+          {stamp && (
+            <p className="text-[11px] text-gray-400 mt-0.5 tabular-nums">
+              {stamp}
+            </p>
+          )}
         </div>
+      )
+    }
+
+    return (
+      <div className="py-2.5" role="status">
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+          <span className="text-[11.5px] font-medium text-gray-500 text-center">
+            {message.body}
+          </span>
+          <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+        </div>
+        {stamp && (
+          <p className="text-center text-[10.5px] text-gray-400 mt-1 tabular-nums">
+            {stamp}
+          </p>
+        )}
       </div>
     )
   }
 
+  // Customer / Visitor bubble (left)
   if (message.sender_role === 'user') {
     return (
-      <div className="flex items-end gap-2">
-        {userAvatarUrl ? (
-          <Image
-            src={userAvatarUrl}
-            alt={userName}
-            width={28}
-            height={28}
-            referrerPolicy="no-referrer"
-            className="w-7 h-7 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center text-[10px] font-semibold">
-            {(userName?.[0] || '?').toUpperCase()}
-          </div>
-        )}
-        <div className="max-w-[72%]">
-          <div className="bg-white border border-gray-100 px-3.5 py-2 rounded-2xl rounded-bl-sm">
-            <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap leading-relaxed">
+      <div className="flex items-end gap-2.5">
+        <div className="w-7 shrink-0">
+          {isLastInGroup &&
+            (userAvatarUrl ? (
+              <Image
+                src={userAvatarUrl}
+                alt={userName}
+                width={28}
+                height={28}
+                referrerPolicy="no-referrer"
+                className="w-7 h-7 rounded-full object-cover border border-gray-200"
+              />
+            ) : (
+              <div className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[10px] font-semibold">
+                {(userName?.[0] || '?').toUpperCase()}
+              </div>
+            ))}
+        </div>
+
+        <div className="max-w-[76%] sm:max-w-[70%]">
+          <div
+            className={cn(
+              'bg-white border border-gray-200 px-3.5 py-2.5 rounded-2xl',
+              isLastInGroup && 'rounded-bl-md',
+            )}
+          >
+            <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap leading-relaxed break-words">
               {message.body}
             </p>
           </div>
-          <p className="text-[10px] text-gray-400 mt-1 ml-2">{time}</p>
+          {isLastInGroup && stamp && (
+            <p className="text-[10.5px] text-gray-400 mt-1 ml-1 tabular-nums">
+              {stamp}
+            </p>
+          )}
         </div>
       </div>
     )
   }
 
-  // Staff message — show exact sender avatar & name so previous staff replies
-  // remain clearly distinguished from the current representative after takeover.
+  // Staff bubble (right)
   const isFromMe = Boolean(currentUserId && message.sender_id === currentUserId)
   const senderLabel = message.sender_name || (isFromMe ? 'You' : 'Previous rep')
 
   return (
-    <div className="flex items-end justify-end gap-2">
-      <div className="max-w-[72%]">
-        <p className="text-[10px] font-medium text-[#5A1D6A] mr-2 mb-0.5 text-right">
-          {isFromMe ? `${senderLabel} (You)` : senderLabel}
-        </p>
+    <div className="flex items-end justify-end gap-2.5">
+      <div className="max-w-[76%] sm:max-w-[70%] flex flex-col items-end">
+        {isFirstInGroup && (
+          <p className="text-[10.5px] font-medium text-[#5A1D6A] mr-1 mb-1">
+            {isFromMe ? `${senderLabel} (You)` : senderLabel}
+          </p>
+        )}
         <div
           className={cn(
-            'px-3.5 py-2 rounded-2xl rounded-br-sm',
+            'px-3.5 py-2.5 rounded-2xl',
+            isLastInGroup && 'rounded-br-md',
             isFromMe
               ? 'bg-[#7B2D8E] text-white'
-              : 'bg-[#FAF6FB] text-[#3E104B] border border-[#7B2D8E]/25',
+              : 'bg-[#FAF6FB] text-[#5A1D6A] border border-[#7B2D8E]/25',
           )}
         >
-          <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed">
+          <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed break-words">
             {message.body}
           </p>
         </div>
-        <p className="text-[10px] text-gray-400 mt-1 mr-2 text-right">{time}</p>
-      </div>
-      <RepAvatar
-        src={message.sender_avatar_url}
-        name={senderLabel}
-        size={28}
-      />
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// CustomerContextPanel
-// ---------------------------------------------------------------------------
-
-function CustomerContextPanel({
-  data,
-  loading,
-  embedded = false,
-}: {
-  data: unknown
-  loading: boolean
-  embedded?: boolean
-}) {
-  type ContextData = {
-    isGuest?: boolean
-    user: {
-      email: string
-      phone: string | null
-      memberSince: string
-      isActive: boolean
-    }
-    wallet: { formatted: string }
-    transactions: Array<{
-      id: number
-      reference?: string | null
-      type: string
-      amount: number
-      status: string
-      payment_method: string | null
-      description: string | null
-      metadata?: { booking_reference?: string; type?: string } | null
-      created_at: string
-    }>
-    bookings: Array<{
-      id: number
-      booking_reference: string
-      location_name: string
-      appointment_date: string
-      status: string
-      total_price: number
-    }>
-    tickets: Array<{
-      ticket_id: string
-      category: string
-      subject: string
-      status: string
-    }>
-  }
-  const c = data as ContextData | undefined
-
-  return (
-    <aside
-      className={cn(
-        'bg-white rounded-2xl border border-gray-200 p-4 space-y-4',
-        !embedded && 'max-h-[calc(100dvh-190px)] overflow-y-auto',
-      )}
-    >
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E]">
-            Customer snapshot
+        {isLastInGroup && stamp && (
+          <p className="text-[10.5px] text-gray-400 mt-1 mr-1 tabular-nums">
+            {stamp}
           </p>
-          {c?.isGuest && (
-            <span className="text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
-              Guest visitor
-            </span>
-          )}
-        </div>
-        <p className="text-[11px] text-gray-500 mt-1">
-          {c?.isGuest
-            ? 'Anonymous visitor via pre-chat form (no registered account on file).'
-            : "Read-only view. You can't edit account details from here — escalate to admin if a fix is needed."}
-        </p>
+        )}
       </div>
 
-      {loading || !c ? (
-        <div className="py-6 text-center text-[12px] text-gray-400">
-          <Loader2 className="w-4 h-4 mx-auto animate-spin text-[#7B2D8E] mb-2" />
-          Loading account info…
-        </div>
-      ) : (
-        <>
-          <ContextCard icon={<Mail className="w-3.5 h-3.5" />} label="Email" value={c.user.email} />
-          {c.user.phone && (
-            <ContextCard icon={<Phone className="w-3.5 h-3.5" />} label="Phone" value={c.user.phone} />
-          )}
-          {!c.isGuest && (
-            <ContextCard
-              icon={<Wallet className="w-3.5 h-3.5" />}
-              label="Wallet"
-              value={c.wallet.formatted}
-            />
-          )}
-
-          <SubSection title={`Recent transactions (${c.transactions.length})`}>
-            {c.transactions.length === 0 ? (
-              <SubSectionEmpty label="No transactions on file." />
-            ) : (
-              c.transactions.slice(0, 5).map((tx) => {
-                const receiptHref = getReceiptHref({
-                  reference: tx.reference,
-                  bookingReference: tx.metadata?.booking_reference,
-                  metadataType: tx.metadata?.type,
-                })
-                return (
-                  <div
-                    key={tx.id}
-                    className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-medium text-gray-800 truncate">
-                        {tx.description || tx.type}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                        <span>
-                          {tx.payment_method || tx.type} ·{' '}
-                          {new Date(tx.created_at).toLocaleDateString('en-NG', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
-                        {receiptHref && (
-                          <Link
-                            href={receiptHref}
-                            className="inline-flex items-center gap-0.5 font-semibold text-[#7B2D8E] hover:underline"
-                          >
-                            <Receipt className="w-2.5 h-2.5" />
-                            Receipt
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p
-                        className={cn(
-                          'text-[12px] font-semibold tabular-nums',
-                          tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
-                            ? 'text-[#3E104B]'
-                            : 'text-gray-900',
-                        )}
-                      >
-                        ₦{Math.round(Number(tx.amount)).toLocaleString()}
-                      </p>
-                      <p
-                        className={cn(
-                          'text-[9px] uppercase tracking-wider font-semibold',
-                          tx.status === 'success' || tx.status === 'completed'
-                            ? 'text-[#7B2D8E]'
-                            : tx.status === 'failed' || tx.status === 'declined' || tx.status === 'cancelled'
-                              ? 'text-[#3E104B]'
-                              : 'text-gray-500',
-                        )}
-                      >
-                        {tx.status}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </SubSection>
-
-          <SubSection title={`Recent bookings (${c.bookings.length})`}>
-            {c.bookings.length === 0 ? (
-              <SubSectionEmpty label="No bookings on file." />
-            ) : (
-              c.bookings.map((b) => (
-                <div
-                  key={b.id}
-                  className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
-                >
-                  <div className="min-w-0">
-                    <Link
-                      href={`/booking/${encodeURIComponent(b.booking_reference)}`}
-                      className="text-[12px] font-medium text-[#7B2D8E] hover:underline truncate block"
-                    >
-                      {b.booking_reference}
-                    </Link>
-                    <p className="text-[10px] text-gray-400 truncate">
-                      {b.location_name} ·{' '}
-                      {new Date(b.appointment_date).toLocaleDateString('en-NG', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[9px] uppercase tracking-wider font-semibold text-gray-500 block">
-                      {b.status}
-                    </span>
-                    <Link
-                      href={`/booking/${encodeURIComponent(b.booking_reference)}`}
-                      className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
-                    >
-                      Receipt
-                    </Link>
-                  </div>
-                </div>
-              ))
-            )}
-          </SubSection>
-
-          {c.tickets.length > 0 && (
-            <SubSection title="Support tickets">
-              {c.tickets.map((t) => {
-                const sMeta = getTicketStatusMeta(t.status)
-                return (
-                  <div
-                    key={t.ticket_id}
-                    className="text-[11px] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0 py-1.5"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-medium text-gray-800 truncate">
-                        {t.subject}
-                      </p>
-                      <p className="text-[10px] text-gray-400">
-                        {t.category} · {t.ticket_id}
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        'shrink-0 text-[9px] uppercase tracking-wider font-semibold rounded-full border px-2 py-0.5 whitespace-nowrap',
-                        sMeta.badgeClass,
-                      )}
-                    >
-                      {sMeta.label}
-                    </span>
-                  </div>
-                )
-              })}
-            </SubSection>
-          )}
-        </>
-      )}
-    </aside>
-  )
-}
-
-function ContextCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2.5">
-      <div className="w-7 h-7 rounded-full bg-white text-[#7B2D8E] flex items-center justify-center shrink-0">
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
-          {label}
-        </p>
-        <p className="text-[12px] font-semibold text-gray-900 truncate">
-          {value}
-        </p>
+      <div className="w-7 shrink-0">
+        {isLastInGroup && (
+          <RepAvatar
+            src={message.sender_avatar_url}
+            name={senderLabel}
+            size={28}
+          />
+        )}
       </div>
     </div>
   )
 }
 
-function SubSection({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-gray-400 mb-1">
-        {title}
-      </p>
-      <div>{children}</div>
-    </div>
-  )
-}
-
-function SubSectionEmpty({ label }: { label: string }) {
-  return <p className="text-[11px] text-gray-400 py-2">{label}</p>
-}
-
 // ---------------------------------------------------------------------------
-// ProfileSheet — staff member edits her display name and avatar slug.
+// ProfileDialog — flat, zero-shadow front-desk identity editor
 // ---------------------------------------------------------------------------
 
-const AVATAR_SLUGS = [
-  'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11',
-] as const
-
-function ProfileSheet({
+function ProfileDialog({
+  open,
   profile,
-  onClose,
+  onOpenChange,
   onSaved,
 }: {
+  open: boolean
   profile: StaffProfile | null
-  onClose: () => void
+  onOpenChange: (open: boolean) => void
   onSaved: () => void
 }) {
   const [slug, setSlug] = useState<string>(profile?.avatarSlug || 'f1')
@@ -1657,9 +1749,11 @@ function ProfileSheet({
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!open) return
     setSlug(profile?.avatarSlug || 'f1')
     setDisplayName(profile?.displayName || '')
-  }, [profile])
+    setError(null)
+  }, [open, profile])
 
   const save = useCallback(async () => {
     setSaving(true)
@@ -1675,78 +1769,85 @@ function ProfileSheet({
         }),
       })
       if (!res.ok) {
-        setError('Could not save your profile.')
+        const json = await res.json().catch(() => ({}))
+        setError(json.error || 'Could not save your profile.')
         return
       }
       onSaved()
-      onClose()
+      onOpenChange(false)
     } catch {
-      setError('Network error.')
+      setError('Network error while saving profile.')
     } finally {
       setSaving(false)
     }
-  }, [slug, displayName, onSaved, onClose])
+  }, [slug, displayName, onSaved, onOpenChange])
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center pointer-events-none sm:p-4">
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div className="relative w-full sm:max-w-md max-h-[92dvh] overflow-y-auto bg-white rounded-t-3xl sm:rounded-3xl border border-gray-200 pointer-events-auto">
-        <div className="flex items-start justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-2">
-          <div>
-            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
-              Your front-desk identity
-            </p>
-            <p className="text-[16px] font-semibold text-gray-900 mt-1">
-              How customers see you
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
+        <DialogHeader>
+          <DialogTitle className="text-[17px] font-semibold text-gray-900">
+            Front-desk identity
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px] text-gray-500">
+            Choose the display name and avatar customers see in live chat and transcripts.
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="px-5 sm:px-6 pb-5 pt-4 space-y-5">
+        <div className="space-y-4 pt-2">
+          {/* Live Preview */}
+          <div className="flex items-center gap-3 rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 p-3">
+            <Image
+              src={`/avatars/${slug}.jpg`}
+              alt=""
+              width={44}
+              height={44}
+              referrerPolicy="no-referrer"
+              className="w-11 h-11 rounded-full object-cover border border-[#7B2D8E]/20 shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-semibold text-gray-900 truncate">
+                {displayName.trim() || 'Customer Care'}
+              </p>
+              <p className="text-[11px] font-medium text-[#16A34A]">
+                Available
+              </p>
+            </div>
+          </div>
+
           <div>
-            <label className="text-[11px] font-semibold text-gray-700 mb-1.5 block">
+            <label
+              htmlFor="staff-live-display-name"
+              className="text-[12px] font-semibold text-gray-700 mb-1.5 block"
+            >
               Display name
             </label>
             <input
+              id="staff-live-display-name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={60}
               placeholder="e.g. Sarah O."
-              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/25 focus:border-[#7B2D8E]/50"
+              className="w-full rounded-xl border border-gray-200 bg-[#FBF9FC] px-3.5 py-2.5 text-base sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none"
             />
-            <p className="text-[10px] text-gray-400 mt-1">
-              Shown in the chat header and the &quot;Sarah joined the chat&quot; system message.
-            </p>
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-gray-700 mb-1.5 block">
+            <p className="text-[12px] font-semibold text-gray-700 mb-2">
               Avatar
-            </label>
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            </p>
+            <div className="grid grid-cols-6 gap-2">
               {AVATAR_SLUGS.map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setSlug(s)}
                   className={cn(
-                    'relative aspect-square rounded-2xl overflow-hidden ring-2 transition-all',
+                    'relative aspect-square rounded-xl overflow-hidden border-2 transition-colors cursor-pointer',
                     slug === s
-                      ? 'ring-[#7B2D8E] scale-95'
-                      : 'ring-transparent hover:ring-[#7B2D8E]/20',
+                      ? 'border-[#7B2D8E]'
+                      : 'border-transparent hover:border-[#7B2D8E]/35',
                   )}
                 >
                   <Image
@@ -1754,10 +1855,11 @@ function ProfileSheet({
                     alt=""
                     width={64}
                     height={64}
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
                   {slug === s && (
-                    <span className="absolute inset-0 bg-[#7B2D8E]/15 flex items-center justify-center">
+                    <span className="absolute inset-0 bg-[#7B2D8E]/20 flex items-center justify-center">
                       <span className="w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                         <Check className="w-3 h-3 text-white" />
                       </span>
@@ -1766,92 +1868,31 @@ function ProfileSheet({
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-gray-400 mt-1.5">
-              All front-desk avatars are pre-approved. Pick whichever feels closest to you.
-            </p>
           </div>
 
-          {error && <p className="text-[11px] text-[#3E104B]">{error}</p>}
-
-          <div className="flex items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 inline-flex items-center justify-center px-4 py-2.5 rounded-full text-[13px] font-semibold text-gray-500 hover:bg-gray-50 border border-gray-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={save}
-              disabled={saving}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-semibold text-white bg-[#7B2D8E] hover:bg-[#5A1D6A] disabled:opacity-60"
-            >
-              {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              Save profile
-            </button>
-          </div>
+          {error && <p className="text-[12px] text-[#C63D3D]">{error}</p>}
         </div>
 
-        <div className="px-5 sm:px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:pb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <PreviewCard label="Preview" url={`/avatars/${slug}.jpg`} name={displayName || 'Customer Care'} />
-          <CalendarPlaceholder count={0} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function PreviewCard({
-  label,
-  url,
-  name,
-}: {
-  label: string
-  url: string
-  name: string
-}) {
-  return (
-    <div className="rounded-2xl bg-gray-50 p-3">
-      <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-        {label}
-      </p>
-      <div className="flex items-center gap-2">
-        <Image
-          src={url}
-          alt=""
-          width={40}
-          height={40}
-          className="w-10 h-10 rounded-full object-cover ring-2 ring-white"
-        />
-        <div className="min-w-0">
-          <p className="text-[12px] font-semibold text-gray-900 truncate">
-            {name}
-          </p>
-          <p className="text-[10px] text-[#7B2D8E] font-medium">Online</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CalendarPlaceholder({ count }: { count: number }) {
-  return (
-    <div className="rounded-2xl bg-gray-50 p-3">
-      <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-2">
-        Today
-      </p>
-      <div className="flex items-center gap-2">
-        <div className="w-9 h-9 rounded-full bg-white text-[#7B2D8E] flex items-center justify-center">
-          <CalendarDays className="w-4 h-4" />
-        </div>
-        <div>
-          <p className="text-[12px] font-semibold text-gray-900">
-            {count} chats handled
-          </p>
-          <p className="text-[10px] text-gray-400">Updates as you take chats.</p>
-        </div>
-      </div>
-    </div>
+        <DialogFooter className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            disabled={saving}
+            className="px-4 py-2 rounded-full border border-gray-200 bg-white text-[13px] font-semibold text-gray-600 hover:bg-gray-50 cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void save()}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[13px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Save identity
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

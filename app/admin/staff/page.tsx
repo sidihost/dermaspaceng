@@ -83,6 +83,19 @@ type ConfirmModalState =
       member: StaffMember
     }
   | {
+      kind: 'reinstate'
+      member: StaffMember
+    }
+  | {
+      kind: 'service_perm'
+      member: StaffMember
+      next: boolean
+    }
+  | {
+      kind: 'resend_verification'
+      member: StaffMember
+    }
+  | {
       kind: 'remove'
       member: StaffMember
     }
@@ -90,6 +103,10 @@ type ConfirmModalState =
       kind: 'role'
       member: StaffMember
       nextRole: 'admin' | 'staff'
+    }
+  | {
+      kind: 'resend_invite'
+      invitation: StaffInvitation
     }
   | {
       kind: 'revoke'
@@ -298,6 +315,7 @@ export default function StaffPage() {
       notify.error('Network error', 'Could not update Service Editor permission.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
+      setConfirmModal(null)
     }
   }
 
@@ -439,6 +457,7 @@ export default function StaffPage() {
       notify.error('Network error', 'Could not send verification code.')
     } finally {
       setBusyMember((b) => ({ ...b, [member.id]: undefined }))
+      setConfirmModal(null)
     }
   }
 
@@ -530,6 +549,7 @@ export default function StaffPage() {
       notify.error('Network error', 'Could not resend invitation.')
     } finally {
       setBusyInvite((b) => ({ ...b, [invite.id]: undefined }))
+      setConfirmModal(null)
     }
   }
 
@@ -675,10 +695,10 @@ export default function StaffPage() {
       {fetchError && (
         <div
           role="alert"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#3E104B]/30 bg-[#FAF6FB] p-4 text-sm text-[#3E104B]"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-[#C63D3D]/25 bg-[#C63D3D]/5 p-4 text-sm text-[#C63D3D]"
         >
           <div className="flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#5A1D6A]" />
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#C63D3D]" />
             <div>
               <p className="font-semibold">Unable to load staff directory</p>
               <p className="text-xs text-gray-600 mt-0.5">{fetchError}</p>
@@ -702,13 +722,13 @@ export default function StaffPage() {
           className={
             feedback.kind === 'success'
               ? 'flex items-start gap-3 rounded-xl border border-[#7B2D8E]/25 bg-[#7B2D8E]/5 px-4 py-3 text-sm text-[#5A1D6A]'
-              : 'flex items-start gap-3 rounded-xl border border-[#3E104B]/30 bg-[#FAF6FB] px-4 py-3 text-sm text-[#3E104B]'
+              : 'flex items-start gap-3 rounded-xl border border-[#C63D3D]/25 bg-[#C63D3D]/5 px-4 py-3 text-sm text-[#C63D3D]'
           }
         >
           {feedback.kind === 'success' ? (
             <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-[#7B2D8E]" />
           ) : (
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#5A1D6A]" />
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-[#C63D3D]" />
           )}
           <span className="flex-1">{feedback.message}</span>
           <button
@@ -1076,7 +1096,11 @@ export default function StaffPage() {
                                 type="button"
                                 disabled={busy === 'perm'}
                                 onClick={() =>
-                                  void handleToggleServicePerm(member, !member.can_manage_services)
+                                  setConfirmModal({
+                                    kind: 'service_perm',
+                                    member,
+                                    next: !member.can_manage_services,
+                                  })
                                 }
                                 role="switch"
                                 aria-checked={member.can_manage_services}
@@ -1120,7 +1144,9 @@ export default function StaffPage() {
                                 <button
                                   type="button"
                                   disabled={!!busy}
-                                  onClick={() => void handleResendVerification(member)}
+                                  onClick={() =>
+                                    setConfirmModal({ kind: 'resend_verification', member })
+                                  }
                                   className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] disabled:opacity-50 transition-colors cursor-pointer"
                                   title="Email a fresh verification code"
                                 >
@@ -1216,7 +1242,7 @@ export default function StaffPage() {
                                           type="button"
                                           onClick={() => {
                                             setOpenMenuId(null)
-                                            void handleToggleSuspend(member, true)
+                                            setConfirmModal({ kind: 'reinstate', member })
                                           }}
                                           className="w-full px-3 py-2 text-xs font-medium text-[#7B2D8E] hover:bg-[#FAF6FB] flex items-center gap-2 cursor-pointer"
                                         >
@@ -1231,7 +1257,7 @@ export default function StaffPage() {
                                           setOpenMenuId(null)
                                           setConfirmModal({ kind: 'remove', member })
                                         }}
-                                        className="w-full px-3 py-2 text-xs font-medium text-[#3E104B] hover:bg-[#FAF6FB] flex items-center gap-2 cursor-pointer"
+                                        className="w-full px-3 py-2 text-xs font-medium text-[#C63D3D] hover:bg-[#C63D3D]/5 flex items-center gap-2 cursor-pointer"
                                       >
                                         <UserMinus className="w-3.5 h-3.5" />
                                         Remove from team
@@ -1355,7 +1381,11 @@ export default function StaffPage() {
                             type="button"
                             disabled={busy === 'perm'}
                             onClick={() =>
-                              void handleToggleServicePerm(member, !member.can_manage_services)
+                              setConfirmModal({
+                                kind: 'service_perm',
+                                member,
+                                next: !member.can_manage_services,
+                              })
                             }
                             className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-xs font-medium cursor-pointer ${
                               member.can_manage_services
@@ -1371,7 +1401,9 @@ export default function StaffPage() {
                           <button
                             type="button"
                             disabled={!!busy}
-                            onClick={() => void handleResendVerification(member)}
+                            onClick={() =>
+                              setConfirmModal({ kind: 'resend_verification', member })
+                            }
                             className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 cursor-pointer"
                           >
                             <RefreshCw className="w-3.5 h-3.5" />
@@ -1432,7 +1464,7 @@ export default function StaffPage() {
                               <button
                                 type="button"
                                 disabled={!!busy}
-                                onClick={() => void handleToggleSuspend(member, true)}
+                                onClick={() => setConfirmModal({ kind: 'reinstate', member })}
                                 className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-xs font-medium text-[#7B2D8E] cursor-pointer"
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
@@ -1444,7 +1476,7 @@ export default function StaffPage() {
                               type="button"
                               disabled={!!busy}
                               onClick={() => setConfirmModal({ kind: 'remove', member })}
-                              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-[#3E104B] cursor-pointer"
+                              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-[#C63D3D]/25 bg-white text-xs font-medium text-[#C63D3D] cursor-pointer"
                             >
                               <UserMinus className="w-3.5 h-3.5" />
                               Remove
@@ -1605,7 +1637,9 @@ export default function StaffPage() {
                           <button
                             type="button"
                             disabled={!!busy}
-                            onClick={() => void handleResendInvitation(invite)}
+                            onClick={() =>
+                              setConfirmModal({ kind: 'resend_invite', invitation: invite })
+                            }
                             className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-[#7B2D8E]/25 bg-[#7B2D8E]/5 text-xs font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/10 disabled:opacity-50 transition-colors cursor-pointer"
                             title="Rotate link and resend email"
                           >
@@ -1621,7 +1655,7 @@ export default function StaffPage() {
                             type="button"
                             disabled={!!busy}
                             onClick={() => setConfirmModal({ kind: 'revoke', invitation: invite })}
-                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-[#3E104B]/40 hover:text-[#3E104B] disabled:opacity-50 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:border-[#C63D3D]/35 hover:text-[#C63D3D] disabled:opacity-50 transition-colors cursor-pointer"
                             title="Revoke invitation"
                           >
                             {busy === 'revoke' ? (
@@ -1766,12 +1800,154 @@ export default function StaffPage() {
                   type="button"
                   disabled={!!busyMember[confirmModal.member.id]}
                   onClick={() => void handleRemoveMember(confirmModal.member)}
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                  className="h-9 px-4 rounded-lg bg-[#C63D3D] text-white text-xs font-semibold hover:bg-[#A83232] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   {busyMember[confirmModal.member.id] === 'remove' && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   )}
                   Remove from team
+                </button>
+              </DialogFooter>
+            </>
+          )}
+
+          {confirmModal?.kind === 'reinstate' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold text-gray-900">
+                  Reinstate {getMemberDisplayName(confirmModal.member)}?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  Their staff access will be restored immediately and they will receive a confirmation email.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!busyMember[confirmModal.member.id]}
+                  onClick={() => void handleToggleSuspend(confirmModal.member, true)}
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  {busyMember[confirmModal.member.id] === 'reinstate' && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  Reinstate access
+                </button>
+              </DialogFooter>
+            </>
+          )}
+
+          {confirmModal?.kind === 'service_perm' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold text-gray-900">
+                  {confirmModal.next
+                    ? `Grant Service Editor access to ${getMemberDisplayName(confirmModal.member)}?`
+                    : `Revoke Service Editor access from ${getMemberDisplayName(confirmModal.member)}?`}
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  {confirmModal.next
+                    ? 'They will be able to create, update, and manage services and pricing inside their staff workspace.'
+                    : 'They will no longer be able to add or edit service catalog entries.'}
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!busyMember[confirmModal.member.id]}
+                  onClick={() =>
+                    void handleToggleServicePerm(confirmModal.member, confirmModal.next)
+                  }
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  {busyMember[confirmModal.member.id] === 'perm' && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  {confirmModal.next ? 'Grant access' : 'Revoke access'}
+                </button>
+              </DialogFooter>
+            </>
+          )}
+
+          {confirmModal?.kind === 'resend_verification' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold text-gray-900">
+                  Resend verification code to {getMemberDisplayName(confirmModal.member)}?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  A fresh verification code will be sent to{' '}
+                  <span className="font-medium text-gray-900">
+                    {confirmModal.member.email || getMemberDisplayName(confirmModal.member)}
+                  </span>{' '}
+                  so they can finish verifying their staff account.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!busyMember[confirmModal.member.id]}
+                  onClick={() => void handleResendVerification(confirmModal.member)}
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  {busyMember[confirmModal.member.id] === 'resend' && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  Send verification code
+                </button>
+              </DialogFooter>
+            </>
+          )}
+
+          {confirmModal?.kind === 'resend_invite' && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold text-gray-900">
+                  Resend invitation to {confirmModal.invitation.email}?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  This generates a fresh invitation link, invalidates any previous link, and sends a new email.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmModal(null)}
+                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!busyInvite[confirmModal.invitation.id]}
+                  onClick={() => void handleResendInvitation(confirmModal.invitation)}
+                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  {busyInvite[confirmModal.invitation.id] === 'resend' && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  )}
+                  Resend invitation
                 </button>
               </DialogFooter>
             </>
@@ -1800,7 +1976,7 @@ export default function StaffPage() {
                   type="button"
                   disabled={!!busyInvite[confirmModal.invitation.id]}
                   onClick={() => void handleRevokeInvitation(confirmModal.invitation)}
-                  className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                  className="h-9 px-4 rounded-lg bg-[#C63D3D] text-white text-xs font-semibold hover:bg-[#A83232] disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   {busyInvite[confirmModal.invitation.id] === 'revoke' && (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1880,7 +2056,7 @@ export default function StaffPage() {
                   </div>
 
                   {passwordModal.error && (
-                    <div className="flex items-start gap-2 rounded-xl border border-[#3E104B]/30 bg-[#FAF6FB] p-3 text-xs text-[#3E104B]">
+                    <div className="flex items-start gap-2 rounded-xl border border-[#C63D3D]/25 bg-[#C63D3D]/5 p-3 text-xs text-[#C63D3D]">
                       <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                       <span>{passwordModal.error}</span>
                     </div>

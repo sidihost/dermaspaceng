@@ -3,45 +3,48 @@
 /**
  * Admin live-chat oversight.
  *
- * Single page split into three tabs (kept on one route to avoid
- * churning the URL when switching context):
+ * Single page split into three tabs:
+ *   1. Live        — waiting + active sessions in real time
+ *   2. History     — closed sessions (7 / 30 / 90 days) with search & rating
+ *   3. Performance — per-staff response, resolution, and rating scoreboard
  *
- *   1. Live  — every waiting + active session right now, with the
- *              user, the staff member who picked it up (if any),
- *              waiting time, and a peek button that opens a
- *              read-only transcript drawer.
- *   2. History — closed sessions for the chosen window (7 / 30 / 90
- *              days) with rating and durations.
- *   3. Performance — per-staff scoreboard: handled count, avg
- *              response time, avg resolution time, avg rating.
- *
- * The transcript drawer is read-only — admin can observe but never
- * speak as a staff member, matching the "admin oversees, staff
- * communicates" rule the user described. Killing a stuck session is
- * the only mutating action exposed here.
+ * Strictly adheres to Dermaspace's flat design system (#7B2D8E, #5A1D6A,
+ * #FAF6FB, crisp white cards, neutral borders, #C63D3D destructive confirm)
+ * with flat <Dialog> confirmations for ending or deleting chat sessions.
  */
 
 import { useEffect, useRef, useState } from 'react'
 import useSWR, { mutate as swrMutate } from 'swr'
 import {
-  Headphones,
   Activity,
-  History,
-  BarChart3,
-  Clock,
-  Star,
-  X,
   AlertTriangle,
-  Search,
-  Loader2,
   ArrowUpRight,
-  Send,
+  BarChart3,
+  Check,
   CheckCircle2,
+  Clock,
+  Headphones,
+  History,
+  Loader2,
   MapPin,
-  UserCircle,
+  MessageSquare,
+  Pencil,
   Phone,
+  Search,
+  Send,
+  Star,
   Trash2,
+  UserCircle,
+  X,
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
 import { useNotify } from '@/components/shared/notify'
@@ -72,9 +75,16 @@ interface SessionRow {
   guest_email?: string | null
   guest_phone?: string | null
   visitor_location?: string | null
+  visitor_browser?: string | null
+  visitor_os?: string | null
+  visitor_device?: string | null
+  visitor_timezone?: string | null
+  visitor_page_url?: string | null
+  visitor_ip?: string | null
   staff_id: string | null
   staff_first_name: string | null
   staff_last_name: string | null
+  staff_display_name?: string | null
   staff_avatar_url: string | null
   initial_topic: string | null
   rating: number | null
@@ -122,8 +132,40 @@ function formatRelative(iso: string | null): string {
   return `${Math.floor(hr / 24)}d ago`
 }
 
+function formatClockTime(iso: string | null): string {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleTimeString('en-NG', {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+}
+
 function formatDuration(seconds: number | null): string {
   return formatWaitSeconds(seconds)
+}
+
+function fullName(
+  first: string | null,
+  last: string | null,
+  fallback: string,
+): string {
+  const name = [first, last].filter(Boolean).join(' ').trim()
+  return name || fallback
+}
+
+function getSessionCustomerLabel(session: SessionRow): string {
+  const isGuest = session.is_guest || !session.user_id
+  return isGuest
+    ? session.guest_name || 'Guest visitor'
+    : fullName(
+        session.user_first_name,
+        session.user_last_name,
+        session.user_email || 'Customer',
+      )
 }
 
 function StatusBadge({ status }: { status: SessionRow['status'] }) {
@@ -135,51 +177,19 @@ function StatusBadge({ status }: { status: SessionRow['status'] }) {
         meta.badgeClass,
       )}
     >
-      {meta.pulse ? (
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/80 opacity-75" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-        </span>
-      ) : (
-        <span className={cn('h-1.5 w-1.5 rounded-full', meta.dotClass)} />
-      )}
+      <span
+        className={cn(
+          'h-1.5 w-1.5 rounded-full',
+          meta.pulse ? 'bg-white' : meta.dotClass,
+        )}
+      />
       {meta.label}
     </span>
   )
 }
 
-function fullName(first: string | null, last: string | null, fallback: string): string {
-  const name = [first, last].filter(Boolean).join(' ').trim()
-  return name || fallback
-}
-
-// Curated display-name presets the admin can sign as. Mirrors the list
-// in the ticket reply composer so customers see one consistent set of
-// "front desk" voices across email, support, and live chat. Admins can
-// also type a custom alias if none of the presets fit (e.g. "Adaeze").
 const ADMIN_DISPLAY_PRESETS = ['Admin', 'Franca', 'Itunu', 'Juwon'] as const
 
-/**
- * Interactive chat drawer. Slides in from the right; closing removes
- * the active session id from local state which unmounts the drawer.
- *
- * Used to be read-only ("admin oversees, staff communicates") but the
- * team explicitly wants admins to be able to step into ANY live chat
- * to accept it from the queue or take it over from a stuck rep. The
- * existing `/api/admin/live-chat/sessions/[id]/messages` POST already
- * implements first-message-takes-over, so we just expose a composer.
- *
- *   - waiting / active session  → show composer + display-name picker.
- *                                  First send claims the session and
- *                                  drops a "{alias} joined the chat"
- *                                  system event for the customer.
- *   - closed / abandoned        → render in read-only mode like before.
- *
- * The display-name picker is collapsed once a name has been chosen for
- * the session, with a subtle "Replying as Franca · change" link so the
- * admin can swap aliases mid-thread without the picker eating room
- * permanently.
- */
 function TranscriptDrawer({
   sessionId,
   onClose,
@@ -194,13 +204,6 @@ function TranscriptDrawer({
     sender_last_name: string | null
     body: string
     created_at: string
-    /**
-     * Optimistic-only flag — `true` means the row is a client-side
-     * draft that hasn't been confirmed by the server yet. We render
-     * these with a faint "sending…" affordance and reconcile them
-     * against the next /sessions/[id] poll. Server rows never set
-     * this field.
-     */
     _pending?: boolean
   }
 
@@ -214,13 +217,7 @@ function TranscriptDrawer({
     refreshInterval: 3000,
   })
 
-  // Optimistic queue. We append the admin's draft immediately so the
-  // UI feels like an iMessage send, then drop the pending row once a
-  // server message with the same body shows up in the next poll. This
-  // is the same fix we shipped for ticket replies — admins were
-  // hitting Send and seeing an empty thread until the next refetch.
   const [pending, setPending] = useState<DrawerMessage[]>([])
-  // Drop pending rows whose body is now present in the server feed.
   useEffect(() => {
     if (!data?.messages || pending.length === 0) return
     const serverBodies = new Set(
@@ -231,9 +228,6 @@ function TranscriptDrawer({
     setPending((prev) =>
       prev.filter((p) => {
         const key = `${p.body}|${new Date(p.created_at).getTime() >> 10}`
-        // Keep optimistic rows older than 60s only if the server still
-        // hasn't echoed them — otherwise assume the message landed and
-        // we just missed the bucket.
         if (serverBodies.has(key)) return false
         const age = Date.now() - new Date(p.created_at).getTime()
         return age < 60_000
@@ -241,8 +235,7 @@ function TranscriptDrawer({
     )
   }, [data, pending.length])
 
-  // Display-name picker state — persisted in PostgreSQL via /api/staff/profile
-  // (zero localStorage) so admins stay signed under their chosen alias across devices.
+  // Display-name alias stored in PostgreSQL via /api/staff/profile
   const [displayName, setDisplayName] = useState<string>('')
   const [editingDisplay, setEditingDisplay] = useState<boolean>(false)
   const [customDisplay, setCustomDisplay] = useState<string>('')
@@ -272,36 +265,59 @@ function TranscriptDrawer({
     }
   }, [])
 
-  const persistDisplayName = (value: string) => {
-    setDisplayName(value)
-    setEditingDisplay(false)
-    void fetch('/api/staff/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ displayName: value }),
-    }).catch(() => {})
+  const notify = useNotify()
+  const [savingAlias, setSavingAlias] = useState(false)
+
+  const persistDisplayName = async (value: string) => {
+    const cleaned = value.trim()
+    if (!cleaned || savingAlias) return
+    setSavingAlias(true)
+    try {
+      const res = await fetch('/api/staff/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ displayName: cleaned }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not save alias.')
+      }
+      setDisplayName(cleaned)
+      setEditingDisplay(false)
+      await swrMutate(sessionUrl)
+      notify.success('Alias updated', `Replies will appear as ${cleaned}.`)
+    } catch (err) {
+      notify.error(
+        'Could not update alias',
+        err instanceof Error ? err.message : 'Please try again.',
+      )
+    } finally {
+      setSavingAlias(false)
+    }
   }
 
-  const notify = useNotify()
-
-  // Composer state.
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [confirmEnd, setConfirmEnd] = useState(false)
+  const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   const status = data?.session?.status
   const liveStatus = status === 'waiting' || status === 'active'
+  const supportCode = data?.session
+    ? resolveSupportId(data.session.support_code, data.session.id)
+    : ''
+  const customerLabel = data?.session
+    ? getSessionCustomerLabel(data.session)
+    : 'Customer'
 
   const endSession = async () => {
     if (closing) return
     setClosing(true)
-    setConfirmEnd(false)
     setSendError(null)
     try {
       const res = await fetch(sessionUrl, {
@@ -317,9 +333,16 @@ function TranscriptDrawer({
       await Promise.all([
         swrMutate(sessionUrl),
         swrMutate('/api/admin/live-chat/sessions?status=open'),
-        swrMutate((key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/sessions')),
+        swrMutate(
+          (key) =>
+            typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
+        ),
       ])
-      notify.info('Live chat ended', 'The session has been closed and moved to history.')
+      setEndDialogOpen(false)
+      notify.info(
+        'Live chat ended',
+        `${supportCode} was closed and moved to history.`,
+      )
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to end session.'
       setSendError(msg)
@@ -332,7 +355,6 @@ function TranscriptDrawer({
   const deleteSession = async () => {
     if (deleting) return
     setDeleting(true)
-    setConfirmDelete(false)
     setSendError(null)
     try {
       const res = await fetch(sessionUrl, {
@@ -344,12 +366,18 @@ function TranscriptDrawer({
         throw new Error(json.error || 'Could not delete session.')
       }
       await swrMutate(
-        (key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
+        (key) =>
+          typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
       )
-      notify.success('Live chat deleted', 'The session and its messages were permanently removed.')
+      setDeleteDialogOpen(false)
+      notify.success(
+        'Live chat deleted',
+        `${customerLabel} (${supportCode}) was permanently removed.`,
+      )
       onClose()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete session.'
+      const msg =
+        err instanceof Error ? err.message : 'Failed to delete session.'
       setSendError(msg)
       notify.error('Could not delete chat', msg)
     } finally {
@@ -362,16 +390,12 @@ function TranscriptDrawer({
     if (!text || sending) return
     if (!displayName) {
       setEditingDisplay(true)
-      setSendError('Pick a display name before replying.')
+      setSendError('Select or enter a front desk display name before replying.')
       return
     }
     setSending(true)
     setSendError(null)
 
-    // Optimistic row — uses the admin's chosen alias for the
-    // sender_*_name fields so the bubble reads "Replying as Franca"
-    // immediately. Server-side rows will eventually overwrite this
-    // with the real database row.
     const optimistic: DrawerMessage = {
       id: `optimistic-${Date.now()}`,
       sender_role: 'admin',
@@ -395,24 +419,17 @@ function TranscriptDrawer({
         const json = await res.json().catch(() => ({}))
         throw new Error(json.error || 'Could not send message.')
       }
-      // Re-fetch the session immediately so the take-over (status →
-      // active, "{alias} joined the chat" event, message append) all
-      // land together rather than waiting for the next 3s tick.
       await swrMutate(sessionUrl)
     } catch (err) {
-      // Roll back the optimistic row and put the draft back in the
-      // textarea so the admin can retry without retyping.
       setPending((prev) => prev.filter((p) => p.id !== optimistic.id))
       setDraft(text)
       setSendError(err instanceof Error ? err.message : 'Send failed.')
     } finally {
       setSending(false)
-      // Re-focus the composer so Enter-then-Enter feels like Slack.
       requestAnimationFrame(() => composerRef.current?.focus())
     }
   }
 
-  // Auto-scroll to the bottom whenever new messages arrive.
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const el = scrollerRef.current
@@ -423,93 +440,57 @@ function TranscriptDrawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       <button
         type="button"
-        aria-label="Close transcript"
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm"
+        aria-label="Close transcript drawer"
+        className="absolute inset-0 bg-gray-900/40"
         onClick={onClose}
       />
-      <aside className="relative z-10 w-full sm:max-w-md h-[100dvh] bg-white sm:border-l border-gray-200 flex flex-col">
-        <header className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:pt-4 pb-3.5 border-b border-gray-100">
+      <aside className="relative z-10 w-full sm:max-w-lg h-[100dvh] bg-white sm:border-l border-gray-200 flex flex-col">
+        {/* Drawer Header */}
+        <header className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:pt-4 pb-3.5 border-b border-gray-200 bg-white">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-              {liveStatus ? 'Admin conversation' : 'Read-only transcript'}
-            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
+                {liveStatus ? 'Live session' : 'Closed transcript'}
+              </span>
+              {supportCode && (
+                <span className="font-mono text-[10px] font-semibold text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-full px-2 py-0.5">
+                  {supportCode}
+                </span>
+              )}
+            </div>
             {data?.session ? (
-              <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">
-                {fullName(
-                  data.session.user_first_name,
-                  data.session.user_last_name,
-                  data.session.guest_name || data.session.user_email || data.session.guest_email || 'Customer',
-                )}
+              <p className="text-[15px] font-semibold text-gray-900 truncate mt-1">
+                {customerLabel}
               </p>
-            ) : null}
+            ) : (
+              <div className="h-4 w-32 bg-gray-100 rounded mt-1" />
+            )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {liveStatus && !confirmDelete && (
-              confirmEnd ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={endSession}
-                    disabled={closing}
-                    className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#7B2D8E] text-white hover:bg-[#5A1D6A] transition-colors"
-                  >
-                    {closing ? 'Ending…' : 'Confirm'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmEnd(false)}
-                    disabled={closing}
-                    className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmEnd(true)}
-                  className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:text-[#3E104B] hover:border-[#3E104B]/30 hover:bg-[#FAF6FB] transition-colors"
-                >
-                  End chat
-                </button>
-              )
+            {liveStatus && (
+              <button
+                type="button"
+                onClick={() => setEndDialogOpen(true)}
+                className="px-3 py-1.5 rounded-full text-[11px] font-semibold border border-[#7B2D8E]/30 bg-[#FAF6FB] text-[#5A1D6A] hover:border-[#7B2D8E] transition-colors cursor-pointer"
+              >
+                End chat
+              </button>
             )}
-            {data?.session && !confirmEnd && (
-              confirmDelete ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={deleteSession}
-                    disabled={deleting}
-                    className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors"
-                  >
-                    {deleting ? 'Deleting…' : 'Delete'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(false)}
-                    disabled={deleting}
-                    className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  className="p-2 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                  aria-label="Delete chat session"
-                  title="Delete chat session"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )
+            {data?.session && (
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="p-2 rounded-full border border-gray-200 text-gray-500 hover:text-[#C63D3D] hover:border-[#C63D3D]/35 hover:bg-[#C63D3D]/5 transition-colors cursor-pointer"
+                aria-label="Delete chat session"
+                title="Delete chat session"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
               aria-label="Close"
             >
               <X className="h-4 w-4" />
@@ -517,63 +498,102 @@ function TranscriptDrawer({
           </div>
         </header>
 
+        {/* Session metadata grid */}
         {data?.session ? (
-          <div className="px-4 sm:px-5 py-3 border-b border-gray-100 bg-[#FAF6FB]/60 text-[11.5px] text-gray-600 grid grid-cols-[auto_1fr] items-center gap-y-1.5 gap-x-4">
-            <span className="text-gray-400">Support ID</span>
-            <span className="font-mono font-semibold text-[#3E104B] tracking-wide">
-              {resolveSupportId(data.session.support_code, data.session.id)}
-            </span>
-            <span className="text-gray-400">Status</span>
-            <div className="justify-self-start">
-              <StatusBadge status={data.session.status} />
+          <div className="px-4 sm:px-5 py-3 border-b border-gray-200 bg-[#FAF6FB] text-[12px] text-gray-600 grid grid-cols-2 gap-x-4 gap-y-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Status
+              </p>
+              <div className="mt-0.5">
+                <StatusBadge status={data.session.status} />
+              </div>
             </div>
-            <span className="text-gray-400">Topic</span>
-            <span className="text-gray-800 truncate min-w-0">
-              {data.session.initial_topic || '—'}
-            </span>
-            <span className="text-gray-400">Rep</span>
-            <span className="text-gray-800 truncate min-w-0">
-              {data.session.staff_id
-                ? fullName(
-                    data.session.staff_first_name,
-                    data.session.staff_last_name,
-                    'Assigned',
-                  )
-                : 'Unassigned'}
-            </span>
-            <span className="text-gray-400">First reply</span>
-            <span className="text-gray-800 tabular-nums">
-              {formatDuration(data.session.staff_response_seconds)}
-            </span>
-            <span className="text-gray-400">Resolution</span>
-            <span className="text-gray-800 tabular-nums">
-              {formatDuration(data.session.resolution_seconds)}
-            </span>
-            {data.session.rating != null && (
-              <>
-                <span className="text-gray-400">Rating</span>
-                <span className="text-gray-800 inline-flex items-center gap-1 tabular-nums">
-                  <Star className="h-3 w-3 fill-[#7B2D8E] text-[#7B2D8E]" />
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Representative
+              </p>
+              <p className="font-medium text-gray-900 truncate mt-0.5">
+                {data.session.staff_id
+                  ? data.session.staff_display_name ||
+                    fullName(
+                      data.session.staff_first_name,
+                      data.session.staff_last_name,
+                      'Assigned',
+                    )
+                  : 'Waiting in queue'}
+              </p>
+            </div>
+            {(data.session.visitor_location ||
+              data.session.visitor_browser ||
+              data.session.visitor_os ||
+              data.session.visitor_device) && (
+              <div className="col-span-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                  Visitor environment
+                </p>
+                <p className="text-gray-700 truncate mt-0.5">
+                  {[
+                    data.session.visitor_location,
+                    data.session.visitor_browser,
+                    data.session.visitor_os,
+                    data.session.visitor_device,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              </div>
+            )}
+            <div className="col-span-2">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                Topic
+              </p>
+              <p className="text-gray-800 truncate mt-0.5">
+                {data.session.initial_topic || 'Customer inquiry'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                First reply
+              </p>
+              <p className="text-gray-800 tabular-nums mt-0.5">
+                {formatDuration(data.session.staff_response_seconds)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+                {data.session.rating != null ? 'Customer rating' : 'Resolution'}
+              </p>
+              {data.session.rating != null ? (
+                <p className="text-[#7B2D8E] font-semibold inline-flex items-center gap-1 tabular-nums mt-0.5">
+                  <Star className="h-3.5 w-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
                   {data.session.rating}/5
-                </span>
-              </>
+                </p>
+              ) : (
+                <p className="text-gray-800 tabular-nums mt-0.5">
+                  {formatDuration(data.session.resolution_seconds)}
+                </p>
+              )}
+            </div>
+            {data.session.rating_comment && (
+              <div className="col-span-2 rounded-xl bg-white border border-gray-200 px-3 py-2 text-[11.5px] text-gray-700">
+                &ldquo;{data.session.rating_comment}&rdquo;
+              </div>
             )}
           </div>
         ) : null}
 
-        <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-3 bg-[#FAF8FC]">
+        {/* Transcript scroll region */}
+        <div
+          ref={scrollerRef}
+          className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-3 bg-gray-50/70"
+        >
           {isLoading && !data ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
             </div>
           ) : null}
 
-          {/*
-            Merge the server feed with any pending (optimistic) rows so
-            the admin's just-sent message renders immediately. We sort
-            by timestamp so reply order is correct even if the server
-            poll lands while the admin is mid-second-message.
-          */}
           {[...(data?.messages ?? []), ...pending]
             .sort(
               (a, b) =>
@@ -582,48 +602,60 @@ function TranscriptDrawer({
             )
             .map((m) => {
               if (m.sender_role === 'system') {
+                const t = formatClockTime(m.created_at)
                 return (
-                  <div
-                    key={m.id}
-                    className="text-center text-[10.5px] uppercase tracking-wider text-gray-400 py-1"
-                  >
-                    {m.body}
+                  <div key={m.id} className="py-1.5">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex-1 h-px bg-[#7B2D8E]/15" />
+                      <span className="text-[11px] font-medium text-[#5A1D6A] text-center px-2">
+                        {m.body}
+                      </span>
+                      <span className="flex-1 h-px bg-[#7B2D8E]/15" />
+                    </div>
+                    {t && (
+                      <p className="text-center text-[10px] text-gray-400 mt-0.5 tabular-nums">
+                        {t}
+                      </p>
+                    )}
                   </div>
                 )
               }
-              const mine = m.sender_role === 'user'
+              const isCustomer = m.sender_role === 'user'
+              const senderLabel = isCustomer
+                ? fullName(
+                    m.sender_first_name,
+                    m.sender_last_name,
+                    customerLabel,
+                  )
+                : fullName(
+                    m.sender_first_name,
+                    m.sender_last_name,
+                    m.sender_role === 'admin' ? 'Admin' : 'Rep',
+                  )
               return (
                 <div
                   key={m.id}
                   className={cn(
                     'flex flex-col',
-                    mine ? 'items-start' : 'items-end',
+                    isCustomer ? 'items-start' : 'items-end',
                   )}
                 >
-                  <span className="text-[10px] text-gray-400 px-1 mb-0.5">
-                    {mine
-                      ? fullName(
-                          m.sender_first_name,
-                          m.sender_last_name,
-                          'Customer',
-                        )
-                      : fullName(
-                          m.sender_first_name,
-                          m.sender_last_name,
-                          m.sender_role === 'admin' ? 'Admin' : 'Rep',
-                        )}{' '}
-                    · {formatRelative(m.created_at)}
+                  <span className="text-[10.5px] text-gray-500 px-1 mb-1">
+                    <span className="font-medium text-gray-700">
+                      {senderLabel}
+                    </span>{' '}
+                    · {formatClockTime(m.created_at) || formatRelative(m.created_at)}
                     {m._pending ? (
-                      <span className="ml-1 italic text-gray-300">sending…</span>
+                      <span className="ml-1.5 text-[#7B2D8E]">Sending…</span>
                     ) : null}
                   </span>
                   <div
                     className={cn(
-                      'max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug whitespace-pre-wrap',
-                      mine
-                        ? 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                      'max-w-[82%] rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap break-words',
+                      isCustomer
+                        ? 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm'
                         : 'bg-[#7B2D8E] text-white rounded-br-sm',
-                      m._pending && 'opacity-60',
+                      m._pending && 'opacity-70',
                     )}
                   >
                     {m.body}
@@ -633,27 +665,38 @@ function TranscriptDrawer({
             })}
 
           {!isLoading && (data?.messages?.length ?? 0) + pending.length === 0 ? (
-            <div className="text-center text-xs text-gray-400 py-8">
+            <div className="text-center text-xs text-gray-400 py-10">
               No messages in this session yet.
             </div>
           ) : null}
         </div>
 
-        {/*
-          Composer footer. Hidden once the chat is closed/abandoned —
-          replies don't make sense there and we'd just be confusing
-          the admin.
-        */}
+        {/* Sleek Composer + Alias Bar */}
         {liveStatus ? (
-          <footer className="border-t border-gray-100 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            {/* Display-name picker. Either compact "Replying as Franca · change"
-                or expanded radio-style picker on first use / when changing. */}
+          <footer className="border-t border-gray-200 bg-white px-4 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
             {editingDisplay ? (
-              <div className="mb-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
-                <p className="text-[11px] font-semibold text-gray-700 mb-2">
-                  Reply as
-                </p>
-                <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="mb-3 rounded-2xl bg-[#FAF6FB] border border-[#7B2D8E]/25 p-3 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7B2D8E]">
+                      Front desk display name
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Customers see this name in the live chat and email transcript.
+                    </p>
+                  </div>
+                  {displayName && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingDisplay(false)}
+                      aria-label="Close alias editor"
+                      className="p-1 rounded-full text-gray-400 hover:text-gray-700 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
                   {ADMIN_DISPLAY_PRESETS.map((preset) => {
                     const active = preset === displayName
                     return (
@@ -662,12 +705,13 @@ function TranscriptDrawer({
                         type="button"
                         onClick={() => persistDisplayName(preset)}
                         className={cn(
-                          'px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors',
+                          'inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11.5px] font-medium border transition-colors cursor-pointer',
                           active
                             ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]',
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/50 hover:text-[#7B2D8E]',
                         )}
                       >
+                        {active && <Check className="w-3 h-3" />}
                         {preset}
                       </button>
                     )
@@ -678,72 +722,87 @@ function TranscriptDrawer({
                     type="text"
                     value={customDisplay}
                     onChange={(e) => setCustomDisplay(e.target.value)}
-                    placeholder="Or type a custom name"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customDisplay.trim()) {
+                        e.preventDefault()
+                        persistDisplayName(customDisplay)
+                      }
+                    }}
+                    placeholder="Or enter a custom alias (e.g. Adaeze)"
                     maxLength={30}
-                    className="flex-1 min-w-0 px-3 py-1.5 rounded-full text-base sm:text-[12px] bg-white border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 focus:outline-none"
+                    className="flex-1 min-w-0 px-3 py-1.5 rounded-full text-base sm:text-[12px] bg-white border border-gray-200 focus:border-[#7B2D8E] focus:outline-none"
                   />
                   <button
                     type="button"
-                    onClick={() => {
-                      const v = customDisplay.trim()
-                      if (v) persistDisplayName(v)
-                    }}
-                    disabled={!customDisplay.trim()}
-                    className="px-3 py-1.5 rounded-full text-[11px] font-semibold bg-[#7B2D8E] text-white disabled:opacity-50"
+                    onClick={() => void persistDisplayName(customDisplay)}
+                    disabled={!customDisplay.trim() || savingAlias}
+                    className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-50 transition-colors cursor-pointer"
                   >
-                    Use
+                    {savingAlias ? 'Saving…' : 'Save alias'}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-[10.5px] text-gray-500">
-                  Replying as{' '}
-                  <span className="font-semibold text-gray-800">
-                    {displayName}
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3 py-2 mb-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-7 h-7 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold flex items-center justify-center shrink-0">
+                    {displayName.charAt(0).toUpperCase() || 'A'}
                   </span>
-                </p>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 leading-none">
+                      Replying as
+                    </p>
+                    <p className="text-[12.5px] font-semibold text-[#5A1D6A] truncate mt-0.5">
+                      {displayName}
+                    </p>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setEditingDisplay(true)}
-                  className="text-[10.5px] font-medium text-[#7B2D8E] hover:underline"
+                  onClick={() => {
+                    const isPreset = ADMIN_DISPLAY_PRESETS.includes(
+                      displayName as (typeof ADMIN_DISPLAY_PRESETS)[number],
+                    )
+                    setCustomDisplay(isPreset ? '' : displayName)
+                    setEditingDisplay(true)
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full bg-white border border-[#7B2D8E]/25 hover:border-[#7B2D8E]/50 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E] transition-colors shrink-0 cursor-pointer"
                 >
-                  change
+                  <Pencil className="w-3 h-3" />
+                  Switch alias
                 </button>
               </div>
             )}
 
-            {/* Take-over hint when the chat already belongs to another rep
-                or is still in the waiting queue. */}
             {data?.session ? (
               data.session.staff_id == null ? (
-                <p className="text-[10.5px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-2.5 py-1.5 mb-2">
-                  This chat is in the waiting queue. Sending will accept it
-                  on your behalf and notify the customer.
+                <p className="text-[11px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-xl px-3 py-1.5 mb-2">
+                  Waiting in queue — sending your reply accepts this chat and notifies the customer.
                 </p>
-              ) : data.session.staff_id !== '' &&
-                fullName(
+              ) : fullName(
                   data.session.staff_first_name,
                   data.session.staff_last_name,
                   '',
                 ) ? (
-                <p className="text-[10.5px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-2.5 py-1.5 mb-2 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3 w-3 shrink-0 text-[#7B2D8E]" />
+                <p className="text-[11px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-xl px-3 py-1.5 mb-2 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[#7B2D8E]" />
                   <span>
-                    Currently with{' '}
-                    {fullName(
-                      data.session.staff_first_name,
-                      data.session.staff_last_name,
-                      'a rep',
-                    )}
-                    . Sending will take over.
+                    Currently assigned to{' '}
+                    <strong>
+                      {fullName(
+                        data.session.staff_first_name,
+                        data.session.staff_last_name,
+                        'a rep',
+                      )}
+                    </strong>
+                    . Replying takes over smoothly.
                   </span>
                 </p>
               ) : null
             ) : null}
 
             {sendError ? (
-              <p className="text-[11px] text-[#3E104B] bg-[#FAF6FB] border border-[#3E104B]/20 rounded-lg px-2.5 py-1.5 mb-2">
+              <p className="text-[11.5px] text-[#C63D3D] bg-[#C63D3D]/10 border border-[#C63D3D]/25 rounded-xl px-3 py-2 mb-2">
                 {sendError}
               </p>
             ) : null}
@@ -756,20 +815,20 @@ function TranscriptDrawer({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
-                    sendMessage()
+                    void sendMessage()
                   }
                 }}
-                placeholder="Type a reply… Enter to send"
+                placeholder="Write a reply to the customer… Enter to send"
                 rows={2}
                 maxLength={2000}
-                className="flex-1 min-w-0 resize-none rounded-2xl bg-gray-50 border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 focus:outline-none px-3.5 py-2 text-base sm:text-[13px] text-gray-900 placeholder:text-gray-400"
+                className="flex-1 min-w-0 resize-none rounded-2xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#7B2D8E] focus:outline-none px-3.5 py-2.5 text-base sm:text-[13px] text-gray-900 placeholder:text-gray-400"
               />
               <button
                 type="button"
-                onClick={sendMessage}
+                onClick={() => void sendMessage()}
                 disabled={!draft.trim() || sending}
-                className="h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-full bg-[#7B2D8E] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#5A1D6A] transition-colors"
-                aria-label="Send"
+                className="h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-full bg-[#7B2D8E] text-white disabled:opacity-45 disabled:cursor-not-allowed hover:bg-[#5A1D6A] transition-colors cursor-pointer"
+                aria-label="Send reply"
               >
                 {sending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -781,14 +840,80 @@ function TranscriptDrawer({
           </footer>
         ) : null}
       </aside>
+
+      {/* Flat End Chat Confirmation Dialog */}
+      <Dialog open={endDialogOpen} onOpenChange={(o) => !closing && setEndDialogOpen(o)}>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-gray-900">
+              End live chat with {customerLabel}?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              Session <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span> will
+              be marked closed, the transcript will be emailed if an address is on file, and the
+              customer can rate or continue with Derma AI.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-2">
+            <button
+              type="button"
+              disabled={closing}
+              onClick={() => setEndDialogOpen(false)}
+              className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={closing}
+              onClick={() => void endSession()}
+              className="h-9 px-4 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-xs font-semibold disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              {closing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {closing ? 'Ending…' : 'End chat'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Flat Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={(o) => !deleting && setDeleteDialogOpen(o)}>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold text-gray-900">
+              Delete chat session permanently?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-600">
+              This will permanently remove <span className="font-semibold text-gray-900">{customerLabel}</span>{' '}
+              (<span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>) and all
+              messages in this conversation. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-2">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setDeleteDialogOpen(false)}
+              className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void deleteSession()}
+              className="h-9 px-4 rounded-lg bg-[#C63D3D] hover:bg-[#A83232] text-white text-xs font-semibold disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              {deleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              {deleting ? 'Deleting…' : 'Delete permanently'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-/**
- * "Live" tab body. Polls every 4s — same cadence as the staff queue
- * — so admins see the same world-state staff do.
- */
 function LiveTab({ onPeek }: { onPeek: (id: string) => void }) {
   const { data } = useSWR<ListResponse>(
     '/api/admin/live-chat/sessions?status=open',
@@ -799,33 +924,40 @@ function LiveTab({ onPeek }: { onPeek: (id: string) => void }) {
   const waiting = sessions.filter((s) => s.status === 'waiting')
   const active = sessions.filter((s) => s.status === 'active')
 
-  // Clear the sidebar Live Chat badge once the admin lands on the
-  // Live tab — same Google / Vercel "seen" baseline used by Support
-  // and Consultations. We snapshot the waiting count rather than the
-  // total because the badge tracks unattended queue work.
   useEffect(() => {
     markSurfaceSeen('live-chat', waiting.length)
   }, [waiting.length])
 
+  const avgWait =
+    waiting.length === 0
+      ? '—'
+      : formatDuration(
+          waiting.reduce(
+            (acc, s) =>
+              acc + (Date.now() - new Date(s.created_at).getTime()) / 1000,
+            0,
+          ) / waiting.length,
+        )
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
-        <SummaryCard label="Waiting" value={waiting.length} tone="deep" />
-        <SummaryCard label="Active" value={active.length} tone="primary" />
+      <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         <SummaryCard
+          icon={Clock}
+          label="Waiting"
+          value={waiting.length}
+          tone="deep"
+        />
+        <SummaryCard
+          icon={MessageSquare}
+          label="Active"
+          value={active.length}
+          tone="primary"
+        />
+        <SummaryCard
+          icon={Activity}
           label="Avg wait"
-          value={
-            waiting.length === 0
-              ? '—'
-              : formatDuration(
-                  waiting.reduce(
-                    (acc, s) =>
-                      acc +
-                      (Date.now() - new Date(s.created_at).getTime()) / 1000,
-                    0,
-                  ) / waiting.length,
-                )
-          }
+          value={avgWait}
           tone="muted"
         />
       </div>
@@ -875,7 +1007,7 @@ function HistoryTab({ onPeek }: { onPeek: (id: string) => void }) {
               type="button"
               onClick={() => setDays(d)}
               className={cn(
-                'flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
+                'flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap cursor-pointer',
                 days === d
                   ? 'bg-[#7B2D8E] text-white'
                   : 'text-gray-600 hover:text-gray-900',
@@ -891,8 +1023,8 @@ function HistoryTab({ onPeek }: { onPeek: (id: string) => void }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by Support ID, user, rep, or topic"
-            className="w-full pl-9 pr-3 py-2 text-base sm:text-sm bg-white rounded-full border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 focus:outline-none"
+            placeholder="Search by Support ID, customer, rep, or topic"
+            className="w-full pl-9 pr-3 py-2 text-base sm:text-sm bg-white rounded-full border border-gray-200 focus:border-[#7B2D8E] focus:outline-none"
           />
         </div>
       </div>
@@ -927,7 +1059,7 @@ function PerformanceTab() {
             type="button"
             onClick={() => setDays(d)}
             className={cn(
-              'flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
+              'flex-1 sm:flex-initial px-3 py-1.5 sm:py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap cursor-pointer',
               days === d
                 ? 'bg-[#7B2D8E] text-white'
                 : 'text-gray-600 hover:text-gray-900',
@@ -944,7 +1076,6 @@ function PerformanceTab() {
         </div>
       ) : (
         <>
-          {/* Mobile & tablet cards (< lg) so metrics never clip horizontally */}
           <div className="lg:hidden space-y-2.5">
             {rows.map((r) => {
               const name = fullName(r.first_name, r.last_name, 'Rep')
@@ -985,7 +1116,7 @@ function PerformanceTab() {
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
-                    <div className="rounded-xl bg-[#FAF6FB]/60 px-2.5 py-2">
+                    <div className="rounded-xl bg-[#FAF6FB] px-2.5 py-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                         Handled
                       </p>
@@ -993,7 +1124,7 @@ function PerformanceTab() {
                         {r.handled}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-[#FAF6FB]/60 px-2.5 py-2">
+                    <div className="rounded-xl bg-[#FAF6FB] px-2.5 py-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                         First reply
                       </p>
@@ -1001,7 +1132,7 @@ function PerformanceTab() {
                         {formatDuration(r.avg_response_seconds)}
                       </p>
                     </div>
-                    <div className="rounded-xl bg-[#FAF6FB]/60 px-2.5 py-2">
+                    <div className="rounded-xl bg-[#FAF6FB] px-2.5 py-2">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
                         Resolution
                       </p>
@@ -1015,11 +1146,10 @@ function PerformanceTab() {
             })}
           </div>
 
-          {/* Desktop table (lg+) */}
           <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50/80 text-[10.5px] uppercase tracking-wider text-gray-500">
+                <thead className="bg-[#FAF6FB] text-[10.5px] uppercase tracking-wider text-gray-500 border-b border-gray-200">
                   <tr>
                     <th className="text-left font-semibold px-4 py-3">Rep</th>
                     <th className="text-right font-semibold px-3 py-3">Handled</th>
@@ -1116,17 +1246,19 @@ function StaffAvatar({
     )
   }
   return (
-    <div className="h-9 w-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-semibold flex items-center justify-center border border-[#7B2D8E]/20 shrink-0">
+    <div className="h-9 w-9 rounded-full bg-[#FAF6FB] text-[#7B2D8E] text-xs font-semibold flex items-center justify-center border border-[#7B2D8E]/20 shrink-0">
       {initials}
     </div>
   )
 }
 
 function SummaryCard({
+  icon: Icon,
   label,
   value,
   tone,
 }: {
+  icon: typeof Clock
   label: string
   value: number | string
   tone: 'primary' | 'deep' | 'muted'
@@ -1135,14 +1267,24 @@ function SummaryCard({
     tone === 'primary'
       ? 'text-[#7B2D8E]'
       : tone === 'deep'
-        ? 'text-[#3E104B]'
+        ? 'text-[#5A1D6A]'
         : 'text-gray-900'
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 px-3 py-3 sm:px-5 sm:py-4 min-w-0">
-      <p className="text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gray-500 truncate">
-        {label}
-      </p>
-      <p className={cn('text-xl sm:text-2xl font-semibold mt-1 tabular-nums truncate', valueColor)}>
+    <div className="bg-white rounded-2xl border border-gray-200 px-3.5 py-3 sm:px-5 sm:py-4 min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gray-500 truncate">
+          {label}
+        </p>
+        <span className="hidden sm:inline-flex w-7 h-7 rounded-lg bg-[#FAF6FB] border border-[#7B2D8E]/15 text-[#7B2D8E] items-center justify-center shrink-0">
+          <Icon className="w-3.5 h-3.5" />
+        </span>
+      </div>
+      <p
+        className={cn(
+          'text-xl sm:text-2xl font-semibold mt-1.5 tabular-nums truncate',
+          valueColor,
+        )}
+      >
         {value}
       </p>
     </div>
@@ -1161,15 +1303,17 @@ function SessionTable({
   showWait?: boolean
 }) {
   const notify = useNotify()
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<SessionRow | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const handleRowDelete = async (session: SessionRow, customerLabel: string) => {
-    if (deletingId) return
-    setDeletingId(session.id)
-    setConfirmDeleteId(null)
+  const confirmDeleteSession = async () => {
+    if (!deleteTarget || deletingId) return
+    const target = deleteTarget
+    const customerLabel = getSessionCustomerLabel(target)
+    const supportCode = resolveSupportId(target.support_code, target.id)
+    setDeletingId(target.id)
     try {
-      const res = await fetch(`/api/admin/live-chat/sessions/${session.id}`, {
+      const res = await fetch(`/api/admin/live-chat/sessions/${target.id}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -1178,11 +1322,13 @@ function SessionTable({
         throw new Error(json.error || 'Could not delete live chat session.')
       }
       await swrMutate(
-        (key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
+        (key) =>
+          typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
       )
+      setDeleteTarget(null)
       notify.success(
         'Live chat deleted',
-        `${customerLabel} (${resolveSupportId(session.support_code, session.id)}) was removed.`,
+        `${customerLabel} (${supportCode}) was permanently removed.`,
       )
     } catch (err) {
       notify.error(
@@ -1194,10 +1340,9 @@ function SessionTable({
     }
   }
 
-  // Empty state shared across both layouts.
   if (rows.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-200 text-center text-xs text-gray-400 py-10">
+      <div className="bg-white rounded-2xl border border-gray-200 text-center text-xs text-gray-400 py-12">
         {emptyHint}
       </div>
     )
@@ -1205,32 +1350,29 @@ function SessionTable({
 
   return (
     <>
-      {/* Mobile & tablet stacked card layout (< lg) */}
+      {/* Mobile & tablet cards (< lg) */}
       <div className="lg:hidden space-y-2.5">
         {rows.map((s) => {
-          // Determine if guest or logged-in user
           const isGuest = s.is_guest || !s.user_id
-          const customer = isGuest
-            ? s.guest_name || 'Anonymous Guest'
-            : fullName(s.user_first_name, s.user_last_name, s.user_email || 'Customer')
+          const customer = getSessionCustomerLabel(s)
           const customerEmail = isGuest ? s.guest_email : s.user_email
           const customerPhone = isGuest ? s.guest_phone : null
-
           const rep = s.staff_id
-            ? fullName(s.staff_first_name, s.staff_last_name, 'Assigned')
+            ? s.staff_display_name ||
+              fullName(s.staff_first_name, s.staff_last_name, 'Assigned')
             : null
-          const isConfirming = confirmDeleteId === s.id
           const isDeleting = deletingId === s.id
+
           return (
             <div
               key={s.id}
-              className="w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors p-4"
+              className="w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-[#7B2D8E]/35 transition-colors p-4"
             >
               <div className="flex items-start gap-3">
                 <button
                   type="button"
                   onClick={() => onPeek(s.id)}
-                  className="min-w-0 flex-1 text-left"
+                  className="min-w-0 flex-1 text-left cursor-pointer"
                   aria-label={`Open chat with ${customer}`}
                 >
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1267,51 +1409,28 @@ function SessionTable({
                   ) : null}
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {isConfirming ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleRowDelete(s, customer)}
-                        disabled={isDeleting}
-                        className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#C63D3D] text-white hover:bg-[#a83232] transition-colors disabled:opacity-50"
-                      >
-                        {isDeleting ? 'Deleting…' : 'Delete'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(null)}
-                        disabled={isDeleting}
-                        className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(s.id)}
-                        disabled={isDeleting}
-                        className="w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-[#C63D3D] hover:border-[#C63D3D]/30 hover:bg-red-50/40 flex items-center justify-center transition-colors"
-                        aria-label={`Delete chat with ${customer}`}
-                        title="Delete chat session"
-                      >
-                        {isDeleting ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onPeek(s.id)}
-                        aria-label={`Open chat with ${customer}`}
-                        className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center hover:bg-[#7B2D8E]/15 transition-colors"
-                      >
-                        <ArrowUpRight className="h-4 w-4" />
-                      </button>
-                    </>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(s)}
+                    disabled={isDeleting}
+                    className="w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-[#C63D3D] hover:border-[#C63D3D]/35 hover:bg-[#C63D3D]/5 flex items-center justify-center transition-colors cursor-pointer"
+                    aria-label={`Delete chat with ${customer}`}
+                    title="Delete chat session"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onPeek(s.id)}
+                    aria-label={`Open chat with ${customer}`}
+                    className="w-8 h-8 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center hover:bg-[#7B2D8E]/15 transition-colors cursor-pointer"
+                  >
+                    <ArrowUpRight className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
 
@@ -1363,7 +1482,7 @@ function SessionTable({
       <div className="hidden lg:block bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50/80 text-[10.5px] uppercase tracking-wider text-gray-500">
+            <thead className="bg-[#FAF6FB] text-[10.5px] uppercase tracking-wider text-gray-500 border-b border-gray-200">
               <tr>
                 <th className="text-left font-semibold px-4 py-3">Customer</th>
                 <th className="text-left font-semibold px-3 py-3">Location</th>
@@ -1374,28 +1493,23 @@ function SessionTable({
                   {showWait ? 'Waiting / Last activity' : 'Closed'}
                 </th>
                 <th className="text-left font-semibold px-3 py-3">Rating</th>
-                <th className="text-right font-semibold px-4 py-3" />
+                <th className="text-right font-semibold px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((s) => {
-                // Determine if guest or logged-in user
                 const isGuest = s.is_guest || !s.user_id
-                const customer = isGuest
-                  ? s.guest_name || 'Anonymous Guest'
-                  : fullName(s.user_first_name, s.user_last_name, s.user_email || 'Customer')
+                const customer = getSessionCustomerLabel(s)
                 const customerEmail = isGuest ? s.guest_email : s.user_email
                 const customerPhone = isGuest ? s.guest_phone : null
-                
                 const rep = s.staff_id
-                  ? fullName(
-                      s.staff_first_name,
-                      s.staff_last_name,
-                      'Assigned',
-                    )
+                  ? s.staff_display_name ||
+                    fullName(s.staff_first_name, s.staff_last_name, 'Assigned')
                   : null
+                const isDeleting = deletingId === s.id
+
                 return (
-                  <tr key={s.id} className="hover:bg-gray-50/60">
+                  <tr key={s.id} className="hover:bg-[#FAF6FB]/50">
                     <td className="px-4 py-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -1429,7 +1543,9 @@ function SessionTable({
                       {s.visitor_location ? (
                         <span className="inline-flex items-center gap-1.5 text-[12px] text-[#7B2D8E]">
                           <MapPin className="h-3 w-3" />
-                          <span className="truncate max-w-[120px]">{s.visitor_location}</span>
+                          <span className="truncate max-w-[120px]">
+                            {s.visitor_location}
+                          </span>
                         </span>
                       ) : (
                         <span className="text-gray-300 text-[12px]">—</span>
@@ -1486,51 +1602,28 @@ function SessionTable({
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center justify-end gap-1.5">
-                        {confirmDeleteId === s.id ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleRowDelete(s, customer)}
-                              disabled={deletingId === s.id}
-                              className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-[#C63D3D] text-white hover:bg-[#a83232] transition-colors disabled:opacity-50"
-                            >
-                              {deletingId === s.id ? 'Deleting…' : 'Confirm delete'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              disabled={deletingId === s.id}
-                              className="px-2.5 py-1.5 rounded-full text-[11px] font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(s.id)}
-                              disabled={deletingId === s.id}
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-[#C63D3D] hover:border-[#C63D3D]/30 hover:bg-red-50/40 transition-colors"
-                              aria-label={`Delete chat with ${customer}`}
-                              title="Delete chat session"
-                            >
-                              {deletingId === s.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onPeek(s.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
-                            >
-                              Open
-                              <ArrowUpRight className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(s)}
+                          disabled={isDeleting}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 text-gray-400 hover:text-[#C63D3D] hover:border-[#C63D3D]/35 hover:bg-[#C63D3D]/5 transition-colors cursor-pointer"
+                          aria-label={`Delete chat with ${customer}`}
+                          title="Delete chat session"
+                        >
+                          {isDeleting ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onPeek(s.id)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors cursor-pointer"
+                        >
+                          Open
+                          <ArrowUpRight className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1540,6 +1633,56 @@ function SessionTable({
           </table>
         </div>
       </div>
+
+      {/* Flat Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingId) setDeleteTarget(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 bg-white shadow-none p-6">
+          {deleteTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold text-gray-900">
+                  Delete chat session permanently?
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-600">
+                  This will permanently remove{' '}
+                  <span className="font-semibold text-gray-900">
+                    {getSessionCustomerLabel(deleteTarget)}
+                  </span>{' '}
+                  (
+                  <span className="font-mono font-semibold text-[#5A1D6A]">
+                    {resolveSupportId(deleteTarget.support_code, deleteTarget.id)}
+                  </span>
+                  ) and its full message history. This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={!!deletingId}
+                  onClick={() => setDeleteTarget(null)}
+                  className="h-9 px-4 rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!deletingId}
+                  onClick={() => void confirmDeleteSession()}
+                  className="h-9 px-4 rounded-lg bg-[#C63D3D] hover:bg-[#A83232] text-white text-xs font-semibold disabled:opacity-50 inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  {deletingId && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {deletingId ? 'Deleting…' : 'Delete permanently'}
+                </button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -1569,8 +1712,7 @@ export default function AdminLiveChatPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-prose">
             Watch every conversation between customers and the front desk in
-            real time, audit closed transcripts, and see how each rep is
-            performing.
+            real time, audit closed transcripts, and monitor representative response quality.
           </p>
         </div>
       </header>
@@ -1585,7 +1727,7 @@ export default function AdminLiveChatPage() {
               type="button"
               onClick={() => setTab(t.id)}
               className={cn(
-                'flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap',
+                'flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 sm:py-1.5 rounded-full text-xs font-medium transition-colors whitespace-nowrap cursor-pointer',
                 active
                   ? 'bg-[#7B2D8E] text-white'
                   : 'text-gray-600 hover:text-gray-900',

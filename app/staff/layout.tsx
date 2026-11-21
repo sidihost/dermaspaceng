@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { StaffSidebar } from "@/components/staff/sidebar"
 import { StaffPolicyGate } from "@/components/staff/staff-policy-gate"
-import { StaffTopBar } from "@/components/staff/staff-top-bar"
+import { StaffMainShell } from "@/components/staff/staff-main-shell"
 // The welcome gate (set new password / enter real email) is shared
 // across both consoles — Itunu, Franca and any future seeded
 // admin/staff invitee should see exactly the same first-sign-in
@@ -29,28 +29,14 @@ export default async function StaffLayout({
   return (
     <div className="min-h-screen bg-[#FBF9FC]">
       <StaffSidebar />
-      <main className="min-h-screen pl-0 lg:pl-72">
-        {/* Personalised top bar — greeting, search, notification bell.
-            Sits inside the layout so every staff page inherits it
-            without each route re-implementing the chrome. */}
-        <StaffTopBar
-          firstName={user.first_name}
-          lastName={user.last_name}
-          role={user.role}
-          // Resolve the portrait the staff member picked from the
-          // avatar picker. `user.avatar_url` is the canonical source
-          // (set when the user selects a preset portrait); when null
-          // the StaffTopBar falls back to the initials pill.
-          avatarUrl={resolveStaffAvatar((user as { avatar_url?: string | null }).avatar_url)}
-        />
-        {/* Staff console working area. Capped at max-w-[1400px] on
-            ultra-wide displays so tables / lists stay readable, with
-            extra horizontal breathing room at xl: that matches the
-            admin console. */}
-        <div className="container mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 max-w-[1400px]">
-          {children}
-        </div>
-      </main>
+      <StaffMainShell
+        firstName={user.first_name}
+        lastName={user.last_name}
+        role={user.role}
+        avatarUrl={resolveStaffAvatar((user as { avatar_url?: string | null }).avatar_url)}
+      >
+        {children}
+      </StaffMainShell>
       {/* Short, role-specific acknowledgement modal — separate from the
           customer legal pack which is already excluded on /staff. */}
       <StaffPolicyGate />

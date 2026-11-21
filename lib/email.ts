@@ -3241,11 +3241,11 @@ export async function sendLiveChatTranscript(data: {
         </tr>
       </table>
       <p style="margin: 0 0 24px; font-size: 13px; color: #65676b; line-height: 1.5;">
-        This is an automated transcript email &mdash; please do not reply directly. To continue the conversation, use the button above or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
+        To continue the conversation, use the button above or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
       </p>`
     : `
       <p style="margin: 0 0 24px; font-size: 14px; color: #1c1e21; line-height: 1.6;">
-        Need anything else? Start a live chat in Derma AI or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> with your reference below (please do not reply directly to this automated message).
+        Need anything else? Start a live chat in Derma AI or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> with your reference below.
       </p>`
 
   const content = `
@@ -3379,8 +3379,7 @@ export async function sendTicketTranscript(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #65676b; line-height: 1.5;">
-      This is an automated message &mdash; please do not reply directly. To add a follow-up to ticket
-      <strong>${escapeHtml(data.ticketId)}</strong>, open it in your Dermaspace dashboard using the button above.
+      To add a follow-up to ticket <strong>${escapeHtml(data.ticketId)}</strong>, open it in your Dermaspace dashboard using the button above.
     </p>
   `
 
@@ -3521,7 +3520,7 @@ export async function sendTicketResolvedReview(data: {
 
     <p style="margin: 0 0 6px; font-size: 13px; line-height: 1.6; color: #6b7280;">
       Not sorted yet? Open ticket
-      <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong> in your Dermaspace dashboard or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> &mdash; please do not reply directly to this automated email.
+      <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong> in your Dermaspace dashboard or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
     </p>
   `
 
@@ -3621,7 +3620,7 @@ export async function sendTicketStatusUpdateEmail(data: {
         data.ticketId
           ? ` for <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong>`
           : ''
-      } or contact <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>. Please do not reply directly to this automated email.
+      } or contact <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
     </p>
   `
 
@@ -4480,7 +4479,7 @@ export function buildAccountSuspendedEmailHtml(data: {
     </p>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated security notice &mdash; please do not reply directly to this email. Submit your appeal using the portal above or reach Dermaspace management directly.
+      Submit your appeal using the portal above or reach Dermaspace management directly.
     </p>
   `
     : `
@@ -4531,7 +4530,7 @@ export function buildAccountSuspendedEmailHtml(data: {
     </p>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated security email &mdash; please do not reply directly. Use the appeal portal above or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> for general assistance.
+      Use the appeal portal above or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> for general assistance.
     </p>
   `
 
@@ -4615,7 +4614,7 @@ export async function sendAppealReceivedEmail(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated confirmation &mdash; please do not reply directly. Keep reference <strong>${safeId}</strong> handy for your records.
+      Keep reference <strong>${safeId}</strong> handy for your records.
     </p>
   `
 
@@ -4713,10 +4712,10 @@ export async function sendAppealDecisionEmail(data: {
     }
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated security update &mdash; please do not reply directly.${
+      ${
         isTeamMember
-          ? ' For further questions, contact your Dermaspace administrator.'
-          : ` For assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
+          ? 'For further questions, contact your Dermaspace administrator.'
+          : `For assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
       }
     </p>
   `
@@ -4790,10 +4789,10 @@ export async function sendAccountReinstatedEmail(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated security notification &mdash; please do not reply directly.${
+      ${
         isTeamMember
-          ? ' Reach your Dermaspace administrator if you have questions about your access.'
-          : ` If you need assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
+          ? 'Reach your Dermaspace administrator if you have questions about your access.'
+          : `If you need assistance, email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.`
       }
     </p>
   `
@@ -4890,7 +4889,7 @@ export function buildStaffPromotedEmailHtml(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated team notice &mdash; please do not reply directly. Reach your Dermaspace administrator or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> if you have questions about your access.
+      Reach your Dermaspace administrator or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a> if you have questions about your access.
     </p>
   `
 
@@ -5112,7 +5111,7 @@ export function buildLiveChatTranscriptEmailHtml(data: {
     </table>
 
     <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.55;">
-      This is an automated transcript email &mdash; please do not reply directly. Quote Support ID <strong>${safeCode}</strong> anytime in Derma AI or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
+      Quote Support ID <strong>${safeCode}</strong> anytime in Derma AI or email <a href="mailto:info@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">info@dermaspaceng.com</a>.
     </p>
   `
 

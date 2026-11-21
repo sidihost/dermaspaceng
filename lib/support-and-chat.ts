@@ -436,4 +436,196 @@ export function resolveStaffAvatarUrl(opts: {
   return `/avatars/${pickFrontDeskSlugForStaff(opts.staffId)}.jpg`
 }
 
+// ---------------------------------------------------------------------------
+// Live Chat Continuity & Transcript Helpers
+// ---------------------------------------------------------------------------
+
+export interface SerializableLiveChatMessage {
+  id: string
+  sender_role: 'user' | 'staff' | 'system'
+  sender_name?: string | null
+  body: string
+  created_at: string
+}
+
+export interface SerializedLiveChatEntry {
+  id: string
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  aiContent: string
+  timestampIso: string
+  liveChatMeta: {
+    sessionId: string
+    supportCode: string
+    kind: 'user' | 'staff' | 'divider'
+    senderName?: string
+  }
+}
+
+export function buildLiveChatTranscriptDownloadText(input: {
+  supportCode: string
+  topic?: string | null
+  messages: SerializableLiveChatMessage[]
+}): string {
+  const code = (input.supportCode || '').trim() || 'DS-LC'
+  const lines: string[] = [
+    'Dermaspace Live Support Transcript',
+    `Support ID: ${code}`,
+    ...(input.topic?.trim() ? [`Topic: ${input.topic.trim()}`] : []),
+    '----------------------------------------',
+    '',
+  ]
+
+  for (const m of input.messages) {
+    if (
+      m.sender_role === 'system' &&
+      /will be with you shortly/i.test(m.body)
+    ) {
+      continue
+    }
+    let time = ''
+    try {
+      const d = new Date(m.created_at)
+      if (!Number.isNaN(d.getTime())) {
+        time = d.toLocaleTimeString('en-NG', {
+          hour: 'numeric',
+          minute: '2-digit',
+        })
+      }
+    } catch {
+      time = ''
+    }
+    const prefix = time ? `[${time}] ` : ''
+    if (m.sender_role === 'system') {
+      lines.push(`${prefix}--- ${m.body} ---`)
+    } else if (m.sender_role === 'staff') {
+      const sender = (m.sender_name || '').trim() || 'Customer Care'
+      lines.push(`${prefix}${sender}: ${m.body}`)
+    } else {
+      lines.push(`${prefix}You: ${m.body}`)
+    }
+  }
+
+  return lines.join('\n')
+}
+
+export function convertLiveChatMessagesToThreadEntries(input: {
+  sessionId: string
+  supportCode: string
+  staffName?: string | null
+  messages: SerializableLiveChatMessage[]
+}): SerializedLiveChatEntry[] {
+  const code = resolveSupportId(input.supportCode, input.sessionId)
+  const fallbackStaff = (input.staffName ?? '').trim() || 'Customer Care'
+  const entries: SerializedLiveChatEntry[] = []
+
+  for (const m of input.messages) {
+    if (
+      m.sender_role === 'system' &&
+      /will be with you shortly/i.test(m.body)
+    ) {
+      continue
+    }
+    if (!m.body || !m.body.trim()) continue
+
+    if (m.sender_role === 'user') {
+      entries.push({
+        id: `lc-${input.sessionId}-${m.id}`,
+        role: 'user',
+        content: m.body,
+        aiContent: m.body,
+        timestampIso: m.created_at,
+        liveChatMeta: {
+          sessionId: input.sessionId,
+          supportCode: code,
+          kind: 'user',
+        },
+      })
+    } else if (m.sender_role === 'staff') {
+      const sender = (m.sender_name || '').trim() || fallbackStaff
+      entries.push({
+        id: `lc-${input.sessionId}-${m.id}`,
+        role: 'assistant',
+        content: m.body,
+        aiContent: `[Live Support (${code}) · ${sender}]: ${m.body}`,
+        timestampIso: m.created_at,
+        liveChatMeta: {
+          sessionId: input.sessionId,
+          supportCode: code,
+          kind: 'staff',
+          senderName: sender,
+        },
+      })
+    } else {
+      entries.push({
+        id: `lc-${input.sessionId}-${m.id}`,
+        role: 'assistant',
+        content: m.body,
+        aiContent: `[Live Support (${code}) Event]: ${m.body}`,
+        timestampIso: m.created_at,
+        liveChatMeta: {
+          sessionId: input.sessionId,
+          supportCode: code,
+          kind: 'divider',
+        },
+      })
+    }
+  }
+
+  return entries
+}
+
+export interface ChatTurnForAi {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  isError?: boolean
+  aiContent?: string
+  liveChatMeta?: {
+    sessionId: string
+    supportCode: string
+    kind: 'user' | 'staff' | 'divider'
+    senderName?: string
+  }
+  attachments?: Array<{ url: string; contentType: string }>
+}
+
+export function formatThreadMessagesForAiApi(messages: ChatTurnForAi[]): Array<{
+  role: 'user' | 'assistant'
+  content: string
+  attachments?: Array<{ url: string; contentType: string }>
+}> {
+  return messages
+    .filter((m) => !m.isError)
+    .filter(
+      (m) =>
+        m.role === 'user' ||
+        m.role === 'assistant' ||
+        Boolean(m.liveChatMeta),
+    )
+    .map((m) => {
+      const normalizedRole: 'user' | 'assistant' =
+        m.role === 'user' ? 'user' : 'assistant'
+      let serialized = m.aiContent || m.content
+      if (!m.aiContent && m.liveChatMeta) {
+        if (m.liveChatMeta.kind === 'staff') {
+          const rep = m.liveChatMeta.senderName || 'Customer Care'
+          serialized = `[Live Support (${m.liveChatMeta.supportCode}) · ${rep}]: ${m.content}`
+        } else if (m.liveChatMeta.kind === 'divider') {
+          serialized = `[Live Support (${m.liveChatMeta.supportCode}) Event]: ${m.content}`
+        }
+      }
+      return {
+        role: normalizedRole,
+        content: serialized,
+        attachments: m.attachments
+          ? m.attachments.map((a) => ({
+              url: a.url,
+              contentType: a.contentType,
+            }))
+          : undefined,
+      }
+    })
+}
+
+
 

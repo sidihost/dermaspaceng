@@ -46,6 +46,16 @@ export interface LiveChatSession {
   guest_email: string | null
   guest_phone: string | null
   visitor_location?: string | null
+  visitor_ip?: string | null
+  visitor_user_agent?: string | null
+  visitor_browser?: string | null
+  visitor_os?: string | null
+  visitor_device?: string | null
+  visitor_timezone?: string | null
+  visitor_page_url?: string | null
+  visitor_referrer?: string | null
+  visitor_language?: string | null
+  visitor_screen?: string | null
 }
 
 export interface LiveChatMessage {
@@ -97,6 +107,50 @@ export function ensureLiveChatSupportCodeColumn(): Promise<void> {
       await sql`
         ALTER TABLE live_chat_sessions
         ADD COLUMN IF NOT EXISTS transcript_sent_at TIMESTAMPTZ
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_location TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_ip TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_user_agent TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_browser TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_os TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_device TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_timezone TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_page_url TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_referrer TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_language TEXT
+      `
+      await sql`
+        ALTER TABLE live_chat_sessions
+        ADD COLUMN IF NOT EXISTS visitor_screen TEXT
       `
       // Backfill any pre-existing sessions so every row in Postgres has a real,
       // searchable Support ID stored in the database (collision-safe).
@@ -296,24 +350,85 @@ export async function getSessionById(idOrCode: string): Promise<LiveChatSession 
   return null
 }
 
+export interface VisitorSessionMetaInput {
+  location?: string | null
+  ip?: string | null
+  userAgent?: string | null
+  browser?: string | null
+  os?: string | null
+  device?: string | null
+  timezone?: string | null
+  pageUrl?: string | null
+  referrer?: string | null
+  language?: string | null
+  screen?: string | null
+}
+
 export async function escalateToHuman(
   userId: string,
   initialTopic: string | null,
   aiTranscript: unknown,
+  visitor?: VisitorSessionMetaInput | null,
 ): Promise<LiveChatSession> {
   await ensureLiveChatSupportCodeColumn()
   // Reuse an open session if one exists rather than racing two queues.
   const existing = await getOpenSessionForUser(userId)
-  if (existing) return existing
+  if (existing) {
+    if (visitor && (!existing.visitor_browser || !existing.visitor_location)) {
+      await sql`
+        UPDATE live_chat_sessions
+           SET visitor_location   = COALESCE(visitor_location, ${visitor.location ?? null}),
+               visitor_ip         = COALESCE(visitor_ip, ${visitor.ip ?? null}),
+               visitor_user_agent = COALESCE(visitor_user_agent, ${visitor.userAgent ?? null}),
+               visitor_browser    = COALESCE(visitor_browser, ${visitor.browser ?? null}),
+               visitor_os         = COALESCE(visitor_os, ${visitor.os ?? null}),
+               visitor_device     = COALESCE(visitor_device, ${visitor.device ?? null}),
+               visitor_timezone   = COALESCE(visitor_timezone, ${visitor.timezone ?? null}),
+               visitor_page_url   = COALESCE(visitor_page_url, ${visitor.pageUrl ?? null}),
+               visitor_referrer   = COALESCE(visitor_referrer, ${visitor.referrer ?? null}),
+               visitor_language   = COALESCE(visitor_language, ${visitor.language ?? null}),
+               visitor_screen     = COALESCE(visitor_screen, ${visitor.screen ?? null})
+         WHERE id = ${existing.id}
+      `.catch(() => {})
+    }
+    return existing
+  }
 
   const supportCode = await allocateUniqueSupportCode()
   const rows = await sql`
-    INSERT INTO live_chat_sessions (user_id, initial_topic, ai_transcript, support_code)
+    INSERT INTO live_chat_sessions (
+      user_id,
+      initial_topic,
+      ai_transcript,
+      support_code,
+      visitor_location,
+      visitor_ip,
+      visitor_user_agent,
+      visitor_browser,
+      visitor_os,
+      visitor_device,
+      visitor_timezone,
+      visitor_page_url,
+      visitor_referrer,
+      visitor_language,
+      visitor_screen
+    )
     VALUES (
       ${userId},
       ${initialTopic},
       ${aiTranscript ? JSON.stringify(aiTranscript) : null},
-      ${supportCode}
+      ${supportCode},
+      ${visitor?.location ?? null},
+      ${visitor?.ip ?? null},
+      ${visitor?.userAgent ?? null},
+      ${visitor?.browser ?? null},
+      ${visitor?.os ?? null},
+      ${visitor?.device ?? null},
+      ${visitor?.timezone ?? null},
+      ${visitor?.pageUrl ?? null},
+      ${visitor?.referrer ?? null},
+      ${visitor?.language ?? null},
+      ${visitor?.screen ?? null}
     )
     RETURNING *
   `
@@ -338,18 +453,47 @@ export async function escalateAsGuest(input: {
   email: string
   phone: string | null
   initialTopic: string | null
+  visitor?: VisitorSessionMetaInput | null
 }): Promise<LiveChatSession> {
   await ensureLiveChatSupportCodeColumn()
   const supportCode = await allocateUniqueSupportCode()
   const rows = await sql`
-    INSERT INTO live_chat_sessions
-      (initial_topic, guest_name, guest_email, guest_phone, support_code)
-    VALUES
-      (${input.initialTopic},
-       ${input.name},
-       ${input.email.toLowerCase()},
-       ${input.phone},
-       ${supportCode})
+    INSERT INTO live_chat_sessions (
+      initial_topic,
+      guest_name,
+      guest_email,
+      guest_phone,
+      support_code,
+      visitor_location,
+      visitor_ip,
+      visitor_user_agent,
+      visitor_browser,
+      visitor_os,
+      visitor_device,
+      visitor_timezone,
+      visitor_page_url,
+      visitor_referrer,
+      visitor_language,
+      visitor_screen
+    )
+    VALUES (
+      ${input.initialTopic},
+      ${input.name},
+      ${input.email.toLowerCase()},
+      ${input.phone},
+      ${supportCode},
+      ${input.visitor?.location ?? null},
+      ${input.visitor?.ip ?? null},
+      ${input.visitor?.userAgent ?? null},
+      ${input.visitor?.browser ?? null},
+      ${input.visitor?.os ?? null},
+      ${input.visitor?.device ?? null},
+      ${input.visitor?.timezone ?? null},
+      ${input.visitor?.pageUrl ?? null},
+      ${input.visitor?.referrer ?? null},
+      ${input.visitor?.language ?? null},
+      ${input.visitor?.screen ?? null}
+    )
     RETURNING *
   `
   const session = withResolvedSupportCode(rows[0] as LiveChatSession)
@@ -901,6 +1045,7 @@ export interface AdminOversightItem extends LiveChatSession {
   staff_id: string | null
   staff_first_name: string | null
   staff_last_name: string | null
+  staff_display_name?: string | null
   staff_avatar_slug: string | null
   staff_avatar_url: string | null
   rating: number | null
@@ -952,6 +1097,7 @@ export async function getAllSessions(
                  (s.user_id IS NULL)                                                   AS is_guest,
                  st.first_name                                                         AS staff_first_name,
                  st.last_name                                                          AS staff_last_name,
+                 sp.display_name                                                       AS staff_display_name,
                  st.avatar_url                                                         AS staff_user_avatar_url,
                  sp.avatar_slug                                                        AS staff_avatar_slug,
                  CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
@@ -994,6 +1140,7 @@ export async function getAllSessions(
                    (s.user_id IS NULL)                                                   AS is_guest,
                    st.first_name                                                         AS staff_first_name,
                    st.last_name                                                          AS staff_last_name,
+                   sp.display_name                                                       AS staff_display_name,
                    st.avatar_url                                                         AS staff_user_avatar_url,
                    sp.avatar_slug                                                        AS staff_avatar_slug,
                    CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
@@ -1033,6 +1180,7 @@ export async function getAllSessions(
                    (s.user_id IS NULL)                                                   AS is_guest,
                    st.first_name                                                         AS staff_first_name,
                    st.last_name                                                          AS staff_last_name,
+                   sp.display_name                                                       AS staff_display_name,
                    st.avatar_url                                                         AS staff_user_avatar_url,
                    sp.avatar_slug                                                        AS staff_avatar_slug,
                    CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL
@@ -1168,6 +1316,7 @@ export async function getFullSessionView(sessionId: string): Promise<FullSession
            (s.user_id IS NULL)                                                   AS is_guest,
            st.first_name                                                         AS staff_first_name,
            st.last_name                                                          AS staff_last_name,
+           sp.display_name                                                       AS staff_display_name,
            st.avatar_url                                                         AS staff_user_avatar_url,
            sp.avatar_slug                                                        AS staff_avatar_slug,
            CASE WHEN NULLIF(TRIM(st.avatar_url), '') IS NOT NULL

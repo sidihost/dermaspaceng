@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { getSessionById } from '@/lib/live-chat'
+import { parseVisitorUserAgent } from '@/lib/visitor-telemetry'
 
 // ---------------------------------------------------------------------------
 // GET /api/staff/live-chat/sessions/[id]/user-context
@@ -40,11 +41,27 @@ export async function GET(_req: Request, { params }: Params) {
   // so handovers and Support ID lookups carry full customer context.
   void me
 
+  const parsedUa = parseVisitorUserAgent(session.visitor_user_agent ?? null)
+  const visitor = {
+    location: session.visitor_location ?? null,
+    ip: session.visitor_ip ?? null,
+    browser: session.visitor_browser ?? parsedUa.browser,
+    os: session.visitor_os ?? parsedUa.os,
+    device: session.visitor_device ?? parsedUa.device,
+    timezone: session.visitor_timezone ?? null,
+    pageUrl: session.visitor_page_url ?? null,
+    referrer: session.visitor_referrer ?? null,
+    language: session.visitor_language ?? null,
+    screen: session.visitor_screen ?? null,
+    userAgent: session.visitor_user_agent ?? null,
+  }
+
   const userId = session.user_id
   if (!userId) {
     const parts = (session.guest_name || 'Guest').trim().split(/\s+/)
     return NextResponse.json({
       isGuest: true,
+      visitor,
       user: {
         id: null,
         firstName: parts[0] || 'Guest',
@@ -133,6 +150,8 @@ export async function GET(_req: Request, { params }: Params) {
   }
 
   return NextResponse.json({
+    isGuest: false,
+    visitor,
     user: {
       id: user.id,
       firstName: user.first_name,

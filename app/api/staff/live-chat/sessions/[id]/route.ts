@@ -14,6 +14,7 @@ import {
   addMessage,
 } from '@/lib/live-chat'
 import { logStaffActivity } from '@/lib/activity-log'
+import { parseVisitorUserAgent } from '@/lib/visitor-telemetry'
 
 interface Params {
   params: Promise<{ id: string }>
@@ -66,6 +67,9 @@ export async function GET(_req: Request, { params }: Params) {
     String(r.id),
   )
 
+  const rawUa = (r.visitor_user_agent as string | null) ?? null
+  const parsedUa = parseVisitorUserAgent(rawUa)
+
   return NextResponse.json({
     session: {
       id: r.id,
@@ -83,6 +87,19 @@ export async function GET(_req: Request, { params }: Params) {
       staff_rating: r.staff_rating,
       rating_comment: r.rating_comment,
       isGuest: Boolean(r.is_guest),
+      visitor: {
+        location: (r.visitor_location as string | null) ?? null,
+        ip: (r.visitor_ip as string | null) ?? null,
+        browser: (r.visitor_browser as string | null) ?? parsedUa.browser,
+        os: (r.visitor_os as string | null) ?? parsedUa.os,
+        device: (r.visitor_device as string | null) ?? parsedUa.device,
+        timezone: (r.visitor_timezone as string | null) ?? null,
+        pageUrl: (r.visitor_page_url as string | null) ?? null,
+        referrer: (r.visitor_referrer as string | null) ?? null,
+        language: (r.visitor_language as string | null) ?? null,
+        screen: (r.visitor_screen as string | null) ?? null,
+        userAgent: rawUa,
+      },
       user: {
         firstName: r.user_first_name,
         lastName: r.user_last_name,

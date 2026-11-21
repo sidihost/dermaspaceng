@@ -58,7 +58,38 @@ async function handleSessionAction(req: Request, { params }: Params) {
   }
 
   if (body.action === 'close') {
+    const wasOpen = session.status === 'waiting' || session.status === 'active'
     await closeSession(session.id, 'user')
+
+    if (wasOpen) {
+      const { addMessage, getMessages, staffDisplayName } = await import('@/lib/live-chat')
+      const { sql } = await import('@/lib/db')
+      if (session.assigned_staff_id) {
+        const profileRows = await sql`
+          SELECT u.first_name, u.last_name, sp.display_name
+            FROM users u
+            LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+           WHERE u.id = ${session.assigned_staff_id}
+           LIMIT 1
+        `
+        const r = profileRows[0] as
+          | { first_name: string | null; last_name: string | null; display_name: string | null }
+          | undefined
+        if (r) {
+          const dn = staffDisplayName({
+            display_name: r.display_name,
+            first_name: r.first_name,
+            last_name: r.last_name,
+          })
+          await addMessage(session.id, 'system', null, `${dn} left the chat`)
+        }
+      }
+      await addMessage(session.id, 'system', null, 'Chat ended')
+      const transcriptSent = await dispatchLiveChatTranscriptEmail(session.id)
+      const messages = await getMessages(session.id)
+      return NextResponse.json({ success: true, transcriptSent, messages })
+    }
+
     const transcriptSent = await dispatchLiveChatTranscriptEmail(session.id)
     // Keep the guest session cookie intact after closing so the visitor can
     // submit their post-chat rating or resend their transcript. The cookie is
@@ -86,14 +117,13 @@ async function handleSessionAction(req: Request, { params }: Params) {
     const rawService = body.service ?? body.serviceRating
     const rawStaff = body.staff ?? body.staffRating
     const service = Number(rawService)
-    // When a chat ends before any staff representative joined, default staff
-    // rating to the overall support rating if not separately supplied.
+    // Support neutral review cards (overall support + issue resolution) by
+    // defaulting staff rating cleanly to the overall support rating when
+    // omitted rather than exposing or requiring representative-named rows.
     const staff =
       rawStaff !== undefined && rawStaff !== null && Number(rawStaff) > 0
         ? Number(rawStaff)
-        : !session.assigned_staff_id
-          ? service
-          : NaN
+        : service
 
     if (
       !Number.isFinite(service) ||

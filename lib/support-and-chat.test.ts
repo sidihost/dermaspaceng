@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  buildLiveChatTranscriptDownloadText,
   computeTicketSummary,
+  convertLiveChatMessagesToThreadEntries,
   detectHumanHandoffIntent,
   formatFallbackSupportId,
   formatRelativeTimestamp,
+  formatThreadMessagesForAiApi,
   formatWaitSeconds,
   generateLiveChatSupportId,
   getHandoffAutoMessage,
@@ -268,6 +271,113 @@ test('live-chat-sound tracks customer and staff mute states independently withou
   assert.equal(mod.isLiveChatSoundEnabled('customer'), true)
   assert.equal(mod.isLiveChatSoundEnabled('staff'), true)
 })
+
+test('convertLiveChatMessagesToThreadEntries preserves live-chat turns and formats AI continuity context', () => {
+  const converted = convertLiveChatMessagesToThreadEntries({
+    sessionId: 'sess-123',
+    supportCode: 'DS-LC-7K4M9P',
+    staffName: 'Amaka O.',
+    messages: [
+      {
+        id: 'm1',
+        sender_role: 'system',
+        body: 'A representative will be with you shortly.',
+        created_at: '2026-11-20T10:00:00.000Z',
+      },
+      {
+        id: 'm2',
+        sender_role: 'system',
+        body: 'Amaka O. joined the chat',
+        created_at: '2026-11-20T10:01:00.000Z',
+      },
+      {
+        id: 'm3',
+        sender_role: 'user',
+        body: 'Can I move my HydraFacial to Friday 2pm?',
+        created_at: '2026-11-20T10:02:00.000Z',
+      },
+      {
+        id: 'm4',
+        sender_role: 'staff',
+        sender_name: 'Amaka O.',
+        body: 'Yes, Lekki has 2:00 PM open on Friday.',
+        created_at: '2026-11-20T10:03:00.000Z',
+      },
+      {
+        id: 'm5',
+        sender_role: 'system',
+        body: 'Chat ended',
+        created_at: '2026-11-20T10:04:00.000Z',
+      },
+    ],
+  })
+
+  // Stub "will be with you shortly" noise is filtered, all substantive + join/end events preserved
+  assert.equal(converted.length, 4)
+  assert.equal(converted[0].liveChatMeta.kind, 'divider')
+  assert.equal(converted[0].aiContent, '[Live Support (DS-LC-7K4M9P) Event]: Amaka O. joined the chat')
+  assert.equal(converted[1].role, 'user')
+  assert.equal(converted[1].liveChatMeta.kind, 'user')
+  assert.equal(converted[2].role, 'assistant')
+  assert.equal(converted[2].liveChatMeta.kind, 'staff')
+  assert.equal(converted[2].liveChatMeta.senderName, 'Amaka O.')
+  assert.equal(converted[2].aiContent, '[Live Support (DS-LC-7K4M9P) · Amaka O.]: Yes, Lekki has 2:00 PM open on Friday.')
+  assert.equal(converted[3].content, 'Chat ended')
+
+  // Forwarded to /api/chat alongside AI turns while excluding isError failures
+  const outbound = formatThreadMessagesForAiApi([
+    { role: 'user', content: 'I need a live agent' },
+    { role: 'assistant', content: 'Connecting you...', isError: true },
+    ...converted.map((c) => ({
+      role: c.role,
+      content: c.content,
+      aiContent: c.aiContent,
+      liveChatMeta: c.liveChatMeta,
+    })),
+    { role: 'user', content: 'Book that Friday 2pm slot she mentioned' },
+  ])
+
+  assert.equal(outbound.length, 6)
+  assert.equal(outbound[2].content, 'Can I move my HydraFacial to Friday 2pm?')
+  assert.equal(outbound[3].role, 'assistant')
+  assert.equal(outbound[3].content, '[Live Support (DS-LC-7K4M9P) · Amaka O.]: Yes, Lekki has 2:00 PM open on Friday.')
+  assert.equal(outbound[5].content, 'Book that Friday 2pm slot she mentioned')
+})
+
+test('buildLiveChatTranscriptDownloadText formats Support ID, rep attribution, and system dividers cleanly', () => {
+  const txt = buildLiveChatTranscriptDownloadText({
+    supportCode: 'DS-LC-7K4M9P',
+    topic: 'Booking change',
+    messages: [
+      {
+        id: 'm1',
+        sender_role: 'system',
+        body: 'Amaka O. joined the chat',
+        created_at: '2026-11-20T10:01:00.000Z',
+      },
+      {
+        id: 'm2',
+        sender_role: 'user',
+        body: 'Hi team',
+        created_at: '2026-11-20T10:02:00.000Z',
+      },
+      {
+        id: 'm3',
+        sender_role: 'staff',
+        sender_name: 'Amaka O.',
+        body: 'Happy to help!',
+        created_at: '2026-11-20T10:03:00.000Z',
+      },
+    ],
+  })
+  assert.match(txt, /Dermaspace Live Support Transcript/)
+  assert.match(txt, /Support ID: DS-LC-7K4M9P/)
+  assert.match(txt, /Topic: Booking change/)
+  assert.match(txt, /--- Amaka O\. joined the chat ---/)
+  assert.match(txt, /You: Hi team/)
+  assert.match(txt, /Amaka O\.: Happy to help!/)
+})
+
 
 
 

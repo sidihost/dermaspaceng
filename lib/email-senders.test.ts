@@ -120,6 +120,7 @@ describe('Dedicated Staff vs. Client suspension appeals', () => {
     assert.match(built.html, /Policy review pending/)
     assert.match(built.html, /automated/i)
     assert.match(built.html, /do not reply/i)
+    assert.equal(built.html.match(/please do not reply directly/gi)?.length, 1)
     assert.doesNotMatch(built.html, /hello@dermaspaceng\.com/i)
     assert.doesNotMatch(built.html, /reply to this email/i)
   })
@@ -143,13 +144,14 @@ describe('Dedicated Staff vs. Client suspension appeals', () => {
     assert.match(built.html, /Suspension Note/)
     assert.match(built.html, /automated/i)
     assert.match(built.html, /do not reply/i)
+    assert.equal(built.html.match(/please do not reply directly/gi)?.length, 1)
     assert.doesNotMatch(built.html, /hello@dermaspaceng\.com/i)
     assert.doesNotMatch(built.html, /reply to this email/i)
   })
 })
 
 describe('Automated transactional email titles & no-reply hygiene', () => {
-  it('uses Dermaspace Team title and automated no-reply copy on staff promotion emails', () => {
+  it('uses Dermaspace Team title and single automated no-reply copy on staff promotion emails', () => {
     const built = buildStaffPromotedEmailHtml({
       firstName: 'Tola',
       newRole: 'admin',
@@ -160,12 +162,13 @@ describe('Automated transactional email titles & no-reply hygiene', () => {
     assert.match(built.html, /<title>Dermaspace Team<\/title>/)
     assert.match(built.html, /automated/i)
     assert.match(built.html, /do not reply/i)
+    assert.equal(built.html.match(/please do not reply directly/gi)?.length, 1)
     assert.doesNotMatch(built.html, /hello@dermaspaceng\.com/i)
     assert.doesNotMatch(built.html, /reply to this email/i)
     assert.doesNotMatch(built.html, /\bclinic\b|\bhospital\b/i)
   })
 
-  it('uses Dermaspace Support title and automated no-reply copy on live chat transcript emails', () => {
+  it('uses Dermaspace Support title and single automated no-reply copy on live chat transcript emails', () => {
     const built = buildLiveChatTranscriptEmailHtml({
       firstName: 'Ngozi',
       supportCode: 'DS-LC-9911',
@@ -192,6 +195,7 @@ describe('Automated transactional email titles & no-reply hygiene', () => {
     assert.match(built.html, /<title>Dermaspace Support<\/title>/)
     assert.match(built.html, /DS-LC-9911/)
     assert.match(built.html, /automated/i)
+    assert.equal(built.html.match(/please do not reply directly/gi)?.length, 1)
     assert.doesNotMatch(built.html, /hello@dermaspaceng\.com/i)
     assert.doesNotMatch(built.html, /reply to this email/i)
   })

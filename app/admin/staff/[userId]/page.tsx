@@ -170,7 +170,7 @@ export default function StaffProfilePage() {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmAction, setConfirmAction] = useState<{
-    action: 'toggle_active' | 'change_role'
+    action: 'toggle_active' | 'change_role' | 'service_perm'
     value: unknown
     title: string
     description: string
@@ -280,6 +280,7 @@ export default function StaffProfilePage() {
       notify.error('Network error', 'Could not reach server')
     } finally {
       setActing(false)
+      setConfirmAction(null)
     }
   }
 
@@ -436,8 +437,16 @@ export default function StaffProfilePage() {
             ) : (
               <button
                 disabled={acting}
-                onClick={() => handleAction('toggle_active', true)}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7B2D8E]/30 text-xs font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
+                onClick={() =>
+                  setConfirmAction({
+                    action: 'toggle_active',
+                    value: true,
+                    title: `Reactivate ${fullName}?`,
+                    description: 'Their account access will be restored immediately and they will receive a confirmation email.',
+                    confirmLabel: 'Reactivate account',
+                  })
+                }
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#7B2D8E]/30 text-xs font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50 cursor-pointer"
               >
                 <Shield className="w-3.5 h-3.5" />
                 Reactivate
@@ -455,7 +464,7 @@ export default function StaffProfilePage() {
                     confirmLabel: 'Promote to admin',
                   })
                 }
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-xs font-medium hover:bg-[#5A1D6A] disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-xs font-medium hover:bg-[#5A1D6A] disabled:opacity-50 cursor-pointer"
               >
                 Promote to admin
               </button>
@@ -472,7 +481,7 @@ export default function StaffProfilePage() {
                   })
                 }
                 title={user.is_super_admin ? 'Super admins cannot be demoted from this screen' : undefined}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 Demote to staff
               </button>
@@ -481,8 +490,20 @@ export default function StaffProfilePage() {
               <button
                 type="button"
                 disabled={acting}
-                onClick={() => void handleToggleServicePermission(!user.can_manage_services)}
-                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 ${
+                onClick={() =>
+                  setConfirmAction({
+                    action: 'service_perm',
+                    value: !user.can_manage_services,
+                    title: user.can_manage_services
+                      ? `Revoke Service Editor access from ${fullName}?`
+                      : `Grant Service Editor access to ${fullName}?`,
+                    description: user.can_manage_services
+                      ? 'They will no longer be able to create or update service catalog entries.'
+                      : 'They will be able to create, edit, and manage services and pricing inside their staff workspace.',
+                    confirmLabel: user.can_manage_services ? 'Revoke access' : 'Grant access',
+                  })
+                }
+                className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer ${
                   user.can_manage_services
                     ? 'border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-[#5A1D6A] hover:bg-[#7B2D8E]/15'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
@@ -798,7 +819,10 @@ export default function StaffProfilePage() {
               disabled={acting}
               className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white"
               onClick={() => {
-                if (confirmAction) {
+                if (!confirmAction) return
+                if (confirmAction.action === 'service_perm') {
+                  void handleToggleServicePermission(Boolean(confirmAction.value))
+                } else {
                   void handleAction(confirmAction.action, confirmAction.value, suspendReason)
                 }
               }}

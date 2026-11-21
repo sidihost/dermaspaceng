@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone, Headphones } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -22,7 +22,9 @@ import { logoutAndRedirect } from '@/lib/logout'
 import { useAuth } from '@/hooks/use-auth'
 import Image from 'next/image'
 import {
+  convertLiveChatMessagesToThreadEntries,
   detectHumanHandoffIntent,
+  formatThreadMessagesForAiApi,
   getHandoffAutoMessage,
   resolveSupportId,
 } from '@/lib/support-and-chat'
@@ -31,6 +33,7 @@ import {
   InlineLiveHeaderControls,
   InlineLiveFeed,
   RepAvatar,
+  type FinalizedLiveSessionPayload,
 } from './derma-inline-live-chat'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
@@ -129,6 +132,15 @@ interface Message {
   // user (so they know the previous turn failed), it just isn't
   // forwarded to the model on the next turn.
   isError?: boolean
+  // Optional AI-formatted string for preserved live-chat turns so Derma AI
+  // understands every message exchanged with the human representative.
+  aiContent?: string
+  liveChatMeta?: {
+    sessionId: string
+    supportCode: string
+    kind: 'user' | 'staff' | 'divider'
+    senderName?: string
+  }
   }
 
 interface ToolResult {
@@ -2378,11 +2390,47 @@ export default function DermaAI({
     }, 60)
   }, [])
 
+  const latestMessagesRef = useRef<Message[]>(messages)
+  useEffect(() => {
+    latestMessagesRef.current = messages
+  }, [messages])
+
+  const handleSessionFinalized = useCallback(
+    (payload: FinalizedLiveSessionPayload) => {
+      const entries = convertLiveChatMessagesToThreadEntries({
+        sessionId: payload.session.id,
+        supportCode: payload.session.supportCode || payload.session.id,
+        staffName: payload.staff?.displayName || null,
+        messages: payload.messages,
+      })
+      if (entries.length === 0) return
+
+      const toAppend: Message[] = entries.map((entry) => ({
+        id: entry.id,
+        role: entry.role,
+        content: entry.content,
+        aiContent: entry.aiContent,
+        timestamp: entry.timestampIso ? new Date(entry.timestampIso) : new Date(),
+        liveChatMeta: entry.liveChatMeta,
+      }))
+
+      const existingIds = new Set(latestMessagesRef.current.map((m) => m.id))
+      const fresh = toAppend.filter((m) => !existingIds.has(m.id))
+      if (fresh.length === 0) return
+
+      const next = [...latestMessagesRef.current, ...fresh]
+      latestMessagesRef.current = next
+      setMessages(next)
+    },
+    [],
+  )
+
   // Unified live human representative handoff (runs inside this same chat
   // panel rather than popping a separate floating live-chat window).
   const inlineLiveChat = useInlineLiveChat({
     isOpen,
     onSessionChange: scrollToLatestMessage,
+    onSessionFinalized: handleSessionFinalized,
   })
 
   // ── Mistral Voxtral live-listen loop (replaces webkitSpeechRecognition
@@ -5305,8 +5353,9 @@ export default function DermaAI({
         timestamp: new Date(),
         attachments: attachments.length > 0 ? attachments : undefined,
       }
-      currentMessages = [...messages, userMessage]
+      currentMessages = [...latestMessagesRef.current, userMessage]
     }
+    latestMessagesRef.current = currentMessages
     setMessages(currentMessages)
     setInput('')
     setPendingAttachments([])
@@ -5358,23 +5407,7 @@ export default function DermaAI({
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
         body: JSON.stringify({
-          messages: currentMessages
-            .filter(m => m.role === 'user' || m.role === 'assistant')
-            // Strip prior failure replies so Mistral doesn't see its
-            // own "I'm having trouble connecting" line as valid
-            // assistant context and parrot it back on the next
-            // turn. The user still sees the failed bubble in the
-            // UI (with the Regenerate icon underneath), but the
-            // model gets a clean transcript to reason from.
-            .filter(m => !m.isError)
-            .map(m => ({
-              role: m.role,
-              content: m.content,
-              // Forward image URLs so the server can build a multimodal payload
-              attachments: m.attachments
-                ? m.attachments.map(a => ({ url: a.url, contentType: a.contentType }))
-                : undefined,
-            })),
+          messages: formatThreadMessagesForAiApi(currentMessages),
           userInfo: {
             name: userInfo.name,
             // Normalise to the keys the server's buildUserContext reads
@@ -6006,6 +6039,11 @@ export default function DermaAI({
       return
     }
 
+    // If a live session ended and the user starts typing directly to Derma AI
+    // before tapping Skip / Continue, commit the live-chat transcript cleanly
+    // into latestMessagesRef + messages so Derma AI retains full context.
+    inlineLiveChat.dismissClosedReviewIntoHistory()
+
     // Auto-trigger live human representative handoff inside this same chat
     // whenever the user asks for a human, agent, representative, or support.
     if (!hasAttachments && detectHumanHandoffIntent(content)) {
@@ -6022,11 +6060,13 @@ export default function DermaAI({
         content: getHandoffAutoMessage('connecting'),
         timestamp: new Date(),
       }
-      const transcript = [...messages, userMessage].slice(-16).map((m) => ({
+      const transcript = [...latestMessagesRef.current, userMessage].slice(-16).map((m) => ({
         role: m.role,
-        content: m.content,
+        content: m.aiContent || m.content,
       }))
-      setMessages(prev => [...prev, userMessage, handoffMessage])
+      const nextMessages = [...latestMessagesRef.current, userMessage, handoffMessage]
+      latestMessagesRef.current = nextMessages
+      setMessages(nextMessages)
       setInput('')
       playChime('send')
       void inlineLiveChat.triggerHandoff(trimmed, transcript)
@@ -7323,6 +7363,14 @@ export default function DermaAI({
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
                     {inlineLiveChat.isLiveMode && (
                       <InlineLiveHeaderControls
+                        optionsOpen={inlineLiveChat.optionsOpen}
+                        onToggleOptions={() => inlineLiveChat.setOptionsOpen((v) => !v)}
+                        confirmLeaveOpen={inlineLiveChat.confirmLeaveOpen}
+                        onRequestLeave={() => {
+                          inlineLiveChat.setOptionsOpen(false)
+                          inlineLiveChat.setConfirmLeaveOpen(true)
+                        }}
+                        onCancelLeave={() => inlineLiveChat.setConfirmLeaveOpen(false)}
                         onEndLiveChat={inlineLiveChat.endLiveChat}
                       />
                     )}
@@ -7750,6 +7798,61 @@ export default function DermaAI({
                                 </Link>
                               </div>
                             </div>
+                          </div>
+                        </div>
+                      ) : message.liveChatMeta?.kind === 'divider' ? (
+                        <div className="py-1.5" role="status">
+                          <div className="flex items-center gap-3">
+                            <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+                            <span className="text-[11px] font-medium text-gray-500 text-center">
+                              {message.content}
+                            </span>
+                            <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+                          </div>
+                          <p className="text-center text-[10px] text-gray-400 mt-0.5 tabular-nums">
+                            {message.timestamp.toLocaleTimeString('en-NG', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                      ) : message.liveChatMeta?.kind === 'staff' ? (
+                        <div className="flex justify-start">
+                          <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/25 flex items-center justify-center mr-2 mt-0.5">
+                            <Headphones className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                          </div>
+                          <div className="flex flex-col items-start max-w-[92%]">
+                            <div className="flex items-center gap-1.5 px-1 mb-0.5 flex-wrap">
+                              <span className="text-[10px] font-semibold text-[#5A1D6A]">
+                                {message.liveChatMeta.senderName || 'Representative'}
+                              </span>
+                              <span className="text-[9.5px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-full px-1.5 py-0.5">
+                                Live Support · {message.liveChatMeta.supportCode}
+                              </span>
+                            </div>
+                            <div className="rounded-2xl rounded-bl-sm bg-white border border-gray-200 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gray-800 whitespace-pre-wrap select-text">
+                              {message.content}
+                            </div>
+                            <span className="text-[10px] text-gray-400 px-1 mt-0.5 tabular-nums">
+                              {message.timestamp.toLocaleTimeString('en-NG', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      ) : message.liveChatMeta?.kind === 'user' ? (
+                        <div className="flex justify-end">
+                          <div className="flex flex-col items-end max-w-[82%]">
+                            <div className="rounded-2xl rounded-br-sm bg-[#7B2D8E] text-white px-3.5 py-2.5 text-[13.5px] leading-relaxed whitespace-pre-wrap select-text">
+                              {message.content}
+                            </div>
+                            <span className="text-[10px] text-gray-400 px-1 mt-0.5 tabular-nums">
+                              {message.timestamp.toLocaleTimeString('en-NG', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </span>
                           </div>
                         </div>
                       ) : (
@@ -8307,6 +8410,11 @@ export default function DermaAI({
                     justConnected={inlineLiveChat.justConnected}
                     error={inlineLiveChat.error}
                     onClearError={inlineLiveChat.clearError}
+                    optionsOpen={inlineLiveChat.optionsOpen}
+                    onCloseOptions={() => inlineLiveChat.setOptionsOpen(false)}
+                    confirmLeaveOpen={inlineLiveChat.confirmLeaveOpen}
+                    onCancelLeave={() => inlineLiveChat.setConfirmLeaveOpen(false)}
+                    onConfirmLeave={inlineLiveChat.endLiveChat}
                     guestFormOpen={inlineLiveChat.guestFormOpen}
                     guestSubmitting={inlineLiveChat.guestSubmitting}
                     guestError={inlineLiveChat.guestError}
@@ -8315,7 +8423,6 @@ export default function DermaAI({
                     showRating={inlineLiveChat.showRating}
                     ratingSessionId={inlineLiveChat.ratingSessionId}
                     ratingSupportCode={inlineLiveChat.ratingSupportCode}
-                    ratingStaffName={inlineLiveChat.ratingStaffName}
                     ratingError={inlineLiveChat.ratingError}
                     serviceRating={inlineLiveChat.serviceRating}
                     staffRating={inlineLiveChat.staffRating}
@@ -9013,7 +9120,7 @@ export default function DermaAI({
                                 onChange: setInlineMapsEnabled,
                               },
                               {
-                                icon: <Zap className="w-4 h-4" />,
+                                icon: <ArrowUpRight className="w-4 h-4" />,
                                 title: 'Proactive suggestions',
                                 desc: 'Suggest related next steps after an answer (reschedule, top-up, etc.).',
                                 value: proactiveSuggestions,

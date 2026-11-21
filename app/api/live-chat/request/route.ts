@@ -2,6 +2,14 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { escalateToHuman, escalateAsGuest, resolveSupportId } from '@/lib/live-chat'
 import { setGuestChatCookieOnResponse } from '@/lib/live-chat-guest'
+import { getGeoFromRequest } from '@/lib/geolocation'
+import {
+  cleanTextField,
+  extractVisitorIpFromHeaders,
+  formatVisitorLocation,
+  parseVisitorUserAgent,
+  sanitizeVisitorHints,
+} from '@/lib/visitor-telemetry'
 
 // ---------------------------------------------------------------------------
 // POST /api/live-chat/request
@@ -10,26 +18,65 @@ import { setGuestChatCookieOnResponse } from '@/lib/live-chat-guest'
 // the chat tool itself when the model decides the user wants a human.
 //
 // Two paths:
-//   1. Logged-in customer — body { topic?, transcript? }. Idempotent: if
-//      an open session already exists we hand it back.
-//   2. Guest visitor — body { guest: { name, email, phone? }, topic? }.
+//   1. Logged-in customer — body { topic?, transcript?, visitor? }. Idempotent:
+//      if an open session already exists we hand it back.
+//   2. Guest visitor — body { guest: { name, email, phone? }, topic?, visitor? }.
 //      We create a fresh session (anonymous chats don't reuse), set an
 //      httpOnly cookie holding the session id so subsequent calls from
 //      the same browser can authenticate to it, and return the session.
 // ---------------------------------------------------------------------------
 
-// Lightweight email format check. We deliberately don't import a heavy
-// validator because the staff member is the real validation step — if a
-// guest fat-fingers their address, support replies bounce, the staff
-// follows up via phone instead. This guard is just to reject obvious
-// junk like "x" before we persist a row.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+async function buildVisitorMeta(req: Request, rawHints: unknown) {
+  const hints = sanitizeVisitorHints(rawHints)
+  const ua = cleanTextField(req.headers.get('user-agent'), 400)
+  const parsed = parseVisitorUserAgent(ua)
+  const ip = extractVisitorIpFromHeaders(req.headers)
+
+  const geo = await getGeoFromRequest(req).catch(() => ({
+    country: null,
+    countryCode: null,
+    city: null,
+    region: null,
+  }))
+
+  const cfCity = cleanTextField(req.headers.get('cf-ipcity'), 80)
+  const cfCountry = cleanTextField(req.headers.get('cf-ipcountry'), 80)
+  const location = formatVisitorLocation({
+    city: geo.city || cfCity,
+    region: geo.region,
+    country: geo.country || geo.countryCode || cfCountry,
+    timezone: hints.timezone,
+  })
+
+  const acceptLang = cleanTextField(
+    req.headers.get('accept-language')?.split(',')[0],
+    32,
+  )
+  const headerReferrer = cleanTextField(req.headers.get('referer'), 300)
+
+  return {
+    location,
+    ip,
+    userAgent: ua,
+    browser: parsed.browser,
+    os: parsed.os,
+    device: parsed.device,
+    timezone: hints.timezone,
+    pageUrl: hints.pageUrl || headerReferrer,
+    referrer: hints.referrer,
+    language: hints.language || acceptLang,
+    screen: hints.screen,
+  }
+}
 
 export async function POST(req: Request) {
   const user = await getCurrentUser()
 
   let topic: string | null = null
   let transcript: unknown = null
+  let rawVisitor: unknown = null
   let guest: {
     name?: unknown
     email?: unknown
@@ -40,6 +87,9 @@ export async function POST(req: Request) {
     if (typeof body.topic === 'string') topic = body.topic.slice(0, 500)
     if (Array.isArray(body.transcript)) {
       transcript = body.transcript.slice(-30)
+    }
+    if (body.visitor && typeof body.visitor === 'object') {
+      rawVisitor = body.visitor
     }
     if (body.guest && typeof body.guest === 'object') {
       guest = body.guest as {
@@ -54,7 +104,8 @@ export async function POST(req: Request) {
 
   // ----- Logged-in path ----------------------------------------------------
   if (user) {
-    const session = await escalateToHuman(user.id, topic, transcript)
+    const visitor = await buildVisitorMeta(req, rawVisitor)
+    const session = await escalateToHuman(user.id, topic, transcript, visitor)
     return NextResponse.json({
       success: true,
       sessionId: session.id,
@@ -65,11 +116,6 @@ export async function POST(req: Request) {
   }
 
   // ----- Guest path --------------------------------------------------------
-  // If the caller didn't include a guest payload, surface the same hint
-  // the old route used to so existing clients know to render the
-  // pre-chat form. We keep `signinRequired: true` for backwards-compat
-  // with the AI-tool card that may still branch on it, but we add
-  // `guestFormRequired: true` for the new overlay path.
   if (!guest) {
     return NextResponse.json(
       {
@@ -102,11 +148,13 @@ export async function POST(req: Request) {
     )
   }
 
+  const visitor = await buildVisitorMeta(req, rawVisitor)
   const session = await escalateAsGuest({
     name,
     email,
     phone,
     initialTopic: topic,
+    visitor,
   })
 
   const response = NextResponse.json({
@@ -117,9 +165,6 @@ export async function POST(req: Request) {
     isGuest: true,
   })
 
-  // Stamp the guest cookie so subsequent /api/live-chat/* calls from
-  // this browser can authenticate to the session without a logged-in
-  // user record.
   setGuestChatCookieOnResponse(response, session.id)
 
   return response
