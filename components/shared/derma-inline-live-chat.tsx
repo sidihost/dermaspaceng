@@ -13,22 +13,24 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import {
   Check,
-  Download,
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
   FileText,
   Loader2,
-  LogOut,
-  Mail,
   Minus,
   Settings,
-  Star,
+  ThumbsDown,
+  ThumbsUp,
+  User,
   Volume2,
   VolumeX,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
   buildLiveChatTranscriptDownloadText,
   resolveSupportId,
@@ -51,6 +53,12 @@ export interface InlineLiveSession {
   acceptedAt: string | null
   closedAt: string | null
   ratedAt: string | null
+  isGuest?: boolean
+  guest?: {
+    name?: string | null
+    email?: string | null
+    phone?: string | null
+  } | null
 }
 
 export interface InlineLiveStaff {
@@ -93,6 +101,7 @@ export interface UseInlineLiveChatOptions {
   enabled?: boolean
   onSessionChange?: () => void
   onSessionFinalized?: (payload: FinalizedLiveSessionPayload) => void
+  onLiveChatLeftAndClosed?: () => void
 }
 
 function triggerTranscriptTextDownload(
@@ -210,11 +219,13 @@ export function useInlineLiveChat({
   enabled = true,
   onSessionChange,
   onSessionFinalized,
+  onLiveChatLeftAndClosed,
 }: UseInlineLiveChatOptions) {
   const [active, setActive] = useState<InlineLivePayload | null>(null)
   const [messages, setMessages] = useState<InlineLiveMessage[]>([])
   const [connecting, setConnecting] = useState(false)
   const [sending, setSending] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
@@ -251,6 +262,7 @@ export function useInlineLiveChat({
   const messagesRef = useRef<InlineLiveMessage[]>([])
   const finalizedSessionIdsRef = useRef<Set<string>>(new Set())
   const onSessionFinalizedRef = useRef(onSessionFinalized)
+  const onLiveChatLeftAndClosedRef = useRef(onLiveChatLeftAndClosed)
   useEffect(() => {
     activeRef.current = active
   }, [active])
@@ -260,6 +272,9 @@ export function useInlineLiveChat({
   useEffect(() => {
     onSessionFinalizedRef.current = onSessionFinalized
   }, [onSessionFinalized])
+  useEffect(() => {
+    onLiveChatLeftAndClosedRef.current = onLiveChatLeftAndClosed
+  }, [onLiveChatLeftAndClosed])
 
   const lastFetchedRef = useRef<string | null>(null)
   const hydratedSessionRef = useRef<string | null>(null)
@@ -999,6 +1014,131 @@ export function useInlineLiveChat({
     }
   }, [isLiveMode, ratingSessionId, session?.id, resetRatingAndClearTransient])
 
+  const leaveAndClearChat = useCallback(
+    async (selectedRating?: 1 | 5 | null) => {
+      const targetSessionId = ratingSessionId || sessionId
+      if (leaving) return
+      setLeaving(true)
+      setError(null)
+      setRatingError(null)
+      try {
+        if (targetSessionId) {
+          const isStillOpen =
+            activeRef.current?.session?.status === 'waiting' ||
+            activeRef.current?.session?.status === 'active'
+          const payload = isStillOpen
+            ? {
+                action: 'close',
+                finalize: true,
+                ...(selectedRating ? { rating: selectedRating } : {}),
+              }
+            : selectedRating
+              ? {
+                  action: 'rate',
+                  service: selectedRating,
+                  staff: selectedRating,
+                }
+              : { action: 'skip_rating' }
+
+          await fetch(`/api/live-chat/sessions/${targetSessionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          }).catch(() => {})
+        }
+      } finally {
+        if (ratingDoneTimeoutRef.current !== null) {
+          window.clearTimeout(ratingDoneTimeoutRef.current)
+          ratingDoneTimeoutRef.current = null
+        }
+        if (customerTypingTimeoutRef.current !== null) {
+          window.clearTimeout(customerTypingTimeoutRef.current)
+          customerTypingTimeoutRef.current = null
+        }
+        customerTypingActiveRef.current = false
+        setConfirmLeaveOpen(false)
+        setOptionsOpen(false)
+        setShowRating(false)
+        setRatingDone(false)
+        setRatingError(null)
+        setRatingSessionId(null)
+        setRatingSupportCode(null)
+        setServiceRating(0)
+        setStaffRating(0)
+        setRatingComment('')
+        setStaffTyping(false)
+        setStaffTypingName(null)
+        setActive(null)
+        activeRef.current = null
+        setMessages([])
+        messagesRef.current = []
+        lastFetchedRef.current = null
+        seenMessageIdsRef.current = new Set()
+        hydratedSessionRef.current = null
+        setLeaving(false)
+        onLiveChatLeftAndClosedRef.current?.()
+      }
+    },
+    [leaving, ratingSessionId, sessionId],
+  )
+
+  const updateGuestContact = useCallback(
+    async (input: { name?: string; email: string }): Promise<{ ok: boolean; error?: string }> => {
+      const targetSessionId = ratingSessionId || sessionId
+      const email = input.email.trim()
+      const name = input.name?.trim() || ''
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { ok: false, error: 'Please enter a valid email address.' }
+      }
+      if (!targetSessionId) {
+        return { ok: false, error: 'No active chat session.' }
+      }
+      try {
+        const res = await fetch(`/api/live-chat/sessions/${targetSessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'update_contact',
+            name: name || undefined,
+            email,
+          }),
+        })
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: string
+          guest?: { name?: string | null; email?: string | null }
+        }
+        if (!res.ok) {
+          return {
+            ok: false,
+            error: json.error || 'Could not save contact details.',
+          }
+        }
+        setActive((prev) => {
+          if (!prev?.session) return prev
+          const nextPayload: InlineLivePayload = {
+            ...prev,
+            session: {
+              ...prev.session,
+              guest: {
+                name: json.guest?.name ?? (name || prev.session.guest?.name || null),
+                email: json.guest?.email ?? email,
+                phone: prev.session.guest?.phone ?? null,
+              },
+            },
+          }
+          activeRef.current = nextPayload
+          return nextPayload
+        })
+        return { ok: true }
+      } catch {
+        return { ok: false, error: 'Connection hiccup. Please try again.' }
+      }
+    },
+    [ratingSessionId, sessionId],
+  )
+
   return {
     active,
     session,
@@ -1008,6 +1148,7 @@ export function useInlineLiveChat({
     isLiveMode,
     connecting,
     sending,
+    leaving,
     justConnected,
     staffTyping,
     staffTypingName,
@@ -1044,6 +1185,8 @@ export function useInlineLiveChat({
     sendLiveMessage,
     notifyCustomerTyping,
     endLiveChat,
+    leaveAndClearChat,
+    updateGuestContact,
     submitRating,
     skipRating,
     dismissClosedReviewIntoHistory,
@@ -1124,28 +1267,41 @@ export function InlineLiveHeaderControls({
 }
 
 // ---------------------------------------------------------------------------
-// InlineLiveOptionsPopup — flat floating popup anchored directly below the
-// live chat header (Support ID, Download transcript, Email transcript, Sound)
+// InlineLiveOptionsPopup — flat full-width drawer anchored flush below the
+// live chat header (Provide contact details + Log in, Download chat
+// transcript, Notifications toggle). Zero shadow, zero gradient, brand purple.
 // ---------------------------------------------------------------------------
 
 export function InlineLiveOptionsPopup({
   open,
   session,
   messages,
+  isGuest = false,
+  onSaveContact,
   onClose,
 }: {
   open: boolean
   session: InlineLiveSession | null
   messages: InlineLiveMessage[]
+  isGuest?: boolean
+  onSaveContact?: (input: {
+    name?: string
+    email: string
+  }) => Promise<{ ok: boolean; error?: string }>
   onClose: () => void
 }) {
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [emailedTranscript, setEmailedTranscript] = useState(false)
-  const [emailingTranscript, setEmailingTranscript] = useState(false)
+  const [contactExpanded, setContactExpanded] = useState(true)
+  const [contactName, setContactName] = useState('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [savingContact, setSavingContact] = useState(false)
+  const [contactSaved, setContactSaved] = useState(false)
+  const [contactError, setContactError] = useState<string | null>(null)
 
   const supportCode = session
     ? resolveSupportId(session.supportCode, session.id)
     : null
+  const showContactAccordion = Boolean(isGuest || session?.isGuest)
 
   useEffect(() => {
     if (!open) return
@@ -1153,10 +1309,14 @@ export function InlineLiveOptionsPopup({
     void fetchLiveChatSoundPreference('customer').then((enabled) => {
       if (activeMount) setSoundEnabled(enabled)
     })
+    setContactName(session?.guest?.name || '')
+    setContactEmail(session?.guest?.email || '')
+    setContactError(null)
+    setContactSaved(false)
     return () => {
       activeMount = false
     }
-  }, [open])
+  }, [open, session?.guest?.name, session?.guest?.email])
 
   const toggleSound = useCallback(() => {
     const next = !soundEnabled
@@ -1173,26 +1333,30 @@ export function InlineLiveOptionsPopup({
     onClose()
   }, [supportCode, messages, onClose])
 
-  const handleEmailTranscript = useCallback(async () => {
-    if (!session?.id || emailingTranscript) return
-    setEmailingTranscript(true)
-    try {
-      const res = await fetch(`/api/live-chat/sessions/${session.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'email_transcript' }),
+  const canSubmitContact =
+    !savingContact && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim())
+
+  const handleSubmitContact = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!onSaveContact || savingContact) return
+      setSavingContact(true)
+      setContactError(null)
+      setContactSaved(false)
+      const result = await onSaveContact({
+        name: contactName,
+        email: contactEmail,
       })
-      if (res.ok) {
-        setEmailedTranscript(true)
-        window.setTimeout(() => setEmailedTranscript(false), 3000)
+      setSavingContact(false)
+      if (!result.ok) {
+        setContactError(result.error || 'Please enter a valid email address.')
+        return
       }
-    } catch {
-      /* ignore transient */
-    } finally {
-      setEmailingTranscript(false)
-    }
-  }, [session?.id, emailingTranscript])
+      setContactSaved(true)
+      window.setTimeout(() => setContactSaved(false), 3000)
+    },
+    [onSaveContact, savingContact, contactName, contactEmail],
+  )
 
   if (!open || !session) return null
 
@@ -1207,61 +1371,151 @@ export function InlineLiveOptionsPopup({
         role="dialog"
         aria-label="Live chat options"
         data-testid="live-chat-options-panel"
-        className="absolute inset-x-3 top-2 z-40 rounded-2xl bg-white border border-gray-200 divide-y divide-gray-100 overflow-hidden animate-[derma-msg-in_0.16s_ease-out]"
+        className="absolute inset-x-0 top-0 z-40 bg-white border-b border-gray-200 divide-y divide-gray-200 overflow-y-auto max-h-[85%]"
       >
-        <div className="flex items-center justify-between gap-2 px-4 py-3 bg-[#FAF6FB]">
-          <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold text-gray-900">
-              Live chat options
-            </p>
+        {showContactAccordion && (
+          <div>
+            <div
+              className={cn(
+                'flex items-center justify-between gap-2 px-4 py-3.5 transition-colors',
+                contactExpanded ? 'bg-[#FAF6FB]' : 'bg-white',
+              )}
+            >
+              <button
+                type="button"
+                onClick={() => setContactExpanded((v) => !v)}
+                aria-expanded={contactExpanded}
+                className="flex-1 flex items-center gap-3 text-left text-[14.5px] font-medium text-gray-900 cursor-pointer"
+              >
+                <User className="w-[18px] h-[18px] text-gray-800 shrink-0" />
+                <span>Provide contact details</span>
+              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <Link
+                  href="/signin"
+                  className="text-[14px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors"
+                >
+                  Log in
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setContactExpanded((v) => !v)}
+                  aria-label={
+                    contactExpanded
+                      ? 'Collapse contact details'
+                      : 'Expand contact details'
+                  }
+                  className="w-7 h-7 rounded-full inline-flex items-center justify-center text-gray-800 hover:bg-white transition-colors cursor-pointer"
+                >
+                  {contactExpanded ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {contactExpanded && (
+              <form
+                onSubmit={handleSubmitContact}
+                data-testid="live-chat-contact-form"
+                className="px-4 py-4 space-y-3.5 bg-white"
+              >
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="live-chat-contact-name"
+                    className="flex items-baseline gap-1.5 text-[14px] font-medium text-gray-900"
+                  >
+                    <span>Name</span>
+                    <span className="text-[12px] font-normal text-gray-500">
+                      Optional
+                    </span>
+                  </label>
+                  <input
+                    id="live-chat-contact-name"
+                    type="text"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Enter your name here"
+                    autoComplete="name"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="live-chat-contact-email"
+                    className="block text-[14px] font-medium text-gray-900"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="live-chat-contact-email"
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => {
+                      setContactEmail(e.target.value)
+                      if (contactError) setContactError(null)
+                    }}
+                    placeholder="Enter your email here"
+                    autoComplete="email"
+                    required
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base sm:text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none"
+                  />
+                </div>
+
+                {contactError && (
+                  <p className="text-[12px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-3 py-1.5">
+                    {contactError}
+                  </p>
+                )}
+
+                {contactSaved && (
+                  <p
+                    data-testid="live-chat-contact-saved"
+                    className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#7B2D8E]"
+                  >
+                    <Check className="w-4 h-4" />
+                    Contact details saved
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!canSubmitContact}
+                  className={cn(
+                    'w-full inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 px-4 text-[14px] font-semibold transition-colors cursor-pointer',
+                    canSubmitContact
+                      ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white'
+                      : 'bg-[#FAF6FB] text-[#7B2D8E]/40 cursor-not-allowed',
+                  )}
+                >
+                  {savingContact && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Submit
+                </button>
+              </form>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close live chat options"
-            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-white transition-colors shrink-0 cursor-pointer"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        )}
 
         <button
           type="button"
           onClick={handleDownloadTranscript}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left text-[13px] font-medium text-gray-800 hover:bg-[#FAF6FB] transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 px-4 py-3.5 text-left text-[14.5px] font-medium text-gray-900 hover:bg-[#FAF6FB] transition-colors cursor-pointer"
         >
-          <span className="inline-flex items-center gap-2.5">
-            <FileText className="w-4 h-4 text-[#7B2D8E]" />
-            Download chat transcript
-          </span>
-          <Download className="w-3.5 h-3.5 text-gray-400" />
+          <FileText className="w-[18px] h-[18px] text-gray-800 shrink-0" />
+          <span>Download chat transcript</span>
         </button>
 
-        <button
-          type="button"
-          onClick={handleEmailTranscript}
-          disabled={emailingTranscript}
-          className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left text-[13px] font-medium text-gray-800 hover:bg-[#FAF6FB] transition-colors disabled:opacity-50 cursor-pointer"
-        >
-          <span className="inline-flex items-center gap-2.5">
-            <Mail className="w-4 h-4 text-[#7B2D8E]" />
-            {emailedTranscript
-              ? 'Transcript sent to your email'
-              : emailingTranscript
-                ? 'Sending transcript…'
-                : 'Email chat transcript'}
-          </span>
-          {emailedTranscript && <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />}
-        </button>
-
-        <div className="flex items-center justify-between gap-2 px-4 py-3">
-          <span className="inline-flex items-center gap-2.5 text-[13px] font-medium text-gray-800">
+        <div className="flex items-center justify-between gap-2 px-4 py-3.5">
+          <span className="inline-flex items-center gap-3 text-[14.5px] font-medium text-gray-900">
             {soundEnabled ? (
-              <Volume2 className="w-4 h-4 text-[#7B2D8E]" />
+              <Volume2 className="w-[18px] h-[18px] text-gray-800 shrink-0" />
             ) : (
-              <VolumeX className="w-4 h-4 text-gray-400" />
+              <VolumeX className="w-[18px] h-[18px] text-gray-400 shrink-0" />
             )}
-            Notifications
+            <span>Notifications</span>
           </span>
           <button
             type="button"
@@ -1270,7 +1524,7 @@ export function InlineLiveOptionsPopup({
             data-testid="live-chat-sound-toggle"
             onClick={toggleSound}
             className={cn(
-              'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors cursor-pointer',
+              'relative inline-flex h-7 w-12 items-center rounded-full border transition-colors cursor-pointer',
               soundEnabled
                 ? 'bg-[#7B2D8E] border-[#7B2D8E]'
                 : 'bg-gray-200 border-gray-200',
@@ -1278,14 +1532,200 @@ export function InlineLiveOptionsPopup({
           >
             <span
               className={cn(
-                'inline-block h-4 w-4 rounded-full bg-white transition-transform',
-                soundEnabled ? 'translate-x-5' : 'translate-x-1',
+                'inline-block h-5 w-5 rounded-full bg-white transition-transform',
+                soundEnabled ? 'translate-x-6' : 'translate-x-1',
               )}
             />
           </button>
         </div>
       </div>
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// InlineLeaveFeedbackScreen — clean full-panel "Did we help you?" Leave Chat
+// view covering the chat panel (zero shadows, zero gradients, brand purple).
+// Leaving chat closes the session, records optional thumbs feedback, wipes
+// the entire conversation from the user's end, and closes the chat panel.
+// ---------------------------------------------------------------------------
+
+export function InlineLeaveFeedbackScreen({
+  open,
+  canGoBack,
+  leaving,
+  session,
+  messages,
+  isGuest = false,
+  onSaveContact,
+  onGoBack,
+  onLeaveChat,
+}: {
+  open: boolean
+  canGoBack: boolean
+  leaving: boolean
+  session: InlineLiveSession | null
+  messages: InlineLiveMessage[]
+  isGuest?: boolean
+  onSaveContact?: (input: {
+    name?: string
+    email: string
+  }) => Promise<{ ok: boolean; error?: string }>
+  onGoBack: () => void
+  onLeaveChat: (rating?: 1 | 5 | null) => void
+}) {
+  const [selectedThumb, setSelectedThumb] = useState<'up' | 'down' | null>(null)
+  const [optionsOpen, setOptionsOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedThumb(null)
+      setOptionsOpen(false)
+    }
+  }, [open])
+
+  if (!open) return null
+
+  const ratingValue: 1 | 5 | null =
+    selectedThumb === 'up' ? 5 : selectedThumb === 'down' ? 1 : null
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Leave live chat"
+      data-testid="live-chat-leave-screen"
+      className="absolute inset-0 z-50 flex flex-col bg-white"
+    >
+      {/* Top header: Back chevron + Settings gear */}
+      <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-gray-200 bg-white shrink-0">
+        {canGoBack ? (
+          <button
+            type="button"
+            onClick={onGoBack}
+            aria-label="Back to chat"
+            className="w-9 h-9 rounded-full inline-flex items-center justify-center text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E] transition-colors cursor-pointer"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        ) : (
+          <span className="w-9 h-9" aria-hidden="true" />
+        )}
+
+        <button
+          type="button"
+          onClick={() => setOptionsOpen((v) => !v)}
+          aria-label="Live chat options"
+          aria-expanded={optionsOpen}
+          className={cn(
+            'w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
+            optionsOpen
+              ? 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25'
+              : 'bg-gray-100 text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
+          )}
+        >
+          <Settings className="w-[18px] h-[18px]" />
+        </button>
+      </div>
+
+      {/* Relative body so Settings gear drawer slides flush under the header */}
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        <InlineLiveOptionsPopup
+          open={optionsOpen}
+          session={session}
+          messages={messages}
+          isGuest={isGuest}
+          onSaveContact={onSaveContact}
+          onClose={() => setOptionsOpen(false)}
+        />
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
+          <h2 className="text-[20px] font-bold text-gray-900 tracking-tight">
+            Did we help you?
+          </h2>
+          <p className="text-[14px] text-gray-500 mt-1">
+            Your Feedback Matters
+          </p>
+
+          {/* Circular Thumbs Up / Thumbs Down */}
+          <div
+            className="mt-6 flex items-center justify-center gap-4"
+            role="group"
+            aria-label="Rate your support experience"
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedThumb((prev) => (prev === 'up' ? null : 'up'))
+              }
+              aria-label="Yes, this helped"
+              aria-pressed={selectedThumb === 'up'}
+              data-testid="live-chat-thumb-up"
+              className={cn(
+                'w-14 h-14 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
+                selectedThumb === 'up'
+                  ? 'bg-[#7B2D8E] text-white'
+                  : 'bg-[#F5F3F7] text-gray-900 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
+              )}
+            >
+              <ThumbsUp className="w-6 h-6" strokeWidth={1.9} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedThumb((prev) => (prev === 'down' ? null : 'down'))
+              }
+              aria-label="No, I still need help"
+              aria-pressed={selectedThumb === 'down'}
+              data-testid="live-chat-thumb-down"
+              className={cn(
+                'w-14 h-14 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
+                selectedThumb === 'down'
+                  ? 'bg-[#7B2D8E] text-white'
+                  : 'bg-[#F5F3F7] text-gray-900 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
+              )}
+            >
+              <ThumbsDown className="w-6 h-6" strokeWidth={1.9} />
+            </button>
+          </div>
+
+          {/* Side-by-side Go Back & Leave Chat pills in brand purple */}
+          <div className="mt-7 w-full max-w-[310px] flex items-center justify-center gap-3">
+            {canGoBack && (
+              <button
+                type="button"
+                onClick={onGoBack}
+                disabled={leaving}
+                className="flex-1 rounded-full py-2.5 px-4 text-[14.5px] font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Go Back
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onLeaveChat(ratingValue)}
+              disabled={leaving}
+              data-testid="live-chat-leave-confirm-btn"
+              className={cn(
+                'flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 px-4 text-[14.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer',
+                selectedThumb
+                  ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
+                  : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/15 hover:bg-[#7B2D8E] hover:text-white',
+              )}
+            >
+              {leaving && <Loader2 className="w-4 h-4 animate-spin" />}
+              Leave Chat
+            </button>
+          </div>
+
+          <p className="mt-5 max-w-[310px] text-[12.5px] leading-relaxed text-gray-500">
+            Leaving chat will end this session. If you need to chat to us again,
+            we will have a record of your chat history.
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1304,28 +1744,12 @@ export function InlineLiveFeed({
   staffTypingName = null,
   error,
   onClearError,
-  confirmLeaveOpen = false,
-  onCancelLeave,
-  onConfirmLeave,
   guestFormOpen,
   guestSubmitting,
   guestError,
   onSubmitGuest,
   onCancelGuest,
   showRating,
-  ratingSessionId,
-  ratingSupportCode,
-  ratingError,
-  serviceRating,
-  staffRating,
-  ratingComment,
-  savingRating,
-  ratingDone,
-  onServiceRatingChange,
-  onStaffRatingChange,
-  onRatingCommentChange,
-  onSubmitRating,
-  onSkipRating,
 }: {
   session: InlineLiveSession | null
   staff: InlineLiveStaff | null
@@ -1336,11 +1760,6 @@ export function InlineLiveFeed({
   staffTypingName?: string | null
   error: string | null
   onClearError: () => void
-  optionsOpen?: boolean
-  onCloseOptions?: () => void
-  confirmLeaveOpen?: boolean
-  onCancelLeave?: () => void
-  onConfirmLeave?: () => void
   guestFormOpen: boolean
   guestSubmitting: boolean
   guestError: string | null
@@ -1351,27 +1770,11 @@ export function InlineLiveFeed({
   }) => Promise<boolean>
   onCancelGuest: () => void
   showRating: boolean
-  ratingSessionId?: string | null
-  ratingSupportCode?: string | null
-  ratingError?: string | null
-  serviceRating: number
-  staffRating: number
-  ratingComment: string
-  savingRating: boolean
-  ratingDone: boolean
-  onServiceRatingChange: (n: number) => void
-  onStaffRatingChange: (n: number) => void
-  onRatingCommentChange: (v: string) => void
-  onSubmitRating: () => void
-  onSkipRating: () => void
 }) {
   const isWaiting = session?.status === 'waiting'
   const isActive = session?.status === 'active'
   const isClosed = session?.status === 'closed' || session?.status === 'abandoned'
   const isLive = isWaiting || isActive
-  const supportCode = session
-    ? resolveSupportId(session.supportCode, session.id)
-    : ratingSupportCode || null
 
   const visibleMessages = useMemo(
     () =>
@@ -1414,19 +1817,6 @@ export function InlineLiveFeed({
         </div>
       )}
 
-      {/* Compact brand-purple action prompt for leaving live chat */}
-      <ConfirmDialog
-        open={Boolean(isLive && confirmLeaveOpen)}
-        title="Leave this live chat?"
-        description="This ends your live support session. You can keep chatting with Derma AI right here."
-        confirmLabel="Leave chat"
-        cancelLabel="Go back"
-        variant="brand"
-        icon={<LogOut className="w-[18px] h-[18px]" />}
-        onConfirm={() => onConfirmLeave?.()}
-        onCancel={() => onCancelLeave?.()}
-      />
-
       {/* Inline guest details form */}
       {guestFormOpen && (
         <GuestHandoffCard
@@ -1437,7 +1827,7 @@ export function InlineLiveFeed({
         />
       )}
 
-      {/* Live messages — stay mounted even after status transitions to closed */}
+      {/* Live messages — stay mounted while session is active */}
       {(isLive || isClosed || showRating) && visibleMessages.length > 0 && (() => {
         const firstJoinIdx = visibleMessages.findIndex(
           (msg) => msg.sender_role === 'system' && isJoinMilestoneText(msg.body),
@@ -1492,23 +1882,6 @@ export function InlineLiveFeed({
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-      )}
-
-      {/* Post-chat feedback card right inside the chat — ZERO rep names */}
-      {showRating && (
-        <InlineRatingCard
-          supportCode={ratingSupportCode ?? supportCode}
-          done={ratingDone}
-          saving={savingRating}
-          error={ratingError ?? null}
-          serviceRating={serviceRating}
-          comment={ratingComment}
-          onServiceRatingChange={onServiceRatingChange}
-          onStaffRatingChange={onStaffRatingChange}
-          onCommentChange={onRatingCommentChange}
-          onSubmit={onSubmitRating}
-          onSkip={onSkipRating}
-        />
       )}
     </div>
   )
@@ -1752,129 +2125,3 @@ function GuestHandoffCard({
     </form>
   )
 }
-
-function InlineRatingCard({
-  supportCode,
-  done,
-  saving,
-  error,
-  serviceRating,
-  comment,
-  onServiceRatingChange,
-  onStaffRatingChange,
-  onCommentChange,
-  onSubmit,
-  onSkip,
-}: {
-  supportCode: string | null
-  done: boolean
-  saving: boolean
-  error: string | null
-  serviceRating: number
-  comment: string
-  onServiceRatingChange: (n: number) => void
-  onStaffRatingChange: (n: number) => void
-  onCommentChange: (v: string) => void
-  onSubmit: () => void
-  onSkip: () => void
-}) {
-  const canSubmit = !saving && serviceRating >= 1
-
-  if (done) {
-    return (
-      <div
-        data-testid="live-chat-rating-done"
-        className="mx-auto max-w-[300px] rounded-2xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3.5 py-2.5 text-center"
-      >
-        <p className="text-[12.5px] font-semibold text-[#5A1D6A]">
-          Thank you for your feedback
-        </p>
-        <p className="text-[11px] text-gray-500 mt-0.5">
-          Derma AI is ready whenever you need help.
-        </p>
-      </div>
-    )
-  }
-
-  const handleStarSelect = (n: number) => {
-    onServiceRatingChange(n)
-    onStaffRatingChange(n)
-  }
-
-  return (
-    <div
-      className="mx-auto max-w-[300px] rounded-2xl bg-white border border-gray-200 px-3.5 py-3 space-y-2.5"
-      data-testid="live-chat-rating-card"
-    >
-      <div className="text-center">
-        <p className="text-[13px] font-semibold text-gray-900 leading-tight">
-          Leave feedback
-        </p>
-      </div>
-
-      {/* Compact single 5-star row */}
-      <div
-        className="flex items-center justify-center gap-1.5 py-0.5"
-        role="group"
-        aria-label="Leave feedback rating"
-      >
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => handleStarSelect(n)}
-            aria-label={`Rate ${n} out of 5`}
-            className="p-1 rounded-full transition-transform active:scale-90 hover:bg-[#FAF6FB] cursor-pointer"
-          >
-            <Star
-              className={cn(
-                'w-5 h-5 transition-colors',
-                n <= serviceRating
-                  ? 'fill-[#7B2D8E] text-[#7B2D8E]'
-                  : 'text-gray-300 hover:text-[#7B2D8E]/60',
-              )}
-            />
-          </button>
-        ))}
-      </div>
-
-      {/* Compact 1-line optional note */}
-      <input
-        type="text"
-        value={comment}
-        onChange={(e) => onCommentChange(e.target.value)}
-        placeholder="Add a short note (optional)…"
-        maxLength={300}
-        className="w-full rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-1.5 text-base sm:text-[12px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none"
-      />
-
-      {error && (
-        <p className="text-[11px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-2.5 py-1">
-          {error}
-        </p>
-      )}
-
-      {/* Compact actions */}
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[12px] font-semibold px-3 py-1.5 transition-colors disabled:opacity-40 cursor-pointer"
-        >
-          {saving && <Loader2 className="w-3 h-3 animate-spin" />}
-          Submit
-        </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="rounded-full border border-gray-200 px-3 py-1.5 text-[12px] font-medium text-gray-600 hover:bg-[#FAF6FB] hover:text-[#5A1D6A] hover:border-[#7B2D8E]/30 transition-colors cursor-pointer"
-        >
-          Skip
-        </button>
-      </div>
-    </div>
-  )
-}
-
-

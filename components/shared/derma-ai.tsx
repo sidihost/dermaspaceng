@@ -32,6 +32,7 @@ import {
   useInlineLiveChat,
   InlineLiveHeaderControls,
   InlineLiveOptionsPopup,
+  InlineLeaveFeedbackScreen,
   InlineLiveFeed,
   RepAvatar,
   type FinalizedLiveSessionPayload,
@@ -2173,26 +2174,26 @@ export default function DermaAI({
           typeof value === 'function'
             ? (value as (p: boolean) => boolean)(effectivePrev)
             : value
-        if (isControlled) onOpenChange?.(next)
+        if (isControlled && onOpenChange) {
+          queueMicrotask(() => onOpenChange(next))
+        }
         // Broadcast state changes so external listeners (the
         // resilient launcher in DermaAIMount, the voice toggle,
-        // deep-link openers) can stay in sync. We only dispatch on
-        // actual transitions to avoid event storms from no-op
-        // updates, and we skip `openDermaAI` — that event is what
-        // TRIGGERS us to open in the first place, so echoing it
-        // here would re-enter the same handler.
+        // deep-link openers) can stay in sync. Deferred to a microtask
+        // so listeners never call setState synchronously inside our
+        // own state updater.
         if (
           typeof window !== 'undefined' &&
           next !== effectivePrev &&
           next === false
         ) {
-          try {
-            window.dispatchEvent(new Event('closeDermaAI'))
-          } catch {
-            /* older browsers without Event constructor support —
-               launcher will still become visible on next pointer
-               interaction / route change */
-          }
+          queueMicrotask(() => {
+            try {
+              window.dispatchEvent(new Event('closeDermaAI'))
+            } catch {
+              /* older browsers without Event constructor support */
+            }
+          })
         }
         return next
       })
@@ -2426,12 +2427,15 @@ export default function DermaAI({
     [],
   )
 
+  const onLiveChatLeftRef = useRef<() => void>(() => {})
+
   // Unified live human representative handoff (runs inside this same chat
   // panel rather than popping a separate floating live-chat window).
   const inlineLiveChat = useInlineLiveChat({
     isOpen,
     onSessionChange: scrollToLatestMessage,
     onSessionFinalized: handleSessionFinalized,
+    onLiveChatLeftAndClosed: () => onLiveChatLeftRef.current(),
   })
 
   // ── Mistral Voxtral live-listen loop (replaces webkitSpeechRecognition
@@ -5073,6 +5077,25 @@ export default function DermaAI({
     }
   }
 
+  // When a user confirms "Leave Chat" from live support, completely delete
+  // the active conversation from the user's end (memory, localStorage, and
+  // saved thread history) and close the chat panel cleanly.
+  onLiveChatLeftRef.current = () => {
+    const activeConvId =
+      currentSessionId || messages.find((m) => m.role === 'user')?.id || ''
+    if (activeConvId) {
+      deleteSession(activeConvId)
+    } else {
+      startNewChat()
+    }
+    setInput('')
+    setPendingAttachments([])
+    setShowSidebar(false)
+    if (!isPageMode) {
+      setIsOpen(false)
+    }
+  }
+
   // Start an inline rename for a given session. We pre-fill the input
   // with the current title so the user can just edit the tail rather
   // than retype the whole label.
@@ -7450,6 +7473,8 @@ export default function DermaAI({
                     open={Boolean(inlineLiveChat.isLiveMode && inlineLiveChat.optionsOpen)}
                     session={inlineLiveChat.session}
                     messages={inlineLiveChat.messages}
+                    isGuest={isLoggedIn === false || Boolean(inlineLiveChat.session?.isGuest)}
+                    onSaveContact={inlineLiveChat.updateGuestContact}
                     onClose={() => inlineLiveChat.setOptionsOpen(false)}
                   />
                   <div
@@ -8359,28 +8384,12 @@ export default function DermaAI({
                     staffTypingName={inlineLiveChat.staffTypingName}
                     error={inlineLiveChat.error}
                     onClearError={inlineLiveChat.clearError}
-                    confirmLeaveOpen={inlineLiveChat.confirmLeaveOpen}
-                    onCancelLeave={() => inlineLiveChat.setConfirmLeaveOpen(false)}
-                    onConfirmLeave={inlineLiveChat.endLiveChat}
                     guestFormOpen={inlineLiveChat.guestFormOpen}
                     guestSubmitting={inlineLiveChat.guestSubmitting}
                     guestError={inlineLiveChat.guestError}
                     onSubmitGuest={inlineLiveChat.submitGuestHandoff}
                     onCancelGuest={inlineLiveChat.cancelGuestHandoff}
                     showRating={inlineLiveChat.showRating}
-                    ratingSessionId={inlineLiveChat.ratingSessionId}
-                    ratingSupportCode={inlineLiveChat.ratingSupportCode}
-                    ratingError={inlineLiveChat.ratingError}
-                    serviceRating={inlineLiveChat.serviceRating}
-                    staffRating={inlineLiveChat.staffRating}
-                    ratingComment={inlineLiveChat.ratingComment}
-                    savingRating={inlineLiveChat.savingRating}
-                    ratingDone={inlineLiveChat.ratingDone}
-                    onServiceRatingChange={inlineLiveChat.setServiceRating}
-                    onStaffRatingChange={inlineLiveChat.setStaffRating}
-                    onRatingCommentChange={inlineLiveChat.setRatingComment}
-                    onSubmitRating={inlineLiveChat.submitRating}
-                    onSkipRating={inlineLiveChat.skipRating}
                   />
 
                   <div ref={messagesEndRef} />
@@ -9652,6 +9661,18 @@ export default function DermaAI({
               </>
             )}
           </div>
+
+          <InlineLeaveFeedbackScreen
+            open={Boolean(inlineLiveChat.confirmLeaveOpen || inlineLiveChat.showRating)}
+            canGoBack={Boolean(inlineLiveChat.isLiveMode && inlineLiveChat.confirmLeaveOpen)}
+            leaving={inlineLiveChat.leaving}
+            session={inlineLiveChat.session}
+            messages={inlineLiveChat.messages}
+            isGuest={isLoggedIn === false || Boolean(inlineLiveChat.session?.isGuest)}
+            onSaveContact={inlineLiveChat.updateGuestContact}
+            onGoBack={() => inlineLiveChat.setConfirmLeaveOpen(false)}
+            onLeaveChat={(rating) => void inlineLiveChat.leaveAndClearChat(rating)}
+          />
 
           {/* Delete session confirm — mounted on the outer panel shell at z-50
               so it always appears above the sidebar on both mobile & desktop. */}

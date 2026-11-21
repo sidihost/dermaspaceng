@@ -104,7 +104,7 @@ export async function GET() {
       // "Hi {firstName}" without a second round-trip. Logged-in users
       // get `null` here because the overlay already has their account.
       guest:
-        isGuest && session.guest_email
+        isGuest && (session.guest_email || session.guest_name)
           ? {
               name: session.guest_name,
               email: session.guest_email,
