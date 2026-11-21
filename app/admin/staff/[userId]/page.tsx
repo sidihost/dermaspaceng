@@ -760,28 +760,30 @@ export default function StaffProfilePage() {
         )}
       </div>
 
-      {/* Brand-Purple Confirmation Popup */}
+      {/* Brand-Purple Action Prompt */}
       <ConfirmDialog
         open={!!confirmAction}
-        onOpenChange={(open) => {
-          if (!open && !acting) {
-            setConfirmAction(null)
-          }
+        onCancel={() => {
+          if (!acting) setConfirmAction(null)
         }}
         title={confirmAction?.title || 'Confirm action'}
         description={confirmAction?.description || ''}
         confirmLabel={confirmAction?.confirmLabel || 'Confirm'}
         cancelLabel="Cancel"
         icon={
-          confirmAction?.action === 'toggle_active'
-            ? confirmAction.value === false
-              ? UserX
-              : UserCheck
-            : confirmAction?.action === 'service_perm'
-              ? ShieldCheck
-              : Shield
+          confirmAction?.action === 'toggle_active' ? (
+            confirmAction.value === false ? (
+              <UserX className="h-[18px] w-[18px]" />
+            ) : (
+              <UserCheck className="h-[18px] w-[18px]" />
+            )
+          ) : confirmAction?.action === 'service_perm' ? (
+            <ShieldCheck className="h-[18px] w-[18px]" />
+          ) : (
+            <Shield className="h-[18px] w-[18px]" />
+          )
         }
-        busy={acting}
+        loading={acting}
         optionalReason={
           confirmAction?.action === 'toggle_active' && confirmAction.value === false
         }

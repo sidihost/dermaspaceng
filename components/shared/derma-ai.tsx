@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone, Headphones } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -7308,7 +7308,7 @@ export default function DermaAI({
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center">
-                            <Headphones className="w-4.5 h-4.5" />
+                            <MessageSquare className="w-4.5 h-4.5" />
                           </div>
                         )
                       ) : (
@@ -7323,32 +7323,31 @@ export default function DermaAI({
                           ? inlineLiveChat.staff?.displayName || 'Customer Care'
                           : 'Derma AI'}
                       </h3>
-                      {(inlineLiveChat.isLiveMode ||
-                        isLoading ||
-                        isSpeaking ||
-                        memories.length > 0) && (
-                        <p className="text-[12.5px] leading-none mt-1 truncate">
-                          {inlineLiveChat.isLiveMode ? (
-                            inlineLiveChat.status === 'active' ? (
-                              <span className="text-[#16A34A] font-medium">
-                                Available
-                              </span>
-                            ) : (
-                              <span className="text-[#7B2D8E] font-medium">
-                                Connecting…
-                              </span>
-                            )
-                          ) : isLoading ? (
-                            <span className="text-gray-500">Thinking…</span>
-                          ) : isSpeaking ? (
-                            <span className="text-gray-500">Speaking…</span>
+                      <p className="text-[12.5px] leading-none mt-1 truncate">
+                        {inlineLiveChat.isLiveMode ? (
+                          inlineLiveChat.status === 'active' ? (
+                            <span className="text-[#7B2D8E] font-medium">
+                              Available
+                            </span>
                           ) : (
                             <span className="text-[#7B2D8E] font-medium">
-                              Remembers {memories.length}
+                              Connecting…
                             </span>
-                          )}
-                        </p>
-                      )}
+                          )
+                        ) : isLoading ? (
+                          <span className="text-gray-500">Thinking…</span>
+                        ) : isSpeaking ? (
+                          <span className="text-gray-500">Speaking…</span>
+                        ) : memories.length > 0 ? (
+                          <span className="text-[#7B2D8E] font-medium">
+                            Remembers {memories.length}
+                          </span>
+                        ) : (
+                          <span className="text-[#7B2D8E] font-medium">
+                            Available
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
 
@@ -7767,7 +7766,7 @@ export default function DermaAI({
                       ) : message.liveChatMeta?.kind === 'staff' ? (
                         <div className="flex justify-start">
                           <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/25 flex items-center justify-center mr-2 mt-0.5">
-                            <Headphones className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                            <MessageSquare className="w-3.5 h-3.5 text-[#7B2D8E]" />
                           </div>
                           <div className="flex flex-col items-start max-w-[92%]">
                             <div className="flex items-center gap-1.5 px-1 mb-0.5 flex-wrap">
@@ -7775,7 +7774,7 @@ export default function DermaAI({
                                 {message.liveChatMeta.senderName || 'Representative'}
                               </span>
                               <span className="text-[9.5px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-full px-1.5 py-0.5">
-                                Live Support · {message.liveChatMeta.supportCode}
+                                Live Support
                               </span>
                             </div>
                             <div className="rounded-2xl rounded-bl-sm bg-white border border-gray-200 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-gray-800 whitespace-pre-wrap select-text">
@@ -9616,28 +9615,15 @@ export default function DermaAI({
                     )}
                   </form>
 
-                  {/* Footnote — clean Live Support ID in live mode; memory privacy caption in AI mode */}
+                  {/* Footnote — clean Dermaspace Live Support caption in live mode; memory privacy caption in AI mode */}
                   {inlineLiveChat.isLiveMode ? (
                     <div className="flex items-center justify-center gap-1.5 mt-2 pb-1 px-4">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          inlineLiveChat.status === 'active' ? 'bg-[#16A34A]' : 'bg-[#7B2D8E]'
-                        }`}
+                        className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]"
                         aria-hidden="true"
                       />
                       <p className="text-center text-[10.5px] text-gray-500 leading-tight">
                         Dermaspace Live Support
-                        {inlineLiveChat.session && (
-                          <>
-                            {' · '}
-                            <span className="font-mono text-[#5A1D6A] font-medium">
-                              {resolveSupportId(
-                                inlineLiveChat.session.supportCode,
-                                inlineLiveChat.session.id,
-                              )}
-                            </span>
-                          </>
-                        )}
                       </p>
                     </div>
                   ) : (

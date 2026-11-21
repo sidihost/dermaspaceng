@@ -9,7 +9,7 @@ import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { 
   ArrowLeft, Ticket, Send, Clock, 
   Check, AlertCircle, ChevronRight, Plus, Loader2,
-  Tag, Calendar, Search, Headphones
+  Tag, Calendar, Search, MessageSquare
 } from 'lucide-react'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
 import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
@@ -248,7 +248,7 @@ export default function SupportPage() {
                 }
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-[#7B2D8E]/30 bg-white text-[#7B2D8E] text-[13px] font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
               >
-                <Headphones className="w-4 h-4" />
+                <MessageSquare className="w-4 h-4" />
                 <span className="hidden sm:inline">Talk to an Agent</span>
               </button>
             )}

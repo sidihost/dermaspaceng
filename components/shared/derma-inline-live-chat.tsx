@@ -15,16 +15,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import {
   Check,
-  Copy,
   Download,
   FileText,
-  Headphones,
   Loader2,
+  LogOut,
   Mail,
   Minus,
   Settings,
   Star,
-  Ticket,
   Volume2,
   VolumeX,
   X,
@@ -1141,7 +1139,6 @@ export function InlineLiveOptionsPopup({
   messages: InlineLiveMessage[]
   onClose: () => void
 }) {
-  const [copiedId, setCopiedId] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [emailedTranscript, setEmailedTranscript] = useState(false)
   const [emailingTranscript, setEmailingTranscript] = useState(false)
@@ -1170,18 +1167,6 @@ export function InlineLiveOptionsPopup({
       window.setTimeout(() => playLiveChatChime('reply'), 30)
     }
   }, [soundEnabled])
-
-  const copySupportCode = useCallback(() => {
-    if (!supportCode || typeof navigator === 'undefined' || !navigator.clipboard)
-      return
-    navigator.clipboard
-      .writeText(supportCode)
-      .then(() => {
-        setCopiedId(true)
-        window.setTimeout(() => setCopiedId(false), 1800)
-      })
-      .catch(() => {})
-  }, [supportCode])
 
   const handleDownloadTranscript = useCallback(() => {
     triggerTranscriptTextDownload(supportCode || 'DS-LC', messages)
@@ -1229,34 +1214,6 @@ export function InlineLiveOptionsPopup({
             <p className="text-[12.5px] font-semibold text-gray-900">
               Live chat options
             </p>
-            {supportCode && (
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <Ticket className="w-3 h-3 text-[#7B2D8E] shrink-0" />
-                <span
-                  data-testid="live-chat-support-id"
-                  className="font-mono text-[11px] font-semibold text-[#5A1D6A]"
-                >
-                  {supportCode}
-                </span>
-                <button
-                  type="button"
-                  onClick={copySupportCode}
-                  className="inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] ml-1 cursor-pointer"
-                >
-                  {copiedId ? (
-                    <>
-                      <Check className="w-3 h-3" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3 h-3" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
           </div>
           <button
             type="button"
@@ -1444,15 +1401,12 @@ export function InlineLiveFeed({
 
   return (
     <div className="space-y-3 pt-1" data-testid="inline-live-chat-feed">
-      {/* Quiet waiting status — NO duplicate second header card */}
+      {/* Quiet waiting status — NO duplicate second header card or exposed ticket ID */}
       {(connecting || isWaiting) && (
         <div className="py-2 text-center" data-testid="live-chat-waiting-notice">
           <div className="inline-flex items-center gap-2 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3.5 py-1.5 text-[11.5px] font-medium text-[#5A1D6A]">
             <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
-            <span>
-              Waiting for a representative
-              {supportCode ? ` · ${supportCode}` : '…'}
-            </span>
+            <span>Waiting for a representative…</span>
           </div>
           <p className="text-[11px] text-gray-500 mt-1.5">
             Feel free to share details below while we connect you.
@@ -1460,15 +1414,15 @@ export function InlineLiveFeed({
         </div>
       )}
 
-      {/* Brand-purple ConfirmDialog for leaving live chat (matches reference sheet) */}
+      {/* Compact brand-purple action prompt for leaving live chat */}
       <ConfirmDialog
         open={Boolean(isLive && confirmLeaveOpen)}
         title="Leave this live chat?"
-        description="Leaving will end your live support session. Your conversation stays right here so Derma AI can keep helping you."
+        description="This ends your live support session. You can keep chatting with Derma AI right here."
         confirmLabel="Leave chat"
         cancelLabel="Go back"
         variant="brand"
-        icon={<Headphones className="w-5 h-5" />}
+        icon={<LogOut className="w-[18px] h-[18px]" />}
         onConfirm={() => onConfirmLeave?.()}
         onCancel={() => onCancelLeave?.()}
       />
@@ -1540,17 +1494,14 @@ export function InlineLiveFeed({
         </div>
       )}
 
-      {/* Post-chat rating card right inside the chat — ZERO rep names */}
+      {/* Post-chat feedback card right inside the chat — ZERO rep names */}
       {showRating && (
         <InlineRatingCard
-          sessionId={ratingSessionId ?? session?.id ?? null}
           supportCode={ratingSupportCode ?? supportCode}
-          messages={visibleMessages}
           done={ratingDone}
           saving={savingRating}
           error={ratingError ?? null}
           serviceRating={serviceRating}
-          staffRating={staffRating}
           comment={ratingComment}
           onServiceRatingChange={onServiceRatingChange}
           onStaffRatingChange={onStaffRatingChange}
@@ -1803,14 +1754,11 @@ function GuestHandoffCard({
 }
 
 function InlineRatingCard({
-  sessionId,
   supportCode,
-  messages,
   done,
   saving,
   error,
   serviceRating,
-  staffRating,
   comment,
   onServiceRatingChange,
   onStaffRatingChange,
@@ -1818,14 +1766,11 @@ function InlineRatingCard({
   onSubmit,
   onSkip,
 }: {
-  sessionId: string | null
   supportCode: string | null
-  messages: InlineLiveMessage[]
   done: boolean
   saving: boolean
   error: string | null
   serviceRating: number
-  staffRating: number
   comment: string
   onServiceRatingChange: (n: number) => void
   onStaffRatingChange: (n: number) => void
@@ -1833,177 +1778,58 @@ function InlineRatingCard({
   onSubmit: () => void
   onSkip: () => void
 }) {
-  const [resending, setResending] = useState(false)
-  const [resent, setResent] = useState(false)
   const canSubmit = !saving && serviceRating >= 1
-
-  const handleResendTranscript = useCallback(async () => {
-    if (!sessionId || resending) return
-    setResending(true)
-    try {
-      const res = await fetch(`/api/live-chat/sessions/${sessionId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ action: 'email_transcript' }),
-      })
-      if (res.ok) {
-        setResent(true)
-        window.setTimeout(() => setResent(false), 3000)
-      }
-    } catch {
-      /* ignore transient */
-    } finally {
-      setResending(false)
-    }
-  }, [sessionId, resending])
 
   if (done) {
     return (
       <div
         data-testid="live-chat-rating-done"
-        className="rounded-2xl bg-[#FAF6FB] border border-[#7B2D8E]/20 p-4 text-center"
+        className="mx-auto max-w-[300px] rounded-2xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3.5 py-2.5 text-center"
       >
-        <p className="text-[13px] font-semibold text-[#5A1D6A]">
+        <p className="text-[12.5px] font-semibold text-[#5A1D6A]">
           Thank you for your feedback
         </p>
-        <p className="text-[11.5px] text-gray-600 mt-0.5">
-          Your chat transcript stays saved above, and Derma AI is ready whenever
-          you need help.
+        <p className="text-[11px] text-gray-500 mt-0.5">
+          Derma AI is ready whenever you need help.
         </p>
       </div>
     )
   }
 
+  const handleStarSelect = (n: number) => {
+    onServiceRatingChange(n)
+    onStaffRatingChange(n)
+  }
+
   return (
     <div
-      className="rounded-2xl bg-white border border-gray-200 p-4 space-y-3"
+      className="mx-auto max-w-[300px] rounded-2xl bg-white border border-gray-200 px-3.5 py-3 space-y-2.5"
       data-testid="live-chat-rating-card"
     >
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#7B2D8E]">
-            Live chat ended
-          </span>
-          <p className="text-[14px] font-semibold text-gray-900 mt-2">
-            How was your support experience?
-          </p>
-          <p className="text-[11.5px] text-gray-500 mt-0.5">
-            Your conversation stays visible above so Derma AI can follow up seamlessly.
-          </p>
-        </div>
-        {supportCode && (
-          <span className="font-mono text-[10.5px] font-semibold text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-full px-2 py-0.5 shrink-0">
-            {supportCode}
-          </span>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between gap-2 rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3 py-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Mail className="w-3.5 h-3.5 text-[#7B2D8E] shrink-0" />
-          <p className="text-[11.5px] text-gray-700 leading-snug truncate">
-            Keep a copy of your transcript
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() =>
-              triggerTranscriptTextDownload(supportCode || 'DS-LC', messages)
-            }
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#5A1D6A] hover:text-[#7B2D8E] whitespace-nowrap"
-          >
-            <Download className="w-3 h-3" />
-            Download
-          </button>
-          {sessionId && (
-            <button
-              type="button"
-              onClick={handleResendTranscript}
-              disabled={resending}
-              className="text-[11px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] whitespace-nowrap disabled:opacity-50"
-            >
-              {resending ? 'Sending…' : resent ? 'Emailed' : 'Email copy'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="space-y-2 pt-0.5">
-        <StarRow
-          label="Overall support"
-          value={serviceRating}
-          onChange={onServiceRatingChange}
-        />
-        <StarRow
-          label="Issue resolution"
-          value={staffRating}
-          onChange={onStaffRatingChange}
-        />
-      </div>
-
-      <textarea
-        value={comment}
-        onChange={(e) => onCommentChange(e.target.value)}
-        rows={2}
-        placeholder="Optional note for our team…"
-        className="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-base sm:text-[12.5px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none resize-none"
-      />
-
-      {error && (
-        <p className="text-[12px] text-[#C63D3D] bg-red-50/70 border border-[#C63D3D]/20 rounded-xl px-2.5 py-1.5">
-          {error}
+      <div className="text-center">
+        <p className="text-[13px] font-semibold text-gray-900 leading-tight">
+          Leave feedback
         </p>
-      )}
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[12.5px] font-semibold px-4 py-2 transition-colors disabled:opacity-40"
-        >
-          {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-          Submit rating
-        </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="rounded-full border border-gray-200 px-3.5 py-2 text-[12px] font-medium text-gray-600 hover:bg-gray-50"
-        >
-          Continue with Derma AI
-        </button>
       </div>
-    </div>
-  )
-}
 
-function StarRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: number
-  onChange: (n: number) => void
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[12px] font-medium text-gray-700">{label}</span>
-      <div className="flex items-center gap-1">
+      {/* Compact single 5-star row */}
+      <div
+        className="flex items-center justify-center gap-1.5 py-0.5"
+        role="group"
+        aria-label="Leave feedback rating"
+      >
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
-            onClick={() => onChange(n)}
-            aria-label={`${label}: ${n} out of 5`}
-            className="p-0.5 rounded transition-transform active:scale-90"
+            onClick={() => handleStarSelect(n)}
+            aria-label={`Rate ${n} out of 5`}
+            className="p-1 rounded-full transition-transform active:scale-90 hover:bg-[#FAF6FB] cursor-pointer"
           >
             <Star
               className={cn(
-                'w-4 h-4 transition-colors',
-                n <= value
+                'w-5 h-5 transition-colors',
+                n <= serviceRating
                   ? 'fill-[#7B2D8E] text-[#7B2D8E]'
                   : 'text-gray-300 hover:text-[#7B2D8E]/60',
               )}
@@ -2011,6 +1837,44 @@ function StarRow({
           </button>
         ))}
       </div>
+
+      {/* Compact 1-line optional note */}
+      <input
+        type="text"
+        value={comment}
+        onChange={(e) => onCommentChange(e.target.value)}
+        placeholder="Add a short note (optional)…"
+        maxLength={300}
+        className="w-full rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-1.5 text-base sm:text-[12px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E] focus:outline-none"
+      />
+
+      {error && (
+        <p className="text-[11px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-2.5 py-1">
+          {error}
+        </p>
+      )}
+
+      {/* Compact actions */}
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={!canSubmit}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[12px] font-semibold px-3 py-1.5 transition-colors disabled:opacity-40 cursor-pointer"
+        >
+          {saving && <Loader2 className="w-3 h-3 animate-spin" />}
+          Submit
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="rounded-full border border-gray-200 px-3 py-1.5 text-[12px] font-medium text-gray-600 hover:bg-[#FAF6FB] hover:text-[#5A1D6A] hover:border-[#7B2D8E]/30 transition-colors cursor-pointer"
+        >
+          Skip
+        </button>
+      </div>
     </div>
   )
 }
+
+

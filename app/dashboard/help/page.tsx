@@ -21,7 +21,7 @@ import {
   BookOpen,
   Ticket,
   MapPin,
-  Headphones,
+  MessageSquare,
 } from 'lucide-react'
 
 // The branch map is Leaflet-based and client-only, so we load it lazily and
@@ -452,7 +452,7 @@ export default function HelpCenterPage() {
           <section className="mt-6 rounded-2xl border border-[#7B2D8E]/20 bg-white p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center shrink-0">
-                <Headphones className="w-5 h-5" />
+                <MessageSquare className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900">

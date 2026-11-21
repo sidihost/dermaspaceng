@@ -4,8 +4,8 @@
  * Admin Live Chat Command Center
  *
  * Responsive 3-pane workspace adhering strictly to Dermaspace's flat design
- * system (#7B2D8E, #5A1D6A, #FAF6FB, #FFFFFF, border-gray-200, #16A34A for
- * live online presence only; zero shadows, zero gradients, zero red buttons).
+ * system (#7B2D8E, #5A1D6A, #FAF6FB, #FFFFFF, border-gray-200;
+ * zero shadows, zero gradients, zero red buttons).
  *
  * Tabs:
  *   1. Live Desk   — 3-pane real-time inbox (Queue | Conversation | Profile Details)
@@ -29,7 +29,6 @@ import {
   Download,
   ExternalLink,
   Globe,
-  Headphones,
   History,
   Laptop,
   Loader2,
@@ -317,7 +316,7 @@ export default function AdminLiveChatPage() {
               <span
                 className={cn(
                   'w-1.5 h-1.5 rounded-full',
-                  openSessions.length > 0 ? 'bg-[#16A34A]' : 'bg-gray-300',
+                  openSessions.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300',
                 )}
               />
               {openSessions.length} open
@@ -340,7 +339,7 @@ export default function AdminLiveChatPage() {
         >
           {(
             [
-              { id: 'live', label: 'Live Desk', icon: Headphones, count: openSessions.length },
+              { id: 'live', label: 'Live Desk', icon: MessageSquare, count: openSessions.length },
               { id: 'history', label: 'History', icon: History, count: null },
               { id: 'performance', label: 'Performance', icon: BarChart3, count: null },
             ] as const
@@ -611,7 +610,7 @@ function LiveDeskWorkspace({
           ) : filteredSessions.length === 0 ? (
             <div className="py-14 px-5 text-center">
               <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
-                <Headphones className="w-5 h-5" />
+                <MessageSquare className="w-5 h-5" />
               </div>
               <p className="text-[13px] font-semibold text-gray-900">
                 {search
@@ -677,7 +676,7 @@ function LiveDeskWorkspace({
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center max-w-sm">
               <div className="w-14 h-14 mx-auto rounded-full bg-white border border-gray-200 text-[#7B2D8E] flex items-center justify-center mb-4">
-                <Headphones className="w-6 h-6" />
+                <MessageSquare className="w-6 h-6" />
               </div>
               <h2 className="text-[15.5px] font-semibold text-gray-900">
                 Select a live conversation
@@ -758,9 +757,9 @@ function QueueListRow({
           className={cn(
             'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
             presence.state === 'online'
-              ? 'bg-[#16A34A]'
+              ? 'bg-[#7B2D8E]'
               : isWaiting
-                ? 'bg-[#7B2D8E]'
+                ? 'bg-[#7B2D8E]/55'
                 : 'bg-gray-300',
           )}
         />
@@ -808,11 +807,9 @@ function QueueListRow({
           <span
             className={cn(
               'font-medium shrink-0',
-              presence.state === 'online'
-                ? 'text-[#16A34A]'
-                : isWaiting
-                  ? 'text-[#7B2D8E]'
-                  : 'text-gray-500',
+              presence.state === 'online' || isWaiting
+                ? 'text-[#7B2D8E]'
+                : 'text-gray-500',
             )}
           >
             {presence.state === 'online'
@@ -1091,15 +1088,19 @@ function AdminSessionWorkspace({
         const json = await res.json().catch(() => ({}))
         throw new Error(json.error || 'Could not delete session.')
       }
-      await swrMutate(
-        (key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
-      )
+      await mutate(undefined, { revalidate: false })
       setDeleteDialogOpen(false)
       notify.success(
         'Live chat deleted',
         `${customerLabel} (${supportCode}) was permanently removed.`,
       )
       onDeleted()
+      void swrMutate(
+        (key) =>
+          typeof key === 'string' &&
+          key.startsWith('/api/admin/live-chat/') &&
+          key !== sessionUrl,
+      )
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to delete session.'
       setSendError(msg)
@@ -1287,9 +1288,9 @@ function AdminSessionWorkspace({
                 className={cn(
                   'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white',
                   presence?.state === 'online'
-                    ? 'bg-[#16A34A]'
+                    ? 'bg-[#7B2D8E]'
                     : session.status === 'waiting'
-                      ? 'bg-[#7B2D8E]'
+                      ? 'bg-[#7B2D8E]/55'
                       : 'bg-gray-300',
                 )}
               />
@@ -1311,11 +1312,9 @@ function AdminSessionWorkspace({
                 <span
                   className={cn(
                     'font-medium shrink-0',
-                    presence?.state === 'online'
-                      ? 'text-[#16A34A]'
-                      : session.status === 'waiting'
-                        ? 'text-[#7B2D8E]'
-                        : 'text-gray-500',
+                    presence?.state === 'online' || session.status === 'waiting'
+                      ? 'text-[#7B2D8E]'
+                      : 'text-gray-500',
                   )}
                 >
                   {presence?.label ||
@@ -1575,20 +1574,37 @@ function AdminSessionWorkspace({
                       )}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const isPreset = ADMIN_DISPLAY_PRESETS.includes(
-                        displayName as (typeof ADMIN_DISPLAY_PRESETS)[number],
-                      )
-                      setCustomDisplay(isPreset ? '' : displayName)
-                      setEditingDisplay(true)
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E] transition-colors shrink-0 cursor-pointer"
-                  >
-                    <Pencil className="w-3 h-3" />
-                    Switch alias
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {supportCode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraft(
+                            `Please keep your support reference ID ${supportCode} for future reference.`,
+                          )
+                          composerRef.current?.focus()
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full bg-white border border-[#7B2D8E]/30 hover:bg-[#7B2D8E] hover:text-white px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E] transition-colors shrink-0 cursor-pointer"
+                      >
+                        <Ticket className="w-3 h-3" />
+                        Share ref ID
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const isPreset = ADMIN_DISPLAY_PRESETS.includes(
+                          displayName as (typeof ADMIN_DISPLAY_PRESETS)[number],
+                        )
+                        setCustomDisplay(isPreset ? '' : displayName)
+                        setEditingDisplay(true)
+                      }}
+                      className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/45 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E] transition-colors shrink-0 cursor-pointer"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Switch alias
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1693,43 +1709,42 @@ function AdminSessionWorkspace({
         </div>
       )}
 
-      {/* Brand-Purple End Chat Confirmation Popup */}
+      {/* Brand-Purple End Chat Action Prompt */}
       <ConfirmDialog
         open={endDialogOpen}
-        onOpenChange={setEndDialogOpen}
+        onCancel={() => setEndDialogOpen(false)}
         title={`End live chat with ${customerLabel}?`}
         description={
           <>
-            Session{' '}
+            Close{' '}
             <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
-            will be closed, the transcript will be emailed if an address is on file, and the
-            visitor can leave feedback or continue with Derma AI.
+            and send the transcript if an email is on file.
           </>
         }
         confirmLabel="End chat"
         cancelLabel="Keep chatting"
-        icon={PhoneOff}
-        busy={closing}
+        icon={<PhoneOff className="h-[18px] w-[18px]" />}
+        loading={closing}
         onConfirm={() => void endSession()}
       />
 
-      {/* Brand-Purple Delete Session Confirmation Popup */}
+      {/* Brand-Purple Delete Session Action Prompt */}
       <ConfirmDialog
         open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
+        onCancel={() => setDeleteDialogOpen(false)}
         title="Delete this live chat?"
         description={
           <>
-            This permanently removes{' '}
+            Permanently removes{' '}
             <span className="font-semibold text-gray-900">{customerLabel}</span> (
             <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>) and
-            its full conversation history. This cannot be undone.
+            its messages. This cannot be undone.
           </>
         }
         confirmLabel="Delete chat"
         cancelLabel="Keep it"
-        icon={Trash2}
-        busy={deleting}
+        icon={<Trash2 className="h-[18px] w-[18px]" />}
+        loading={deleting}
         onConfirm={() => void deleteSession()}
       />
     </>
@@ -1847,9 +1862,9 @@ function AdminProfileDetailsPanel({
                 className={cn(
                   'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
                   presence?.state === 'online'
-                    ? 'bg-[#16A34A]'
+                    ? 'bg-[#7B2D8E]'
                     : presence?.state === 'away'
-                      ? 'bg-[#7B2D8E]'
+                      ? 'bg-[#7B2D8E]/45'
                       : 'bg-gray-300',
                 )}
               />
@@ -1873,9 +1888,9 @@ function AdminProfileDetailsPanel({
                   className={cn(
                     'w-2 h-2 rounded-full shrink-0',
                     presence.state === 'online'
-                      ? 'bg-[#16A34A]'
+                      ? 'bg-[#7B2D8E]'
                       : presence.state === 'away'
-                        ? 'bg-[#7B2D8E]/60'
+                        ? 'bg-[#7B2D8E]/45'
                         : 'bg-gray-300',
                   )}
                 />
@@ -1883,7 +1898,7 @@ function AdminProfileDetailsPanel({
                   className={cn(
                     'text-[12px] font-semibold truncate',
                     presence.state === 'online'
-                      ? 'text-[#16A34A]'
+                      ? 'text-[#7B2D8E]'
                       : presence.state === 'away'
                         ? 'text-[#5A1D6A]'
                         : 'text-gray-500',
@@ -2358,12 +2373,48 @@ function HistorySessionOverlay({
 // ---------------------------------------------------------------------------
 
 function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) {
+  const notify = useAdminNotify()
+  const { mutate: swrMutate } = useSWRConfig()
   const [days, setDays] = useState(7)
   const [search, setSearch] = useState('')
-  const { data, isLoading } = useSWR<ListResponse>(
+  const [deleteTarget, setDeleteTarget] = useState<SessionRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const { data, isLoading, mutate } = useSWR<ListResponse>(
     `/api/admin/live-chat/sessions?status=closed&days=${days}`,
     fetcher,
   )
+
+  const handleDeleteHistorySession = async () => {
+    if (!deleteTarget || deleting) return
+    setDeleting(true)
+    const target = deleteTarget
+    const targetCode = resolveSupportId(target.support_code, target.id)
+    const targetName = getSessionCustomerLabel(target)
+    try {
+      const res = await fetch(`/api/admin/live-chat/sessions/${target.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not delete session.')
+      }
+      setDeleteTarget(null)
+      await mutate()
+      void swrMutate(
+        (key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/'),
+      )
+      notify.success(
+        'Live chat deleted',
+        `${targetName} (${targetCode}) was permanently removed.`,
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete session.'
+      notify.error('Could not delete chat', msg)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const sessions = data?.sessions ?? []
   const filtered = useMemo(() => {
@@ -2441,14 +2492,16 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                   fullName(s.staff_first_name, s.staff_last_name, 'Rep')
                 : 'Unassigned'
               return (
-                <button
+                <div
                   key={s.id}
-                  type="button"
-                  onClick={() => onOpenSession(s.id)}
-                  className="w-full text-left bg-white rounded-2xl border border-gray-200 hover:border-[#7B2D8E]/40 p-4 space-y-2.5 transition-colors cursor-pointer"
+                  className="w-full bg-white rounded-2xl border border-gray-200 hover:border-[#7B2D8E]/40 p-4 space-y-2.5 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => onOpenSession(s.id)}
+                      className="min-w-0 flex-1 text-left cursor-pointer"
+                    >
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p className="text-[13.5px] font-semibold text-gray-900 truncate">
                           {name}
@@ -2462,32 +2515,49 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                       <p className="text-[11px] font-mono text-[#5A1D6A] mt-0.5">
                         {code}
                       </p>
+                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <StatusPill status={s.status} />
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(s)}
+                        aria-label={`Delete live chat ${code}`}
+                        title="Delete chat"
+                        className="w-7 h-7 rounded-full border border-gray-200 bg-white text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] flex items-center justify-center transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    <StatusPill status={s.status} />
                   </div>
 
-                  <p className="text-[12px] text-gray-600 line-clamp-1">
-                    {s.initial_topic || 'Customer inquiry'}
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenSession(s.id)}
+                    className="w-full text-left space-y-2.5 cursor-pointer"
+                  >
+                    <p className="text-[12px] text-gray-600 line-clamp-1">
+                      {s.initial_topic || 'Customer inquiry'}
+                    </p>
 
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500">
-                    <span className="truncate">
-                      Rep: <strong className="font-medium text-gray-800">{rep}</strong>
-                      {s.visitor_location ? ` · ${s.visitor_location}` : ''}
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {s.rating != null && (
-                        <span className="inline-flex items-center gap-0.5 font-semibold text-[#7B2D8E] tabular-nums">
-                          <Star className="w-3 h-3 fill-[#7B2D8E] text-[#7B2D8E]" />
-                          {s.rating}/5
-                        </span>
-                      )}
-                      <span className="tabular-nums text-gray-400">
-                        {formatRelative(s.closed_at || s.last_message_at)}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500">
+                      <span className="truncate">
+                        Rep: <strong className="font-medium text-gray-800">{rep}</strong>
+                        {s.visitor_location ? ` · ${s.visitor_location}` : ''}
                       </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {s.rating != null && (
+                          <span className="inline-flex items-center gap-0.5 font-semibold text-[#7B2D8E] tabular-nums">
+                            <Star className="w-3 h-3 fill-[#7B2D8E] text-[#7B2D8E]" />
+                            {s.rating}/5
+                          </span>
+                        )}
+                        <span className="tabular-nums text-gray-400">
+                          {formatRelative(s.closed_at || s.last_message_at)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -2504,7 +2574,7 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                     <th className="py-3 px-4">Representative</th>
                     <th className="py-3 px-4">Rating</th>
                     <th className="py-3 px-4">Closed</th>
-                    <th className="py-3 px-4 text-right">Transcript</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -2571,10 +2641,31 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                           {formatRelative(s.closed_at || s.last_message_at)}
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E]">
-                            Open
-                            <ArrowUpRight className="w-3.5 h-3.5" />
-                          </span>
+                          <div className="inline-flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onOpenSession(s.id)
+                              }}
+                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] cursor-pointer"
+                            >
+                              Open
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteTarget(s)
+                              }}
+                              aria-label={`Delete live chat ${code}`}
+                              title="Delete chat"
+                              className="w-7 h-7 rounded-full border border-gray-200 bg-white text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] inline-flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -2585,6 +2676,33 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
           </div>
         </>
       )}
+
+      {/* Brand-Purple Delete History Session Prompt */}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onCancel={() => setDeleteTarget(null)}
+        title="Delete this live chat?"
+        description={
+          deleteTarget ? (
+            <>
+              Permanently removes{' '}
+              <span className="font-semibold text-gray-900">
+                {getSessionCustomerLabel(deleteTarget)}
+              </span>{' '}
+              (
+              <span className="font-mono font-semibold text-[#5A1D6A]">
+                {resolveSupportId(deleteTarget.support_code, deleteTarget.id)}
+              </span>
+              ) and its messages.
+            </>
+          ) : undefined
+        }
+        confirmLabel="Delete chat"
+        cancelLabel="Keep it"
+        icon={<Trash2 className="h-[18px] w-[18px]" />}
+        loading={deleting}
+        onConfirm={() => void handleDeleteHistorySession()}
+      />
     </div>
   )
 }

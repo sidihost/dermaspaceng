@@ -241,9 +241,9 @@ export function LiveChatInspector({
                   className={cn(
                     'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
                     presence.state === 'online'
-                      ? 'bg-[#16A34A]'
+                      ? 'bg-[#7B2D8E]'
                       : presence.state === 'away'
-                        ? 'bg-[#7B2D8E]'
+                        ? 'bg-[#7B2D8E]/45'
                         : 'bg-gray-300',
                   )}
                 />
@@ -273,9 +273,9 @@ export function LiveChatInspector({
                   className={cn(
                     'w-2 h-2 rounded-full shrink-0',
                     presence.state === 'online'
-                      ? 'bg-[#16A34A]'
+                      ? 'bg-[#7B2D8E]'
                       : presence.state === 'away'
-                        ? 'bg-[#7B2D8E]/60'
+                        ? 'bg-[#7B2D8E]/45'
                         : 'bg-gray-300',
                   )}
                 />
@@ -283,7 +283,7 @@ export function LiveChatInspector({
                   className={cn(
                     'text-[12px] font-semibold truncate',
                     presence.state === 'online'
-                      ? 'text-[#16A34A]'
+                      ? 'text-[#7B2D8E]'
                       : presence.state === 'away'
                         ? 'text-[#5A1D6A]'
                         : 'text-gray-500',
@@ -293,7 +293,7 @@ export function LiveChatInspector({
                 </span>
               </div>
               <span className="text-[10.5px] text-gray-400 shrink-0">
-                {presence.isOnline ? 'Live' : 'Status'}
+                {presence.isOnline ? 'Available' : 'Offline'}
               </span>
             </div>
           )}

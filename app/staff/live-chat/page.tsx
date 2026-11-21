@@ -25,9 +25,9 @@ import {
   Check,
   Download,
   Globe,
-  Headphones,
   Loader2,
   MapPin,
+  MessageSquare,
   MessageSquareText,
   PanelRight,
   PhoneOff,
@@ -470,7 +470,7 @@ export default function StaffLiveChatPage() {
           ) : visibleRows.length === 0 ? (
             <div className="py-14 px-6 text-center">
               <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
-                <Headphones className="w-5 h-5" />
+                <MessageSquare className="w-5 h-5" />
               </div>
               <p className="text-[13px] font-semibold text-gray-900">
                 {trimmedQuery.length >= 2
@@ -629,9 +629,9 @@ function InboxRow({
           className={cn(
             'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white',
             itemPresence.state === 'online'
-              ? 'bg-[#16A34A]'
+              ? 'bg-[#7B2D8E]'
               : isWaiting
-                ? 'bg-[#7B2D8E]'
+                ? 'bg-[#7B2D8E]/55'
                 : 'bg-gray-300',
           )}
         />
@@ -1054,7 +1054,7 @@ function ConversationStage({
       <div className="flex-1 flex items-center justify-center p-8 bg-[#FBF9FC]">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 mx-auto rounded-full bg-white border border-gray-200 text-[#7B2D8E] flex items-center justify-center mb-4">
-            <Headphones className="w-6 h-6" />
+            <MessageSquare className="w-6 h-6" />
           </div>
           <h2 className="text-[16px] font-semibold text-gray-900">
             Select a conversation
@@ -1203,11 +1203,9 @@ function ConversationStage({
                 <span
                   className={cn(
                     'font-medium shrink-0',
-                    effectivePresence?.state === 'online'
-                      ? 'text-[#16A34A]'
-                      : isWaiting
-                        ? 'text-[#7B2D8E]'
-                        : 'text-gray-500',
+                    effectivePresence?.state === 'online' || isWaiting
+                      ? 'text-[#7B2D8E]'
+                      : 'text-gray-500',
                   )}
                 >
                   {isClosed
@@ -1493,6 +1491,21 @@ function ConversationStage({
               <div className="space-y-2">
                 {showQuickReplies && (
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    {supportCode && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraft(
+                            `Please keep your support reference ID ${supportCode} for future reference.`,
+                          )
+                          setShowQuickReplies(false)
+                          composerRef.current?.focus()
+                        }}
+                        className="px-3 py-1.5 rounded-full border border-[#7B2D8E]/35 bg-white hover:bg-[#7B2D8E] text-[11.5px] font-semibold text-[#7B2D8E] hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                      >
+                        Share reference ID
+                      </button>
+                    )}
                     {QUICK_REPLIES.map((qr) => (
                       <button
                         key={qr.label}
@@ -1624,24 +1637,23 @@ function ConversationStage({
         </div>
       )}
 
-      {/* Brand-Purple End Chat Confirmation Popup */}
+      {/* Brand-Purple End Chat Action Prompt */}
       <ConfirmDialog
         open={endDialogOpen}
-        onOpenChange={setEndDialogOpen}
+        onCancel={() => setEndDialogOpen(false)}
         title="End this live chat?"
         description={
           <>
-            Ending{' '}
+            Close{' '}
             <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
             with <span className="font-semibold text-gray-900">{customerFullName}</span>{' '}
-            will close the live session, invite the visitor to leave feedback, and send
-            their transcript by email.
+            and send the transcript.
           </>
         }
         confirmLabel="End chat"
         cancelLabel="Keep chatting"
-        icon={PhoneOff}
-        busy={closing}
+        icon={<PhoneOff className="h-[18px] w-[18px]" />}
+        loading={closing}
         onConfirm={() => void closeChat()}
       />
     </>
@@ -1668,15 +1680,15 @@ function UserAvatar({
   const initials = `${firstName?.[0] || '?'}${lastName?.[0] || ''}`.toUpperCase()
   const dotClass =
     presenceState === 'online'
-      ? 'bg-[#16A34A]'
+      ? 'bg-[#7B2D8E]'
       : presenceState === 'away'
-        ? 'bg-[#7B2D8E]'
+        ? 'bg-[#7B2D8E]/45'
         : presenceState === 'offline'
           ? 'bg-gray-300'
           : status === 'active'
-            ? 'bg-[#16A34A]'
+            ? 'bg-[#7B2D8E]'
             : status === 'waiting'
-              ? 'bg-[#7B2D8E]'
+              ? 'bg-[#7B2D8E]/55'
               : 'bg-gray-300'
   return (
     <div className="relative shrink-0">
@@ -1949,7 +1961,7 @@ function ProfileDialog({
               <p className="text-[13.5px] font-semibold text-gray-900 truncate">
                 {displayName.trim() || 'Customer Care'}
               </p>
-              <p className="text-[11px] font-medium text-[#16A34A]">
+              <p className="text-[11px] font-medium text-[#7B2D8E]">
                 Available
               </p>
             </div>

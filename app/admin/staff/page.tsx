@@ -1784,18 +1784,17 @@ export default function StaffPage() {
           onConfirm = () => void handleRevokeInvitation(confirmModal.invitation)
         }
 
+        const IconComp = icon
         return (
           <ConfirmDialog
             open={true}
-            onOpenChange={(open) => {
-              if (!open) setConfirmModal(null)
-            }}
+            onCancel={() => setConfirmModal(null)}
             title={title}
             description={description}
             confirmLabel={confirmLabel}
             cancelLabel={cancelLabel}
-            icon={icon}
-            busy={busy}
+            icon={<IconComp className="h-[18px] w-[18px]" />}
+            loading={busy}
             optionalReason={optionalReason}
             reasonLabel={reasonLabel}
             reasonPlaceholder={reasonPlaceholder}

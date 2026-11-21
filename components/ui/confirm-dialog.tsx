@@ -102,34 +102,28 @@ export function ConfirmDialog({
     }
   }
 
-  // Destructive variant only changes the icon tile tint — the primary
-  // button stays brand purple to match the rest of the dashboard.
-  // Using red there would clash with the overall palette.
-  const iconTint =
-    variant === 'destructive'
-      ? 'bg-red-50 text-red-600'
-      : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+  const iconTint = 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/15'
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[70] bg-gray-900/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
       onClick={() => !loading && onOpenChange(false)}
     >
       {/*
-        Compact action sheet — pulled in from the previous size after
+        Compact flat action prompt — pulled in from the previous size after
         feedback that the dialog felt oversized on mobile. Specifically:
           • Width capped at ~320px on desktop (was 384px / max-w-sm).
           • Vertical padding reduced from p-5 → p-4.
           • Icon tile shrunk from 40×40 → 36×36, radius from xl → lg.
           • Title 15px → 14px, body 13px → 12px.
           • Buttons 44 → 40 high; primary text 13.5 → 13.
-        Keeps the same hierarchy and palette, just denser.
+        Keeps the same hierarchy and palette, flat border, zero shadow.
       */}
       <div
-        className="bg-white w-full sm:max-w-[320px] rounded-t-3xl sm:rounded-2xl shadow-xl p-4"
+        className="bg-white w-full sm:max-w-[320px] rounded-t-3xl sm:rounded-2xl border border-gray-200 p-4"
         style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         onClick={(e) => e.stopPropagation()}
       >

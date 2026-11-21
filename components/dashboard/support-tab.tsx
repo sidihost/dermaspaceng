@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { Send, Phone, Mail, MessageSquare, Check, Headphones } from 'lucide-react'
+import { Send, Phone, Mail, MessageSquare, Check } from 'lucide-react'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
 import { formatAccountSubtitle, getVisibleEmail } from '@/lib/auth-onboarding'
 
@@ -146,7 +146,7 @@ export default function SupportTab({ user }: SupportTabProps) {
             className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-left"
           >
             <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center shrink-0">
-              <Headphones className="w-5 h-5 text-[#7B2D8E]" />
+              <MessageSquare className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Talk to an Agent</p>
