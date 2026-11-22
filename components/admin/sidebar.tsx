@@ -224,8 +224,8 @@ const BASELINE_PREFIX = 'admin:badgeBaseline:'
 // baseline would suppress today's genuinely-new signup (max(0, 1-5) = 0).
 const DATED_SURFACES = new Set(['users', 'newsletter'])
 
-// In-memory mirror hydrated from /api/admin/badges/seen + localStorage so
-// clearing browser cache/site storage does not resurrect stale badge counts.
+// In-memory mirror hydrated from /api/admin/badges/seen (PostgreSQL app_settings)
+// with zero localStorage writes.
 const memoryBaselines = new Map<string, { count: number; date?: string }>()
 const lastSyncedBaselines = new Map<string, string>()
 
@@ -243,24 +243,6 @@ function todayStamp(): string {
   return new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
 }
 
-function readLocalBaseline(surface: string): number {
-  if (typeof window === 'undefined') return 0
-  try {
-    const raw = window.localStorage.getItem(BASELINE_PREFIX + surface)
-    if (!raw) return 0
-    if (raw.includes(':')) {
-      const [stamp, countPart] = raw.split(':')
-      if (stamp !== todayStamp()) return 0
-      const n = parseInt(countPart, 10)
-      return Number.isFinite(n) && n >= 0 ? n : 0
-    }
-    const n = parseInt(raw, 10)
-    return Number.isFinite(n) && n >= 0 ? n : 0
-  } catch {
-    return 0
-  }
-}
-
 function readMemoryBaseline(surface: string): number {
   const rec = memoryBaselines.get(surface)
   if (!rec) return 0
@@ -269,18 +251,20 @@ function readMemoryBaseline(surface: string): number {
 }
 
 function readBaseline(surface: string): number {
-  return Math.max(readLocalBaseline(surface), readMemoryBaseline(surface))
+  return readMemoryBaseline(surface)
 }
 
-function writeLocalBaseline(surface: string, count: number, date?: string): void {
+function writeLocalBaseline(_surface: string, _count: number, _date?: string): void {
   if (typeof window === 'undefined') return
   try {
-    const value = DATED_SURFACES.has(surface)
-      ? `${date || todayStamp()}:${count}`
-      : String(count)
-    window.localStorage.setItem(BASELINE_PREFIX + surface, value)
+    const keysToRemove: string[] = []
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i)
+      if (k && k.startsWith(BASELINE_PREFIX)) keysToRemove.push(k)
+    }
+    keysToRemove.forEach((k) => window.localStorage.removeItem(k))
   } catch {
-    /* localStorage can be disabled */
+    /* ignore */
   }
 }
 
@@ -290,18 +274,11 @@ function writeLocalBaseline(surface: string, count: number, date?: string): void
 export function resetSurfaceBaseline(surface: string): void {
   memoryBaselines.delete(surface)
   lastSyncedBaselines.delete(surface)
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.removeItem(BASELINE_PREFIX + surface)
-  } catch {
-    /* noop */
-  }
 }
 
 /**
- * Mark a surface "seen" — sets the baseline to the current count in both
- * localStorage and server preferences so the sidebar pill drops to zero
- * and stays zero even if the browser cache is cleared.
+ * Mark a surface "seen" — sets the baseline to the current count in memory
+ * and PostgreSQL preferences (/api/admin/badges/seen) without localStorage.
  */
 export function markSurfaceSeen(surface: string, currentCount: number): void {
   if (typeof window === 'undefined') return

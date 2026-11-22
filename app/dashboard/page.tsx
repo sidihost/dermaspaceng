@@ -160,9 +160,10 @@ export default function DashboardPage() {
 
     const checkAuth = async () => {
       try {
-        const [res, ticketsRes] = await Promise.all([
+        const [res, ticketsRes, dermaSessionsRes] = await Promise.all([
           fetch('/api/auth/me', { credentials: 'include', cache: 'no-store' }),
           fetch('/api/tickets').catch(() => null),
+          fetch('/api/derma/sessions', { credentials: 'include', cache: 'no-store' }).catch(() => null),
         ])
         if (res.ok) {
           const data = await res.json()
@@ -199,14 +200,20 @@ export default function DashboardPage() {
             setTimeout(() => setShowAvatarIntro(true), 600)
           }
 
-          const chatSessions = localStorage.getItem('derma-chat-sessions')
-          if (chatSessions) {
-            const sessions = JSON.parse(chatSessions)
-            setChatHistory(sessions.slice(0, 5).map((s: { id: string; title: string; createdAt: string }) => ({
-              id: s.id,
-              title: s.title,
-              date: new Date(s.createdAt).toLocaleDateString()
-            })))
+          if (dermaSessionsRes && dermaSessionsRes.ok) {
+            try {
+              const dermaData = await dermaSessionsRes.json()
+              const sessions = Array.isArray(dermaData?.sessions) ? dermaData.sessions : []
+              setChatHistory(
+                sessions.slice(0, 5).map((s: { id: string; title: string; createdAt?: string }) => ({
+                  id: s.id,
+                  title: s.title,
+                  date: s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '',
+                })),
+              )
+            } catch {
+              /* non-blocking */
+            }
           }
 
           if (ticketsRes && ticketsRes.ok) {

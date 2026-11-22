@@ -29,8 +29,6 @@ import {
   resolveSupportId,
 } from '@/lib/support-and-chat'
 import {
-  normalizeDeletedIds,
-  parseIsoMs,
   reconcileDermaSessions,
   type SyncableActiveChat,
   type SyncableChatSession,
@@ -2786,18 +2784,37 @@ export default function DermaAI({
     }
   }, [])
 
-  // Refs for immediate scoped storage & DB sync inside deletion callbacks
-  const sessionsKeyRef = useRef<string | null>(null)
-  const activeKeyRef = useRef<string | null>(null)
-  const deletedKeyRef = useRef<string | null>(null)
-  const clearedKeyRef = useRef<string | null>(null)
+  // Refs for DB sync & in-memory tombstones (never persisted in localStorage)
+  const remoteHydratedRef = useRef<boolean>(false)
   const syncPutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const suppressNextSyncRef = useRef<boolean>(false)
   const deletedSessionIdsRef = useRef<Set<string>>(new Set())
   const clearedAtRef = useRef<string | null>(null)
 
-  // Clear all chat sessions — wipe React state, scoped browser cache, AND
-  // PostgreSQL (/api/derma/sessions) with a cleared_at tombstone so other
+  const purgeLegacyDermaChatLocalStorage = useCallback(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const toRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (!k) continue
+        if (
+          k === 'derma-chat-sessions' ||
+          k === 'derma-chat-active' ||
+          k.startsWith('derma-chat-sessions::') ||
+          k.startsWith('derma-chat-active::') ||
+          k.startsWith('derma-chat-deleted::') ||
+          k.startsWith('derma-chat-cleared::')
+        ) {
+          toRemove.push(k)
+        }
+      }
+      toRemove.forEach((k) => localStorage.removeItem(k))
+    } catch { /* ignore storage errors */ }
+  }, [])
+
+  // Clear all chat sessions — wipe React state, ephemeral guest sessionStorage,
+  // AND PostgreSQL (/api/derma/sessions) with a cleared_at tombstone so other
   // devices immediately drop pre-clear history on their next sync.
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
   const clearAllSessions = useCallback(() => {
@@ -2813,23 +2830,11 @@ export default function DermaAI({
     suppressNextSyncRef.current = true
     setSessions([])
     setCurrentSessionId('')
+    purgeLegacyDermaChatLocalStorage()
     try {
-      if (sessionsKeyRef.current) localStorage.removeItem(sessionsKeyRef.current)
-      if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
-      if (deletedKeyRef.current) {
-        localStorage.setItem(
-          deletedKeyRef.current,
-          JSON.stringify(Array.from(deletedSessionIdsRef.current)),
-        )
-      }
-      if (clearedKeyRef.current) {
-        localStorage.setItem(clearedKeyRef.current, nowIso)
-      }
-      localStorage.removeItem('derma-chat-sessions')
-      localStorage.removeItem('derma-chat-active')
-    } catch {
-      /* quota */
-    }
+      sessionStorage.removeItem('derma-anon-sessions')
+      sessionStorage.removeItem('derma-anon-active')
+    } catch { /* ignore */ }
     if (isLoggedIn === true) {
       void fetch('/api/derma/sessions', {
         method: 'DELETE',
@@ -2841,11 +2846,6 @@ export default function DermaAI({
           const d = (await r.json().catch(() => null)) as { cleared_at?: string } | null
           if (d?.cleared_at) {
             clearedAtRef.current = d.cleared_at
-            try {
-              if (clearedKeyRef.current) {
-                localStorage.setItem(clearedKeyRef.current, d.cleared_at)
-              }
-            } catch { /* quota */ }
           }
         })
         .catch(() => { /* ignore */ })
@@ -2992,33 +2992,21 @@ export default function DermaAI({
         preferences: parsedPrefs,
       })
       setIsLoggedIn(true)
-      // Sign-in succeeded: clear the anonymous bucket so the
-      // pre-login "hello guest" chat doesn't linger on a shared
-      // device for the next anonymous visitor.
+      // Sign-in succeeded: clear ephemeral guest sessionStorage and any legacy localStorage keys
+      purgeLegacyDermaChatLocalStorage()
       try {
-        localStorage.removeItem('derma-chat-sessions::__anon__')
-        localStorage.removeItem('derma-chat-active::__anon__')
-        localStorage.removeItem('derma-chat-deleted::__anon__')
-        localStorage.removeItem('derma-chat-cleared::__anon__')
+        sessionStorage.removeItem('derma-anon-sessions')
+        sessionStorage.removeItem('derma-anon-active')
       } catch { /* ignore */ }
     } else {
       setIsLoggedIn(false)
       setUserInfo({})
     }
-  }, [authLoading, authUserId, authFirstName, authEmail, authAvatarUrl, authPrefsSerialized])
+  }, [authLoading, authUserId, authFirstName, authEmail, authAvatarUrl, authPrefsSerialized, purgeLegacyDermaChatLocalStorage])
 
   // Auth transition watcher. When we detect a sign-OUT (was logged in
-  // on a previous tick, now logged out) we:
-  //   1. Blank the on-screen conversation so the signed-out viewer
-  //      doesn't see the just-departed user's last messages.
-  //   2. Close the chat widget so the next opener starts fresh.
-  //   3. Close any open consent / sidebar / settings surfaces.
-  //   4. Revoke account-access consent — connecting to Derma AI has
-  //      to happen again on the next sign-in.
-  //   5. Wipe BOTH the previous user's chat bucket AND the anonymous
-  //      bucket so a later visitor on the same device starts clean.
-  // The hydration effect below will then re-run against the new
-  // (anonymous) scope and populate an empty state.
+  // on a previous tick, now logged out) we wipe React state, consent,
+  // ephemeral sessionStorage, and any legacy localStorage chat keys.
   useEffect(() => {
     if (isLoggedIn === null) return
     const prev = previousAuthRef.current
@@ -3034,201 +3022,26 @@ export default function DermaAI({
       setAccountAccessConsent(false)
       deletedSessionIdsRef.current = new Set()
       clearedAtRef.current = null
+      remoteHydratedRef.current = false
+      purgeLegacyDermaChatLocalStorage()
       try {
         localStorage.removeItem('derma-account-consent')
-        localStorage.removeItem('derma-chat-sessions::__anon__')
-        localStorage.removeItem('derma-chat-active::__anon__')
-        localStorage.removeItem('derma-chat-deleted::__anon__')
-        localStorage.removeItem('derma-chat-cleared::__anon__')
-        // Sweep every user-scoped bucket — safest for shared devices.
-        const toRemove: string[] = []
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i)
-          if (!k) continue
-          if (
-            k.startsWith('derma-chat-sessions::') ||
-            k.startsWith('derma-chat-active::') ||
-            k.startsWith('derma-chat-deleted::') ||
-            k.startsWith('derma-chat-cleared::')
-          ) {
-            toRemove.push(k)
-          }
-        }
-        toRemove.forEach((k) => localStorage.removeItem(k))
-      } catch { /* ignore quota / storage errors */ }
+        sessionStorage.removeItem('derma-anon-sessions')
+        sessionStorage.removeItem('derma-anon-active')
+      } catch { /* ignore storage errors */ }
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, purgeLegacyDermaChatLocalStorage])
 
-  const storageScope =
+  const userScopeEmail =
     isLoggedIn === null
       ? null
       : isLoggedIn && userInfo?.email
-        ? `u:${userInfo.email.toLowerCase()}`
+        ? userInfo.email.toLowerCase()
         : '__anon__'
-  const sessionsKey = storageScope ? `derma-chat-sessions::${storageScope}` : null
-  const activeKey = storageScope ? `derma-chat-active::${storageScope}` : null
-  const deletedKey = storageScope ? `derma-chat-deleted::${storageScope}` : null
-  const clearedKey = storageScope ? `derma-chat-cleared::${storageScope}` : null
-  sessionsKeyRef.current = sessionsKey
-  activeKeyRef.current = activeKey
-  deletedKeyRef.current = deletedKey
-  clearedKeyRef.current = clearedKey
-
-  useEffect(() => {
-    if (!sessionsKey || !activeKey) return
-
-    let hadActive = false
-    try {
-      const legacySessions = localStorage.getItem('derma-chat-sessions')
-      const legacyActive = localStorage.getItem('derma-chat-active')
-      if (legacySessions || legacyActive) {
-        if (legacySessions && !localStorage.getItem(sessionsKey)) {
-          localStorage.setItem(sessionsKey, legacySessions)
-        }
-        if (legacyActive && !localStorage.getItem(activeKey)) {
-          localStorage.setItem(activeKey, legacyActive)
-        }
-        localStorage.removeItem('derma-chat-sessions')
-        localStorage.removeItem('derma-chat-active')
-      }
-
-      const rawDeleted = deletedKey ? localStorage.getItem(deletedKey) : null
-      const parsedDeleted = rawDeleted ? normalizeDeletedIds(JSON.parse(rawDeleted)) : []
-      deletedSessionIdsRef.current = new Set(parsedDeleted)
-
-      const rawCleared = clearedKey ? localStorage.getItem(clearedKey) : null
-      const clearedMs = parseIsoMs(rawCleared)
-      clearedAtRef.current = clearedMs > 0 ? new Date(clearedMs).toISOString() : null
-
-      const savedSessions = localStorage.getItem(sessionsKey)
-      if (savedSessions) {
-        const parsed = JSON.parse(savedSessions) as ChatSession[]
-        const restored = parsed
-          .map((s) => ({
-            ...s,
-            createdAt: new Date(s.createdAt),
-            messages: (s.messages ?? []).map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
-          }))
-          .filter((s) => {
-            if (!s.id || deletedSessionIdsRef.current.has(s.id)) return false
-            if (clearedMs > 0) {
-              const latestMsgMs = s.messages.reduce(
-                (acc, m) => Math.max(acc, m.timestamp.getTime() || 0),
-                s.createdAt.getTime() || 0,
-              )
-              if (latestMsgMs <= clearedMs) return false
-            }
-            return true
-          })
-        setSessions(restored)
-      } else {
-        setSessions([])
-      }
-
-      const savedActive = localStorage.getItem(activeKey)
-      if (savedActive) {
-        const {
-          sessionId,
-          messages: activeMessages,
-          isOpen: wasOpen,
-        } = JSON.parse(savedActive) as {
-          sessionId: string
-          messages: Message[]
-          isOpen?: boolean
-        }
-        const activeClearedOut = (() => {
-          if (sessionId && deletedSessionIdsRef.current.has(sessionId)) return true
-          if (clearedMs <= 0) return false
-          const activeMs = Array.isArray(activeMessages)
-            ? activeMessages.reduce((acc, m) => Math.max(acc, parseIsoMs(m.timestamp)), 0)
-            : 0
-          return activeMs === 0 || activeMs <= clearedMs
-        })()
-
-        if (!activeClearedOut && Array.isArray(activeMessages) && activeMessages.length > 0) {
-          setCurrentSessionId(sessionId || '')
-          setMessages(
-            activeMessages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
-          )
-          if (wasOpen) setIsOpen(true)
-          hadActive = true
-        } else if (activeClearedOut) {
-          localStorage.removeItem(activeKey)
-        }
-      }
-
-      if (!hadActive) {
-        setCurrentSessionId('')
-        setMessages([])
-      }
-    } catch {
-      /* ignore corrupt storage */
-    }
-    setHasHydrated(true)
-  }, [sessionsKey, activeKey, deletedKey, clearedKey])
-
-  useEffect(() => {
-    if (!hasHydrated) return
-    if (messages.length > 0) return
-    if (isLoggedIn === null) return
-
-    const greeting = isLoggedIn
-      ? userInfo.name
-        ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant at Dermaspace. I can check your wallet, manage your bookings, and answer anything about services or pricing. How can I help you today?`
-        : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
-      : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or [sign in](/signin) and I can check your wallet, manage bookings, and keep things personal."
-
-    const actions: ActionCard[] = isLoggedIn
-      ? [
-          { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
-          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
-        ]
-      : [
-          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
-          { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
-        ]
-
-    setMessages([{
-      id: '1',
-      role: 'assistant',
-      content: greeting,
-      timestamp: new Date(),
-      actions,
-    }])
-  }, [hasHydrated, userInfo.name, messages.length, isLoggedIn])
-
-  // Persist the saved sessions list to localStorage whenever it changes.
-  // Writes go to the CURRENT user's bucket — never the global key —
-  // so a later sign-out cannot reveal this chat to the next viewer.
-  useEffect(() => {
-    if (!hasHydrated || !sessionsKey) return
-    try {
-      localStorage.setItem(sessionsKey, JSON.stringify(sessions))
-    } catch { /* quota */ }
-  }, [sessions, hasHydrated, sessionsKey])
-
-  // Persist the ACTIVE conversation (messages + sessionId + open state) on every
-  // change so a page refresh restores the exact chat + open-modal state.
-  // When there is no real user content (e.g., after deleting a chat or starting
-  // a fresh one), ALWAYS clear activeKey even if the panel is still open.
-  useEffect(() => {
-    if (!hasHydrated || !activeKey) return
-    const hasRealContent = messages.some(m => m.role === 'user')
-    try {
-      if (hasRealContent) {
-        localStorage.setItem(
-          activeKey,
-          JSON.stringify({ sessionId: currentSessionId, messages, isOpen })
-        )
-      } else {
-        localStorage.removeItem(activeKey)
-      }
-    } catch { /* quota */ }
-  }, [messages, currentSessionId, hasHydrated, isOpen, activeKey])
 
   // -----------------------------------------------------------------
-  // Server-side sync with tombstone reconciliation (deleted_ids + cleared_at)
-  // so deleted or cleared chats stay gone across every device & browser tab.
+  // Server-side sync (PostgreSQL /api/derma/sessions) for signed-in users.
+  // Zero localStorage usage for chat sessions, active chat, or deletions.
   // -----------------------------------------------------------------
   const remoteSyncedAtRef = useRef<number>(0)
   const syncSnapshotRef = useRef<{
@@ -3253,7 +3066,7 @@ export default function DermaAI({
   }
 
   const syncRemoteSessions = useCallback(async () => {
-    if (!hasHydrated || isLoggedIn !== true) return
+    if (isLoggedIn !== true) return
     try {
       const res = await fetch('/api/derma/sessions', {
         credentials: 'same-origin',
@@ -3294,21 +3107,6 @@ export default function DermaAI({
 
       deletedSessionIdsRef.current = new Set(reconciled.deletedIds)
       clearedAtRef.current = reconciled.clearedAt
-      try {
-        if (deletedKeyRef.current) {
-          localStorage.setItem(
-            deletedKeyRef.current,
-            JSON.stringify(reconciled.deletedIds),
-          )
-        }
-        if (clearedKeyRef.current) {
-          if (reconciled.clearedAt) {
-            localStorage.setItem(clearedKeyRef.current, reconciled.clearedAt)
-          } else {
-            localStorage.removeItem(clearedKeyRef.current)
-          }
-        }
-      } catch { /* quota */ }
 
       const nextSessions: ChatSession[] = reconciled.sessions.map((s) => ({
         ...(s as unknown as ChatSession),
@@ -3319,27 +3117,11 @@ export default function DermaAI({
         })),
       }))
 
-      // Prevent triggering a redundant debounced PUT unless reconciliation merged
-      // unpushed local changes (in which case we push immediately below).
       suppressNextSyncRef.current = !reconciled.shouldPushToServer
       setSessions(nextSessions)
 
-      try {
-        if (sessionsKeyRef.current) {
-          if (nextSessions.length > 0) {
-            localStorage.setItem(sessionsKeyRef.current, JSON.stringify(nextSessions))
-          } else {
-            localStorage.removeItem(sessionsKeyRef.current)
-          }
-        }
-      } catch { /* quota */ }
-
       if (hasRealLocalActive && reconciled.active === null) {
-        // Active chat was deleted or cleared on another device
         setCurrentSessionId('')
-        try {
-          if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
-        } catch { /* ignore */ }
         const greeting = snap.userName
           ? `Hello ${snap.userName}! How can I help you today?`
           : "Hello! How can I help you today?"
@@ -3367,7 +3149,12 @@ export default function DermaAI({
           setCurrentSessionId(reconciled.active.sessionId)
         }
         setMessages(restoredActive)
+      } else if (!remoteHydratedRef.current && !hasRealLocalActive) {
+        setCurrentSessionId('')
+        setMessages([])
       }
+
+      remoteHydratedRef.current = true
 
       if (reconciled.shouldPushToServer) {
         void fetch('/api/derma/sessions', {
@@ -3383,13 +3170,134 @@ export default function DermaAI({
         }).catch(() => { /* ignore */ })
       }
     } catch {
-      /* network blip — localStorage covers us */
+      /* transient network error — keep in-memory state */
     }
-  }, [hasHydrated, isLoggedIn])
+  }, [isLoggedIn])
+
+  // Initial hydration: signed-in users hydrate directly from PostgreSQL;
+  // guests hydrate only from ephemeral tab sessionStorage. Zero localStorage.
+  useEffect(() => {
+    if (!userScopeEmail || isLoggedIn === null) return
+    purgeLegacyDermaChatLocalStorage()
+
+    if (isLoggedIn === true) {
+      let cancelled = false
+      remoteHydratedRef.current = false
+      setHasHydrated(false)
+      void syncRemoteSessions().finally(() => {
+        if (!cancelled) setHasHydrated(true)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    // Anonymous guest: sessionStorage only (tab-scoped, never localStorage)
+    let hadActive = false
+    try {
+      const savedSessions = sessionStorage.getItem('derma-anon-sessions')
+      if (savedSessions) {
+        const parsed = JSON.parse(savedSessions) as ChatSession[]
+        const restored = parsed
+          .map((s) => ({
+            ...s,
+            createdAt: new Date(s.createdAt),
+            messages: (s.messages ?? []).map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
+          }))
+          .filter((s) => s.id && !deletedSessionIdsRef.current.has(s.id))
+        setSessions(restored)
+      } else {
+        setSessions([])
+      }
+
+      const savedActive = sessionStorage.getItem('derma-anon-active')
+      if (savedActive) {
+        const {
+          sessionId,
+          messages: activeMessages,
+          isOpen: wasOpen,
+        } = JSON.parse(savedActive) as {
+          sessionId: string
+          messages: Message[]
+          isOpen?: boolean
+        }
+        if (
+          (!sessionId || !deletedSessionIdsRef.current.has(sessionId)) &&
+          Array.isArray(activeMessages) &&
+          activeMessages.length > 0
+        ) {
+          setCurrentSessionId(sessionId || '')
+          setMessages(activeMessages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })))
+          if (wasOpen) setIsOpen(true)
+          hadActive = true
+        }
+      }
+      if (!hadActive) {
+        setCurrentSessionId('')
+        setMessages([])
+      }
+    } catch {
+      /* ignore corrupt sessionStorage */
+    }
+    setHasHydrated(true)
+  }, [userScopeEmail, isLoggedIn, purgeLegacyDermaChatLocalStorage, syncRemoteSessions])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (messages.length > 0) return
+    if (isLoggedIn === null) return
+
+    const greeting = isLoggedIn
+      ? userInfo.name
+        ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant at Dermaspace. I can check your wallet, manage your bookings, and answer anything about services or pricing. How can I help you today?`
+        : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+      : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or [sign in](/signin) and I can check your wallet, manage bookings, and keep things personal."
+
+    const actions: ActionCard[] = isLoggedIn
+      ? [
+          { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
+        ]
+      : [
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
+          { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
+        ]
+
+    setMessages([{
+      id: '1',
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+      actions,
+    }])
+  }, [hasHydrated, userInfo.name, messages.length, isLoggedIn])
+
+  // Persist ephemeral guest sessions to sessionStorage (never localStorage, never for signed-in users).
+  useEffect(() => {
+    if (!hasHydrated || isLoggedIn !== false) return
+    try {
+      sessionStorage.setItem('derma-anon-sessions', JSON.stringify(sessions))
+    } catch { /* quota */ }
+  }, [sessions, hasHydrated, isLoggedIn])
+
+  // Persist active guest conversation to sessionStorage (never localStorage, never for signed-in users).
+  useEffect(() => {
+    if (!hasHydrated || isLoggedIn !== false) return
+    const hasRealContent = messages.some(m => m.role === 'user')
+    try {
+      if (hasRealContent) {
+        sessionStorage.setItem(
+          'derma-anon-active',
+          JSON.stringify({ sessionId: currentSessionId, messages, isOpen })
+        )
+      } else {
+        sessionStorage.removeItem('derma-anon-active')
+      }
+    } catch { /* quota */ }
+  }, [messages, currentSessionId, hasHydrated, isOpen, isLoggedIn])
 
   useEffect(() => {
     if (!hasHydrated || isLoggedIn !== true) return
-    void syncRemoteSessions()
 
     const onFocus = () => {
       void syncRemoteSessions()
@@ -3405,11 +3313,12 @@ export default function DermaAI({
       window.removeEventListener('focus', onFocus)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [hasHydrated, isLoggedIn, sessionsKey, syncRemoteSessions])
+  }, [hasHydrated, isLoggedIn, syncRemoteSessions])
 
   useEffect(() => {
     if (!hasHydrated) return
     if (isLoggedIn !== true) return
+    if (!remoteHydratedRef.current) return
     if (suppressNextSyncRef.current) {
       suppressNextSyncRef.current = false
       return
@@ -3430,9 +3339,7 @@ export default function DermaAI({
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }).catch(() => {
-        /* fail soft — local copy is still source of truth */
-      })
+      }).catch(() => { /* ignore */ })
     }, 1500)
     syncPutTimerRef.current = handle
     return () => {
@@ -5150,10 +5057,8 @@ export default function DermaAI({
     }])
     setCurrentSessionId('')
     setShowSidebar(false)
-    // Clear the active-chat slot so a refresh lands on the welcome screen
     try {
-      if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
-      localStorage.removeItem('derma-chat-active')
+      sessionStorage.removeItem('derma-anon-active')
     } catch {}
   }
 
@@ -5173,73 +5078,60 @@ export default function DermaAI({
     setSessions(nextSessions)
     setOpenMenuSessionId((prev) => (prev === id ? null : prev))
 
-    // Immediately update scoped local cache + deleted tombstone list
-    try {
-      if (sessionsKeyRef.current) {
-        if (nextSessions.length > 0) {
-          localStorage.setItem(sessionsKeyRef.current, JSON.stringify(nextSessions))
-        } else {
-          localStorage.removeItem(sessionsKeyRef.current)
-        }
-      }
-      if (deletedKeyRef.current) {
-        localStorage.setItem(
-          deletedKeyRef.current,
-          JSON.stringify(Array.from(deletedSessionIdsRef.current)),
-        )
-      }
-      localStorage.removeItem('derma-chat-sessions')
-    } catch {}
-
     if (isDeletingActive) {
-      try {
-        if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
-        localStorage.removeItem('derma-chat-active')
-      } catch {}
       startNewChat()
     }
 
-    // Immediately persist the deletion tombstone to PostgreSQL
-    if (isLoggedIn === true) {
-      if (syncPutTimerRef.current) {
-        clearTimeout(syncPutTimerRef.current)
-        syncPutTimerRef.current = null
-      }
-      suppressNextSyncRef.current = true
-      const hasRealActive = !isDeletingActive && messages.some((m) => m.role === 'user')
-      if (nextSessions.length === 0 && !hasRealActive) {
-        const nowIso = new Date().toISOString()
-        clearedAtRef.current = nowIso
-        try {
-          if (clearedKeyRef.current) localStorage.setItem(clearedKeyRef.current, nowIso)
-        } catch {}
-        void fetch('/api/derma/sessions', {
-          method: 'DELETE',
-          credentials: 'same-origin',
-          keepalive: true,
-        }).catch(() => {})
-      } else {
-        void fetch('/api/derma/sessions', {
-          method: 'PUT',
-          credentials: 'same-origin',
-          keepalive: true,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessions: nextSessions,
-            active: hasRealActive
-              ? { sessionId: currentSessionId, messages, isOpen }
-              : null,
-            deleted_ids: Array.from(deletedSessionIdsRef.current),
-            cleared_at: clearedAtRef.current,
-          }),
-        }).catch(() => {})
-      }
+    if (isLoggedIn !== true) {
+      try {
+        if (nextSessions.length > 0) {
+          sessionStorage.setItem('derma-anon-sessions', JSON.stringify(nextSessions))
+        } else {
+          sessionStorage.removeItem('derma-anon-sessions')
+        }
+        if (isDeletingActive) {
+          sessionStorage.removeItem('derma-anon-active')
+        }
+      } catch {}
+      return
+    }
+
+    // Immediately persist the deletion tombstone to PostgreSQL (zero localStorage)
+    if (syncPutTimerRef.current) {
+      clearTimeout(syncPutTimerRef.current)
+      syncPutTimerRef.current = null
+    }
+    suppressNextSyncRef.current = true
+    const hasRealActive = !isDeletingActive && messages.some((m) => m.role === 'user')
+    if (nextSessions.length === 0 && !hasRealActive) {
+      const nowIso = new Date().toISOString()
+      clearedAtRef.current = nowIso
+      void fetch('/api/derma/sessions', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        keepalive: true,
+      }).catch(() => {})
+    } else {
+      void fetch('/api/derma/sessions', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessions: nextSessions,
+          active: hasRealActive
+            ? { sessionId: currentSessionId, messages, isOpen }
+            : null,
+          deleted_ids: Array.from(deletedSessionIdsRef.current),
+          cleared_at: clearedAtRef.current,
+        }),
+      }).catch(() => {})
     }
   }
 
   // When a user confirms "Leave Chat" from live support, completely delete
-  // the active conversation from the user's end (memory, localStorage, and
-  // saved thread history) and close the chat panel cleanly.
+  // the active conversation from the user's end (memory and
+  // PostgreSQL saved thread history) and close the chat panel cleanly.
   onLiveChatLeftRef.current = () => {
     const activeConvId =
       currentSessionId || messages.find((m) => m.role === 'user')?.id || ''
