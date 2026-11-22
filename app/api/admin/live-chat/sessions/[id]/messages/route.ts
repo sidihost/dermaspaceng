@@ -4,14 +4,91 @@ import { requireAdmin } from '@/lib/auth'
 import {
   addMessage,
   ensureStaffProfile,
+  getMessages,
   getSessionById,
+  markUserMessagesRead,
   pickDefaultAvatarSlug,
+  resolveStaffAvatarUrl,
+  staffDisplayName,
 } from '@/lib/live-chat'
 import { invalidateAdminStats } from '@/lib/stats-cache'
 import { logStaffActivity } from '@/lib/activity-log'
+import { getVisitorPresence, isTypingActive } from '@/lib/visitor-telemetry'
 
 interface Params {
   params: Promise<{ id: string }>
+}
+
+export async function GET(req: Request, { params }: Params) {
+  try {
+    await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  const { id } = await params
+  const session = await getSessionById(id)
+  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  const url = new URL(req.url)
+  const since = url.searchParams.get('since') || undefined
+  const messages = await getMessages(session.id, since)
+
+  if (session.status === 'waiting' || session.status === 'active') {
+    await markUserMessagesRead(session.id).catch(() => {})
+  }
+
+  let staff: { id: string; displayName: string; avatarUrl: string } | null = null
+  if (session.assigned_staff_id) {
+    const staffRows = (await sql`
+      SELECT u.first_name, u.last_name, u.avatar_url, sp.display_name, sp.avatar_slug
+        FROM users u
+        LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+       WHERE u.id = ${session.assigned_staff_id}
+       LIMIT 1
+    `) as Array<{
+      first_name: string | null
+      last_name: string | null
+      avatar_url: string | null
+      display_name: string | null
+      avatar_slug: string | null
+    }>
+    const s = staffRows[0]
+    if (s) {
+      staff = {
+        id: session.assigned_staff_id,
+        displayName: staffDisplayName({
+          display_name: s.display_name,
+          first_name: s.first_name,
+          last_name: s.last_name,
+        }),
+        avatarUrl: resolveStaffAvatarUrl({
+          avatarUrl: s.avatar_url,
+          avatarSlug: s.avatar_slug,
+          staffId: session.assigned_staff_id,
+        }),
+      }
+    }
+  }
+
+  return NextResponse.json(
+    {
+      messages,
+      sessionStatus: session.status,
+      closedBy: session.closed_by ?? null,
+      assignedStaffId: session.assigned_staff_id ?? null,
+      staff,
+      customerTyping: isTypingActive(session.customer_typing_at),
+      customerLastSeenAt:
+        session.customer_last_seen_at ?? session.last_activity_at ?? null,
+      presence: getVisitorPresence({
+        status: session.status,
+        lastSeenAt: session.customer_last_seen_at,
+        lastActivityAt: session.last_activity_at,
+      }),
+    },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
 
 export async function POST(req: Request, { params }: Params) {

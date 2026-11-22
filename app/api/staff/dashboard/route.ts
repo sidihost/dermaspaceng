@@ -83,6 +83,7 @@ export async function GET() {
       pendingComplaints,
       pendingConsultations,
       recentSurveys,
+      waitingLiveChats,
     ] = await Promise.all([
       safeCount(sql`
         SELECT COUNT(*) as count FROM gift_card_requests
@@ -99,6 +100,10 @@ export async function GET() {
       safeCount(sql`
         SELECT COUNT(*) as count FROM survey_responses
          WHERE created_at >= NOW() - INTERVAL '7 days'
+      `),
+      safeCount(sql`
+        SELECT COUNT(*) as count FROM live_chat_sessions
+         WHERE status = 'waiting'
       `),
     ])
 
@@ -286,6 +291,7 @@ export async function GET() {
         pendingComplaints,
         pendingConsultations,
         recentSurveys,
+        waitingLiveChats,
       },
       recentItems,
       recentPayments,

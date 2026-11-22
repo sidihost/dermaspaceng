@@ -8,6 +8,7 @@ import { StaffMainShell } from "@/components/staff/staff-main-shell"
 // admin/staff invitee should see exactly the same first-sign-in
 // flow whether they land on /admin or /staff.
 import { AdminWelcomeGate } from "@/components/admin/admin-welcome-gate"
+import { LiveChatRequestWatcher } from "@/components/shared/live-chat-request-watcher"
 import { resolveStaffAvatar } from "@/lib/admin-avatars"
 
 export default async function StaffLayout({
@@ -37,10 +38,8 @@ export default async function StaffLayout({
       >
         {children}
       </StaffMainShell>
-      {/* Short, role-specific acknowledgement modal — separate from the
-          customer legal pack which is already excluded on /staff. */}
       <StaffPolicyGate />
-      {/* First-sign-in welcome flow for seeded operator accounts. */}
+      <LiveChatRequestWatcher role="staff" />
       <AdminWelcomeGate />
     </div>
   )

@@ -41,7 +41,12 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { resolveSupportId } from '@/lib/support-and-chat'
+import {
+  filterAgentTimelineMessages,
+  mergeIncrementalMessages,
+  resolveSupportId,
+  sanitizeNetworkErrorMessage,
+} from '@/lib/support-and-chat'
 import {
   fetchLiveChatSoundPreference,
   playLiveChatChime,
@@ -76,6 +81,21 @@ const fetcher = (url: string) =>
     if (!r.ok) throw new Error('failed')
     return r.json()
   })
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch (err) {
+    if (err instanceof TypeError) {
+      await new Promise((r) => window.setTimeout(r, 350))
+      return fetch(url, init)
+    }
+    throw err
+  }
+}
 
 // --- Types ----------------------------------------------------------------
 
@@ -236,7 +256,27 @@ export default function StaffLiveChatPage() {
     others?: QueueItem[]
     searchResults?: QueueItem[]
     currentUserId?: string
-  }>(queueUrl, fetcher, { refreshInterval: 5000, revalidateOnFocus: true })
+  }>(queueUrl, fetcher, { refreshInterval: 2500, revalidateOnFocus: true })
+
+  // Support deep links from LiveChatRequestWatcher / Notification bell (?session=...)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const targetSession = params.get('session')?.trim()
+    if (targetSession) {
+      setSelected(targetSession)
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshQueue = () => {
+      void queueQuery.mutate()
+    }
+    window.addEventListener('live-chat:waiting-changed', refreshQueue)
+    return () => {
+      window.removeEventListener('live-chat:waiting-changed', refreshQueue)
+    }
+  }, [queueQuery])
 
   const profileQuery = useSWR<{ profile: StaffProfile }>(
     '/api/staff/profile',
@@ -754,7 +794,7 @@ function ConversationStage({
   }>(
     sessionId ? `/api/staff/live-chat/sessions/${sessionId}` : null,
     fetcher,
-    { refreshInterval: 5000 },
+    { refreshInterval: 2500, revalidateOnFocus: true },
   )
   const contextQuery = useSWR<InspectorContextData>(
     sessionId ? `/api/staff/live-chat/sessions/${sessionId}/user-context` : null,
@@ -876,13 +916,16 @@ function ConversationStage({
     if (sessionId) void refetchAll(sessionId)
   }, [sessionId, refetchAll])
 
-  // Incremental message + presence + typing + closed-state polling (1.5s)
+  // Incremental message + presence + typing + closed-state polling (900ms + focus/visibility)
   useEffect(() => {
     if (!sessionId) return
     let cancelled = false
+    let inFlight = false
 
     const tick = async () => {
+      if (inFlight) return
       if (typeof document !== 'undefined' && document.hidden) return
+      inFlight = true
       try {
         const since = lastSeenRef.current
           ? `?since=${encodeURIComponent(lastSeenRef.current)}`
@@ -898,17 +941,19 @@ function ConversationStage({
           presence?: VisitorPresenceInfo
           sessionStatus?: FullSession['status']
           closedBy?: string | null
+          assignedStaffId?: string | null
         }
         setCustomerTyping(Boolean(json.customerTyping))
         if (json.presence) setLivePresence(json.presence)
-        // If customer (or admin) ended the chat while staff is viewing it,
-        // refresh session metadata immediately so "Customer ended this chat" renders live.
+        // Refresh session metadata immediately on status/handover changes
         if (
-          (json.sessionStatus === 'closed' || json.sessionStatus === 'abandoned') &&
+          json.sessionStatus &&
+          sessionStatusRef.current &&
           sessionStatusRef.current !== json.sessionStatus
         ) {
           void mutateSession()
           void globalMutate('/api/staff/live-chat/queue')
+          window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
         }
         if (json.messages.length === 0) return
 
@@ -923,40 +968,48 @@ function ConversationStage({
           playLiveChatChime('reply', 'staff')
         }
 
-        setMessages((prev) => {
-          const seen = new Set(prev.map((m) => m.id))
-          const merged = [...prev]
-          for (const m of json.messages) {
-            if (!seen.has(m.id)) merged.push(m)
-          }
-          return merged
-        })
+        setMessages((prev) => mergeIncrementalMessages(prev, json.messages))
         const last = json.messages[json.messages.length - 1]
         if (last) lastSeenRef.current = last.created_at
       } catch {
         // Retry next cycle
+      } finally {
+        inFlight = false
       }
     }
 
-    const interval = window.setInterval(tick, 1500)
+    const interval = window.setInterval(() => void tick(), 900)
+    const onWake = () => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      void tick()
+    }
+    window.addEventListener('focus', onWake)
+    document.addEventListener('visibilitychange', onWake)
     return () => {
       cancelled = true
       window.clearInterval(interval)
+      window.removeEventListener('focus', onWake)
+      document.removeEventListener('visibilitychange', onWake)
     }
   }, [sessionId, mutateSession])
+
+  const visibleMessages = useMemo(
+    () => filterAgentTimelineMessages(messages),
+    [messages],
+  )
 
   // Smart auto-scroll: only scroll on session open, when staff sends a message,
   // or when new messages arrive while already near the bottom — never hijack scroll-up.
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
-    const hasNewMessages = messages.length > prevMsgCountRef.current
-    prevMsgCountRef.current = messages.length
+    const hasNewMessages = visibleMessages.length > prevMsgCountRef.current
+    prevMsgCountRef.current = visibleMessages.length
     if (forceScrollRef.current || (hasNewMessages && isNearBottomRef.current)) {
       forceScrollRef.current = false
       el.scrollTop = el.scrollHeight
     }
-  }, [messages.length])
+  }, [visibleMessages.length])
 
   const session = sessionQuery.data?.session
   const effectivePresence: VisitorPresenceInfo | null = useMemo(() => {
@@ -977,7 +1030,7 @@ function ConversationStage({
     setAccepting(true)
     setError(null)
     try {
-      const res = await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
+      const res = await fetchWithRetry(`/api/staff/live-chat/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -993,8 +1046,16 @@ function ConversationStage({
       await sessionQuery.mutate()
       await refetchAll(sessionId)
       onAccepted()
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
       notify.success('Chat accepted', 'You are now connected with the visitor.')
       window.setTimeout(() => composerRef.current?.focus(), 60)
+    } catch (err) {
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not accept this chat. Check your connection and try again.',
+      )
+      setError(msg)
+      notify.error('Could not accept chat', msg)
     } finally {
       setAccepting(false)
     }
@@ -1005,7 +1066,7 @@ function ConversationStage({
     setTakingOver(true)
     setError(null)
     try {
-      const res = await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
+      const res = await fetchWithRetry(`/api/staff/live-chat/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1021,8 +1082,16 @@ function ConversationStage({
       await sessionQuery.mutate()
       await refetchAll(sessionId)
       onAccepted()
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
       notify.success('Chat assigned to you', 'Customer has been notified smoothly.')
       window.setTimeout(() => composerRef.current?.focus(), 60)
+    } catch (err) {
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not take over this chat. Check your connection and try again.',
+      )
+      setError(msg)
+      notify.error('Takeover failed', msg)
     } finally {
       setTakingOver(false)
     }
@@ -1033,7 +1102,7 @@ function ConversationStage({
     setClosing(true)
     setError(null)
     try {
-      const res = await fetch(`/api/staff/live-chat/sessions/${sessionId}`, {
+      const res = await fetchWithRetry(`/api/staff/live-chat/sessions/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1047,8 +1116,16 @@ function ConversationStage({
         return
       }
       setEndDialogOpen(false)
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
       notify.info('Live chat ended', 'The session has been closed and transcript dispatched.')
       onClosed()
+    } catch (err) {
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not end this chat. Check your connection and try again.',
+      )
+      setError(msg)
+      notify.error('Could not end chat', msg)
     } finally {
       setClosing(false)
     }
@@ -1060,7 +1137,7 @@ function ConversationStage({
     setSending(true)
     setError(null)
     try {
-      const res = await fetch(
+      const res = await fetchWithRetry(
         `/api/staff/live-chat/sessions/${sessionId}/messages`,
         {
           method: 'POST',
@@ -1082,15 +1159,16 @@ function ConversationStage({
       } | null
       if (json?.message) {
         seenMsgIdsRef.current.add(json.message.id)
-        setMessages((prev) =>
-          prev.some((m) => m.id === json.message.id)
-            ? prev
-            : [...prev, json.message],
-        )
+        setMessages((prev) => mergeIncrementalMessages(prev, [json.message]))
         lastSeenRef.current = json.message.created_at
       }
-    } catch {
-      setError('Network error while sending.')
+    } catch (err) {
+      setError(
+        sanitizeNetworkErrorMessage(
+          err,
+          'Could not send message. Check your connection and try again.',
+        ),
+      )
     } finally {
       setSending(false)
     }
@@ -1367,9 +1445,9 @@ function ConversationStage({
           className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 min-h-0"
         >
           <div className="max-w-3xl mx-auto space-y-1">
-            {messages.map((m, idx) => {
-              const prev = idx > 0 ? messages[idx - 1] : null
-              const next = idx < messages.length - 1 ? messages[idx + 1] : null
+            {visibleMessages.map((m, idx) => {
+              const prev = idx > 0 ? visibleMessages[idx - 1] : null
+              const next = idx < visibleMessages.length - 1 ? visibleMessages[idx + 1] : null
               const sameSenderAsPrev = Boolean(
                 prev &&
                   prev.sender_role !== 'system' &&
@@ -1660,6 +1738,7 @@ function ConversationStage({
             ratingComment={session.rating_comment}
             visitorFallback={session.visitor}
             presence={effectivePresence}
+            sessionStatus={session.status}
             customerTyping={effectiveCustomerTyping}
             assignedStaffName={session.staff?.displayName || null}
             data={contextQuery.data}
@@ -1691,6 +1770,7 @@ function ConversationStage({
               ratingComment={session.rating_comment}
               visitorFallback={session.visitor}
               presence={effectivePresence}
+              sessionStatus={session.status}
               customerTyping={effectiveCustomerTyping}
               assignedStaffName={session.staff?.displayName || null}
               data={contextQuery.data}

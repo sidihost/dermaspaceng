@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { escalateToHuman, escalateAsGuest, resolveSupportId } from '@/lib/live-chat'
+import {
+  escalateToHumanWithMeta,
+  escalateAsGuest,
+  resolveSupportId,
+} from '@/lib/live-chat'
 import { setGuestChatCookieOnResponse } from '@/lib/live-chat-guest'
 import { getGeoFromRequest } from '@/lib/geolocation'
+import { notifyAdmins } from '@/lib/notifications'
 import {
   cleanTextField,
   extractVisitorIpFromHeaders,
@@ -105,13 +110,55 @@ export async function POST(req: Request) {
   // ----- Logged-in path ----------------------------------------------------
   if (user) {
     const visitor = await buildVisitorMeta(req, rawVisitor)
-    const session = await escalateToHuman(user.id, topic, transcript, visitor)
+    const { session, isNew } = await escalateToHumanWithMeta(
+      user.id,
+      topic,
+      transcript,
+      visitor,
+    )
+    const supportCode = resolveSupportId(session.support_code, session.id)
+    if (isNew) {
+      const customerLabel =
+        `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+        user.email ||
+        'A member'
+      const topicSnippet = topic ? ` · Topic: ${topic.slice(0, 90)}` : ''
+      const bodyMsg = `${customerLabel} (${supportCode}) is waiting for a live support rep${topicSnippet}.`
+      const qs = `?session=${encodeURIComponent(supportCode)}`
+      after(async () => {
+        await Promise.all([
+          notifyAdmins({
+            roles: ['admin'],
+            title: 'New live chat request',
+            message: bodyMsg,
+            type: 'reply',
+            referenceType: 'live_chat',
+            referenceId: session.id,
+            actionUrl: `/admin/live-chat${qs}`,
+            priority: 'high',
+            push: true,
+          }),
+          notifyAdmins({
+            roles: ['staff'],
+            title: 'New live chat request',
+            message: bodyMsg,
+            type: 'reply',
+            referenceType: 'live_chat',
+            referenceId: session.id,
+            actionUrl: `/staff/live-chat${qs}`,
+            priority: 'high',
+            push: true,
+          }),
+        ])
+      })
+    }
     return NextResponse.json({
       success: true,
       sessionId: session.id,
-      supportCode: resolveSupportId(session.support_code, session.id),
+      supportCode,
       status: session.status,
       isGuest: false,
+      isNew,
     })
   }
 
@@ -156,13 +203,44 @@ export async function POST(req: Request) {
     initialTopic: topic,
     visitor,
   })
+  const supportCode = resolveSupportId(session.support_code, session.id)
+  const topicSnippet = topic ? ` · Topic: ${topic.slice(0, 90)}` : ''
+  const bodyMsg = `${name} (Guest · ${supportCode}) is waiting for a live support rep${topicSnippet}.`
+  const qs = `?session=${encodeURIComponent(supportCode)}`
+  after(async () => {
+    await Promise.all([
+      notifyAdmins({
+        roles: ['admin'],
+        title: 'New live chat request',
+        message: bodyMsg,
+        type: 'reply',
+        referenceType: 'live_chat',
+        referenceId: session.id,
+        actionUrl: `/admin/live-chat${qs}`,
+        priority: 'high',
+        push: true,
+      }),
+      notifyAdmins({
+        roles: ['staff'],
+        title: 'New live chat request',
+        message: bodyMsg,
+        type: 'reply',
+        referenceType: 'live_chat',
+        referenceId: session.id,
+        actionUrl: `/staff/live-chat${qs}`,
+        priority: 'high',
+        push: true,
+      }),
+    ])
+  })
 
   const response = NextResponse.json({
     success: true,
     sessionId: session.id,
-    supportCode: resolveSupportId(session.support_code, session.id),
+    supportCode,
     status: session.status,
     isGuest: true,
+    isNew: true,
   })
 
   setGuestChatCookieOnResponse(response, session.id)

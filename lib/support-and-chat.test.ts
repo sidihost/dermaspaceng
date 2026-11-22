@@ -5,6 +5,7 @@ import {
   computeTicketSummary,
   convertLiveChatMessagesToThreadEntries,
   detectHumanHandoffIntent,
+  filterAgentTimelineMessages,
   formatFallbackSupportId,
   formatRelativeTimestamp,
   formatThreadMessagesForAiApi,
@@ -12,13 +13,17 @@ import {
   generateLiveChatSupportId,
   getHandoffAutoMessage,
   getLiveChatStatusMeta,
+  getPresenceStatusMeta,
   getTicketPriorityMeta,
   getTicketStatusMeta,
+  isCustomerWaitingNotice,
+  mergeIncrementalMessages,
   normalizeSupportIdQuery,
   normalizeTicketPriority,
   normalizeTicketStatus,
   resolveStaffAvatarUrl,
   resolveSupportId,
+  sanitizeNetworkErrorMessage,
   TICKET_STATUS_ORDER,
 } from './support-and-chat'
 import {
@@ -378,6 +383,76 @@ test('buildLiveChatTranscriptDownloadText formats Support ID, rep attribution, a
   assert.match(txt, /Amaka O\.: Happy to help!/)
 })
 
+test('agent timeline filters out customer waiting notice while keeping join/close milestones', () => {
+  const msgs = [
+    {
+      id: '1',
+      sender_role: 'system',
+      body: 'One of our customer care reps will be with you shortly. Stay tuned!',
+      created_at: '2026-11-22T14:00:00.000Z',
+    },
+    {
+      id: '2',
+      sender_role: 'user',
+      body: 'Hello, I need help with my booking',
+      created_at: '2026-11-22T14:00:10.000Z',
+    },
+    {
+      id: '3',
+      sender_role: 'system',
+      body: 'Ada O. joined the chat',
+      created_at: '2026-11-22T14:01:00.000Z',
+    },
+  ]
 
+  assert.equal(isCustomerWaitingNotice(msgs[0]), true)
+  assert.equal(isCustomerWaitingNotice(msgs[1]), false)
+  assert.equal(isCustomerWaitingNotice(msgs[2]), false)
 
+  const filtered = filterAgentTimelineMessages(msgs)
+  assert.deepEqual(
+    filtered.map((m) => m.id),
+    ['2', '3'],
+  )
+})
 
+test('mergeIncrementalMessages deduplicates by id and preserves chronological order', () => {
+  const existing = [
+    { id: 'm1', created_at: '2026-11-22T14:00:00.000Z', body: 'hi' },
+    { id: 'm2', created_at: '2026-11-22T14:00:05.000Z', body: 'there' },
+  ]
+  const incoming = [
+    { id: 'm2', created_at: '2026-11-22T14:00:05.000Z', body: 'there!' },
+    { id: 'm3', created_at: '2026-11-22T14:00:10.000Z', body: 'welcome' },
+  ]
+  const merged = mergeIncrementalMessages(existing, incoming)
+  assert.equal(merged.length, 3)
+  assert.equal(merged[1].body, 'there!')
+  assert.equal(merged[2].id, 'm3')
+})
+
+test('getPresenceStatusMeta never emits contradictory or duplicated "Offline ... Offline" labels', () => {
+  const cases = [
+    getPresenceStatusMeta({ state: 'online', label: 'Online now' }, 'waiting'),
+    getPresenceStatusMeta({ state: 'away', label: 'Away' }, 'active'),
+    getPresenceStatusMeta({ state: 'offline', label: 'Offline' }, 'waiting'),
+    getPresenceStatusMeta({ state: 'offline', label: 'Last seen 4m ago' }, 'active'),
+    getPresenceStatusMeta({ state: 'offline', label: 'Offline' }, 'closed'),
+  ]
+  for (const c of cases) {
+    assert.notEqual(c.leftLabel.toLowerCase(), c.rightLabel.toLowerCase())
+    assert.equal(Boolean(c.leftLabel && c.rightLabel), true)
+  }
+})
+
+test('sanitizeNetworkErrorMessage masks raw browser fetch failures cleanly', () => {
+  assert.match(
+    sanitizeNetworkErrorMessage(new TypeError('Failed to fetch')),
+    /check your connection/i,
+  )
+  assert.match(
+    sanitizeNetworkErrorMessage(new Error('Load failed')),
+    /check your connection/i,
+  )
+  assert.equal(sanitizeNetworkErrorMessage(new Error('Session closed')), 'Session closed')
+})

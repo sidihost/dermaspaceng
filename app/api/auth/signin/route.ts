@@ -6,8 +6,9 @@ import { sql } from '@/lib/db'
 import { sign } from 'jsonwebtoken'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { rateLimit } from '@/lib/redis'
-import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
-import { getSigningSecret, isValidPublicIpForGeo } from '@/lib/server-secrets'
+import { shouldRequireProfileCompletion, isPlaceholderEmail } from '@/lib/auth-onboarding'
+import { getSigningSecret } from '@/lib/server-secrets'
+import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 
@@ -66,8 +67,7 @@ const body = await request.json()
     // ledger and the new-device email alert further down.
     const headersList = await headers()
     const userAgent = headersList.get('user-agent') || 'Unknown device'
-    const forwardedFor = headersList.get('x-forwarded-for')
-    const ipAddress = forwardedFor?.split(',')[0] || 'Unknown'
+    const ipAddress = extractClientIpFromHeaders(headersList) || 'Unknown'
 
     // Authenticate user (supports email or username)
     const { user, error } = await authenticateUser(identifier, password)
@@ -125,24 +125,12 @@ const body = await request.json()
 
     // Dispatch new-device geo lookup & email alert off the critical path so
     // sign-in responds immediately without blocking on external ipapi/SMTP latency.
-    if (isNewDevice) {
+    if (isNewDevice && user.email && !isPlaceholderEmail(user.email)) {
       const alertEmail = user.email
       const alertFirstName = user.first_name
       after(async () => {
         try {
-          let location = 'Unknown location'
-          if (isValidPublicIpForGeo(ipAddress)) {
-            try {
-              const geoRes = await fetch(
-                `https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`,
-                { signal: AbortSignal.timeout(3500) },
-              )
-              const geoData = await geoRes.json()
-              location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
-            } catch {
-              // Ignore geo lookup errors
-            }
-          }
+          const location = await resolveLoginLocation(headersList, ipAddress)
 
           await sendNewDeviceAlert({
             email: alertEmail,

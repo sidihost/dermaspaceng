@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import {
   addMessage,
   getMessages,
   getSessionById,
   markStaffMessagesRead,
+  resolveStaffAvatarUrl,
+  staffDisplayName,
   touchCustomerPresence,
 } from '@/lib/live-chat'
 import { authoriseSessionAccess } from '@/lib/live-chat-guest'
@@ -46,11 +49,52 @@ export async function GET(req: Request, { params }: Params) {
     await touchCustomerPresence(session.id).catch(() => {})
   }
 
-  return NextResponse.json({
-    messages,
-    staffTyping: isTypingActive(session.staff_typing_at),
-    staffTypingName: session.staff_typing_name || null,
-  })
+  let staff: { id: string; displayName: string; avatarUrl: string } | null = null
+  if (session.assigned_staff_id) {
+    const staffRows = (await sql`
+      SELECT u.first_name, u.last_name, u.avatar_url, sp.display_name, sp.avatar_slug
+        FROM users u
+        LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+       WHERE u.id = ${session.assigned_staff_id}
+       LIMIT 1
+    `) as Array<{
+      first_name: string | null
+      last_name: string | null
+      avatar_url: string | null
+      display_name: string | null
+      avatar_slug: string | null
+    }>
+    const s = staffRows[0]
+    if (s) {
+      staff = {
+        id: session.assigned_staff_id,
+        displayName: staffDisplayName({
+          display_name: s.display_name,
+          first_name: s.first_name,
+          last_name: s.last_name,
+        }),
+        avatarUrl: resolveStaffAvatarUrl({
+          avatarUrl: s.avatar_url,
+          avatarSlug: s.avatar_slug,
+          staffId: session.assigned_staff_id,
+        }),
+      }
+    }
+  }
+
+  return NextResponse.json(
+    {
+      messages,
+      sessionStatus: session.status,
+      acceptedAt: session.accepted_at ?? null,
+      closedAt: session.closed_at ?? null,
+      closedBy: session.closed_by ?? null,
+      staff,
+      staffTyping: isTypingActive(session.staff_typing_at),
+      staffTypingName: session.staff_typing_name || null,
+    },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
 
 export async function POST(req: Request, { params }: Params) {

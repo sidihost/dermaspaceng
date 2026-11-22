@@ -3,6 +3,7 @@ import { requireAdminOrStaff } from '@/lib/auth'
 import {
   ensureStaffProfile,
   getStaffQueue,
+  getWaitingLiveChats,
   touchStaffPresence,
 } from '@/lib/live-chat'
 
@@ -31,19 +32,34 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
+  const url = new URL(req.url)
+  const summaryOnly = url.searchParams.get('summary') === '1'
+  if (summaryOnly) {
+    const waiting = await getWaitingLiveChats()
+    return NextResponse.json(
+      {
+        waiting,
+        currentUserId: user.id,
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+  }
+
   await ensureStaffProfile(user.id, `${user.first_name} ${user.last_name}`.trim())
   await touchStaffPresence(user.id, 'online')
 
-  const url = new URL(req.url)
   const q = url.searchParams.get('q')?.trim() || undefined
 
   const { waiting, mine, others, searchResults } = await getStaffQueue(user.id, q)
 
-  return NextResponse.json({
-    waiting,
-    mine,
-    others,
-    searchResults,
-    currentUserId: user.id,
-  })
+  return NextResponse.json(
+    {
+      waiting,
+      mine,
+      others,
+      searchResults,
+      currentUserId: user.id,
+    },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }

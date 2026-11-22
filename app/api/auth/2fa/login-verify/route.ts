@@ -1,13 +1,14 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { headers } from 'next/headers'
 import { sql } from '@/lib/db'
 import { verifyTOTPCode } from '@/lib/totp'
 import { verify, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken'
 import { createSession, checkNewDevice } from '@/lib/auth'
 import { sendNewDeviceAlert } from '@/lib/email'
-import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { shouldRequireProfileCompletion, isPlaceholderEmail } from '@/lib/auth-onboarding'
 import { rateLimit } from '@/lib/redis'
-import { getSigningSecret, isValidPublicIpForGeo } from '@/lib/server-secrets'
+import { getSigningSecret } from '@/lib/server-secrets'
+import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 
@@ -119,8 +120,7 @@ export async function POST(request: Request) {
     // Get device info and IP for session creation
     const headersList = await headers()
     const userAgent = headersList.get('user-agent') || 'Unknown device'
-    const forwardedFor = headersList.get('x-forwarded-for')
-    const ipAddress = forwardedFor?.split(',')[0] || 'Unknown'
+    const ipAddress = extractClientIpFromHeaders(headersList) || 'Unknown'
 
     // Check for new device
     const isNewDevice = await checkNewDevice(user.id, userAgent)
@@ -128,25 +128,23 @@ export async function POST(request: Request) {
     // Create session (same as regular signin)
     const sessionId = await createSession(user.id, userAgent, ipAddress)
 
-    // Send new device alert if needed
-    if (isNewDevice) {
-      let location = 'Unknown location'
-      if (isValidPublicIpForGeo(ipAddress)) {
+    // Send new device alert off the critical path
+    if (isNewDevice && user.email && !isPlaceholderEmail(user.email)) {
+      const alertEmail = user.email
+      const alertFirstName = user.first_name
+      after(async () => {
         try {
-          const geoRes = await fetch(`https://ipapi.co/${encodeURIComponent(ipAddress.trim())}/json/`)
-          const geoData = await geoRes.json()
-          location = `${geoData.city || 'Unknown'}, ${geoData.country_name || 'Unknown'}`
-        } catch {
-          // Ignore geo lookup errors
+          const location = await resolveLoginLocation(headersList, ipAddress)
+          await sendNewDeviceAlert({
+            email: alertEmail,
+            firstName: alertFirstName,
+            deviceInfo: userAgent,
+            ipAddress,
+            location,
+          })
+        } catch (alertErr) {
+          console.error('New-device alert failed (2FA):', alertErr)
         }
-      }
-
-      await sendNewDeviceAlert({
-        email: user.email,
-        firstName: user.first_name,
-        deviceInfo: userAgent,
-        ipAddress,
-        location
       })
     }
 

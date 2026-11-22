@@ -28,7 +28,10 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getReceiptHref } from '@/lib/receipt-access'
-import { getTicketStatusMeta } from '@/lib/support-and-chat'
+import {
+  getPresenceStatusMeta,
+  getTicketStatusMeta,
+} from '@/lib/support-and-chat'
 import {
   formatChatTimestamp,
   type VisitorMetadata,
@@ -89,6 +92,7 @@ interface LiveChatInspectorProps {
   ratingComment: string | null
   visitorFallback?: Partial<VisitorMetadata> | null
   presence?: VisitorPresenceInfo | null
+  sessionStatus?: string | null
   customerTyping?: boolean
   assignedStaffName?: string | null
   data: InspectorContextData | undefined
@@ -124,6 +128,7 @@ export function LiveChatInspector({
   ratingComment,
   visitorFallback,
   presence,
+  sessionStatus,
   customerTyping = false,
   assignedStaffName,
   data,
@@ -265,38 +270,30 @@ export function LiveChatInspector({
             </div>
           </div>
 
-          {presence && (
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'w-2 h-2 rounded-full shrink-0',
-                    presence.state === 'online'
-                      ? 'bg-[#7B2D8E]'
-                      : presence.state === 'away'
-                        ? 'bg-[#7B2D8E]/45'
-                        : 'bg-gray-300',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'text-[12px] font-semibold truncate',
-                    presence.state === 'online'
-                      ? 'text-[#7B2D8E]'
-                      : presence.state === 'away'
-                        ? 'text-[#5A1D6A]'
-                        : 'text-gray-500',
-                  )}
-                >
-                  {presence.label}
+          {presence && (() => {
+            const meta = getPresenceStatusMeta(presence, sessionStatus)
+            return (
+              <div
+                className={cn(
+                  'flex items-center justify-between gap-2 rounded-xl border px-3 py-2',
+                  meta.containerClass,
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    aria-hidden="true"
+                    className={cn('w-2 h-2 rounded-full shrink-0', meta.dotClass)}
+                  />
+                  <span className={cn('text-[12px] font-semibold truncate', meta.textClass)}>
+                    {meta.leftLabel}
+                  </span>
+                </div>
+                <span className="text-[10.5px] text-gray-500 shrink-0">
+                  {meta.rightLabel}
                 </span>
               </div>
-              <span className="text-[10.5px] text-gray-400 shrink-0">
-                {presence.isOnline ? 'Available' : 'Offline'}
-              </span>
-            </div>
-          )}
+            )
+          })()}
 
           <div className="space-y-2 pt-0.5">
             <DetailRow

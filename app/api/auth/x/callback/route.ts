@@ -1,14 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import crypto from 'crypto'
 import { query } from '@/lib/db'
-import { createSession } from '@/lib/auth'
+import { checkNewDevice, createSession } from '@/lib/auth'
+import { sendNewDeviceAlert } from '@/lib/email'
 import { v4 as uuidv4 } from 'uuid'
 import { delKey, getJson, invalidateUserMe, setJson } from '@/lib/redis'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAppOrigin, xPlaceholderEmail } from '@/lib/x-oauth'
 import { buildXCallbackHtml } from '@/lib/x-callback-html'
-import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 
 /**
  * X (Twitter) OAuth 2.0 — step 2: exchange the authorization code,
@@ -224,7 +226,7 @@ export async function GET(request: NextRequest) {
     const lastName = rest.join(' ')
 
     const existing = await query(
-      `SELECT id, profile_complete, role, email, is_active, deleted_at FROM users WHERE x_id = $1 LIMIT 1`,
+      `SELECT id, first_name, profile_complete, role, email, is_active, deleted_at FROM users WHERE x_id = $1 LIMIT 1`,
       [xUser.id],
     )
 
@@ -232,10 +234,12 @@ export async function GET(request: NextRequest) {
     let profileComplete = false
     let userRole = 'user'
     let userEmail = xPlaceholderEmail(xUser.id)
+    let userFirstName = firstName || xUser.username || 'there'
 
     if (existing.rows.length > 0) {
       const row = existing.rows[0] as {
         id: string
+        first_name: string | null
         profile_complete: boolean | null
         role: string | null
         email: string | null
@@ -249,6 +253,7 @@ export async function GET(request: NextRequest) {
       profileComplete = Boolean(row.profile_complete)
       userRole = row.role || 'user'
       userEmail = row.email || userEmail
+      userFirstName = row.first_name || userFirstName
 
       await query(
         `UPDATE users
@@ -294,11 +299,35 @@ export async function GET(request: NextRequest) {
       userEmail = row.email || userEmail
     }
 
+    const userAgent = request.headers.get('user-agent') || 'Unknown device'
+    const ipAddress = extractClientIpFromHeaders(request.headers) || 'Unknown'
+    const isNewDevice = await checkNewDevice(userId, userAgent)
+
     const sessionToken = await createSession(
       userId,
-      request.headers.get('user-agent') || '',
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '',
+      userAgent,
+      ipAddress,
     )
+
+    if (isNewDevice && userEmail && !isPlaceholderEmail(userEmail)) {
+      const alertEmail = userEmail
+      const alertFirstName = userFirstName
+      const reqHeaders = request.headers
+      after(async () => {
+        try {
+          const location = await resolveLoginLocation(reqHeaders, ipAddress)
+          await sendNewDeviceAlert({
+            email: alertEmail,
+            firstName: alertFirstName,
+            deviceInfo: userAgent,
+            ipAddress,
+            location,
+          })
+        } catch (alertErr) {
+          console.error('New-device alert failed (x):', alertErr)
+        }
+      })
+    }
 
     const needsProfile = shouldRequireProfileCompletion({
       role: userRole,

@@ -6,6 +6,7 @@ import { getMaintenance } from '@/lib/app-settings'
 import AdminSidebar from '@/components/admin/sidebar'
 import { AdminMainShell } from '@/components/admin/admin-main-shell'
 import { AdminWelcomeGate } from '@/components/admin/admin-welcome-gate'
+import { LiveChatRequestWatcher } from '@/components/shared/live-chat-request-watcher'
 import { resolveAdminAvatar } from '@/lib/admin-avatars'
 import { getAdminPermissions } from '@/lib/admin-permissions'
 
@@ -70,6 +71,8 @@ export default async function AdminLayout({
       >
         {children}
       </AdminMainShell>
+      {/* Real-time live chat waiting queue alert across all admin pages */}
+      <LiveChatRequestWatcher role="admin" />
       {/* First-sign-in welcome gate — admins-only password rotation
           and (compulsory) email entry for seeded accounts. Renders
           nothing once both flags are cleared, so it's safe to keep

@@ -29,6 +29,13 @@ import {
   resolveSupportId,
 } from '@/lib/support-and-chat'
 import {
+  normalizeDeletedIds,
+  parseIsoMs,
+  reconcileDermaSessions,
+  type SyncableActiveChat,
+  type SyncableChatSession,
+} from '@/lib/derma-sessions-sync'
+import {
   useInlineLiveChat,
   InlineLiveHeaderControls,
   InlineLiveOptionsPopup,
@@ -218,7 +225,7 @@ const INLINE_ICON_SVGS: Record<string, string> = {
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
   phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
   mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
-  sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>',
+  services: '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>',
   gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5 4.8 8 0 0 1 4.5 5 4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
   heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
@@ -231,7 +238,6 @@ const INLINE_ICON_SVGS: Record<string, string> = {
   navigation: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
   'trending-up': '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
   'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-  zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
   droplet: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
   message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
@@ -250,7 +256,7 @@ const EMOJI_TO_ICON: Record<string, string> = {
   'ℹ️': 'info',
   '📞': 'phone', '☎️': 'phone', '📱': 'phone',
   '📧': 'mail', '✉️': 'mail',
-  '✨': 'sparkles', '🌟': 'star', '⭐': 'star', '⭐️': 'star',
+  '✨': 'flower', '🌟': 'star', '⭐': 'star', '⭐️': 'star',
   '🎁': 'gift', '🎀': 'gift',
   '❤️': 'heart', '♥️': 'heart', '💜': 'heart', '💖': 'heart', '🧡': 'heart', '💛': 'heart',
   '👤': 'user', '🧑': 'user', '👩': 'user', '👨': 'user',
@@ -260,14 +266,14 @@ const EMOJI_TO_ICON: Record<string, string> = {
   '🧭': 'compass',
   '📈': 'trending-up', '📊': 'trending-up',
   '➡️': 'arrow-right', '👉': 'arrow-right',
-  '⚡': 'zap', '⚡️': 'zap',
+  '⚡': 'star', '⚡️': 'star',
   '💧': 'droplet', '🌊': 'droplet',
   '☀️': 'sun', '🌞': 'sun',
   '💬': 'message', '💭': 'message',
 }
 
 function renderInlineIcon(name: string) {
-  const paths = INLINE_ICON_SVGS[name] || INLINE_ICON_SVGS.sparkles
+  const paths = INLINE_ICON_SVGS[name] || INLINE_ICON_SVGS.flower
   // inline-block + vertical-align:-2px keeps the icon sitting on the
   // text baseline instead of floating above it; 14px matches the
   // body text's cap height so it looks typographically set, not
@@ -540,13 +546,13 @@ function parseActionsFromText(content: string): ActionCard[] {
     actions.push({ title: 'Book Now', description: 'Schedule visit', link: '/booking', icon: 'calendar' })
   }
   if (lower.includes('/services/facial') || lower.includes('facial')) {
-    actions.push({ title: 'Facials', description: 'View treatments', link: '/services/facial-treatments', icon: 'sparkles' })
+    actions.push({ title: 'Facials', description: 'View treatments', link: '/services/facial-treatments', icon: 'services' })
   } else if (lower.includes('/services/body') || lower.includes('massage')) {
-    actions.push({ title: 'Body Care', description: 'View services', link: '/services/body-treatments', icon: 'sparkles' })
+    actions.push({ title: 'Body Care', description: 'View services', link: '/services/body-treatments', icon: 'services' })
   } else if (lower.includes('/services/nail') || lower.includes('nail')) {
-    actions.push({ title: 'Nail Care', description: 'View services', link: '/services/nail-care', icon: 'sparkles' })
+    actions.push({ title: 'Nail Care', description: 'View services', link: '/services/nail-care', icon: 'services' })
   } else if (lower.includes('/services/wax') || lower.includes('wax')) {
-    actions.push({ title: 'Waxing', description: 'View services', link: '/services/waxing', icon: 'sparkles' })
+    actions.push({ title: 'Waxing', description: 'View services', link: '/services/waxing', icon: 'services' })
   }
   if (lower.includes('wallet') || lower.includes('balance')) {
     actions.push({ title: 'Wallet', description: 'View balance', link: '/dashboard', icon: 'wallet' })
@@ -564,21 +570,17 @@ function parseActionsFromText(content: string): ActionCard[] {
   return actions.slice(0, 2)
 }
 
-// Action icons. The `sparkles` action type still exists in responses coming
-// from the assistant, but we no longer render the Sparkles glyph anywhere
-// in the UI (per brand direction). Rendered as the spa-friendly Flower2
-// icon instead, with ArrowRight as a neutral fallback.
 function ActionIcon({ type }: { type: string }) {
   const icons: Record<string, JSX.Element> = {
     calendar: <Calendar className="w-4 h-4" />,
-    sparkles: <Flower2 className="w-4 h-4" />,
+    services: <Flower2 className="w-4 h-4" />,
     map: <MapPin className="w-4 h-4" />,
     gift: <Gift className="w-4 h-4" />,
     wallet: <Wallet className="w-4 h-4" />,
     user: <User className="w-4 h-4" />,
     info: <ExternalLink className="w-4 h-4" />,
   }
-  return icons[type] || <ArrowRight className="w-4 h-4" />
+  return icons[type] || <Flower2 className="w-4 h-4" />
 }
 
 // Map a tool name to a friendly "in-progress" label shown inside the
@@ -778,16 +780,12 @@ function ToolResultCard({
     const amount = formatted.slice(symbol.length)
 
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25">
-        {/* Decorative orbs */}
-        <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-        <div className="pointer-events-none absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/5 blur-2xl" aria-hidden="true" />
-
+      <div className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white border border-[#5E2170]">
         <div className="relative p-4">
           {/* Header row */}
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
+              <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center border border-white/20">
                 <Wallet className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -797,7 +795,7 @@ function ToolResultCard({
                 <p className="text-[10px] text-white/60 mt-1 leading-none">Dermaspace Wallet</p>
               </div>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
               {currency}
             </span>
           </div>
@@ -808,16 +806,12 @@ function ToolResultCard({
             <span className="text-3xl font-bold tracking-tight tabular-nums leading-none">{amount}</span>
           </div>
 
-          {/* Action chips. onNavigate closes the floating modal so
-              the destination page (wallet) is actually visible after
-              the click — previously the modal stayed mounted on top of
-              the new page, which is why users reported "Top up doesn't
-              work". */}
+          {/* Action chips */}
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard/wallet"
               onClick={() => onNavigate?.()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-xs font-semibold hover:bg-white/90 transition-colors shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-xs font-semibold hover:bg-white/90 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
               Top up
@@ -825,7 +819,7 @@ function ToolResultCard({
             <Link
               href="/dashboard/wallet"
               onClick={() => onNavigate?.()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold hover:bg-white/25 transition-colors ring-1 ring-white/20"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold hover:bg-white/25 transition-colors border border-white/20"
             >
               <TrendingUp className="w-3.5 h-3.5" />
               Transactions
@@ -862,7 +856,7 @@ function ToolResultCard({
     }
 
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
@@ -956,7 +950,7 @@ function ToolResultCard({
       )
     }
     return (
-      <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+      <div className="bg-white rounded-2xl p-3 border border-gray-200">
         <div className="flex items-center justify-between mb-2 px-1">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
@@ -1205,7 +1199,7 @@ function ToolResultCard({
         { id: 'ikoyi', name: 'Ikoyi' },
       ]
     const addressListCard = (
-      <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
           <div className="flex items-center gap-2 min-w-0">
             <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
@@ -1218,7 +1212,7 @@ function ToolResultCard({
           <Link
             href={(result.fullMapLink as string) || '/locations'}
             onClick={() => onNavigate?.()}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] border border-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
           >
             <Navigation className="w-3 h-3" />
             Open map
@@ -1238,7 +1232,7 @@ function ToolResultCard({
       return addressListCard
     }
     return (
-      <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
         <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
           <div className="flex items-center gap-2 min-w-0">
             <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
@@ -1777,7 +1771,7 @@ function ToolResultCard({
       ? `${symbol}${amountRaw.toLocaleString('en-NG')}`
       : null
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200">
         {/* Top accent bar for a bit of premium polish */}
         <div className="h-1 bg-[#7B2D8E]" />
         <div className="p-4">
@@ -2795,17 +2789,23 @@ export default function DermaAI({
   // Refs for immediate scoped storage & DB sync inside deletion callbacks
   const sessionsKeyRef = useRef<string | null>(null)
   const activeKeyRef = useRef<string | null>(null)
+  const deletedKeyRef = useRef<string | null>(null)
+  const clearedKeyRef = useRef<string | null>(null)
   const syncPutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const suppressNextSyncRef = useRef<boolean>(false)
   const deletedSessionIdsRef = useRef<Set<string>>(new Set())
+  const clearedAtRef = useRef<string | null>(null)
 
   // Clear all chat sessions — wipe React state, scoped browser cache, AND
-  // PostgreSQL (/api/derma/sessions) immediately so a reload never resurrects them.
+  // PostgreSQL (/api/derma/sessions) with a cleared_at tombstone so other
+  // devices immediately drop pre-clear history on their next sync.
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
   const clearAllSessions = useCallback(() => {
     for (const s of sessions) {
       deletedSessionIdsRef.current.add(s.id)
     }
+    const nowIso = new Date().toISOString()
+    clearedAtRef.current = nowIso
     if (syncPutTimerRef.current) {
       clearTimeout(syncPutTimerRef.current)
       syncPutTimerRef.current = null
@@ -2816,17 +2816,40 @@ export default function DermaAI({
     try {
       if (sessionsKeyRef.current) localStorage.removeItem(sessionsKeyRef.current)
       if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
+      if (deletedKeyRef.current) {
+        localStorage.setItem(
+          deletedKeyRef.current,
+          JSON.stringify(Array.from(deletedSessionIdsRef.current)),
+        )
+      }
+      if (clearedKeyRef.current) {
+        localStorage.setItem(clearedKeyRef.current, nowIso)
+      }
       localStorage.removeItem('derma-chat-sessions')
       localStorage.removeItem('derma-chat-active')
     } catch {
       /* quota */
     }
-    // Also wipe the server-side copy immediately (keepalive survives reload).
-    void fetch('/api/derma/sessions', {
-      method: 'DELETE',
-      credentials: 'same-origin',
-      keepalive: true,
-    }).catch(() => { /* ignore */ })
+    if (isLoggedIn === true) {
+      void fetch('/api/derma/sessions', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        keepalive: true,
+      })
+        .then(async (r) => {
+          if (!r.ok) return
+          const d = (await r.json().catch(() => null)) as { cleared_at?: string } | null
+          if (d?.cleared_at) {
+            clearedAtRef.current = d.cleared_at
+            try {
+              if (clearedKeyRef.current) {
+                localStorage.setItem(clearedKeyRef.current, d.cleared_at)
+              }
+            } catch { /* quota */ }
+          }
+        })
+        .catch(() => { /* ignore */ })
+    }
     const greeting = userInfo.name
       ? `Hello ${userInfo.name}! How can I help you today?`
       : "Hello! How can I help you today?"
@@ -2837,12 +2860,12 @@ export default function DermaAI({
       timestamp: new Date(),
       actions: [
         { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
-        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
       ],
     }])
     setShowClearAllConfirm(false)
     setShowSidebar(false)
-  }, [sessions, userInfo.name])
+  }, [sessions, userInfo.name, isLoggedIn])
 
   // Export the CURRENT conversation as a tidy plain-text transcript.
   // Tool results are flattened to a short summary line so the file is
@@ -2975,6 +2998,8 @@ export default function DermaAI({
       try {
         localStorage.removeItem('derma-chat-sessions::__anon__')
         localStorage.removeItem('derma-chat-active::__anon__')
+        localStorage.removeItem('derma-chat-deleted::__anon__')
+        localStorage.removeItem('derma-chat-cleared::__anon__')
       } catch { /* ignore */ }
     } else {
       setIsLoggedIn(false)
@@ -3007,17 +3032,25 @@ export default function DermaAI({
       setShowSettingsSheet(false)
       setShowConsentPrompt(false)
       setAccountAccessConsent(false)
+      deletedSessionIdsRef.current = new Set()
+      clearedAtRef.current = null
       try {
         localStorage.removeItem('derma-account-consent')
         localStorage.removeItem('derma-chat-sessions::__anon__')
         localStorage.removeItem('derma-chat-active::__anon__')
+        localStorage.removeItem('derma-chat-deleted::__anon__')
+        localStorage.removeItem('derma-chat-cleared::__anon__')
         // Sweep every user-scoped bucket — safest for shared devices.
-        // Keys look like `derma-chat-sessions::u:email@x.com`.
         const toRemove: string[] = []
         for (let i = 0; i < localStorage.length; i++) {
           const k = localStorage.key(i)
           if (!k) continue
-          if (k.startsWith('derma-chat-sessions::') || k.startsWith('derma-chat-active::')) {
+          if (
+            k.startsWith('derma-chat-sessions::') ||
+            k.startsWith('derma-chat-active::') ||
+            k.startsWith('derma-chat-deleted::') ||
+            k.startsWith('derma-chat-cleared::')
+          ) {
             toRemove.push(k)
           }
         }
@@ -3026,18 +3059,6 @@ export default function DermaAI({
     }
   }, [isLoggedIn])
 
-  // Per-user storage scope. Chat sessions + active conversation are
-  // saved under a key that includes the signed-in user's email so a
-  // signed-out visitor (or a DIFFERENT user on the same device) NEVER
-  // inherits the previous account's chat history. Anonymous visitors
-  // get their own "__anon__" bucket that is cleared the moment
-  // somebody signs in, so no crossover leaks the other direction
-  // either.
-  //
-  // We intentionally include the auth state in the bucket so hydration
-  // re-runs whenever login / logout happens, and the in-memory
-  // messages/sessions are reset to whatever belongs to the new
-  // identity (or an empty state for a brand-new anonymous viewer).
   const storageScope =
     isLoggedIn === null
       ? null
@@ -3046,23 +3067,18 @@ export default function DermaAI({
         : '__anon__'
   const sessionsKey = storageScope ? `derma-chat-sessions::${storageScope}` : null
   const activeKey = storageScope ? `derma-chat-active::${storageScope}` : null
+  const deletedKey = storageScope ? `derma-chat-deleted::${storageScope}` : null
+  const clearedKey = storageScope ? `derma-chat-cleared::${storageScope}` : null
   sessionsKeyRef.current = sessionsKey
   activeKeyRef.current = activeKey
+  deletedKeyRef.current = deletedKey
+  clearedKeyRef.current = clearedKey
 
-  // Hydrate from localStorage whenever the storage scope changes (i.e.
-  // initial mount once auth resolves, then again on sign-in/sign-out).
-  // Previously this was a one-shot effect keyed to [], which meant a
-  // user's chats persisted in a shared global key and leaked across
-  // sign-out, sign-in as someone else, etc.
   useEffect(() => {
     if (!sessionsKey || !activeKey) return
 
     let hadActive = false
     try {
-      // One-time migration: fold the legacy global keys into the
-      // currently-signed-in user's bucket the first time we see them,
-      // then delete them. That way an existing user doesn't lose the
-      // chat they were in the middle of when we shipped this change.
       const legacySessions = localStorage.getItem('derma-chat-sessions')
       const legacyActive = localStorage.getItem('derma-chat-active')
       if (legacySessions || legacyActive) {
@@ -3076,18 +3092,36 @@ export default function DermaAI({
         localStorage.removeItem('derma-chat-active')
       }
 
+      const rawDeleted = deletedKey ? localStorage.getItem(deletedKey) : null
+      const parsedDeleted = rawDeleted ? normalizeDeletedIds(JSON.parse(rawDeleted)) : []
+      deletedSessionIdsRef.current = new Set(parsedDeleted)
+
+      const rawCleared = clearedKey ? localStorage.getItem(clearedKey) : null
+      const clearedMs = parseIsoMs(rawCleared)
+      clearedAtRef.current = clearedMs > 0 ? new Date(clearedMs).toISOString() : null
+
       const savedSessions = localStorage.getItem(sessionsKey)
       if (savedSessions) {
         const parsed = JSON.parse(savedSessions) as ChatSession[]
-        const restored = parsed.map((s) => ({
-          ...s,
-          createdAt: new Date(s.createdAt),
-          messages: s.messages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
-        }))
+        const restored = parsed
+          .map((s) => ({
+            ...s,
+            createdAt: new Date(s.createdAt),
+            messages: (s.messages ?? []).map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
+          }))
+          .filter((s) => {
+            if (!s.id || deletedSessionIdsRef.current.has(s.id)) return false
+            if (clearedMs > 0) {
+              const latestMsgMs = s.messages.reduce(
+                (acc, m) => Math.max(acc, m.timestamp.getTime() || 0),
+                s.createdAt.getTime() || 0,
+              )
+              if (latestMsgMs <= clearedMs) return false
+            }
+            return true
+          })
         setSessions(restored)
       } else {
-        // Nothing saved under this scope → reset the list so the old
-        // user's sessions don't linger in React state.
         setSessions([])
       }
 
@@ -3102,19 +3136,28 @@ export default function DermaAI({
           messages: Message[]
           isOpen?: boolean
         }
-        if (Array.isArray(activeMessages) && activeMessages.length > 0) {
+        const activeClearedOut = (() => {
+          if (sessionId && deletedSessionIdsRef.current.has(sessionId)) return true
+          if (clearedMs <= 0) return false
+          const activeMs = Array.isArray(activeMessages)
+            ? activeMessages.reduce((acc, m) => Math.max(acc, parseIsoMs(m.timestamp)), 0)
+            : 0
+          return activeMs === 0 || activeMs <= clearedMs
+        })()
+
+        if (!activeClearedOut && Array.isArray(activeMessages) && activeMessages.length > 0) {
           setCurrentSessionId(sessionId || '')
           setMessages(
             activeMessages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
           )
           if (wasOpen) setIsOpen(true)
           hadActive = true
+        } else if (activeClearedOut) {
+          localStorage.removeItem(activeKey)
         }
       }
 
       if (!hadActive) {
-        // New scope with no active chat → wipe in-memory so the
-        // welcome greeting for THIS identity gets re-generated.
         setCurrentSessionId('')
         setMessages([])
       }
@@ -3122,19 +3165,11 @@ export default function DermaAI({
       /* ignore corrupt storage */
     }
     setHasHydrated(true)
-  }, [sessionsKey, activeKey])
+  }, [sessionsKey, activeKey, deletedKey, clearedKey])
 
-  // Set welcome message ONLY on first mount (after hydration, if no active chat).
-  // Greeting + action cards now branch on just two states — being signed in
-  // implies Derma can act on the user's account, so we drop the dedicated
-  // "Link account" card (it was confusing logged-in users who already had a
-  // session, see screenshot from 4/25). Anonymous viewers still get a clear
-  // sign-in nudge inline in the greeting copy.
   useEffect(() => {
     if (!hasHydrated) return
     if (messages.length > 0) return
-    // Wait for the auth check to resolve so we don't flash a generic
-    // "sign in" card to a user whose /api/auth/me hasn't come back yet.
     if (isLoggedIn === null) return
 
     const greeting = isLoggedIn
@@ -3143,16 +3178,13 @@ export default function DermaAI({
         : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
       : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or [sign in](/signin) and I can check your wallet, manage bookings, and keep things personal."
 
-    // Logged-in users always get useful, action-oriented suggestions.
-    // Anonymous viewers get discovery-oriented ones; signing in is
-    // surfaced via the inline "[sign in](/signin)" link in the greeting.
     const actions: ActionCard[] = isLoggedIn
       ? [
           { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
-          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
         ]
       : [
-          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
           { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
         ]
 
@@ -3195,89 +3227,185 @@ export default function DermaAI({
   }, [messages, currentSessionId, hasHydrated, isOpen, activeKey])
 
   // -----------------------------------------------------------------
-  // Server-side sync (so chats survive a cache wipe / re-install).
-  //
-  // When the user is signed in, we mirror the same sessions blob to
-  // /api/derma/sessions. Reads only run once per scope change (on
-  // sign-in or mount) and prefer the FRESHER side — if the server has
-  // newer data than localStorage, we replace local state with it; if
-  // the local copy is newer, the next debounced PUT below pushes it
-  // up. Writes are debounced 1500ms so a fast back-and-forth
-  // conversation doesn't hammer the DB.
+  // Server-side sync with tombstone reconciliation (deleted_ids + cleared_at)
+  // so deleted or cleared chats stay gone across every device & browser tab.
   // -----------------------------------------------------------------
   const remoteSyncedAtRef = useRef<number>(0)
-  useEffect(() => {
-    if (!hasHydrated) return
-    if (isLoggedIn !== true) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch('/api/derma/sessions', {
-          credentials: 'same-origin',
-        })
-        if (!res.ok) return
-        const data = (await res.json()) as {
-          sessions?: Array<{
-            id: string
-            title?: string
-            createdAt?: string
-            messages?: Array<{ id: string; timestamp?: string }>
-          }>
-          active?: {
-            sessionId?: string
-            messages?: Array<{ id: string; timestamp?: string }>
-            isOpen?: boolean
-          } | null
-          updated_at?: string | null
-        }
-        if (cancelled) return
-        const serverUpdated = data.updated_at
-          ? new Date(data.updated_at).getTime()
-          : 0
-        remoteSyncedAtRef.current = serverUpdated
-        // Only adopt the server's sessions list if the server has
-        // content and the local list is empty (typical "cache cleared,
-        // sign in on a new device" case). When the local copy has
-        // sessions already we prefer it — the next PUT will reconcile.
-        if (Array.isArray(data.sessions) && data.sessions.length > 0) {
-          setSessions((local) => {
-            if (local.length > 0) return local
-            return data.sessions!.map((s) => ({
-              ...(s as unknown as ChatSession),
-              createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
-              messages: (s.messages ?? []).map((m) => ({
-                ...(m as unknown as Message),
-                timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-              })),
-            }))
-          })
-        }
-        // Restore the in-flight conversation if we don't already have
-        // one in memory (i.e. nothing was hydrated from localStorage).
-        if (
-          data.active &&
-          Array.isArray(data.active.messages) &&
-          data.active.messages.length > 0
-        ) {
-          setMessages((local) => {
-            const hasContent = local.some((m) => m.role === 'user')
-            if (hasContent) return local
-            const restored = data.active!.messages!.map((m) => ({
-              ...(m as unknown as Message),
-              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-            }))
-            if (data.active!.sessionId) setCurrentSessionId(data.active!.sessionId)
-            return restored
-          })
-        }
-      } catch {
-        /* network blip — localStorage covers us */
+  const syncSnapshotRef = useRef<{
+    sessions: ChatSession[]
+    messages: Message[]
+    currentSessionId: string
+    isOpen: boolean
+    userName: string | undefined
+  }>({
+    sessions: [],
+    messages: [],
+    currentSessionId: '',
+    isOpen: false,
+    userName: undefined,
+  })
+  syncSnapshotRef.current = {
+    sessions,
+    messages,
+    currentSessionId,
+    isOpen,
+    userName: userInfo.name,
+  }
+
+  const syncRemoteSessions = useCallback(async () => {
+    if (!hasHydrated || isLoggedIn !== true) return
+    try {
+      const res = await fetch('/api/derma/sessions', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      })
+      if (!res.ok) return
+      const data = (await res.json()) as {
+        sessions?: SyncableChatSession[]
+        active?: SyncableActiveChat | null
+        deleted_ids?: string[]
+        cleared_at?: string | null
+        updated_at?: string | null
       }
-    })()
-    return () => {
-      cancelled = true
+      const serverUpdated = data.updated_at
+        ? new Date(data.updated_at).getTime()
+        : 0
+      remoteSyncedAtRef.current = serverUpdated
+
+      const snap = syncSnapshotRef.current
+      const hasRealLocalActive = snap.messages.some((m) => m.role === 'user')
+      const localActivePayload: SyncableActiveChat | null = hasRealLocalActive
+        ? {
+            sessionId: snap.currentSessionId,
+            messages: snap.messages as unknown as SyncableActiveChat['messages'],
+            isOpen: snap.isOpen,
+          }
+        : null
+
+      const reconciled = reconcileDermaSessions({
+        localSessions: snap.sessions as unknown as SyncableChatSession[],
+        serverSessions: Array.isArray(data.sessions) ? data.sessions : [],
+        localDeletedIds: Array.from(deletedSessionIdsRef.current),
+        serverDeletedIds: Array.isArray(data.deleted_ids) ? data.deleted_ids : [],
+        localClearedAt: clearedAtRef.current,
+        serverClearedAt: data.cleared_at ?? null,
+        active: localActivePayload ?? data.active ?? null,
+      })
+
+      deletedSessionIdsRef.current = new Set(reconciled.deletedIds)
+      clearedAtRef.current = reconciled.clearedAt
+      try {
+        if (deletedKeyRef.current) {
+          localStorage.setItem(
+            deletedKeyRef.current,
+            JSON.stringify(reconciled.deletedIds),
+          )
+        }
+        if (clearedKeyRef.current) {
+          if (reconciled.clearedAt) {
+            localStorage.setItem(clearedKeyRef.current, reconciled.clearedAt)
+          } else {
+            localStorage.removeItem(clearedKeyRef.current)
+          }
+        }
+      } catch { /* quota */ }
+
+      const nextSessions: ChatSession[] = reconciled.sessions.map((s) => ({
+        ...(s as unknown as ChatSession),
+        createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
+        messages: (s.messages ?? []).map((m) => ({
+          ...(m as unknown as Message),
+          timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+        })),
+      }))
+
+      // Prevent triggering a redundant debounced PUT unless reconciliation merged
+      // unpushed local changes (in which case we push immediately below).
+      suppressNextSyncRef.current = !reconciled.shouldPushToServer
+      setSessions(nextSessions)
+
+      try {
+        if (sessionsKeyRef.current) {
+          if (nextSessions.length > 0) {
+            localStorage.setItem(sessionsKeyRef.current, JSON.stringify(nextSessions))
+          } else {
+            localStorage.removeItem(sessionsKeyRef.current)
+          }
+        }
+      } catch { /* quota */ }
+
+      if (hasRealLocalActive && reconciled.active === null) {
+        // Active chat was deleted or cleared on another device
+        setCurrentSessionId('')
+        try {
+          if (activeKeyRef.current) localStorage.removeItem(activeKeyRef.current)
+        } catch { /* ignore */ }
+        const greeting = snap.userName
+          ? `Hello ${snap.userName}! How can I help you today?`
+          : "Hello! How can I help you today?"
+        setMessages([{
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: greeting,
+          timestamp: new Date(),
+          actions: [
+            { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+            { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
+          ],
+        }])
+      } else if (
+        !hasRealLocalActive &&
+        reconciled.active &&
+        Array.isArray(reconciled.active.messages) &&
+        reconciled.active.messages.length > 0
+      ) {
+        const restoredActive = reconciled.active.messages.map((m) => ({
+          ...(m as unknown as Message),
+          timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+        }))
+        if (reconciled.active.sessionId) {
+          setCurrentSessionId(reconciled.active.sessionId)
+        }
+        setMessages(restoredActive)
+      }
+
+      if (reconciled.shouldPushToServer) {
+        void fetch('/api/derma/sessions', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessions: nextSessions,
+            active: reconciled.active,
+            deleted_ids: reconciled.deletedIds,
+            cleared_at: reconciled.clearedAt,
+          }),
+        }).catch(() => { /* ignore */ })
+      }
+    } catch {
+      /* network blip — localStorage covers us */
     }
-  }, [hasHydrated, isLoggedIn, sessionsKey])
+  }, [hasHydrated, isLoggedIn])
+
+  useEffect(() => {
+    if (!hasHydrated || isLoggedIn !== true) return
+    void syncRemoteSessions()
+
+    const onFocus = () => {
+      void syncRemoteSessions()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void syncRemoteSessions()
+      }
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [hasHydrated, isLoggedIn, sessionsKey, syncRemoteSessions])
 
   useEffect(() => {
     if (!hasHydrated) return
@@ -3286,17 +3414,16 @@ export default function DermaAI({
       suppressNextSyncRef.current = false
       return
     }
-    // Defer write so a typing burst settles into ONE PUT.
     const handle = setTimeout(() => {
       syncPutTimerRef.current = null
       const hasRealContent = messages.some((m) => m.role === 'user')
-      // Serialise only what we already persist locally so payloads
-      // stay small + match the GET response shape exactly.
       const payload = {
         sessions,
         active: hasRealContent
           ? { sessionId: currentSessionId, messages, isOpen }
           : null,
+        deleted_ids: Array.from(deletedSessionIdsRef.current),
+        cleared_at: clearedAtRef.current,
       }
       void fetch('/api/derma/sessions', {
         method: 'PUT',
@@ -5018,7 +5145,7 @@ export default function DermaAI({
       timestamp: new Date(),
       actions: [
         { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
-        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'services' },
       ]
     }])
     setCurrentSessionId('')
@@ -5031,9 +5158,6 @@ export default function DermaAI({
   }
 
   const loadSession = (session: ChatSession) => {
-    // Same reasoning as `startNewChat` — abort the previous chat's
-    // in-flight stream/TTS before swapping `messages`, otherwise
-    // late tokens land inside the conversation we just opened.
     teardownActiveTurn()
     setMessages(session.messages)
     setCurrentSessionId(session.id)
@@ -5049,7 +5173,7 @@ export default function DermaAI({
     setSessions(nextSessions)
     setOpenMenuSessionId((prev) => (prev === id ? null : prev))
 
-    // Immediately update scoped local cache so refreshing never brings the deleted chat back
+    // Immediately update scoped local cache + deleted tombstone list
     try {
       if (sessionsKeyRef.current) {
         if (nextSessions.length > 0) {
@@ -5057,6 +5181,12 @@ export default function DermaAI({
         } else {
           localStorage.removeItem(sessionsKeyRef.current)
         }
+      }
+      if (deletedKeyRef.current) {
+        localStorage.setItem(
+          deletedKeyRef.current,
+          JSON.stringify(Array.from(deletedSessionIdsRef.current)),
+        )
       }
       localStorage.removeItem('derma-chat-sessions')
     } catch {}
@@ -5069,7 +5199,7 @@ export default function DermaAI({
       startNewChat()
     }
 
-    // Immediately persist the deletion to PostgreSQL (do not wait for 1.5s debounce)
+    // Immediately persist the deletion tombstone to PostgreSQL
     if (isLoggedIn === true) {
       if (syncPutTimerRef.current) {
         clearTimeout(syncPutTimerRef.current)
@@ -5078,6 +5208,11 @@ export default function DermaAI({
       suppressNextSyncRef.current = true
       const hasRealActive = !isDeletingActive && messages.some((m) => m.role === 'user')
       if (nextSessions.length === 0 && !hasRealActive) {
+        const nowIso = new Date().toISOString()
+        clearedAtRef.current = nowIso
+        try {
+          if (clearedKeyRef.current) localStorage.setItem(clearedKeyRef.current, nowIso)
+        } catch {}
         void fetch('/api/derma/sessions', {
           method: 'DELETE',
           credentials: 'same-origin',
@@ -5094,6 +5229,8 @@ export default function DermaAI({
             active: hasRealActive
               ? { sessionId: currentSessionId, messages, isOpen }
               : null,
+            deleted_ids: Array.from(deletedSessionIdsRef.current),
+            cleared_at: clearedAtRef.current,
           }),
         }).catch(() => {})
       }
@@ -6466,15 +6603,10 @@ export default function DermaAI({
         >
         <div className={`relative w-full h-full bg-white flex overflow-hidden ${
           isPageMode
-            ? 'rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
+            ? 'rounded-2xl border border-gray-200'
             : 'md:rounded-2xl md:border md:border-gray-200'
         }`}>
           
-          {/* Sidebar — slide-in panel. We pair it with a tap-anywhere
-              backdrop (rendered just below) so users can dismiss the
-              drawer by clicking outside it, not only by toggling the
-              hamburger. That's the UX escape hatch you'd expect from any
-              real side drawer. */}
           {showSidebar && !isPageMode && (
             <button
               type="button"
@@ -6483,12 +6615,10 @@ export default function DermaAI({
               aria-label="Close chat history"
             />
           )}
-          {/* Sidebar — slide-in on mobile, toggleable or persistent on md+
-              When closed in floating mode, it collapses to 0-width and is removed
-              from layout flow on desktop so the chat fills the full width without
-              leaving an empty white void or compressing the conversation. */}
           <div
             className={`inset-y-0 left-0 flex flex-col z-10 flex-shrink-0 transition-all duration-300 ${
+              showSidebar ? 'border-r border-gray-200' : ''
+            } ${
               isPageMode
                 ? showSidebar
                   ? 'relative w-72 min-w-0 translate-x-0'
@@ -6498,14 +6628,7 @@ export default function DermaAI({
                   : 'absolute md:hidden w-0 min-w-0 max-w-0 overflow-hidden -translate-x-full invisible pointer-events-none'
             }`}
             style={{
-              // Flat off-white rail. Was a soft brand-tinted lavender
-              // (#FAF4FB) which fought with the brand-coloured active
-              // pill and the empty-state tile for attention. A neutral
-              // off-white lets the brand colour land only where it
-              // matters (active row, new-chat button, butterfly mark)
-              // and gives the rail a quietly premium feel.
               background: '#FBFBFC',
-              boxShadow: showSidebar ? 'inset -1px 0 0 rgba(17, 17, 17, 0.06)' : 'none',
             }}
           >
             {/* Brand header — single line on the rail: butterfly +
@@ -6787,7 +6910,7 @@ export default function DermaAI({
                                             />
                                             <div
                                               role="menu"
-                                              className="absolute right-0 top-8 z-40 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden"
+                                              className="absolute right-0 top-8 z-40 w-40 bg-white rounded-xl border border-gray-200 py-1 overflow-hidden"
                                             >
                                               <button
                                                 type="button"
@@ -6845,7 +6968,7 @@ export default function DermaAI({
             {/* Footer — sits on a white card with a subtle top rule so
                 it feels like a dedicated "toolbar" anchored to the
                 bottom of the rail rather than an afterthought. */}
-            <div className="mx-2 mb-2 bg-white rounded-xl border border-gray-100 shadow-sm p-1 flex items-center gap-0.5">
+            <div className="mx-2 mb-2 bg-white rounded-xl border border-gray-200 p-1 flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={exportCurrentChat}
@@ -6869,8 +6992,6 @@ export default function DermaAI({
               </button>
             </div>
 
-            {/* Clear-all confirmation — inline (not a full-screen modal)
-                so it feels contained within the sidebar drawer. */}
             {showClearAllConfirm && (
               <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-[2px] flex items-center justify-center p-3">
                 <div className="w-full bg-white rounded-xl border border-gray-200 p-4">
@@ -6879,7 +7000,7 @@ export default function DermaAI({
                   </div>
                   <p className="text-sm font-semibold text-gray-900">Clear all chats?</p>
                   <p className="text-xs text-gray-500 mt-1 leading-snug">
-                    This will permanently delete every saved conversation on this device.
+                    This will permanently delete every saved conversation across your devices.
                   </p>
                   <div className="mt-4 flex gap-2">
                     <button
@@ -6903,7 +7024,7 @@ export default function DermaAI({
           </div>
           
           {/* Main Chat */}
-          <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
             {/* Voice Call Mode — brand-filled canvas with a pulsing
                 avatar and a single clear end-call pill. Matches the
                 rest of the chat's flat language (no extra shadows). */}
@@ -6978,15 +7099,7 @@ export default function DermaAI({
                         {(liveDetecting || liveAnalyzing) && (
                           <span
                             aria-hidden="true"
-                            className="absolute -inset-2 rounded-full pointer-events-none"
-                            style={{
-                              background:
-                                'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.15) 40deg, #7B2D8E 90deg, rgba(123,45,142,0.15) 140deg, rgba(123,45,142,0) 180deg)',
-                              animation: 'derma-live-scan 2.2s linear infinite',
-                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))',
-                              WebkitMask:
-                                'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))',
-                            }}
+                            className="absolute -inset-2 rounded-full border-2 border-[#7B2D8E]/25 border-t-[#7B2D8E] animate-spin pointer-events-none"
                           />
                         )}
                         <div className="relative w-52 h-52 rounded-full overflow-hidden">
@@ -7038,7 +7151,7 @@ export default function DermaAI({
                       real time. */}
                   {liveShareActive && (
                     <div className="relative w-64 max-w-full">
-                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]">
+                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60">
                         <video
                           ref={liveShareVideoRef}
                           autoPlay
@@ -7067,24 +7180,6 @@ export default function DermaAI({
                       {liveShareError}
                     </p>
                   )}
-                  {/* Live action card — Jarvis-style on-screen UI.
-                      When the assistant calls a tool during a Live
-                      voice session (wallet check, list bookings,
-                      pull services, etc.) we surface the same
-                      `ToolResultCard` it renders in chat as a
-                      floating, dismissable card over the live
-                      canvas. This bridges the "voice → screen"
-                      gap the user asked for: she hears the answer
-                      AND sees the wallet/booking/services UI at
-                      the same time. The card sits inside its own
-                      max-w wrapper so the wallet card's coloured
-                      background doesn't get cropped, and a small
-                      X button in the top-right lets the user
-                      dismiss without ending the call. Tapping a
-                      link inside the card calls `endLiveCall` so
-                      the destination page is actually visible
-                      (otherwise the live overlay sits on top of
-                      whatever loaded). */}
                   {liveActionCard && (
                     <div
                       key={liveActionCard.id}
@@ -7093,7 +7188,7 @@ export default function DermaAI({
                       <button
                         type="button"
                         onClick={() => setLiveActionCard(null)}
-                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15 shadow-md"
+                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15"
                         aria-label="Dismiss action card"
                       >
                         <X className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -7102,35 +7197,18 @@ export default function DermaAI({
                         toolName={liveActionCard.toolName}
                         result={liveActionCard.result}
                         onSendPrompt={(prompt) => {
-                          // Re-fire the prompt as a follow-up turn —
-                          // the card stays mounted because the next
-                          // tool call will overwrite it (or the user
-                          // can dismiss).
                           void sendMessage(prompt)
                         }}
                         onNavigate={() => {
-                          // User tapped a link inside the card —
-                          // gracefully end the live call so the
-                          // destination page is actually visible.
                           endVoiceCall()
                         }}
                         inlineMapsEnabled={inlineMapsEnabled}
                       />
                     </div>
                   )}
-                  {/* Caption rail.
-                      When captions are ON, we render a glassy card
-                      with a "Derma" speaker label and an animated
-                      pulse dot while audio is streaming — turns the
-                      rail from a faded one-liner into a deliberate,
-                      Jarvis-style transcript card. The card shows
-                      even before any text has streamed (with a "Live
-                      captions on" placeholder) so toggling the icon
-                      gives instant visual feedback instead of looking
-                      like a no-op. */}
                   {liveCaptionsOn ? (
                     <div
-                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
+                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3"
                       aria-live="polite"
                     >
                       <div className="flex items-center gap-2 mb-1.5">
@@ -7178,30 +7256,18 @@ export default function DermaAI({
                   )}
                 </div>
 
-                {/* Ambient reactive blob — bottom portion of canvas. */}
+                {/* Ambient reactive glow — flat solid translucent circles, no gradients */}
                 <div
                   aria-hidden
-                  className="absolute left-1/2 -translate-x-1/2 bottom-[20%] w-[180%] h-[55%] pointer-events-none z-0"
+                  className="absolute left-1/2 -translate-x-1/2 bottom-[22%] w-[72%] aspect-square rounded-full bg-[#7B2D8E]/30 blur-3xl pointer-events-none z-0"
                   style={{
                     transform: `translate(-50%, 0) scale(${1 + vapiAmp * 0.35})`,
                     transition: 'transform 90ms linear',
-                    filter: `blur(${60 + vapiAmp * 40}px)`,
-                    background:
-                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(190,120,210,0.85) 0%, rgba(190,120,210,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(220,170,235,0.8) 0%, rgba(220,170,235,0) 70%)',
-                    animation: 'derma-blob-drift 7s ease-in-out infinite',
                   }}
                 />
                 <div
                   aria-hidden
-                  className="absolute left-1/2 -translate-x-1/2 bottom-[10%] w-[140%] h-[40%] pointer-events-none z-0"
-                  style={{
-                    transform: 'translate(-50%, 0)',
-                    filter: 'blur(50px)',
-                    background:
-                      'radial-gradient(50% 60% at 50% 70%, rgba(235,205,245,0.55) 0%, rgba(235,205,245,0) 60%)',
-                    animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
-                    opacity: 0.7,
-                  }}
+                  className="absolute left-1/2 -translate-x-1/2 bottom-[14%] w-[52%] aspect-square rounded-full bg-[#C58CD6]/20 blur-3xl pointer-events-none z-0"
                 />
 
                 {/* Bottom control bar. Camera / Share / Upload /
@@ -7418,15 +7484,7 @@ export default function DermaAI({
                           {(isLoading || isSpeaking) && (
                             <span
                               aria-hidden="true"
-                              className="absolute inset-[-3px] rounded-full pointer-events-none"
-                              style={{
-                                background:
-                                  'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.2) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.2) 150deg, rgba(123,45,142,0) 200deg)',
-                                animation: 'derma-live-scan 1.8s linear infinite',
-                                mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                                WebkitMask:
-                                  'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                              }}
+                              className="absolute inset-[-3px] rounded-full border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E] animate-spin pointer-events-none"
                             />
                           )}
                           <button
@@ -7614,25 +7672,10 @@ export default function DermaAI({
                             doesn't dismiss via the backdrop button. */}
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          // Soft, low-contrast ambient shadow. The
-                          // previous `0_28px_70px_-20px rgba(0,0,0,0.45)` was
-                          // a hard, downward-cast drop that made the
-                          // card look like a stamped-on sticker
-                          // floating above the chat — it read as
-                          // "stiff" against the calm light background.
-                          // We've replaced it with a layered shadow:
-                          // a tight contact line (small radius, low
-                          // opacity) plus a gentle ambient fade
-                          // (large radius, very low opacity) — the
-                          // same recipe used by Linear, Vercel and
-                          // Apple sheets for elevated surfaces.
-                          className="relative w-full max-w-[400px] max-h-[88vh] overflow-y-auto bg-white rounded-3xl pt-7 pb-5 px-6 text-left shadow-[0_2px_6px_-2px_rgba(15,15,30,0.08),0_18px_48px_-24px_rgba(15,15,30,0.18)]"
+                          className="relative w-full max-w-[400px] max-h-[88vh] overflow-y-auto bg-white border border-gray-200 rounded-3xl pt-7 pb-5 px-6 text-left"
                         >
-                          {/* Hero — brand circle + headline. Centered
-                              like the Gemini "Go Live" sheet so the
-                              eye lands on the title before the rows. */}
                           <div className="flex flex-col items-center text-center mb-5">
-                            <span className="relative w-14 h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center mb-4 shadow-[0_6px_18px_-10px_rgba(123,45,142,0.45)]">
+                            <span className="relative w-14 h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center mb-4">
                               {/* Pulsing brand halo around the icon
                                   — matches the new header avatar so
                                   the visual language stays consistent. */}
@@ -7713,7 +7756,7 @@ export default function DermaAI({
                                 try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
                                 startVoiceCall()
                               }}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#7B2D8E] hover:bg-[#69256F] text-white text-[13px] font-semibold active:scale-[0.97] transition shadow-[0_4px_14px_-4px_rgba(123,45,142,0.55)]"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#7B2D8E] hover:bg-[#69256F] text-white text-[13px] font-semibold active:scale-[0.97] transition"
                             >
                               <AudioLines className="w-4 h-4" />
                               Try Live
@@ -7772,7 +7815,7 @@ export default function DermaAI({
                                 <button
                                   type="button"
                                   onClick={handleReconnectFromBanner}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors shadow-sm shadow-[#7B2D8E]/25"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors"
                                 >
                                   <ShieldCheck className="w-3.5 h-3.5" />
                                   Yes, reconnect
@@ -7912,7 +7955,7 @@ export default function DermaAI({
                               )
 
                               const bubbleClass = isUser
-                                ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                                ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md'
                                 : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
 
                               // Non-actionable (welcome / banners) → plain bubble.
@@ -7924,14 +7967,6 @@ export default function DermaAI({
                                 )
                               }
 
-                              // Assistant reply → plain bubble + inline
-                              // action row underneath (Copy /
-                              // Regenerate / Good / Bad). No long-press,
-                              // no hold-to-reveal — the actions are
-                              // always visible, same as ChatGPT / Claude
-                              // desktop. The icons are low-contrast so
-                              // they read as controls without stealing
-                              // attention from the reply copy.
                               if (isAssistant) {
                                 const ActionIconBtn = ({
                                   label,
@@ -7944,20 +7979,13 @@ export default function DermaAI({
                                   label: string
                                   onClick: () => void
                                   active?: boolean
-                                  // 'soft' = low-contrast hover state used
-                                  // by Copy/Regenerate; 'solid' = filled
-                                  // brand chip used by thumbs-up/down so a
-                                  // vote reads clearly as committed.
                                   variant?: 'soft' | 'solid'
-                                  // Used for the un-picked thumb once a
-                                  // vote has been cast — prevents flipping
-                                  // the sentiment after it's locked.
                                   disabled?: boolean
                                   children: React.ReactNode
                                 }) => {
                                   const activeCls =
                                     variant === 'solid'
-                                      ? 'text-white bg-[#7B2D8E] shadow-[0_1px_0_0_rgba(0,0,0,0.04)]'
+                                      ? 'text-white bg-[#7B2D8E]'
                                       : 'text-[#7B2D8E] bg-[#7B2D8E]/10'
                                   const restingCls = disabled
                                     ? 'text-gray-300 cursor-not-allowed'
@@ -8132,7 +8160,7 @@ export default function DermaAI({
                                   >
                                     {bubbleInner}
                                     {justCopied && !isOpen && (
-                                      <span className="absolute -top-2 -left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm">
+                                      <span className="absolute -top-2 -left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium border border-white/25">
                                         <Check className="w-3 h-3" strokeWidth={3} />
                                         Copied
                                       </span>
@@ -8203,7 +8231,7 @@ export default function DermaAI({
                         <div className="ml-2 sm:ml-9 mt-3 flex flex-wrap gap-2">
                           {message.actions.map((action, idx) => {
                             const cardClass =
-                              'flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group text-left'
+                              'flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] transition-colors group text-left'
                             const cardInner = (
                               <>
                                 <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
@@ -8292,20 +8320,9 @@ export default function DermaAI({
                         aria-live="polite"
                       >
                         <div className="relative w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          {/* Thin brand arc — single colour, slow
-                              sweep so it reads as considered rather
-                              than frantic. */}
                           <span
                             aria-hidden="true"
-                            className="absolute inset-0 rounded-full pointer-events-none"
-                            style={{
-                              background:
-                                'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.15) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.15) 150deg, rgba(123,45,142,0) 200deg)',
-                              animation: 'derma-live-scan 1.6s linear infinite',
-                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
-                              WebkitMask:
-                                'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
-                            }}
+                            className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E] animate-spin pointer-events-none"
                           />
                           <ButterflyLogo className="w-4 h-4 text-[#7B2D8E]" />
                         </div>
@@ -8437,7 +8454,7 @@ export default function DermaAI({
                       <div
                         role="menu"
                         aria-label="Message actions"
-                        className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] pt-2 pb-4 animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
+                        className="absolute left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-200 rounded-t-2xl pt-2 pb-4 animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
                       >
                         <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-200" />
                         <button
@@ -8503,7 +8520,7 @@ export default function DermaAI({
                     <div
                       role="dialog"
                       aria-label={isPositive ? 'Leave a compliment' : 'Leave feedback'}
-                      className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
+                      className="absolute left-0 right-0 bottom-0 z-40 bg-white border-t border-gray-200 rounded-t-2xl animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
                     >
                       <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
                       <div className="px-5 pb-5 max-h-[75vh] overflow-y-auto">
@@ -8674,7 +8691,7 @@ export default function DermaAI({
                           role="dialog"
                           aria-label="Select text"
                           onClick={(e) => e.stopPropagation()}
-                          className="relative z-40 bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(17,24,39,0.28)] flex flex-col w-full max-w-md max-h-[80%] animate-[derma-msg-in_0.2s_ease-out]"
+                          className="relative z-40 bg-white border border-gray-200 rounded-2xl flex flex-col w-full max-w-md max-h-[80%] animate-[derma-msg-in_0.2s_ease-out]"
                         >
                           <div className="flex items-center justify-between px-4 pt-3 pb-1.5 flex-shrink-0 border-b border-gray-100">
                             <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
@@ -8710,7 +8727,7 @@ export default function DermaAI({
                     className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
                     aria-live="polite"
                   >
-                    <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#7B2D8E] text-white text-[12.5px] font-medium shadow-[0_8px_24px_-8px_rgba(123,45,142,0.35)] animate-[derma-msg-in_0.25s_ease-out]">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#7B2D8E] text-white text-[12.5px] font-medium border border-[#5E2170] animate-[derma-msg-in_0.25s_ease-out]">
                       <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-white/20">
                         <Check className="w-2.5 h-2.5" strokeWidth={3} />
                       </span>
@@ -8736,15 +8753,7 @@ export default function DermaAI({
                     <div
                       role="dialog"
                       aria-label="Derma AI settings"
-                      // Bottom-anchored sheet sized to its CONTENT
-                      // (capped at 88% of the chat panel) instead of
-                      // a fixed `top-8` that left a huge empty white
-                      // band below the short root list. `max-h-[88%]`
-                      // + the inner body's `flex-1 overflow-y-auto`
-                      // means short pages hug their content, long
-                      // pages scroll. Matches Claude / iOS sheet
-                      // physics.
-                      className="absolute inset-x-0 bottom-0 z-50 max-h-[88%] bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] flex flex-col animate-[derma-msg-in_0.22s_ease-out] overflow-hidden"
+                      className="absolute inset-x-0 bottom-0 z-50 max-h-[88%] bg-white border-t border-gray-200 rounded-t-2xl flex flex-col animate-[derma-msg-in_0.22s_ease-out] overflow-hidden"
                     >
                       {/* Drag handle — visual affordance only. */}
                       <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
@@ -8798,7 +8807,7 @@ export default function DermaAI({
                                 Disconnect if connected). Anchors the whole
                                 settings experience the way Claude's
                                 profile card does. */}
-                            <div className="rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5E2170] p-4 text-white shadow-[0_4px_16px_-6px_rgba(123,45,142,0.5)]">
+                            <div className="rounded-2xl bg-[#7B2D8E] p-4 text-white border border-[#5E2170]">
                               <div className="flex items-center gap-3">
                                 <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
                                   <ButterflyLogo className="w-5 h-5 text-white" />
@@ -8997,7 +9006,7 @@ export default function DermaAI({
                                   }`}
                                 >
                                   <span
-                                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${
+                                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white border border-gray-200 transition-all ${
                                       shakeOn ? 'left-[18px]' : 'left-0.5'
                                     }`}
                                   />
@@ -9132,7 +9141,7 @@ export default function DermaAI({
                                   aria-label={row.title}
                                 >
                                   <span
-                                    className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                                    className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white border border-gray-200 transition-transform ${
                                       row.value ? 'translate-x-4' : 'translate-x-0'
                                     }`}
                                   />
@@ -9232,14 +9241,7 @@ export default function DermaAI({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (!sessionsKey || !activeKey) return
-                                  try {
-                                    localStorage.removeItem(sessionsKey)
-                                    localStorage.removeItem(activeKey)
-                                  } catch { /* ignore */ }
-                                  setSessions([])
-                                  setMessages([])
-                                  setCurrentSessionId('')
+                                  clearAllSessions()
                                   setShowSettingsSheet(false)
                                   setTransientToast('Chat history cleared')
                                   setTimeout(() => setTransientToast(null), 2200)
@@ -9415,7 +9417,7 @@ export default function DermaAI({
                 {/* Account Access Consent Prompt */}
                 {showConsentPrompt && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20 p-4">
-                    <div className="bg-white rounded-2xl p-5 max-w-[320px] shadow-xl">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 max-w-[320px]">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
                           <User className="w-5 h-5 text-[#7B2D8E]" />
@@ -9461,7 +9463,7 @@ export default function DermaAI({
                     Controls are sized at w-8 h-8 inside a 44px-tall pill
                     so the touch target comfortably clears Apple's 40px
                     minimum without dominating the layout. */}
-                <div className="px-3 pt-3 pb-3 border-t border-gray-100 bg-white flex-shrink-0">
+                <div className="px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3 border-t border-gray-100 bg-white flex-shrink-0">
                   {/* Attachment previews */}
                   {(pendingAttachments.length > 0 || isUploading || uploadError) && (
                     <div className="mb-2.5 flex items-center gap-2 flex-wrap">

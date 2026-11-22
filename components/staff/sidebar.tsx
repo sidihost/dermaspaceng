@@ -86,9 +86,14 @@ export function StaffSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  const [pending, setPending] = useState<{ requests: number; urgent: number }>({
+  const [pending, setPending] = useState<{
+    requests: number
+    urgent: number
+    waitingLiveChats: number
+  }>({
     requests: 0,
     urgent: 0,
+    waitingLiveChats: 0,
   })
 
   // Close mobile drawer on navigation
@@ -120,16 +125,33 @@ export function StaffSidebar() {
             Number(s.pendingGiftCards ?? 0) +
             Number(s.pendingConsultations ?? 0),
           urgent: Number(s.pendingComplaints ?? 0),
+          waitingLiveChats: Number(s.waitingLiveChats ?? 0),
         })
       } catch {
         /* swallow — sidebar widget is best-effort */
       }
     }
     load()
-    const id = window.setInterval(load, 60_000)
+    const id = window.setInterval(load, 15_000)
+    const onWaitingChanged = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ count?: number }>).detail
+      if (typeof detail?.count === "number") {
+        setPending((prev) => ({
+          ...prev,
+          waitingLiveChats: Math.max(0, detail.count!),
+        }))
+      } else {
+        void load()
+      }
+    }
+    const onFocus = () => void load()
+    window.addEventListener("live-chat:waiting-changed", onWaitingChanged)
+    window.addEventListener("focus", onFocus)
     return () => {
       alive = false
       window.clearInterval(id)
+      window.removeEventListener("live-chat:waiting-changed", onWaitingChanged)
+      window.removeEventListener("focus", onFocus)
     }
   }, [])
 
@@ -171,6 +193,12 @@ export function StaffSidebar() {
             )}
           >
             <HamburgerIcon open={mobileOpen} />
+            {pending.waitingLiveChats > 0 && !mobileOpen && (
+              <span
+                aria-label={`${pending.waitingLiveChats} live chat waiting`}
+                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#7B2D8E]"
+              />
+            )}
           </button>
 
           <Link href="/staff" className="flex items-center gap-2 min-w-0">
@@ -278,7 +306,22 @@ export function StaffSidebar() {
                     )}
                     aria-hidden="true"
                   />
-                  <span className="truncate">{item.title}</span>
+                  <span className="truncate flex-1">{item.title}</span>
+                  {item.href === "/staff/live-chat" && pending.waitingLiveChats > 0 && (
+                    <span
+                      className={cn(
+                        "min-w-[20px] h-[20px] inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums px-1.5 leading-none shrink-0",
+                        isActive
+                          ? "bg-white text-[#7B2D8E]"
+                          : "bg-[#7B2D8E] text-white"
+                      )}
+                      aria-label={`${pending.waitingLiveChats} waiting in live chat`}
+                    >
+                      {pending.waitingLiveChats > 99
+                        ? "99+"
+                        : pending.waitingLiveChats}
+                    </span>
+                  )}
                 </Link>
               )
             })}

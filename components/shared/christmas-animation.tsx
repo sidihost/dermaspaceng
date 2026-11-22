@@ -48,6 +48,8 @@ export default function ChristmasAnimation() {
   const isSuppressedRoute =
     Boolean(pathname?.startsWith('/offline')) ||
     Boolean(pathname?.startsWith('/maintenance')) ||
+    Boolean(pathname?.startsWith('/admin/live-chat')) ||
+    Boolean(pathname?.startsWith('/staff/live-chat')) ||
     isCelebrationStoryRoute(pathname)
 
   const { data } = useSWR<{ enabled: boolean; intensity?: string }>(

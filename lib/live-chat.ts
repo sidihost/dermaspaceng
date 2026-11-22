@@ -384,12 +384,12 @@ export interface VisitorSessionMetaInput {
   screen?: string | null
 }
 
-export async function escalateToHuman(
+export async function escalateToHumanWithMeta(
   userId: string,
   initialTopic: string | null,
   aiTranscript: unknown,
   visitor?: VisitorSessionMetaInput | null,
-): Promise<LiveChatSession> {
+): Promise<{ session: LiveChatSession; isNew: boolean }> {
   await ensureLiveChatSupportCodeColumn()
   // Reuse an open session if one exists rather than racing two queues.
   const existing = await getOpenSessionForUser(userId)
@@ -397,21 +397,24 @@ export async function escalateToHuman(
     if (visitor && (!existing.visitor_browser || !existing.visitor_location)) {
       await sql`
         UPDATE live_chat_sessions
-           SET visitor_location   = COALESCE(visitor_location, ${visitor.location ?? null}),
-               visitor_ip         = COALESCE(visitor_ip, ${visitor.ip ?? null}),
-               visitor_user_agent = COALESCE(visitor_user_agent, ${visitor.userAgent ?? null}),
-               visitor_browser    = COALESCE(visitor_browser, ${visitor.browser ?? null}),
-               visitor_os         = COALESCE(visitor_os, ${visitor.os ?? null}),
-               visitor_device     = COALESCE(visitor_device, ${visitor.device ?? null}),
-               visitor_timezone   = COALESCE(visitor_timezone, ${visitor.timezone ?? null}),
-               visitor_page_url   = COALESCE(visitor_page_url, ${visitor.pageUrl ?? null}),
-               visitor_referrer   = COALESCE(visitor_referrer, ${visitor.referrer ?? null}),
-               visitor_language   = COALESCE(visitor_language, ${visitor.language ?? null}),
-               visitor_screen     = COALESCE(visitor_screen, ${visitor.screen ?? null})
+           SET visitor_location      = COALESCE(visitor_location, ${visitor.location ?? null}),
+               visitor_ip            = COALESCE(visitor_ip, ${visitor.ip ?? null}),
+               visitor_user_agent    = COALESCE(visitor_user_agent, ${visitor.userAgent ?? null}),
+               visitor_browser       = COALESCE(visitor_browser, ${visitor.browser ?? null}),
+               visitor_os            = COALESCE(visitor_os, ${visitor.os ?? null}),
+               visitor_device        = COALESCE(visitor_device, ${visitor.device ?? null}),
+               visitor_timezone      = COALESCE(visitor_timezone, ${visitor.timezone ?? null}),
+               visitor_page_url      = COALESCE(visitor_page_url, ${visitor.pageUrl ?? null}),
+               visitor_referrer      = COALESCE(visitor_referrer, ${visitor.referrer ?? null}),
+               visitor_language      = COALESCE(visitor_language, ${visitor.language ?? null}),
+               visitor_screen        = COALESCE(visitor_screen, ${visitor.screen ?? null}),
+               customer_last_seen_at = NOW()
          WHERE id = ${existing.id}
       `.catch(() => {})
+    } else {
+      await touchCustomerPresence(existing.id).catch(() => {})
     }
-    return existing
+    return { session: existing, isNew: false }
   }
 
   const supportCode = await allocateUniqueSupportCode()
@@ -431,7 +434,8 @@ export async function escalateToHuman(
       visitor_page_url,
       visitor_referrer,
       visitor_language,
-      visitor_screen
+      visitor_screen,
+      customer_last_seen_at
     )
     VALUES (
       ${userId},
@@ -448,7 +452,8 @@ export async function escalateToHuman(
       ${visitor?.pageUrl ?? null},
       ${visitor?.referrer ?? null},
       ${visitor?.language ?? null},
-      ${visitor?.screen ?? null}
+      ${visitor?.screen ?? null},
+      NOW()
     )
     RETURNING *
   `
@@ -464,6 +469,21 @@ export async function escalateToHuman(
   `
 
   await invalidateAdminStats().catch(() => {})
+  return { session, isNew: true }
+}
+
+export async function escalateToHuman(
+  userId: string,
+  initialTopic: string | null,
+  aiTranscript: unknown,
+  visitor?: VisitorSessionMetaInput | null,
+): Promise<LiveChatSession> {
+  const { session } = await escalateToHumanWithMeta(
+    userId,
+    initialTopic,
+    aiTranscript,
+    visitor,
+  )
   return session
 }
 
@@ -494,7 +514,8 @@ export async function escalateAsGuest(input: {
       visitor_page_url,
       visitor_referrer,
       visitor_language,
-      visitor_screen
+      visitor_screen,
+      customer_last_seen_at
     )
     VALUES (
       ${input.initialTopic},
@@ -512,7 +533,8 @@ export async function escalateAsGuest(input: {
       ${input.visitor?.pageUrl ?? null},
       ${input.visitor?.referrer ?? null},
       ${input.visitor?.language ?? null},
-      ${input.visitor?.screen ?? null}
+      ${input.visitor?.screen ?? null},
+      NOW()
     )
     RETURNING *
   `
@@ -976,6 +998,30 @@ function mapQueueRow(r: RawQueueRow): QueueItem {
         })
       : null,
   }
+}
+
+export async function getWaitingLiveChats(): Promise<QueueItem[]> {
+  await ensureLiveChatSupportCodeColumn()
+  const waiting = (await sql`
+    SELECT s.*,
+           COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
+           COALESCE(u.last_name,
+                    NULLIF(regexp_replace(s.guest_name, '^\\S+\\s*', ''), ''),
+                    '')                                                                AS user_last_name,
+           u.avatar_url                                                                AS user_avatar_url,
+           COALESCE(u.email, s.guest_email)                                            AS user_email,
+           COALESCE(u.phone, s.guest_phone)                                            AS user_phone,
+           (s.user_id IS NULL)                                                         AS is_guest,
+           (SELECT COUNT(*) FROM live_chat_messages m
+              WHERE m.session_id = s.id AND m.sender_role = 'user' AND m.read_at IS NULL)::int
+             AS unread_user_messages
+      FROM live_chat_sessions s
+      LEFT JOIN users u ON u.id = s.user_id
+     WHERE s.status = 'waiting'
+     ORDER BY s.escalated_at ASC
+     LIMIT 50
+  `) as RawQueueRow[]
+  return waiting.map(mapQueueRow)
 }
 
 export async function getStaffQueue(

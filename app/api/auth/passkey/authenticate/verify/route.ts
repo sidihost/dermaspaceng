@@ -1,11 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { headers } from 'next/headers'
 import { verifyPasskeyAuth } from '@/lib/passkey'
 import { sql } from '@/lib/db'
-import { createSession } from '@/lib/auth'
-import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { checkNewDevice, createSession } from '@/lib/auth'
+import { sendNewDeviceAlert } from '@/lib/email'
+import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { sign } from 'jsonwebtoken'
 import { getSigningSecret } from '@/lib/server-secrets'
+import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 
@@ -96,11 +98,31 @@ export async function POST(request: Request) {
     // Get device info and IP
     const headersList = await headers()
     const userAgent = headersList.get('user-agent') || 'Unknown device'
-    const forwardedFor = headersList.get('x-forwarded-for')
-    const ipAddress = forwardedFor?.split(',')[0] || 'Unknown'
+    const ipAddress = extractClientIpFromHeaders(headersList) || 'Unknown'
+
+    const isNewDevice = await checkNewDevice(user.id, userAgent)
 
     // Create session using the same pattern as regular signin
     const sessionId = await createSession(user.id, userAgent, ipAddress)
+
+    if (isNewDevice && user.email && !isPlaceholderEmail(user.email)) {
+      const alertEmail = user.email
+      const alertFirstName = user.first_name
+      after(async () => {
+        try {
+          const location = await resolveLoginLocation(headersList, ipAddress)
+          await sendNewDeviceAlert({
+            email: alertEmail,
+            firstName: alertFirstName,
+            deviceInfo: userAgent,
+            ipAddress,
+            location,
+          })
+        } catch (alertErr) {
+          console.error('New-device alert failed (passkey):', alertErr)
+        }
+      })
+    }
 
     const onboardingRows = await sql`
       SELECT

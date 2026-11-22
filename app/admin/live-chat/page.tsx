@@ -20,6 +20,7 @@ import useSWR, { mutate as swrMutate } from 'swr'
 import {
   Activity,
   ArrowLeft,
+  ArrowRightLeft,
   ArrowUpRight,
   BarChart3,
   Check,
@@ -40,6 +41,7 @@ import {
   Pencil,
   Phone,
   PhoneOff,
+  Receipt,
   Search,
   Send,
   Shield,
@@ -49,6 +51,7 @@ import {
   Ticket,
   Trash2,
   UserRound,
+  Wallet,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -56,10 +59,18 @@ import { markSurfaceSeen } from '@/components/admin/sidebar'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
 import { useNotify } from '@/components/shared/notify'
+import { type InspectorContextData } from '@/components/staff/live-chat-inspector'
+import { getReceiptHref } from '@/lib/receipt-access'
+import { playLiveChatChime } from '@/lib/live-chat-sound'
 import {
+  filterAgentTimelineMessages,
   formatWaitSeconds,
   getLiveChatStatusMeta,
+  getPresenceStatusMeta,
+  getTicketStatusMeta,
+  mergeIncrementalMessages,
   resolveSupportId,
+  sanitizeNetworkErrorMessage,
 } from '@/lib/support-and-chat'
 import {
   formatChatTimestamp,
@@ -74,6 +85,21 @@ const fetcher = (url: string) =>
     if (!r.ok) throw new Error('Request failed')
     return r.json()
   })
+
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(url, init)
+  } catch (err) {
+    if (err instanceof TypeError) {
+      await new Promise((r) => window.setTimeout(r, 350))
+      return fetch(url, init)
+    }
+    throw err
+  }
+}
 
 type Tab = 'live' | 'history' | 'performance'
 type QueueFilter = 'all' | 'waiting' | 'active'
@@ -141,6 +167,7 @@ interface SessionMessage {
 interface SessionDetailResponse {
   session: SessionRow
   messages: SessionMessage[]
+  currentUserId?: string | null
   customerTyping?: boolean
   customerLastSeenAt?: string | null
   presence?: VisitorPresenceInfo
@@ -263,8 +290,28 @@ export default function AdminLiveChatPage() {
   const openQuery = useSWR<ListResponse>(
     '/api/admin/live-chat/sessions?status=open',
     fetcher,
-    { refreshInterval: 3500 },
+    { refreshInterval: 2000, revalidateOnFocus: true },
   )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const targetSession = params.get('session')?.trim()
+    if (targetSession) {
+      setTab('live')
+      setSelectedLiveId(targetSession)
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshOpen = () => {
+      void openQuery.mutate()
+    }
+    window.addEventListener('live-chat:waiting-changed', refreshOpen)
+    return () => {
+      window.removeEventListener('live-chat:waiting-changed', refreshOpen)
+    }
+  }, [openQuery])
 
   const openSessions = useMemo(() => openQuery.data?.sessions ?? [], [openQuery.data?.sessions])
   const waitingSessions = useMemo(
@@ -303,8 +350,13 @@ export default function AdminLiveChatPage() {
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-white min-w-0">
-      {/* Full-Screen Top Command Bar */}
-      <header className="shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+      {/* Full-Screen Top Command Bar (collapses on mobile when viewing an active conversation for full-viewport clarity) */}
+      <header
+        className={cn(
+          'shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 py-2.5 flex-wrap items-center justify-between gap-2.5',
+          tab === 'live' && selectedLiveId ? 'hidden lg:flex' : 'flex',
+        )}
+      >
         <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
           <Link
             href="/admin"
@@ -858,17 +910,26 @@ function AdminSessionWorkspace({
   const { data, isLoading, mutate } = useSWR<SessionDetailResponse>(
     sessionUrl,
     fetcher,
-    { refreshInterval: 2500 },
+    { refreshInterval: 2500, revalidateOnFocus: true },
   )
 
+  const [liveMessages, setLiveMessages] = useState<SessionMessage[]>([])
+  const [liveCustomerTyping, setLiveCustomerTyping] = useState(false)
+  const [livePresence, setLivePresence] = useState<VisitorPresenceInfo | null>(null)
+  const seenMsgIdsRef = useRef<Set<string>>(new Set())
+  const lastSeenRef = useRef<string | null>(null)
+  const hydratedSessionRef = useRef<string | null>(null)
+
   const [pending, setPending] = useState<SessionMessage[]>([])
-  const [displayName, setDisplayName] = useState<string>('')
+  const [displayName, setDisplayName] = useState<string>('Admin')
   const [editingDisplay, setEditingDisplay] = useState<boolean>(false)
   const [customDisplay, setCustomDisplay] = useState<string>('')
   const [savingAlias, setSavingAlias] = useState(false)
 
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [accepting, setAccepting] = useState(false)
+  const [takingOver, setTakingOver] = useState(false)
   const [closing, setClosing] = useState(false)
   const [endDialogOpen, setEndDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -883,11 +944,21 @@ function AdminSessionWorkspace({
   const forceScrollRef = useRef<boolean>(true)
   const typingSentAtRef = useRef<number>(0)
   const typingIdleTimerRef = useRef<number | null>(null)
+  const sessionStatusRef = useRef<SessionRow['status'] | undefined>(
+    data?.session?.status,
+  )
+  sessionStatusRef.current = data?.session?.status
 
   // Reset per-session UI state when switching sessions
   useEffect(() => {
     setDraft('')
     setPending([])
+    setLiveMessages([])
+    setLiveCustomerTyping(false)
+    setLivePresence(null)
+    seenMsgIdsRef.current = new Set()
+    lastSeenRef.current = null
+    hydratedSessionRef.current = null
     setSendError(null)
     setEndDialogOpen(false)
     setDeleteDialogOpen(false)
@@ -901,7 +972,101 @@ function AdminSessionWorkspace({
     }
   }, [sessionId])
 
-  // Load saved admin front-desk display name
+  // Seed liveMessages when SWR session detail hydrates
+  useEffect(() => {
+    if (!data?.messages) return
+    for (const m of data.messages) {
+      seenMsgIdsRef.current.add(m.id)
+    }
+    setLiveMessages((prev) => mergeIncrementalMessages(prev, data.messages))
+    if (data.messages.length > 0) {
+      lastSeenRef.current = data.messages[data.messages.length - 1].created_at
+    }
+    hydratedSessionRef.current = sessionId
+  }, [data?.messages, sessionId])
+
+  // Fast incremental polling (900ms + focus/visibility) for near-instant reply & status reflection
+  useEffect(() => {
+    if (!sessionId || isOverlay) return
+    let cancelled = false
+    let inFlight = false
+
+    const tick = async () => {
+      if (inFlight) return
+      if (typeof document !== 'undefined' && document.hidden) return
+      inFlight = true
+      try {
+        const since = lastSeenRef.current
+          ? `?since=${encodeURIComponent(lastSeenRef.current)}`
+          : ''
+        const res = await fetch(`${sessionUrl}/messages${since}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+        if (!res.ok || cancelled) return
+        const json = (await res.json()) as {
+          messages?: SessionMessage[]
+          sessionStatus?: SessionRow['status']
+          customerTyping?: boolean
+          presence?: VisitorPresenceInfo
+        }
+        setLiveCustomerTyping(Boolean(json.customerTyping))
+        if (json.presence) setLivePresence(json.presence)
+
+        if (
+          json.sessionStatus &&
+          sessionStatusRef.current &&
+          sessionStatusRef.current !== json.sessionStatus
+        ) {
+          void mutate()
+          void swrMutate('/api/admin/live-chat/sessions?status=open')
+          window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
+        }
+
+        const incoming = json.messages ?? []
+        if (incoming.length === 0) return
+
+        const wasHydrated = hydratedSessionRef.current === sessionId
+        hydratedSessionRef.current = sessionId
+
+        let hasNewCustomerMsg = false
+        for (const m of incoming) {
+          if (!seenMsgIdsRef.current.has(m.id)) {
+            seenMsgIdsRef.current.add(m.id)
+            if (wasHydrated && m.sender_role === 'user') {
+              hasNewCustomerMsg = true
+            }
+          }
+        }
+        if (hasNewCustomerMsg) {
+          playLiveChatChime('reply', 'staff')
+        }
+
+        setLiveMessages((prev) => mergeIncrementalMessages(prev, incoming))
+        lastSeenRef.current = incoming[incoming.length - 1].created_at
+      } catch {
+        // Retry next cycle
+      } finally {
+        inFlight = false
+      }
+    }
+
+    const interval = window.setInterval(() => void tick(), 900)
+    const onWake = () => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      void tick()
+    }
+    window.addEventListener('focus', onWake)
+    document.addEventListener('visibilitychange', onWake)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+      window.removeEventListener('focus', onWake)
+      document.removeEventListener('visibilitychange', onWake)
+    }
+  }, [sessionId, sessionUrl, isOverlay, mutate])
+
+  // Load saved admin front-desk display name (graceful default 'Admin' so replies/accept never block)
   useEffect(() => {
     let activeMount = true
     ;(async () => {
@@ -918,9 +1083,9 @@ function AdminSessionWorkspace({
             return
           }
         }
-        setEditingDisplay(true)
+        setDisplayName('Admin')
       } catch {
-        if (activeMount) setEditingDisplay(true)
+        if (activeMount) setDisplayName('Admin')
       }
     })()
     return () => {
@@ -928,11 +1093,11 @@ function AdminSessionWorkspace({
     }
   }, [])
 
-  // Reconcile optimistic messages against polled server messages
+  // Reconcile optimistic messages against server messages
   useEffect(() => {
-    if (!data?.messages || pending.length === 0) return
+    if (liveMessages.length === 0 || pending.length === 0) return
     const serverBodies = new Set(
-      data.messages
+      liveMessages
         .filter((m) => m.sender_role === 'staff' || m.sender_role === 'admin')
         .map((m) => `${m.body}|${new Date(m.created_at).getTime() >> 10}`),
     )
@@ -944,7 +1109,7 @@ function AdminSessionWorkspace({
         return age < 60_000
       }),
     )
-  }, [data?.messages, pending.length])
+  }, [liveMessages, pending.length])
 
   const handleFeedScroll = useCallback(() => {
     const el = scrollerRef.current
@@ -952,20 +1117,6 @@ function AdminSessionWorkspace({
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
     isNearBottomRef.current = distFromBottom < 120
   }, [])
-
-  // Smart auto-scroll: only scroll when opening a session, when admin sends a message,
-  // or when a new message arrives while already near the bottom — never hijack manual scroll-up.
-  const totalMsgCount = (data?.messages?.length ?? 0) + pending.length
-  useEffect(() => {
-    const el = scrollerRef.current
-    if (!el) return
-    const hasNewMessages = totalMsgCount > prevMsgCountRef.current
-    prevMsgCountRef.current = totalMsgCount
-    if (forceScrollRef.current || (hasNewMessages && isNearBottomRef.current)) {
-      forceScrollRef.current = false
-      el.scrollTop = el.scrollHeight
-    }
-  }, [totalMsgCount])
 
   // Throttled admin typing heartbeat so the customer sees "[Name] is typing..."
   const postAdminTyping = useCallback(
@@ -1012,7 +1163,7 @@ function AdminSessionWorkspace({
     if (!cleaned || savingAlias) return
     setSavingAlias(true)
     try {
-      const res = await fetch('/api/staff/profile', {
+      const res = await fetchWithRetry('/api/staff/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1029,7 +1180,7 @@ function AdminSessionWorkspace({
     } catch (err) {
       notify.error(
         'Could not update alias',
-        err instanceof Error ? err.message : 'Please try again.',
+        sanitizeNetworkErrorMessage(err, 'Could not save display alias. Please try again.'),
       )
     } finally {
       setSavingAlias(false)
@@ -1037,12 +1188,22 @@ function AdminSessionWorkspace({
   }
 
   const session = data?.session ?? null
+  const currentUserId = data?.currentUserId ?? null
+  const isWaiting = session?.status === 'waiting'
+  const isClosed = session?.status === 'closed' || session?.status === 'abandoned'
   const isLiveStatus = session?.status === 'waiting' || session?.status === 'active'
+  const isAssignedToOther =
+    session?.status === 'active' &&
+    Boolean(session.staff_id) &&
+    Boolean(currentUserId) &&
+    session.staff_id !== currentUserId
+
   const supportCode = session ? resolveSupportId(session.support_code, session.id) : ''
   const customerLabel = session ? getSessionCustomerLabel(session) : 'Visitor'
   const customerInitials = session ? getSessionCustomerInitials(session) : '?'
   const isGuest = Boolean(session && (session.is_guest || !session.user_id))
   const presence: VisitorPresenceInfo | null = useMemo(() => {
+    if (livePresence) return livePresence
     if (data?.presence) return data.presence
     if (!session) return null
     return getVisitorPresence({
@@ -1050,21 +1211,127 @@ function AdminSessionWorkspace({
       lastSeenAt: session.customer_last_seen_at,
       lastActivityAt: session.last_message_at || session.last_activity_at,
     })
-  }, [data?.presence, session])
-  const customerTyping = Boolean(data?.customerTyping && isLiveStatus)
+  }, [livePresence, data?.presence, session])
+  const customerTyping = Boolean(
+    (liveCustomerTyping || data?.customerTyping) && isLiveStatus,
+  )
 
   const mergedMessages = useMemo(() => {
-    return [...(data?.messages ?? []), ...pending].sort(
+    const base = mergeIncrementalMessages(data?.messages ?? [], liveMessages)
+    return [...base, ...pending].sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
     )
-  }, [data?.messages, pending])
+  }, [data?.messages, liveMessages, pending])
+
+  const visibleMessages = useMemo(
+    () => filterAgentTimelineMessages(mergedMessages),
+    [mergedMessages],
+  )
+
+  const totalMsgCount = visibleMessages.length
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const hasNewMessages = totalMsgCount > prevMsgCountRef.current
+    prevMsgCountRef.current = totalMsgCount
+    if (forceScrollRef.current || (hasNewMessages && isNearBottomRef.current)) {
+      forceScrollRef.current = false
+      el.scrollTop = el.scrollHeight
+    }
+  }, [totalMsgCount])
+
+  const acceptSessionAction = async () => {
+    if (accepting) return
+    setAccepting(true)
+    setSendError(null)
+    try {
+      const effectiveAlias = (displayName || 'Admin').trim()
+      if (effectiveAlias) {
+        await fetchWithRetry('/api/staff/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ displayName: effectiveAlias }),
+        }).catch(() => {})
+      }
+      const res = await fetchWithRetry(sessionUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'accept' }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not accept this chat.')
+      }
+      await Promise.all([
+        mutate(),
+        swrMutate('/api/admin/live-chat/sessions?status=open'),
+      ])
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
+      notify.success('Chat accepted', `Connected with ${customerLabel}.`)
+      window.setTimeout(() => composerRef.current?.focus(), 60)
+    } catch (err) {
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not accept chat. Check your connection and try again.',
+      )
+      setSendError(msg)
+      notify.error('Could not accept chat', msg)
+    } finally {
+      setAccepting(false)
+    }
+  }
+
+  const takeoverSessionAction = async () => {
+    if (takingOver) return
+    setTakingOver(true)
+    setSendError(null)
+    try {
+      const effectiveAlias = (displayName || 'Admin').trim()
+      if (effectiveAlias) {
+        await fetchWithRetry('/api/staff/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ displayName: effectiveAlias }),
+        }).catch(() => {})
+      }
+      const res = await fetchWithRetry(sessionUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'takeover' }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not take over this chat.')
+      }
+      await Promise.all([
+        mutate(),
+        swrMutate('/api/admin/live-chat/sessions?status=open'),
+      ])
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
+      notify.success('Chat assigned to you', `${customerLabel} has been notified.`)
+      window.setTimeout(() => composerRef.current?.focus(), 60)
+    } catch (err) {
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not take over chat. Check your connection and try again.',
+      )
+      setSendError(msg)
+      notify.error('Takeover failed', msg)
+    } finally {
+      setTakingOver(false)
+    }
+  }
 
   const endSession = async () => {
     if (closing) return
     setClosing(true)
     setSendError(null)
     try {
-      const res = await fetch(sessionUrl, {
+      const res = await fetchWithRetry(sessionUrl, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -1079,10 +1346,14 @@ function AdminSessionWorkspace({
         mutate(),
         swrMutate((key) => typeof key === 'string' && key.startsWith('/api/admin/live-chat/')),
       ])
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
       setEndDialogOpen(false)
       notify.info('Live chat ended', `${supportCode} was closed and moved to history.`)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to end session.'
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not end session. Check your connection and try again.',
+      )
       setSendError(msg)
       notify.error('Could not end chat', msg)
     } finally {
@@ -1095,7 +1366,7 @@ function AdminSessionWorkspace({
     setDeleting(true)
     setSendError(null)
     try {
-      const res = await fetch(sessionUrl, {
+      const res = await fetchWithRetry(sessionUrl, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -1105,6 +1376,7 @@ function AdminSessionWorkspace({
       }
       await mutate(undefined, { revalidate: false })
       setDeleteDialogOpen(false)
+      window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
       notify.success(
         'Live chat deleted',
         `${customerLabel} (${supportCode}) was permanently removed.`,
@@ -1117,7 +1389,10 @@ function AdminSessionWorkspace({
           key !== sessionUrl,
       )
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to delete session.'
+      const msg = sanitizeNetworkErrorMessage(
+        err,
+        'Could not delete chat. Check your connection and try again.',
+      )
       setSendError(msg)
       notify.error('Could not delete chat', msg)
     } finally {
@@ -1128,11 +1403,7 @@ function AdminSessionWorkspace({
   const sendMessage = async () => {
     const text = draft.trim()
     if (!text || sending) return
-    if (!displayName) {
-      setEditingDisplay(true)
-      setSendError('Choose or enter your front-desk display name before replying.')
-      return
-    }
+    const effectiveAlias = (displayName || 'Admin').trim()
     setSending(true)
     setSendError(null)
     notifyAdminTyping(false)
@@ -1140,7 +1411,7 @@ function AdminSessionWorkspace({
     const optimistic: SessionMessage = {
       id: `optimistic-${Date.now()}`,
       sender_role: 'admin',
-      sender_first_name: displayName,
+      sender_first_name: effectiveAlias,
       sender_last_name: null,
       body: text,
       created_at: new Date().toISOString(),
@@ -1152,15 +1423,23 @@ function AdminSessionWorkspace({
     setDraft('')
 
     try {
-      const res = await fetch(`${sessionUrl}/messages`, {
+      const res = await fetchWithRetry(`${sessionUrl}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ body: text, displayName }),
+        body: JSON.stringify({ body: text, displayName: effectiveAlias }),
       })
       if (!res.ok) {
         const json = await res.json().catch(() => ({}))
         throw new Error(json.error || 'Could not send message.')
+      }
+      const json = (await res.json().catch(() => null)) as {
+        message?: SessionMessage
+      } | null
+      if (json?.message) {
+        seenMsgIdsRef.current.add(json.message.id)
+        setLiveMessages((prev) => mergeIncrementalMessages(prev, [json.message!]))
+        lastSeenRef.current = json.message.created_at
       }
       await Promise.all([
         mutate(),
@@ -1169,7 +1448,12 @@ function AdminSessionWorkspace({
     } catch (err) {
       setPending((prev) => prev.filter((p) => p.id !== optimistic.id))
       setDraft(text)
-      setSendError(err instanceof Error ? err.message : 'Send failed.')
+      setSendError(
+        sanitizeNetworkErrorMessage(
+          err,
+          'Could not send reply. Check your connection and try again.',
+        ),
+      )
     } finally {
       setSending(false)
       requestAnimationFrame(() => composerRef.current?.focus())
@@ -1422,6 +1706,20 @@ function AdminSessionWorkspace({
           </div>
         </header>
 
+        {/* Handover Banner when active with another rep */}
+        {!isOverlay && isAssignedToOther && repName && (
+          <div className="px-4 py-2 bg-[#FAF6FB] border-b border-[#7B2D8E]/15 flex items-center gap-2 shrink-0">
+            <RepAvatar
+              src={session.staff_avatar_url}
+              name={repName}
+              size={22}
+            />
+            <p className="text-[12px] text-[#7B2D8E] truncate">
+              Currently handled by <strong className="font-semibold">{repName}</strong> — reviewing conversation history.
+            </p>
+          </div>
+        )}
+
         {/* Initial Topic Strip */}
         {session.initial_topic && (
           <div className="px-4 py-2 bg-white border-b border-gray-100 text-[12px] text-gray-600 flex items-center gap-2 shrink-0">
@@ -1439,10 +1737,10 @@ function AdminSessionWorkspace({
           className="flex-1 overflow-y-auto px-3.5 sm:px-5 py-4 min-h-0"
         >
           <div className="max-w-2xl mx-auto space-y-1">
-            {mergedMessages.map((m, idx) => {
-              const prev = idx > 0 ? mergedMessages[idx - 1] : null
+            {visibleMessages.map((m, idx) => {
+              const prev = idx > 0 ? visibleMessages[idx - 1] : null
               const next =
-                idx < mergedMessages.length - 1 ? mergedMessages[idx + 1] : null
+                idx < visibleMessages.length - 1 ? visibleMessages[idx + 1] : null
               const sameAsPrev = Boolean(
                 prev &&
                   prev.sender_role !== 'system' &&
@@ -1485,9 +1783,18 @@ function AdminSessionWorkspace({
               )
             })}
 
-            {mergedMessages.length === 0 && (
+            {visibleMessages.length === 0 && !isWaiting && (
               <div className="text-center text-xs text-gray-400 py-10">
                 No messages in this session yet.
+              </div>
+            )}
+
+            {!isOverlay && isWaiting && (
+              <div className="flex justify-center pt-5">
+                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-4 py-2 rounded-full">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
+                  Visitor is waiting — accept below to join the chat.
+                </div>
               </div>
             )}
 
@@ -1513,9 +1820,62 @@ function AdminSessionWorkspace({
           </div>
         </div>
 
-        {/* Composer + Inline Alias Selector (Live sessions only) */}
-        {isLiveStatus ? (
-          <footer className="shrink-0 bg-white border-t border-gray-200 px-3.5 sm:px-5 py-3">
+        {/* Footer Action Bar / Composer */}
+        {!isOverlay && isWaiting ? (
+          <footer className="shrink-0 bg-white border-t border-gray-200 px-3.5 sm:px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
+            <div className="max-w-2xl mx-auto space-y-2.5">
+              {sendError && (
+                <p className="text-[11.5px] text-[#C63D3D] bg-[#FDF2F2] border border-[#C63D3D]/25 rounded-xl px-3 py-2">
+                  {sendError}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => void acceptSessionAction()}
+                disabled={accepting}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {accepting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Accept &amp; join as {displayName || 'Admin'}
+              </button>
+            </div>
+          </footer>
+        ) : !isOverlay && isAssignedToOther ? (
+          <footer className="shrink-0 bg-white border-t border-gray-200 px-3.5 sm:px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
+            <div className="max-w-2xl mx-auto space-y-2">
+              {sendError && (
+                <p className="text-[11.5px] text-[#C63D3D] bg-[#FDF2F2] border border-[#C63D3D]/25 rounded-xl px-3 py-2">
+                  {sendError}
+                </p>
+              )}
+              <p className="text-[11.5px] text-gray-500 text-center">
+                Taking over reassigns{' '}
+                <span className="font-mono font-semibold text-[#7B2D8E]">
+                  {supportCode}
+                </span>{' '}
+                to you and notifies the visitor smoothly.
+              </p>
+              <button
+                type="button"
+                onClick={() => void takeoverSessionAction()}
+                disabled={takingOver}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+              >
+                {takingOver ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ArrowRightLeft className="w-4 h-4" />
+                )}
+                Take over chat as {displayName || 'Admin'}
+              </button>
+            </div>
+          </footer>
+        ) : isLiveStatus && !isOverlay ? (
+          <footer className="shrink-0 bg-white border-t border-gray-200 px-3.5 sm:px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
             <div className="max-w-2xl mx-auto space-y-2.5">
               {/* Compact Alias Bar */}
               {editingDisplay ? (
@@ -1635,7 +1995,7 @@ function AdminSessionWorkspace({
               )}
 
               {sendError && (
-                <p className="text-[11.5px] text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/25 rounded-xl px-3 py-2">
+                <p className="text-[11.5px] text-[#C63D3D] bg-[#FDF2F2] border border-[#C63D3D]/25 rounded-xl px-3 py-2">
                   {sendError}
                 </p>
               )}
@@ -1678,7 +2038,7 @@ function AdminSessionWorkspace({
             </div>
           </footer>
         ) : (
-          <footer className="shrink-0 bg-white border-t border-gray-200 px-4 py-3">
+          <footer className="shrink-0 bg-white border-t border-gray-200 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-3">
             <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-2 text-[12px] text-gray-600">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#7B2D8E] shrink-0" />
@@ -1698,14 +2058,31 @@ function AdminSessionWorkspace({
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={downloadTranscript}
-                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] px-3 py-1.5 text-[11.5px] font-semibold text-gray-700 hover:text-[#7B2D8E] transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                Download transcript
-              </button>
+              <div className="flex items-center gap-2">
+                {!isOverlay && isClosed && (
+                  <button
+                    type="button"
+                    onClick={() => void takeoverSessionAction()}
+                    disabled={takingOver}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[#7B2D8E] hover:text-white px-3.5 py-1.5 text-[11.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                  >
+                    {takingOver ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ArrowRightLeft className="w-3.5 h-3.5" />
+                    )}
+                    Reopen &amp; take over
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={downloadTranscript}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] px-3 py-1.5 text-[11.5px] font-semibold text-gray-700 hover:text-[#7B2D8E] transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  Download transcript
+                </button>
+              </div>
             </div>
           </footer>
         )}
@@ -1804,6 +2181,10 @@ function AdminProfileDetailsPanel({
 }) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const isGuest = Boolean(session.is_guest || !session.user_id)
+  const contextQuery = useSWR<InspectorContextData>(
+    !isGuest ? `/api/staff/live-chat/sessions/${session.id}/user-context` : null,
+    fetcher,
+  )
   const customerName = getSessionCustomerLabel(session)
   const initials = getSessionCustomerInitials(session)
   const supportCode = resolveSupportId(session.support_code, session.id)
@@ -1873,7 +2254,7 @@ function AdminProfileDetailsPanel({
 
       {/* Scrollable Body */}
       <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
-        {/* Identity + Real-Time Online / Offline Status */}
+        {/* Identity + Real-Time Online / Away Status */}
         <section className="p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
@@ -1913,39 +2294,31 @@ function AdminProfileDetailsPanel({
             </div>
           </div>
 
-          {/* Real-time Online / Away / Offline Banner */}
-          {presence && (
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'w-2 h-2 rounded-full shrink-0',
-                    presence.state === 'online'
-                      ? 'bg-[#7B2D8E]'
-                      : presence.state === 'away'
-                        ? 'bg-[#7B2D8E]/45'
-                        : 'bg-gray-300',
-                  )}
-                />
-                <span
-                  className={cn(
-                    'text-[12px] font-semibold truncate',
-                    presence.state === 'online'
-                      ? 'text-[#7B2D8E]'
-                      : presence.state === 'away'
-                        ? 'text-[#7B2D8E]'
-                        : 'text-gray-500',
-                  )}
-                >
-                  {presence.label}
+          {/* Coherent Presence Status Banner (never duplicated "Offline ... Offline") */}
+          {presence && (() => {
+            const meta = getPresenceStatusMeta(presence, session.status)
+            return (
+              <div
+                className={cn(
+                  'flex items-center justify-between gap-2 rounded-xl border px-3 py-2',
+                  meta.containerClass,
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    aria-hidden="true"
+                    className={cn('w-2 h-2 rounded-full shrink-0', meta.dotClass)}
+                  />
+                  <span className={cn('text-[12px] font-semibold truncate', meta.textClass)}>
+                    {meta.leftLabel}
+                  </span>
+                </div>
+                <span className="text-[10.5px] text-gray-500 shrink-0">
+                  {meta.rightLabel}
                 </span>
               </div>
-              <span className="text-[10.5px] text-gray-400 shrink-0">
-                {presence.isOnline ? 'Online' : 'Offline'}
-              </span>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Contact & Support ID */}
           <div className="space-y-2 pt-0.5">
@@ -2130,6 +2503,196 @@ function AdminProfileDetailsPanel({
             </span>
             <span className="text-[10.5px] text-gray-400">.txt</span>
           </button>
+        </section>
+
+        {/* Account History (Member Wallet, Bookings, Transactions, Tickets) */}
+        <section className="p-4 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-[11px] font-semibold text-gray-900 tracking-wide">
+              Account History
+            </h4>
+            {!isGuest && contextQuery.data?.wallet?.formatted && (
+              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
+                <Wallet className="w-3.5 h-3.5" />
+                {contextQuery.data.wallet.formatted}
+              </span>
+            )}
+          </div>
+
+          {!isGuest && contextQuery.isLoading && !contextQuery.data ? (
+            <div className="py-4 text-center text-[12px] text-gray-400">
+              <Loader2 className="w-4 h-4 mx-auto animate-spin text-[#7B2D8E] mb-1.5" />
+              Loading account records…
+            </div>
+          ) : isGuest ? (
+            <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3.5 py-3 text-[12px] text-gray-600 leading-relaxed flex items-start gap-2.5">
+              <UserRound className="w-4 h-4 text-[#7B2D8E] shrink-0 mt-0.5" />
+              <p>
+                This visitor is chatting anonymously via the pre-chat form. Use
+                location, browser, and contact details above to assist or follow up.
+              </p>
+            </div>
+          ) : contextQuery.data ? (
+            <>
+              {/* Bookings */}
+              <div>
+                <p className="text-[11px] font-medium text-gray-500 mb-1.5">
+                  Recent bookings ({contextQuery.data.bookings.length})
+                </p>
+                {contextQuery.data.bookings.length === 0 ? (
+                  <p className="text-[11.5px] text-gray-400 py-1">
+                    No bookings on file.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {contextQuery.data.bookings.map((b) => (
+                      <div
+                        key={b.id}
+                        className="py-2 flex items-center justify-between gap-2 text-[11.5px]"
+                      >
+                        <div className="min-w-0">
+                          <Link
+                            href={`/booking/${encodeURIComponent(b.booking_reference)}`}
+                            className="font-medium text-[#7B2D8E] hover:underline truncate block"
+                          >
+                            {b.booking_reference}
+                          </Link>
+                          <p className="text-[10.5px] text-gray-400 truncate">
+                            {b.location_name} ·{' '}
+                            {new Date(b.appointment_date).toLocaleDateString('en-NG', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 block">
+                            {b.status}
+                          </span>
+                          <Link
+                            href={`/booking/${encodeURIComponent(b.booking_reference)}`}
+                            className="text-[10.5px] font-medium text-[#7B2D8E] hover:underline"
+                          >
+                            Receipt
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Transactions */}
+              <div>
+                <p className="text-[11px] font-medium text-gray-500 mb-1.5">
+                  Recent transactions ({contextQuery.data.transactions.length})
+                </p>
+                {contextQuery.data.transactions.length === 0 ? (
+                  <p className="text-[11.5px] text-gray-400 py-1">
+                    No transactions on file.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {contextQuery.data.transactions.slice(0, 5).map((tx) => {
+                      const receiptHref = getReceiptHref({
+                        reference: tx.reference,
+                        bookingReference: tx.metadata?.booking_reference,
+                        metadataType: tx.metadata?.type,
+                      })
+                      const failed =
+                        tx.status === 'failed' ||
+                        tx.status === 'declined' ||
+                        tx.status === 'cancelled'
+                      return (
+                        <div
+                          key={tx.id}
+                          className="py-2 flex items-center justify-between gap-2 text-[11.5px]"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-800 truncate">
+                              {tx.description || tx.type}
+                            </p>
+                            <div className="flex items-center gap-2 text-[10.5px] text-gray-400">
+                              <span>
+                                {tx.payment_method || tx.type} ·{' '}
+                                {new Date(tx.created_at).toLocaleDateString('en-NG', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                })}
+                              </span>
+                              {receiptHref && (
+                                <Link
+                                  href={receiptHref}
+                                  className="inline-flex items-center gap-0.5 font-medium text-[#7B2D8E] hover:underline"
+                                >
+                                  <Receipt className="w-2.5 h-2.5" />
+                                  Receipt
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 tabular-nums">
+                            <p
+                              className={cn(
+                                'font-semibold',
+                                failed ? 'text-[#C63D3D]' : 'text-gray-900',
+                              )}
+                            >
+                              ₦{Math.round(Number(tx.amount)).toLocaleString()}
+                            </p>
+                            <p
+                              className={cn(
+                                'text-[10px] font-medium capitalize',
+                                failed
+                                  ? 'text-[#C63D3D]'
+                                  : tx.status === 'success' || tx.status === 'completed'
+                                    ? 'text-[#7B2D8E]'
+                                    : 'text-gray-500',
+                              )}
+                            >
+                              {tx.status}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Support tickets */}
+              {contextQuery.data.tickets.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-medium text-gray-500 mb-1.5">
+                    Support tickets ({contextQuery.data.tickets.length})
+                  </p>
+                  <div className="divide-y divide-gray-100">
+                    {contextQuery.data.tickets.map((t) => {
+                      const sMeta = getTicketStatusMeta(t.status)
+                      return (
+                        <div
+                          key={t.ticket_id}
+                          className="py-2 flex items-center justify-between gap-2 text-[11.5px]"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-800 truncate">
+                              {t.subject}
+                            </p>
+                            <p className="text-[10.5px] text-gray-400">
+                              {t.category} · {t.ticket_id}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[10.5px] font-medium text-[#5A1D6A]">
+                            {sMeta.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
         </section>
       </div>
     </aside>

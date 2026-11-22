@@ -486,11 +486,16 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
   useEffect(() => {
     if (typeof window === 'undefined') return
     const handler = () => setSeenTick((t) => t + 1)
+    const onLiveChatWaitingChanged = () => {
+      void globalMutate('/api/admin/stats')
+    }
     window.addEventListener('admin:badge-seen', handler)
     window.addEventListener('storage', handler)
+    window.addEventListener('live-chat:waiting-changed', onLiveChatWaitingChanged)
     return () => {
       window.removeEventListener('admin:badge-seen', handler)
       window.removeEventListener('storage', handler)
+      window.removeEventListener('live-chat:waiting-changed', onLiveChatWaitingChanged)
     }
   }, [])
   void seenTick
@@ -501,7 +506,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
     if (href === '/admin/consultations')
       return Math.max(0, pendingConsultations - readBaseline('consultations'))
     if (href === '/admin/live-chat')
-      return Math.max(0, waitingLiveChats - readBaseline('live-chat'))
+      return Math.max(0, waitingLiveChats)
     if (href === '/admin/users')
       return Math.max(0, newUsersToday - readBaseline('users'))
     if (href === '/admin/bookings')

@@ -627,5 +627,152 @@ export function formatThreadMessagesForAiApi(messages: ChatTurnForAi[]): Array<{
     })
 }
 
+// ---------------------------------------------------------------------------
+// Agent Console Helpers: Waiting Notice Filtering, Fast Incremental Merge,
+// Presence Status Banner Coherence, and Network Error Copy
+// ---------------------------------------------------------------------------
+
+const CUSTOMER_WAITING_NOTICE_RE = /will be with you shortly/i
+
+/**
+ * Returns true if a system message is the customer-facing waiting notice
+ * ("One of our customer care reps will be with you shortly. Stay tuned!").
+ * Customer transcripts hide or replace this automatically; Staff & Admin
+ * consoles must NEVER display it because agents need an agent-centric
+ * waiting prompt + "Accept & join" CTA instead.
+ */
+export function isCustomerWaitingNotice(
+  msg: { sender_role?: string | null; body?: string | null } | null | undefined,
+): boolean {
+  if (!msg) return false
+  if (msg.sender_role !== 'system') return false
+  return CUSTOMER_WAITING_NOTICE_RE.test(msg.body ?? '')
+}
+
+export function filterAgentTimelineMessages<
+  T extends { sender_role?: string | null; body?: string | null },
+>(messages: T[]): T[] {
+  return messages.filter((m) => !isCustomerWaitingNotice(m))
+}
+
+/**
+ * Merges an existing ordered message list with newly polled messages from
+ * incremental `?since=` fetches without creating duplicates or unstable ordering.
+ */
+export function mergeIncrementalMessages<
+  T extends { id: string; created_at: string },
+>(existing: T[], incoming: T[]): T[] {
+  if (incoming.length === 0) return existing
+  const byId = new Map<string, T>()
+  for (const m of existing) {
+    byId.set(m.id, m)
+  }
+  for (const m of incoming) {
+    byId.set(m.id, m)
+  }
+  return Array.from(byId.values()).sort((a, b) => {
+    const ta = new Date(a.created_at).getTime()
+    const tb = new Date(b.created_at).getTime()
+    if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) {
+      return ta - tb
+    }
+    return a.id.localeCompare(b.id)
+  })
+}
+
+export interface CoherentPresenceBanner {
+  leftLabel: string
+  rightLabel: string
+  dotClass: string
+  containerClass: string
+  textClass: string
+}
+
+/**
+ * Produces coherent, non-contradictory status banner copy for Profile Details
+ * across Staff & Admin consoles. Never emits duplicated labels like
+ * "Offline ... Offline" or conflicting "Away ... Offline".
+ */
+export function getPresenceStatusMeta(
+  presence: {
+    state: 'online' | 'away' | 'offline'
+    label: string
+  },
+  sessionStatus?: string | null,
+): CoherentPresenceBanner {
+  const cleanStatus = (sessionStatus ?? '').trim().toLowerCase()
+
+  if (cleanStatus === 'closed' || cleanStatus === 'abandoned') {
+    return {
+      leftLabel: cleanStatus === 'abandoned' ? 'Visitor left' : 'Conversation closed',
+      rightLabel: 'Ended',
+      dotClass: 'bg-gray-400',
+      containerClass: 'border-gray-200 bg-gray-50',
+      textClass: 'text-gray-600',
+    }
+  }
+
+  if (presence.state === 'online') {
+    return {
+      leftLabel: presence.label || 'Online now',
+      rightLabel: cleanStatus === 'waiting' ? 'Waiting on site' : 'Active on site',
+      dotClass: 'bg-[#7B2D8E] animate-pulse',
+      containerClass: 'border-[#7B2D8E]/25 bg-[#FAF6FB]',
+      textClass: 'text-[#7B2D8E]',
+    }
+  }
+
+  if (presence.state === 'away') {
+    return {
+      leftLabel: 'Tab inactive',
+      rightLabel: 'Idle',
+      dotClass: 'bg-[#A966BC]',
+      containerClass: 'border-[#7B2D8E]/20 bg-[#FAF6FB]',
+      textClass: 'text-[#7B2D8E]',
+    }
+  }
+
+  // Offline while session is still waiting/active
+  const left =
+    presence.label && presence.label.toLowerCase() !== 'offline'
+      ? presence.label
+      : 'Not active on page'
+  return {
+    leftLabel: left,
+    rightLabel: 'Away from chat',
+    dotClass: 'bg-gray-400',
+    containerClass: 'border-gray-200 bg-gray-50',
+    textClass: 'text-gray-600',
+  }
+}
+
+/**
+ * Replaces raw browser network errors ("Failed to fetch", "Load failed", etc.)
+ * with clear actionable copy for Admin & Staff agents.
+ */
+export function sanitizeNetworkErrorMessage(
+  err: unknown,
+  fallback = 'Could not send message. Check your connection and try again.',
+): string {
+  const raw =
+    err instanceof Error
+      ? err.message
+      : typeof err === 'string'
+        ? err
+        : ''
+  const trimmed = raw.trim()
+  if (!trimmed) return fallback
+  if (
+    /^(failed to fetch|load failed|network\s?error|fetch failed|the internet connection appears to be offline)/i.test(
+      trimmed,
+    ) ||
+    /abort|timeout/i.test(trimmed)
+  ) {
+    return fallback
+  }
+  return trimmed
+}
+
+
 
 

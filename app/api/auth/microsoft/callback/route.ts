@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { query } from '@/lib/db'
-import { createSession } from '@/lib/auth'
-import { sendWelcomeEmail } from '@/lib/email'
+import { checkNewDevice, createSession } from '@/lib/auth'
+import { sendNewDeviceAlert, sendWelcomeEmail } from '@/lib/email'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
-import { shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
 
     // Check if user exists by microsoft_id or email
     const existingUserResult = await query(
-      `SELECT id, email, microsoft_id, profile_complete, role, is_active
+      `SELECT id, email, first_name, microsoft_id, profile_complete, role, is_active
        FROM users
        WHERE microsoft_id = $1 OR email = $2
        LIMIT 1`,
@@ -146,11 +147,13 @@ export async function GET(request: NextRequest) {
     let profileComplete: boolean = false
     let userRole: string = 'user'
     let userEmail: string = email
+    let userFirstName: string = msUser.givenName || msUser.displayName?.split(' ')[0] || 'there'
 
     if (existingUserResult.rows.length > 0) {
       const existingUser = existingUserResult.rows[0] as {
         id: string
         email: string
+        first_name: string | null
         microsoft_id: string | null
         profile_complete: boolean | null
         role: string
@@ -167,6 +170,7 @@ export async function GET(request: NextRequest) {
       profileComplete = Boolean(existingUser.profile_complete)
       userRole = existingUser.role || 'user'
       userEmail = existingUser.email || email
+      userFirstName = existingUser.first_name || userFirstName
 
       // First time this account is signing in with Microsoft — link the
       // microsoft_id and refresh the avatar if we got one. Mirrors the
@@ -220,12 +224,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const userAgent = request.headers.get('user-agent') || 'Unknown device'
+    const ipAddress = extractClientIpFromHeaders(request.headers) || 'Unknown'
+    const isNewDevice = await checkNewDevice(userId, userAgent)
+
     // Create session
     const sessionToken = await createSession(
       userId,
-      request.headers.get('user-agent') || '',
-      request.headers.get('x-forwarded-for') || ''
+      userAgent,
+      ipAddress
     )
+
+    if (isNewDevice && userEmail && !isPlaceholderEmail(userEmail)) {
+      const alertEmail = userEmail
+      const alertFirstName = userFirstName
+      const reqHeaders = request.headers
+      after(async () => {
+        try {
+          const location = await resolveLoginLocation(reqHeaders, ipAddress)
+          await sendNewDeviceAlert({
+            email: alertEmail,
+            firstName: alertFirstName,
+            deviceInfo: userAgent,
+            ipAddress,
+            location,
+          })
+        } catch (alertErr) {
+          console.error('New-device alert failed (microsoft):', alertErr)
+        }
+      })
+    }
 
     // Session cookie is set below on `redirectResponse` with getAuthCookieOptions()
 

@@ -33,7 +33,9 @@ import {
 import { cn } from '@/lib/utils'
 import {
   buildLiveChatTranscriptDownloadText,
+  mergeIncrementalMessages,
   resolveSupportId,
+  sanitizeNetworkErrorMessage,
 } from '@/lib/support-and-chat'
 import { formatChatTimestamp } from '@/lib/visitor-telemetry'
 import {
@@ -314,12 +316,7 @@ export function useInlineLiveChat({
       if (full.length > 0) {
         for (const m of full) seenMessageIdsRef.current.add(m.id)
         setMessages((prev) => {
-          const map = new Map<string, InlineLiveMessage>()
-          for (const m of prev) map.set(m.id, m)
-          for (const m of full) map.set(m.id, m)
-          const merged = Array.from(map.values()).sort((a, b) =>
-            a.created_at.localeCompare(b.created_at),
-          )
+          const merged = mergeIncrementalMessages(prev, full)
           messagesRef.current = merged
           return merged
         })
@@ -472,11 +469,15 @@ export function useInlineLiveChat({
     }
   }, [sessionId])
 
-  // Poll messages while live session is open & panel is visible
+  // Poll messages + session status + assigned rep while live session is open (800ms + focus/visibility)
   useEffect(() => {
     if (!enabled || !sessionId || !isLiveMode || !isOpen) return
     let cancelled = false
+    let inFlight = false
     const pollMessages = async () => {
+      if (inFlight) return
+      if (typeof document !== 'undefined' && document.hidden) return
+      inFlight = true
       try {
         const since = lastFetchedRef.current
           ? `?since=${encodeURIComponent(lastFetchedRef.current)}`
@@ -485,17 +486,54 @@ export function useInlineLiveChat({
           `/api/live-chat/sessions/${sessionId}/messages${since}`,
           { credentials: 'include', cache: 'no-store' },
         )
-        if (!res.ok) return
+        if (!res.ok || cancelled) return
         const json = (await res.json()) as {
           messages?: InlineLiveMessage[]
           staffTyping?: boolean
           staffTypingName?: string | null
+          sessionStatus?: InlineLiveStatus
+          acceptedAt?: string | null
+          closedAt?: string | null
+          closedBy?: string | null
+          staff?: InlineLiveStaff | null
         }
         const incoming = json.messages ?? []
         if (cancelled) return
 
         setStaffTyping(Boolean(json.staffTyping))
         setStaffTypingName(json.staffTypingName ?? null)
+
+        // Immediately propagate status / staff join / handover / close transitions
+        // instead of waiting for the slower /api/live-chat/active poll.
+        const currentPayload = activeRef.current
+        if (currentPayload?.session && currentPayload.session.id === sessionId) {
+          const nextStatus = json.sessionStatus ?? currentPayload.session.status
+          const nextStaff =
+            json.staff !== undefined ? json.staff : currentPayload.staff
+          const staffChanged =
+            (currentPayload.staff?.id || '') !== (nextStaff?.id || '') ||
+            (currentPayload.staff?.displayName || '') !==
+              (nextStaff?.displayName || '')
+          const statusChanged = currentPayload.session.status !== nextStatus
+
+          if (statusChanged || staffChanged) {
+            const updatedPayload: InlineLivePayload = {
+              ...currentPayload,
+              session: {
+                ...currentPayload.session,
+                status: nextStatus,
+                acceptedAt: json.acceptedAt ?? currentPayload.session.acceptedAt,
+                closedAt: json.closedAt ?? currentPayload.session.closedAt,
+              },
+              staff: nextStaff,
+            }
+            activeRef.current = updatedPayload
+            setActive(updatedPayload)
+            if (nextStatus === 'closed' || nextStatus === 'abandoned') {
+              void fetchActive()
+            }
+          }
+        }
 
         const wasHydrated = hydratedSessionRef.current === sessionId
         hydratedSessionRef.current = sessionId
@@ -517,12 +555,7 @@ export function useInlineLiveChat({
         }
 
         setMessages((prev) => {
-          const seen = new Set(prev.map((m) => m.id))
-          const merged = [...prev]
-          for (const m of incoming) {
-            if (!seen.has(m.id)) merged.push(m)
-          }
-          merged.sort((a, b) => a.created_at.localeCompare(b.created_at))
+          const merged = mergeIncrementalMessages(prev, incoming)
           messagesRef.current = merged
           return merged
         })
@@ -530,15 +563,26 @@ export function useInlineLiveChat({
         onSessionChange?.()
       } catch {
         /* transient */
+      } finally {
+        inFlight = false
       }
     }
-    pollMessages()
-    const id = window.setInterval(pollMessages, 1800)
+    void pollMessages()
+    const id = window.setInterval(() => void pollMessages(), 800)
+    const onWake = () => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      void pollMessages()
+      void fetchActive()
+    }
+    window.addEventListener('focus', onWake)
+    document.addEventListener('visibilitychange', onWake)
     return () => {
       cancelled = true
       window.clearInterval(id)
+      window.removeEventListener('focus', onWake)
+      document.removeEventListener('visibilitychange', onWake)
     }
-  }, [enabled, sessionId, isLiveMode, isOpen, onSessionChange])
+  }, [enabled, sessionId, isLiveMode, isOpen, onSessionChange, fetchActive])
 
   // Throttled customer typing heartbeat -> staff & admin see "Visitor is typing…"
   const notifyCustomerTyping = useCallback(
@@ -792,13 +836,25 @@ export function useInlineLiveChat({
       unlockLiveChatAudio()
       setSending(true)
       setError(null)
-      try {
-        const res = await fetch(`/api/live-chat/sessions/${sessionId}/messages`, {
+      const attemptPost = () =>
+        fetch(`/api/live-chat/sessions/${sessionId}/messages`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ body }),
         })
+      try {
+        let res: Response
+        try {
+          res = await attemptPost()
+        } catch (firstErr) {
+          if (firstErr instanceof TypeError) {
+            await new Promise((r) => window.setTimeout(r, 350))
+            res = await attemptPost()
+          } else {
+            throw firstErr
+          }
+        }
         if (!res.ok) {
           const json = (await res.json().catch(() => ({}))) as {
             error?: string
@@ -813,17 +869,20 @@ export function useInlineLiveChat({
         }
         seenMessageIdsRef.current.add(message.id)
         setMessages((prev) => {
-          const next = prev.some((m) => m.id === message.id)
-            ? prev
-            : [...prev, message]
+          const next = mergeIncrementalMessages(prev, [message])
           messagesRef.current = next
           return next
         })
         lastFetchedRef.current = message.created_at
         onSessionChange?.()
         return true
-      } catch {
-        setError('Connection hiccup — please try sending again.')
+      } catch (err) {
+        setError(
+          sanitizeNetworkErrorMessage(
+            err,
+            'Connection hiccup — please try sending again.',
+          ),
+        )
         return false
       } finally {
         setSending(false)
