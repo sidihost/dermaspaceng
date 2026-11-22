@@ -96,29 +96,8 @@ async function handleSessionAction(req: Request, { params }: Params) {
 
     let messages: Awaited<ReturnType<typeof import('@/lib/live-chat').getMessages>> | undefined
     if (wasOpen) {
-      const { addMessage, getMessages, staffDisplayName } = await import('@/lib/live-chat')
-      const { sql } = await import('@/lib/db')
-      if (session.assigned_staff_id) {
-        const profileRows = await sql`
-          SELECT u.first_name, u.last_name, sp.display_name
-            FROM users u
-            LEFT JOIN staff_profiles sp ON sp.user_id = u.id
-           WHERE u.id = ${session.assigned_staff_id}
-           LIMIT 1
-        `
-        const r = profileRows[0] as
-          | { first_name: string | null; last_name: string | null; display_name: string | null }
-          | undefined
-        if (r) {
-          const dn = staffDisplayName({
-            display_name: r.display_name,
-            first_name: r.first_name,
-            last_name: r.last_name,
-          })
-          await addMessage(session.id, 'system', null, `${dn} left the chat`)
-        }
-      }
-      await addMessage(session.id, 'system', null, 'Chat ended')
+      const { addMessage, getMessages } = await import('@/lib/live-chat')
+      await addMessage(session.id, 'system', null, 'Customer ended the chat')
       messages = await getMessages(session.id)
     }
 

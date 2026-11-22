@@ -1,6 +1,6 @@
 // Pure helpers for Support Tickets status & Live Chat presentation.
-// Strictly uses Dermaspace's brand palette (#7B2D8E, #5A1D6A, #3E104B,
-// #FAF6FB, white and neutral grays) — zero green/emerald, amber, or rose.
+// Strictly uses Dermaspace's main brand palette (#7B2D8E, #FAF6FB, white
+// and neutral grays) — zero dark plum, green/emerald, amber, or rose.
 
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
 
@@ -70,15 +70,15 @@ const TICKET_STATUS_MAP: Record<TicketStatus, TicketStatusMeta> = {
     key: 'open',
     label: 'Open',
     caption: 'awaiting reply',
-    dotClass: 'bg-[#3E104B]',
-    badgeClass: 'bg-[#FAF6FB] text-[#3E104B] border-[#3E104B]/25',
-    chartColor: '#3E104B',
+    dotClass: 'bg-[#7B2D8E]',
+    badgeClass: 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/25',
+    chartColor: '#7B2D8E',
   },
   in_progress: {
     key: 'in_progress',
     label: 'In progress',
     caption: 'being handled',
-    dotClass: 'bg-[#7B2D8E]',
+    dotClass: 'bg-[#A966BC]',
     badgeClass: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25',
     chartColor: '#A966BC',
   },
@@ -86,9 +86,9 @@ const TICKET_STATUS_MAP: Record<TicketStatus, TicketStatusMeta> = {
     key: 'resolved',
     label: 'Resolved',
     caption: 'wrapped up',
-    dotClass: 'bg-[#5A1D6A]',
+    dotClass: 'bg-[#C89ED3]',
     badgeClass: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
-    chartColor: '#7B2D8E',
+    chartColor: '#C89ED3',
   },
   closed: {
     key: 'closed',
@@ -104,12 +104,12 @@ const TICKET_PRIORITY_MAP: Record<TicketPriority, TicketPriorityMeta> = {
   urgent: {
     key: 'urgent',
     label: 'Urgent',
-    badgeClass: 'bg-[#3E104B] text-white border-[#3E104B]',
+    badgeClass: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
   },
   high: {
     key: 'high',
     label: 'High',
-    badgeClass: 'bg-[#5A1D6A]/10 text-[#5A1D6A] border-[#5A1D6A]/25',
+    badgeClass: 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/30',
   },
   normal: {
     key: 'normal',
@@ -127,7 +127,7 @@ const LIVE_CHAT_STATUS_MAP: Record<LiveChatStatus, LiveChatStatusMeta> = {
   waiting: {
     key: 'waiting',
     label: 'Waiting',
-    badgeClass: 'bg-[#FAF6FB] text-[#5A1D6A] border-[#7B2D8E]/25',
+    badgeClass: 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/25',
     dotClass: 'bg-[#7B2D8E]',
     pulse: false,
   },
@@ -148,8 +148,8 @@ const LIVE_CHAT_STATUS_MAP: Record<LiveChatStatus, LiveChatStatusMeta> = {
   abandoned: {
     key: 'abandoned',
     label: 'Abandoned',
-    badgeClass: 'bg-[#3E104B]/10 text-[#3E104B] border-[#3E104B]/20',
-    dotClass: 'bg-[#3E104B]',
+    badgeClass: 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/20',
+    dotClass: 'bg-[#7B2D8E]/60',
     pulse: false,
   },
 }
@@ -338,7 +338,7 @@ export function getHandoffAutoMessage(
   switch (state) {
     case 'connecting':
     case 'waiting':
-      return 'Connecting you to an agent — a customer representative will join shortly.'
+      return "Please allow me a minute, I'll transfer you to a live support representative for further assistance."
     case 'active': {
       const cleanName = (staffName ?? '').trim()
       return cleanName
@@ -346,7 +346,7 @@ export function getHandoffAutoMessage(
         : 'A customer representative has joined the chat.'
     }
     case 'guest_needed':
-      return 'Connecting you to an agent — share your name and email below and a customer representative will join shortly.'
+      return "Please allow me a minute — share your name and email below so I can transfer you to a live support representative."
     case 'closed':
       return 'This live support session has ended. I am right here whenever you need anything else.'
   }

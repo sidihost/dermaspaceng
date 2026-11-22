@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // Inline Live Representative Handoff (runs seamlessly INSIDE Derma AI)
 // ---------------------------------------------------------------------------
-// Strict Dermaspace palette (#7B2D8E, #5A1D6A, #FAF6FB, white, neutral
+// Strict Dermaspace palette (#7B2D8E, #FAF6FB, white, neutral
 // grays, #C63D3D error states) — zero shadows, zero gradients, zero
 // Sparkles/Zap icons, and zero representative names inside the post-chat
 // review card. Preserves full live-chat transcript inside Derma AI's stream
@@ -1393,7 +1393,7 @@ export function InlineLiveOptionsPopup({
               <div className="flex items-center gap-3 shrink-0">
                 <Link
                   href="/signin"
-                  className="text-[14px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors"
+                  className="text-[14px] font-semibold text-[#7B2D8E] hover:opacity-80 transition-opacity"
                 >
                   Log in
                 </Link>
@@ -1466,7 +1466,7 @@ export function InlineLiveOptionsPopup({
                 </div>
 
                 {contactError && (
-                  <p className="text-[12px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-3 py-1.5">
+                  <p className="text-[12px] text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-lg px-3 py-1.5">
                     {contactError}
                   </p>
                 )}
@@ -1487,7 +1487,7 @@ export function InlineLiveOptionsPopup({
                   className={cn(
                     'w-full inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 px-4 text-[14px] font-semibold transition-colors cursor-pointer',
                     canSubmitContact
-                      ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white'
+                      ? 'bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white'
                       : 'bg-[#FAF6FB] text-[#7B2D8E]/40 cursor-not-allowed',
                   )}
                 >
@@ -1710,7 +1710,7 @@ export function InlineLeaveFeedbackScreen({
               className={cn(
                 'flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 px-4 text-[14.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer',
                 selectedThumb
-                  ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
+                  ? 'bg-[#7B2D8E] text-white hover:bg-[#7B2D8E]/90'
                   : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/15 hover:bg-[#7B2D8E] hover:text-white',
               )}
             >
@@ -1804,18 +1804,7 @@ export function InlineLiveFeed({
 
   return (
     <div className="space-y-3 pt-1" data-testid="inline-live-chat-feed">
-      {/* Quiet waiting status — NO duplicate second header card or exposed ticket ID */}
-      {(connecting || isWaiting) && (
-        <div className="py-2 text-center" data-testid="live-chat-waiting-notice">
-          <div className="inline-flex items-center gap-2 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3.5 py-1.5 text-[11.5px] font-medium text-[#5A1D6A]">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
-            <span>Waiting for a representative…</span>
-          </div>
-          <p className="text-[11px] text-gray-500 mt-1.5">
-            Feel free to share details below while we connect you.
-          </p>
-        </div>
-      )}
+      {/* Waiting handoff is communicated naturally by Derma AI's message in the stream (Namecheap style) — no extra waiting pill banner. */}
 
       {/* Inline guest details form */}
       {guestFormOpen && (
@@ -2109,7 +2098,7 @@ function GuestHandoffCard({
         <button
           type="submit"
           disabled={submitting}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[12.5px] font-semibold px-4 py-2 transition-colors disabled:opacity-50"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white text-[12.5px] font-semibold px-4 py-2 transition-colors disabled:opacity-50"
         >
           {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
           {submitting ? 'Connecting…' : 'Connect to an agent'}

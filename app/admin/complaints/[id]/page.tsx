@@ -18,7 +18,7 @@ import {
   Ticket, Loader2, AlertCircle, Check,
   CircleDot, CircleDashed, CheckCircle2, XCircle,
   Flag, Flame, Trash2, ExternalLink, Copy, Info,
-  MessageSquareText, CornerDownRight,
+  CornerDownRight,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
@@ -359,7 +359,7 @@ export default function ComplaintDetailPage() {
         <p className="text-sm text-gray-500 mb-4">{error || 'Unknown error'}</p>
         <button
           onClick={() => router.push('/admin/complaints')}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A]"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#7B2D8E]/90"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to inbox
@@ -483,7 +483,7 @@ export default function ComplaintDetailPage() {
             <header className="flex flex-wrap items-center justify-between gap-2.5 border-b border-gray-100 bg-[#FBF9FC] px-5 py-3.5">
               <div className="flex flex-wrap items-center gap-2 min-w-0">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
-                  <MessageSquareText className="h-3.5 w-3.5" />
+                  <Ticket className="h-3.5 w-3.5" />
                 </span>
                 <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#7B2D8E]">
                   Client request

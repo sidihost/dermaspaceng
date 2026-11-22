@@ -87,6 +87,7 @@ export async function GET(_req: Request, { params }: Params) {
       escalated_at: r.escalated_at,
       accepted_at: r.accepted_at,
       closed_at: r.closed_at,
+      closed_by: (r.closed_by as string | null) ?? null,
       service_rating: r.service_rating,
       staff_rating: r.staff_rating,
       rating_comment: r.rating_comment,

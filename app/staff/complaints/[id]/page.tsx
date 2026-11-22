@@ -43,7 +43,6 @@ import {
   XCircle,
   Flag,
   Flame,
-  MessageSquare,
   UserCheck,
 } from "lucide-react"
 import ReplyComposer from "@/components/admin/reply-composer"
@@ -371,7 +370,7 @@ export default function StaffComplaintDetailPage() {
         <p className="text-sm text-gray-500 mb-4">{error || "Unknown error"}</p>
         <button
           onClick={() => router.push("/staff/complaints")}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#7B2D8E]/90 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to inbox
@@ -482,7 +481,7 @@ export default function StaffComplaintDetailPage() {
             <button
               onClick={handleAssignToMe}
               disabled={assigning}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] text-white text-xs font-semibold px-3 py-1.5 hover:bg-[#5A1D6A] disabled:opacity-60 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] text-white text-xs font-semibold px-3 py-1.5 hover:bg-[#7B2D8E]/90 disabled:opacity-60 transition-colors"
             >
               {assigning ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -518,7 +517,7 @@ export default function StaffComplaintDetailPage() {
           <button
             onClick={handleAssignToMe}
             disabled={assigning}
-            className="sm:hidden mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#7B2D8E] text-white text-sm font-semibold px-4 py-2.5 hover:bg-[#5A1D6A] disabled:opacity-60 transition-colors"
+            className="sm:hidden mt-4 w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#7B2D8E] text-white text-sm font-semibold px-4 py-2.5 hover:bg-[#7B2D8E]/90 disabled:opacity-60 transition-colors"
           >
             {assigning ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -535,7 +534,7 @@ export default function StaffComplaintDetailPage() {
           context-switching. */}
       <section className="rounded-2xl border border-gray-200 bg-white">
         <header className="border-b border-gray-100 px-5 sm:px-6 py-3 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4 text-[#7B2D8E]" />
+          <Ticket className="w-4 h-4 text-[#7B2D8E]" />
           <h2 className="text-sm font-semibold text-gray-900">
             {complaint.subject || "Conversation"}
           </h2>

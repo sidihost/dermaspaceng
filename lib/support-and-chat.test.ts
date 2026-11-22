@@ -39,8 +39,8 @@ test('normalizeTicketStatus maps variants cleanly', () => {
   assert.equal(normalizeTicketStatus(undefined), 'open')
 })
 
-test('ticket status and priority badges contain zero off-brand green, amber, or rose tokens', () => {
-  const banned = /(emerald|green|amber|yellow|rose|red|gradient|shadow)/i
+test('ticket status and priority badges contain zero off-brand green, amber, rose, or dark-purple tokens', () => {
+  const banned = /(emerald|green|amber|yellow|rose|red|gradient|shadow|#5A1D6A|#3E104B|#4A1758)/i
   for (const status of TICKET_STATUS_ORDER) {
     const meta = getTicketStatusMeta(status)
     assert.equal(banned.test(meta.badgeClass), false, `status ${status} badgeClass had off-brand token: ${meta.badgeClass}`)
@@ -54,8 +54,8 @@ test('ticket status and priority badges contain zero off-brand green, amber, or 
   assert.equal(normalizeTicketPriority('unknown'), 'normal')
 })
 
-test('live chat status metadata uses Dermaspace palette with zero green/amber/rose', () => {
-  const banned = /(emerald|green|amber|yellow|rose|red|gradient|shadow)/i
+test('live chat status metadata uses Dermaspace palette with zero green/amber/rose/dark-purple', () => {
+  const banned = /(emerald|green|amber|yellow|rose|red|gradient|shadow|#5A1D6A|#3E104B|#4A1758)/i
   for (const status of ['waiting', 'active', 'closed', 'abandoned'] as const) {
     const meta = getLiveChatStatusMeta(status)
     assert.equal(banned.test(meta.badgeClass), false, `chat ${status} badgeClass had off-brand token: ${meta.badgeClass}`)
@@ -124,8 +124,8 @@ test('detectHumanHandoffIntent matches natural human/support requests and avoids
 })
 
 test('getHandoffAutoMessage returns warm, accurate copy for each live handoff state', () => {
-  assert.match(getHandoffAutoMessage('connecting'), /connecting you to an agent/i)
-  assert.match(getHandoffAutoMessage('waiting'), /customer representative will join shortly/i)
+  assert.match(getHandoffAutoMessage('connecting'), /transfer you to a live support representative/i)
+  assert.match(getHandoffAutoMessage('waiting'), /transfer you to a live support representative/i)
   assert.match(getHandoffAutoMessage('active', 'Amaka'), /Amaka.*joined the chat/i)
   assert.match(getHandoffAutoMessage('guest_needed'), /name and email/i)
   assert.match(getHandoffAutoMessage('closed'), /ended/i)

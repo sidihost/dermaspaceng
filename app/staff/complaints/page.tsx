@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import {
-  MessageSquare,
+  Inbox,
   Search,
   Eye,
   Reply,
@@ -77,7 +77,7 @@ const formatDate = (iso: string) =>
 
 const statusConfig: Record<string, { cls: string; Icon: typeof Clock; label: string }> = {
   open: {
-    cls: "bg-[#7B2D8E]/15 text-[#5A1D6A] ring-[#7B2D8E]/30",
+    cls: "bg-[#7B2D8E]/15 text-[#7B2D8E] ring-[#7B2D8E]/30",
     Icon: AlertCircle,
     label: "Open",
   },
@@ -107,7 +107,7 @@ const priorityCls: Record<string, string> = {
   low: "bg-gray-100 text-gray-700 ring-gray-200",
   normal: "bg-gray-50 text-gray-700 ring-gray-200",
   medium: "bg-[#7B2D8E]/8 text-[#7B2D8E] ring-[#7B2D8E]/20",
-  high: "bg-[#7B2D8E]/15 text-[#5A1D6A] ring-[#7B2D8E]/30",
+  high: "bg-[#7B2D8E]/15 text-[#7B2D8E] ring-[#7B2D8E]/30",
   urgent: "bg-[#7B2D8E] text-white ring-[#7B2D8E]",
 }
 
@@ -317,7 +317,7 @@ export default function StaffComplaintsPage() {
       <Card className="border-gray-100 rounded-2xl">
         <CardHeader className="border-b border-gray-100 pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <MessageSquare className="h-4 w-4 text-[#7B2D8E]" />
+            <Inbox className="h-4 w-4 text-[#7B2D8E]" />
             Inbox
           </CardTitle>
           <CardDescription className="text-xs">
@@ -420,7 +420,7 @@ export default function StaffComplaintsPage() {
                         <Button
                           asChild
                           size="sm"
-                          className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                          className="gap-1 bg-[#7B2D8E] hover:bg-[#7B2D8E]/90"
                         >
                           <Link href={`/staff/complaints/${c.id}?source=${c.source || 'complaint'}`}>
                             <Reply className="h-3.5 w-3.5" />
@@ -478,7 +478,7 @@ export default function StaffComplaintsPage() {
             {selected && selected.status !== "resolved" && selected.status !== "closed" && (
               <Button
                 onClick={() => setReplyOpen(true)}
-                className="bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                className="bg-[#7B2D8E] hover:bg-[#7B2D8E]/90"
               >
                 <Reply className="mr-2 h-4 w-4" />
                 Reply
@@ -528,7 +528,7 @@ export default function StaffComplaintsPage() {
             <Button
               onClick={handleReply}
               disabled={!replyMessage.trim() || submitting}
-              className="bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+              className="bg-[#7B2D8E] hover:bg-[#7B2D8E]/90"
             >
               {submitting ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />

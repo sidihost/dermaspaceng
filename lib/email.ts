@@ -2410,10 +2410,10 @@ export async function sendStatusUpdateNotification(data: {
   // than the generic green/blue most transactional emails ship with.
   const statusColors: Record<string, { bg: string; text: string }> = {
     pending:     { bg: '#fef3c7', text: '#92400e' },
-    approved:    { bg: '#F3E6F7', text: '#5A1D6A' },
-    confirmed:   { bg: '#F3E6F7', text: '#5A1D6A' },
-    completed:   { bg: '#F3E6F7', text: '#5A1D6A' },
-    resolved:    { bg: '#F3E6F7', text: '#5A1D6A' },
+    approved:    { bg: '#F3E6F7', text: '#7B2D8E' },
+    confirmed:   { bg: '#F3E6F7', text: '#7B2D8E' },
+    completed:   { bg: '#F3E6F7', text: '#7B2D8E' },
+    resolved:    { bg: '#F3E6F7', text: '#7B2D8E' },
     rejected:    { bg: '#fef2f2', text: '#991b1b' },
     cancelled:   { bg: '#fef2f2', text: '#991b1b' },
     in_progress: { bg: '#fef3c7', text: '#92400e' },
@@ -4402,7 +4402,6 @@ export async function sendDirectUserEmail(data: {
     sender: 'support',
     html: getEmailTemplate(content, {
       preheader: cleanPreheader,
-      eyebrow: 'Message from Dermaspace Support',
       sender: 'support',
     }),
   })
@@ -5000,7 +4999,7 @@ export function buildLiveChatTranscriptEmailHtml(data: {
         return `
           <tr>
             <td style="padding: 6px 0; text-align: center;">
-              <span style="display: inline-block; padding: 5px 12px; background-color: #f8f5fa; border: 1px solid #ece5f0; border-radius: 16px; font-size: 12px; color: #5A1D6A;">
+              <span style="display: inline-block; padding: 5px 12px; background-color: #f8f5fa; border: 1px solid #ece5f0; border-radius: 16px; font-size: 12px; color: #7B2D8E;">
                 ${bodyHtml}${time ? ` &middot; ${time}` : ''}
               </span>
             </td>
@@ -5036,7 +5035,7 @@ export function buildLiveChatTranscriptEmailHtml(data: {
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f5fa; border: 1px solid #e4d4ea; border-radius: 12px;">
               <tr>
                 <td style="padding: 12px 14px;">
-                  <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #3E104B; letter-spacing: 0.3px;">
+                  <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #7B2D8E; letter-spacing: 0.3px;">
                     You${time ? ` <span style="font-weight: 400; color: #8c8c8c;">&middot; ${time}</span>` : ''}
                   </p>
                   <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">

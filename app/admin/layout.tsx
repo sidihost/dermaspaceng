@@ -4,6 +4,7 @@ import { Wrench } from 'lucide-react'
 import { getCurrentUser } from '@/lib/auth'
 import { getMaintenance } from '@/lib/app-settings'
 import AdminSidebar from '@/components/admin/sidebar'
+import { AdminMainShell } from '@/components/admin/admin-main-shell'
 import { AdminWelcomeGate } from '@/components/admin/admin-welcome-gate'
 import { resolveAdminAvatar } from '@/lib/admin-avatars'
 import { getAdminPermissions } from '@/lib/admin-permissions'
@@ -60,23 +61,15 @@ export default async function AdminLayout({
         userGender={user.gender ?? null}
         permissions={permissions}
       />
-      <main className="lg:pl-72 min-h-screen transition-all duration-300">
-        {/* Tighter outer padding: 16/20/24 instead of 16/24/32.
-            Admin pages felt "oversized"; 24px max on desktop keeps content
-            closer to the sidebar like Google/Linear admin consoles.
-            On ultra-wide displays (≥1440px) we cap the working area to
-            max-w-[1400px] and centre it so tables/cards stop stretching
-            into illegible widths the way they used to on a 27-inch
-            monitor. */}
-        <div className="p-4 sm:p-5 lg:p-6 xl:p-8 pt-16 sm:pt-5 lg:pt-6">
-          <div className="mx-auto w-full max-w-[1400px]">
-            {maintenance.enabled && (
-              <MaintenanceBanner message={maintenance.message} />
-            )}
-            {children}
-          </div>
-        </div>
-      </main>
+      <AdminMainShell
+        maintenanceBanner={
+          maintenance.enabled ? (
+            <MaintenanceBanner message={maintenance.message} />
+          ) : null
+        }
+      >
+        {children}
+      </AdminMainShell>
       {/* First-sign-in welcome gate — admins-only password rotation
           and (compulsory) email entry for seeded accounts. Renders
           nothing once both flags are cleared, so it's safe to keep
@@ -116,10 +109,10 @@ function MaintenanceBanner({ message }: { message: string }) {
         <Wrench className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[#3D1646] leading-tight">
+        <p className="text-sm font-semibold text-gray-900 leading-tight">
           Maintenance mode is ON
         </p>
-        <p className="text-[12px] text-[#5A1D6A] mt-0.5 leading-relaxed">
+        <p className="text-[12px] text-[#7B2D8E] mt-0.5 leading-relaxed">
           Visitors are being redirected to{' '}
           <code className="font-mono text-[11px] bg-[#7B2D8E]/10 px-1 rounded">
             /maintenance
@@ -130,7 +123,7 @@ function MaintenanceBanner({ message }: { message: string }) {
       </div>
       <Link
         href="/admin/settings"
-        className="hidden sm:inline-flex items-center text-[11.5px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] underline whitespace-nowrap self-center"
+        className="hidden sm:inline-flex items-center text-[11.5px] font-semibold text-[#7B2D8E] hover:opacity-80 underline whitespace-nowrap self-center"
       >
         Manage
       </Link>

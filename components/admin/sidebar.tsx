@@ -30,7 +30,7 @@ import {
   Mail,
   Lightbulb,
   Building2,
-  MessageSquare,
+  Inbox,
   ShieldAlert,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -117,7 +117,7 @@ const adminNavItems: NavItem[] = [
   // (which the rest of the app already uses for live chat and
   // conversations).
   { href: '/admin/complaints', icon: LifeBuoy, label: 'Tickets', badge: null, group: 'main' },
-  { href: '/admin/live-chat', icon: MessageSquare, label: 'Live Chat', badge: null, group: 'main' },
+  { href: '/admin/live-chat', icon: Inbox, label: 'Live Chat', badge: null, group: 'main' },
   { href: '/admin/feedback', icon: ClipboardList, label: 'Feedback', badge: null, group: 'main' },
   // Feature Requests — the ideas clients submit on the public board at
   // /feature-requests. Lives in the "main" group alongside Feedback
@@ -564,6 +564,12 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
         </div>
       </div>
     )
+  }
+
+  // Full-screen dedicated workspace for Live Chat — hide the sidebar & mobile bar
+  // so the console spans 100% of the viewport with its own compact top navigation.
+  if (pathname === '/admin/live-chat' || pathname?.startsWith('/admin/live-chat/')) {
+    return null
   }
 
   return (

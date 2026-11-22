@@ -9,7 +9,7 @@ import { ChristmasLogoHat } from "@/components/shared/christmas-logo-hat"
 import {
   LayoutDashboard,
   Gift,
-  MessageSquare,
+  LifeBuoy,
   Calendar,
   FileText,
   LogOut,
@@ -20,7 +20,7 @@ import {
   Users,
   BadgePercent,
   BarChart3,
-  Headset,
+  Inbox,
   Lightbulb,
   QrCode,
   Wallet,
@@ -73,10 +73,10 @@ const navItems = [
   { title: "Money", href: "/staff/money", icon: Wallet },
   { title: "Gift Card Requests", href: "/staff/gift-cards", icon: Gift },
   { title: "Verify Gift Card", href: "/gift-cards/verify", icon: QrCode },
-  { title: "Complaints", href: "/staff/complaints", icon: MessageSquare },
+  { title: "Complaints", href: "/staff/complaints", icon: LifeBuoy },
   { title: "Consultations", href: "/staff/consultations", icon: Calendar },
   { title: "Feature Requests", href: "/staff/feature-requests", icon: Lightbulb },
-  { title: "Live Chat", href: "/staff/live-chat", icon: Headset },
+  { title: "Live Chat", href: "/staff/live-chat", icon: Inbox },
   { title: "Surveys", href: "/staff/surveys", icon: FileText },
   { title: "Blog", href: "/staff/blog", icon: BookOpen },
 ]
@@ -147,6 +147,11 @@ export function StaffSidebar() {
         </div>
       </div>
     )
+  }
+
+  // Full-screen dedicated workspace for Live Chat — hide sidebar & mobile top bar
+  if (pathname === "/staff/live-chat" || pathname?.startsWith("/staff/live-chat/")) {
+    return null
   }
 
   return (

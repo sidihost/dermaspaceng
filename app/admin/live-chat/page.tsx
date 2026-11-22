@@ -3,8 +3,8 @@
 /**
  * Admin Live Chat Command Center
  *
- * Responsive 3-pane workspace adhering strictly to Dermaspace's flat design
- * system (#7B2D8E, #5A1D6A, #FAF6FB, #FFFFFF, border-gray-200;
+ * Responsive 3-pane full-screen workspace adhering strictly to Dermaspace's flat design
+ * system (#7B2D8E, #FAF6FB, #FFFFFF, border-gray-200;
  * zero shadows, zero gradients, zero red buttons).
  *
  * Tabs:
@@ -30,11 +30,11 @@ import {
   ExternalLink,
   Globe,
   History,
+  Inbox,
   Laptop,
   Loader2,
   Mail,
   MapPin,
-  MessageSquare,
   Monitor,
   PanelRight,
   Pencil,
@@ -117,6 +117,7 @@ interface SessionRow {
   escalated_at?: string
   accepted_at: string | null
   closed_at: string | null
+  closed_by?: string | null
   last_message_at: string | null
   last_activity_at?: string | null
   staff_response_seconds: number | null
@@ -279,18 +280,15 @@ export default function AdminLiveChatPage() {
     markSurfaceSeen('live-chat', waitingSessions.length)
   }, [waitingSessions.length])
 
-  // Auto-select first open session on desktop when entering Live Desk
+  // Auto-select first open session on desktop when entering Live Desk with nothing selected.
+  // Never clear an already-selected session if the customer just ended it so admin clearly sees
+  // the "Ended by customer" status instead of the conversation vanishing.
   useEffect(() => {
     if (tab !== 'live') return
-    if (selectedLiveId && openSessions.some((s) => s.id === selectedLiveId)) return
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      if (selectedLiveId && !openSessions.some((s) => s.id === selectedLiveId)) {
-        setSelectedLiveId(null)
-      }
-      return
-    }
+    if (selectedLiveId) return
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return
     const first = waitingSessions[0] || activeSessions[0] || openSessions[0]
-    setSelectedLiveId(first ? first.id : null)
+    if (first) setSelectedLiveId(first.id)
   }, [tab, openSessions, waitingSessions, activeSessions, selectedLiveId])
 
   const avgWait = useMemo(() => {
@@ -304,42 +302,50 @@ export default function AdminLiveChatPage() {
   }, [waitingSessions])
 
   return (
-    <div className="space-y-4 min-w-0">
-      {/* Top Command Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-              Live Chat
-            </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#FAF6FB] px-2.5 py-0.5 text-[11px] font-semibold text-[#5A1D6A] tabular-nums">
-              <span
-                className={cn(
-                  'w-1.5 h-1.5 rounded-full',
-                  openSessions.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300',
-                )}
-              />
-              {openSessions.length} open
+    <div className="h-full w-full flex flex-col overflow-hidden bg-white min-w-0">
+      {/* Full-Screen Top Command Bar */}
+      <header className="shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+          <Link
+            href="/admin"
+            aria-label="Back to admin dashboard"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-gray-200 bg-white text-[12px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Dashboard</span>
+          </Link>
+          <span className="h-4 w-px bg-gray-200 hidden sm:inline-block" aria-hidden="true" />
+          <h1 className="text-[15.5px] sm:text-[17px] font-bold text-gray-900 tracking-tight">
+            Live Chat
+          </h1>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#FAF6FB] px-2.5 py-0.5 text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+            <span
+              className={cn(
+                'w-1.5 h-1.5 rounded-full',
+                openSessions.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300',
+              )}
+            />
+            {openSessions.length} open
+          </span>
+          {waitingSessions.length > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E] px-2.5 py-0.5 text-[11px] font-semibold text-white tabular-nums">
+              {waitingSessions.length} waiting
             </span>
-            {waitingSessions.length > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E] px-2.5 py-0.5 text-[11px] font-semibold text-white tabular-nums">
-                {waitingSessions.length} waiting
-              </span>
-            )}
-          </div>
-          <p className="text-[12.5px] text-gray-500 mt-0.5">
-            Monitor live conversations, inspect anonymous visitor details, reply directly, and review team performance.
-          </p>
+          )}
+          <span className="hidden xl:inline-flex items-center gap-1 text-[11.5px] text-gray-500 tabular-nums ml-1">
+            <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
+            Avg wait {avgWait}
+          </span>
         </div>
 
         {/* Segmented Navigation */}
         <nav
           aria-label="Live chat views"
-          className="flex w-full sm:w-auto sm:inline-flex bg-white rounded-full p-1 border border-gray-200 shrink-0"
+          className="flex w-full sm:w-auto sm:inline-flex bg-[#FAF6FB] rounded-full p-1 border border-gray-200 shrink-0"
         >
           {(
             [
-              { id: 'live', label: 'Live Desk', icon: MessageSquare, count: openSessions.length },
+              { id: 'live', label: 'Live Desk', icon: Inbox, count: openSessions.length },
               { id: 'history', label: 'History', icon: History, count: null },
               { id: 'performance', label: 'Performance', icon: BarChart3, count: null },
             ] as const
@@ -355,7 +361,7 @@ export default function AdminLiveChatPage() {
                   'flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer',
                   active
                     ? 'bg-[#7B2D8E] text-white'
-                    : 'text-gray-600 hover:text-[#5A1D6A]',
+                    : 'text-gray-600 hover:text-[#7B2D8E]',
                 )}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -376,29 +382,7 @@ export default function AdminLiveChatPage() {
         </nav>
       </header>
 
-      {/* Compact Metric Strip (Live Desk) */}
-      {tab === 'live' && (
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-          <MetricTile
-            icon={Clock}
-            label="Waiting queue"
-            value={waitingSessions.length}
-            highlight={waitingSessions.length > 0}
-          />
-          <MetricTile
-            icon={MessageSquare}
-            label="Active chats"
-            value={activeSessions.length}
-          />
-          <MetricTile
-            icon={Activity}
-            label="Avg wait"
-            value={avgWait}
-          />
-        </div>
-      )}
-
-      {/* TAB 1: LIVE DESK (3-PANE RESPONSIVE WORKSPACE) */}
+      {/* TAB 1: FULL-SCREEN LIVE DESK (3-PANE RESPONSIVE WORKSPACE) */}
       {tab === 'live' && (
         <LiveDeskWorkspace
           sessions={openSessions}
@@ -416,11 +400,21 @@ export default function AdminLiveChatPage() {
 
       {/* TAB 2: HISTORY */}
       {tab === 'history' && (
-        <HistoryTab onOpenSession={(id) => setHistoryDetailId(id)} />
+        <div className="flex-1 min-h-0 overflow-y-auto bg-[#FBF9FC] p-4 sm:p-6">
+          <div className="max-w-[1400px] mx-auto">
+            <HistoryTab onOpenSession={(id) => setHistoryDetailId(id)} />
+          </div>
+        </div>
       )}
 
       {/* TAB 3: PERFORMANCE */}
-      {tab === 'performance' && <PerformanceTab />}
+      {tab === 'performance' && (
+        <div className="flex-1 min-h-0 overflow-y-auto bg-[#FBF9FC] p-4 sm:p-6">
+          <div className="max-w-[1400px] mx-auto">
+            <PerformanceTab />
+          </div>
+        </div>
+      )}
 
       {/* History Full Session Viewer Modal / Drawer */}
       {historyDetailId && (
@@ -528,7 +522,7 @@ function LiveDeskWorkspace({
   }, [sessions, queueFilter, search])
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex min-h-[560px] h-[calc(100dvh-250px)] sm:h-[calc(100dvh-245px)] max-h-[820px]">
+    <div className="flex-1 min-h-0 w-full bg-white overflow-hidden flex">
       {/* PANE 1: LEFT QUEUE RAIL */}
       <aside
         className={cn(
@@ -582,7 +576,7 @@ function LiveDeskWorkspace({
                     'px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer',
                     active
                       ? 'bg-[#7B2D8E] text-white'
-                      : 'text-gray-600 hover:text-[#5A1D6A]',
+                      : 'text-gray-600 hover:text-[#7B2D8E]',
                   )}
                 >
                   <span>{f.label}</span>
@@ -610,7 +604,7 @@ function LiveDeskWorkspace({
           ) : filteredSessions.length === 0 ? (
             <div className="py-14 px-5 text-center">
               <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
-                <MessageSquare className="w-5 h-5" />
+                <Inbox className="w-5 h-5" />
               </div>
               <p className="text-[13px] font-semibold text-gray-900">
                 {search
@@ -676,7 +670,7 @@ function LiveDeskWorkspace({
           <div className="flex-1 flex items-center justify-center p-8">
             <div className="text-center max-w-sm">
               <div className="w-14 h-14 mx-auto rounded-full bg-white border border-gray-200 text-[#7B2D8E] flex items-center justify-center mb-4">
-                <MessageSquare className="w-6 h-6" />
+                <Inbox className="w-6 h-6" />
               </div>
               <h2 className="text-[15.5px] font-semibold text-gray-900">
                 Select a live conversation
@@ -772,7 +766,7 @@ function QueueListRow({
             <p
               className={cn(
                 'text-[13px] font-semibold truncate',
-                selected ? 'text-[#5A1D6A]' : 'text-gray-900',
+                selected ? 'text-[#7B2D8E]' : 'text-gray-900',
               )}
             >
               {name}
@@ -884,6 +878,9 @@ function AdminSessionWorkspace({
 
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const isNearBottomRef = useRef<boolean>(true)
+  const prevMsgCountRef = useRef<number>(0)
+  const forceScrollRef = useRef<boolean>(true)
   const typingSentAtRef = useRef<number>(0)
   const typingIdleTimerRef = useRef<number | null>(null)
 
@@ -894,6 +891,9 @@ function AdminSessionWorkspace({
     setSendError(null)
     setEndDialogOpen(false)
     setDeleteDialogOpen(false)
+    isNearBottomRef.current = true
+    prevMsgCountRef.current = 0
+    forceScrollRef.current = true
     typingSentAtRef.current = 0
     if (typingIdleTimerRef.current) {
       window.clearTimeout(typingIdleTimerRef.current)
@@ -946,11 +946,26 @@ function AdminSessionWorkspace({
     )
   }, [data?.messages, pending.length])
 
-  // Auto-scroll when messages arrive or visitor starts typing
+  const handleFeedScroll = useCallback(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    isNearBottomRef.current = distFromBottom < 120
+  }, [])
+
+  // Smart auto-scroll: only scroll when opening a session, when admin sends a message,
+  // or when a new message arrives while already near the bottom — never hijack manual scroll-up.
+  const totalMsgCount = (data?.messages?.length ?? 0) + pending.length
   useEffect(() => {
     const el = scrollerRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [data?.messages?.length, pending.length, data?.customerTyping])
+    if (!el) return
+    const hasNewMessages = totalMsgCount > prevMsgCountRef.current
+    prevMsgCountRef.current = totalMsgCount
+    if (forceScrollRef.current || (hasNewMessages && isNearBottomRef.current)) {
+      forceScrollRef.current = false
+      el.scrollTop = el.scrollHeight
+    }
+  }, [totalMsgCount])
 
   // Throttled admin typing heartbeat so the customer sees "[Name] is typing..."
   const postAdminTyping = useCallback(
@@ -1131,6 +1146,8 @@ function AdminSessionWorkspace({
       created_at: new Date().toISOString(),
       _pending: true,
     }
+    forceScrollRef.current = true
+    isNearBottomRef.current = true
     setPending((prev) => [...prev, optimistic])
     setDraft('')
 
@@ -1317,8 +1334,16 @@ function AdminSessionWorkspace({
                       : 'text-gray-500',
                   )}
                 >
-                  {presence?.label ||
-                    (session.status === 'waiting' ? 'Waiting' : 'Ended')}
+                  {!isLiveStatus
+                    ? session.closed_by === 'user'
+                      ? 'Ended by customer'
+                      : session.closed_by === 'admin'
+                        ? 'Ended by admin'
+                        : session.closed_by === 'staff'
+                          ? 'Ended by representative'
+                          : 'Ended'
+                    : presence?.label ||
+                      (session.status === 'waiting' ? 'Waiting' : 'Active')}
                 </span>
                 <span className="text-gray-300" aria-hidden="true">
                   ·
@@ -1327,7 +1352,7 @@ function AdminSessionWorkspace({
                   type="button"
                   onClick={copySupportCode}
                   title="Copy Support ID"
-                  className="inline-flex items-center gap-1 font-mono text-[10.5px] font-semibold text-[#5A1D6A] hover:text-[#7B2D8E] cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1 font-mono text-[10.5px] font-semibold text-[#7B2D8E] hover:opacity-80 cursor-pointer shrink-0"
                 >
                   <span>{supportCode}</span>
                   {copiedId && <Check className="w-3 h-3 text-[#7B2D8E]" />}
@@ -1363,7 +1388,7 @@ function AdminSessionWorkspace({
                 type="button"
                 onClick={() => setEndDialogOpen(true)}
                 disabled={closing}
-                className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-[#7B2D8E]/30 bg-white text-[11.5px] font-semibold text-[#5A1D6A] hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/50 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full border border-[#7B2D8E]/30 bg-white text-[11.5px] font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/50 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <PhoneOff className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">End chat</span>
@@ -1410,6 +1435,7 @@ function AdminSessionWorkspace({
         {/* Messages Feed */}
         <div
           ref={scrollerRef}
+          onScroll={handleFeedScroll}
           className="flex-1 overflow-y-auto px-3.5 sm:px-5 py-4 min-h-0"
         >
           <div className="max-w-2xl mx-auto space-y-1">
@@ -1495,7 +1521,7 @@ function AdminSessionWorkspace({
               {editingDisplay ? (
                 <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/20 p-3 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[11.5px] font-semibold text-[#5A1D6A]">
+                    <p className="text-[11.5px] font-semibold text-[#7B2D8E]">
                       Choose front-desk display name
                     </p>
                     {displayName && (
@@ -1549,7 +1575,7 @@ function AdminSessionWorkspace({
                       type="button"
                       onClick={() => void persistDisplayName(customDisplay)}
                       disabled={!customDisplay.trim() || savingAlias}
-                      className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-50 transition-colors cursor-pointer shrink-0"
+                      className="px-3.5 py-1.5 rounded-full text-[11.5px] font-semibold bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white disabled:opacity-50 transition-colors cursor-pointer shrink-0"
                     >
                       {savingAlias ? 'Saving…' : 'Save'}
                     </button>
@@ -1563,7 +1589,7 @@ function AdminSessionWorkspace({
                     </span>
                     <span className="text-gray-500 truncate">
                       Replying as{' '}
-                      <strong className="font-semibold text-[#5A1D6A]">
+                      <strong className="font-semibold text-[#7B2D8E]">
                         {displayName}
                       </strong>
                       {repName && (
@@ -1609,7 +1635,7 @@ function AdminSessionWorkspace({
               )}
 
               {sendError && (
-                <p className="text-[11.5px] text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/25 rounded-xl px-3 py-2">
+                <p className="text-[11.5px] text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/25 rounded-xl px-3 py-2">
                   {sendError}
                 </p>
               )}
@@ -1640,7 +1666,7 @@ function AdminSessionWorkspace({
                   onClick={() => void sendMessage()}
                   disabled={!draft.trim() || sending}
                   aria-label="Send reply"
-                  className="w-9 h-9 shrink-0 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 transition-colors cursor-pointer"
+                  className="w-9 h-9 shrink-0 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 transition-colors cursor-pointer"
                 >
                   {sending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1655,8 +1681,16 @@ function AdminSessionWorkspace({
           <footer className="shrink-0 bg-white border-t border-gray-200 px-4 py-3">
             <div className="max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-2 text-[12px] text-gray-600">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#7B2D8E]" />
-                <span>This conversation has ended.</span>
+                <CheckCircle2 className="w-4 h-4 text-[#7B2D8E] shrink-0" />
+                <span className={cn(session.closed_by === 'user' && 'font-semibold text-[#7B2D8E]')}>
+                  {session.closed_by === 'user'
+                    ? 'Customer ended this chat.'
+                    : session.closed_by === 'admin'
+                      ? 'Ended by admin.'
+                      : session.closed_by === 'staff'
+                        ? 'Ended by representative.'
+                        : 'This conversation has ended.'}
+                </span>
                 {session.rating != null && (
                   <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] tabular-nums">
                     <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
@@ -1667,7 +1701,7 @@ function AdminSessionWorkspace({
               <button
                 type="button"
                 onClick={downloadTranscript}
-                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] px-3 py-1.5 text-[11.5px] font-semibold text-gray-700 hover:text-[#5A1D6A] transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] px-3 py-1.5 text-[11.5px] font-semibold text-gray-700 hover:text-[#7B2D8E] transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-[#7B2D8E]" />
                 Download transcript
@@ -1717,7 +1751,7 @@ function AdminSessionWorkspace({
         description={
           <>
             Close{' '}
-            <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
+            <span className="font-mono font-semibold text-[#7B2D8E]">{supportCode}</span>{' '}
             and send the transcript if an email is on file.
           </>
         }
@@ -1737,7 +1771,7 @@ function AdminSessionWorkspace({
           <>
             Permanently removes{' '}
             <span className="font-semibold text-gray-900">{customerLabel}</span> (
-            <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>) and
+            <span className="font-mono font-semibold text-[#7B2D8E]">{supportCode}</span>) and
             its messages. This cannot be undone.
           </>
         }
@@ -1900,7 +1934,7 @@ function AdminProfileDetailsPanel({
                     presence.state === 'online'
                       ? 'text-[#7B2D8E]'
                       : presence.state === 'away'
-                        ? 'text-[#5A1D6A]'
+                        ? 'text-[#7B2D8E]'
                         : 'text-gray-500',
                   )}
                 >
@@ -2069,7 +2103,7 @@ function AdminProfileDetailsPanel({
           {session.rating != null && (
             <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-medium text-[#5A1D6A]">
+                <span className="text-[11px] font-medium text-[#7B2D8E]">
                   Customer feedback
                 </span>
                 <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
@@ -2088,7 +2122,7 @@ function AdminProfileDetailsPanel({
           <button
             type="button"
             onClick={onDownloadTranscript}
-            className="w-full flex items-center justify-between gap-2 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] px-3 py-2.5 text-[12px] font-medium text-gray-800 hover:text-[#5A1D6A] transition-colors cursor-pointer mt-1"
+            className="w-full flex items-center justify-between gap-2 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] px-3 py-2.5 text-[12px] font-medium text-gray-800 hover:text-[#7B2D8E] transition-colors cursor-pointer mt-1"
           >
             <span className="inline-flex items-center gap-2">
               <Download className="w-3.5 h-3.5 text-[#7B2D8E]" />
@@ -2184,46 +2218,37 @@ function AdminMessageRow({
   )
 
   if (message.sender_role === 'system') {
-    if (isJoinMilestone(message.body)) {
-      const actionMatch = message.body.match(/\b(joined the chat|took over the chat)\b/i)
-      const milestoneAction = actionMatch ? actionMatch[1].toLowerCase() : 'joined the chat'
-      const milestoneName =
-        message.body.replace(/\s+(joined|took over)\b.*$/i, '').trim() ||
-        staffNameFallback ||
-        'Customer Care'
-      return (
-        <div className="py-4 text-center" role="status">
-          <div className="flex justify-center mb-2.5">
-            <RepAvatar
-              src={message.sender_avatar_url || staffAvatarFallback}
-              name={milestoneName}
-              size={64}
-              className="border border-gray-200"
-            />
-          </div>
-          <p className="text-[15px] font-semibold text-gray-800 leading-snug">
-            {milestoneName}
-          </p>
-          <p className="text-[15px] font-semibold text-gray-800 leading-snug">
-            {milestoneAction}
-          </p>
-          {stamp && (
-            <p className="text-[11.5px] text-gray-500 mt-1 tabular-nums">
-              {stamp}
-            </p>
-          )}
-        </div>
-      )
+    // Customer-facing join milestones ("X joined the chat") belong on the customer
+    // view only — hide plain join notices in Admin view so the timeline stays focused.
+    if (isJoinMilestone(message.body) && !/took over/i.test(message.body)) {
+      return null
     }
-
+    const isCustomerEnded = /customer ended/i.test(message.body)
     return (
       <div className="py-2.5" role="status">
         <div className="flex items-center gap-3">
-          <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
-          <span className="text-[11px] font-medium text-gray-500 text-center">
+          <span
+            className={cn(
+              'h-px flex-1',
+              isCustomerEnded ? 'bg-[#7B2D8E]/25' : 'bg-gray-200',
+            )}
+            aria-hidden="true"
+          />
+          <span
+            className={cn(
+              'text-[11px] font-medium text-center',
+              isCustomerEnded ? 'text-[#7B2D8E] font-semibold' : 'text-gray-500',
+            )}
+          >
             {message.body}
           </span>
-          <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+          <span
+            className={cn(
+              'h-px flex-1',
+              isCustomerEnded ? 'bg-[#7B2D8E]/25' : 'bg-gray-200',
+            )}
+            aria-hidden="true"
+          />
         </div>
         {stamp && (
           <p className="text-center text-[10.5px] text-gray-400 mt-1 tabular-nums">
@@ -2289,7 +2314,7 @@ function AdminMessageRow({
     <div className="flex items-end justify-end gap-2">
       <div className="max-w-[80%] sm:max-w-[74%] flex flex-col items-end">
         {isFirstInGroup && (
-          <p className="text-[10.5px] font-medium text-[#5A1D6A] mr-1 mb-1">
+          <p className="text-[10.5px] font-medium text-[#7B2D8E] mr-1 mb-1">
             {senderLabel}
             {message._pending && <span className="ml-1.5 text-gray-400">Sending…</span>}
           </p>
@@ -2373,8 +2398,7 @@ function HistorySessionOverlay({
 // ---------------------------------------------------------------------------
 
 function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) {
-  const notify = useAdminNotify()
-  const { mutate: swrMutate } = useSWRConfig()
+  const notify = useNotify()
   const [days, setDays] = useState(7)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<SessionRow | null>(null)
@@ -2512,8 +2536,13 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] font-mono text-[#5A1D6A] mt-0.5">
+                      <p className="text-[11px] font-mono text-[#7B2D8E] mt-0.5">
                         {code}
+                        {s.closed_by === 'user' && (
+                          <span className="font-sans text-[10.5px] text-gray-500 ml-1.5">
+                            · Ended by customer
+                          </span>
+                        )}
                       </p>
                     </button>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -2604,7 +2633,7 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                                 </span>
                               )}
                             </div>
-                            <span className="font-mono text-[11px] text-[#5A1D6A]">
+                            <span className="font-mono text-[11px] text-[#7B2D8E]">
                               {code}
                             </span>
                           </div>
@@ -2638,7 +2667,12 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                           )}
                         </td>
                         <td className="py-3 px-4 text-[12px] text-gray-500 whitespace-nowrap tabular-nums">
-                          {formatRelative(s.closed_at || s.last_message_at)}
+                          <div>{formatRelative(s.closed_at || s.last_message_at)}</div>
+                          {s.closed_by === 'user' && (
+                            <div className="text-[10.5px] font-medium text-[#7B2D8E]">
+                              By customer
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="inline-flex items-center justify-end gap-2">
@@ -2648,7 +2682,7 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                                 e.stopPropagation()
                                 onOpenSession(s.id)
                               }}
-                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] cursor-pointer"
+                              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:opacity-80 cursor-pointer"
                             >
                               Open
                               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -2690,7 +2724,7 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                 {getSessionCustomerLabel(deleteTarget)}
               </span>{' '}
               (
-              <span className="font-mono font-semibold text-[#5A1D6A]">
+              <span className="font-mono font-semibold text-[#7B2D8E]">
                 {resolveSupportId(deleteTarget.support_code, deleteTarget.id)}
               </span>
               ) and its messages.

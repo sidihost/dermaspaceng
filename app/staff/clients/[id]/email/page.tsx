@@ -171,10 +171,6 @@ export default function StaffEmailClientPage() {
               </p>
             </div>
           </div>
-
-          <span className="inline-flex items-center self-start sm:self-center rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
-            Dermaspace email layout
-          </span>
         </div>
 
         <div className="p-5 sm:p-6">
@@ -255,7 +251,7 @@ export default function StaffEmailClientPage() {
                 <Button
                   type="submit"
                   disabled={sending || !subject.trim() || !message.trim()}
-                  className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white gap-1.5"
+                  className="bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white gap-1.5"
                 >
                   {sending ? (
                     <>

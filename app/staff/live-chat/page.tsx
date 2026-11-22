@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import {
@@ -25,10 +26,10 @@ import {
   Check,
   Download,
   Globe,
+  Inbox,
+  List,
   Loader2,
   MapPin,
-  MessageSquare,
-  MessageSquareText,
   PanelRight,
   PhoneOff,
   Search,
@@ -125,6 +126,7 @@ interface FullSession {
   escalated_at: string
   accepted_at: string | null
   closed_at: string | null
+  closed_by?: string | null
   last_activity_at?: string | null
   customer_last_seen_at?: string | null
   customer_typing_at?: string | null
@@ -328,21 +330,31 @@ export default function StaffLiveChatPage() {
         )}
       >
         {/* Rail Header */}
-        <div className="h-[68px] shrink-0 px-4 border-b border-gray-200 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-[16px] font-semibold text-gray-900 tracking-tight truncate">
-                Live Chat
-              </h1>
-              <span className="text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
-                {totalOpen} open
-              </span>
+        <div className="h-[68px] shrink-0 px-3.5 border-b border-gray-200 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Link
+              href="/staff"
+              aria-label="Back to staff dashboard"
+              title="Back to dashboard"
+              className="w-8 h-8 rounded-full border border-gray-200 bg-white text-gray-600 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#FAF6FB] flex items-center justify-center shrink-0 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-[16px] font-semibold text-gray-900 tracking-tight truncate">
+                  Live Chat
+                </h1>
+                <span className="text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+                  {totalOpen} open
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                {waiting.length > 0
+                  ? `${waiting.length} waiting in queue`
+                  : 'Front-desk support inbox'}
+              </p>
             </div>
-            <p className="text-[11px] text-gray-500 truncate mt-0.5">
-              {waiting.length > 0
-                ? `${waiting.length} waiting in queue`
-                : 'Front-desk support inbox'}
-            </p>
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
@@ -441,7 +453,7 @@ export default function StaffLiveChatPage() {
                       'px-2 py-1.5 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap flex items-center justify-center gap-1 cursor-pointer',
                       active
                         ? 'bg-[#7B2D8E] text-white'
-                        : 'text-gray-600 hover:text-[#5A1D6A]',
+                        : 'text-gray-600 hover:text-[#7B2D8E]',
                     )}
                   >
                     <span>{tab.label}</span>
@@ -470,7 +482,7 @@ export default function StaffLiveChatPage() {
           ) : visibleRows.length === 0 ? (
             <div className="py-14 px-6 text-center">
               <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
-                <MessageSquare className="w-5 h-5" />
+                <Inbox className="w-5 h-5" />
               </div>
               <p className="text-[13px] font-semibold text-gray-900">
                 {trimmedQuery.length >= 2
@@ -644,7 +656,7 @@ function InboxRow({
             <p
               className={cn(
                 'text-[13.5px] font-semibold truncate',
-                selected ? 'text-[#5A1D6A]' : 'text-gray-900',
+                selected ? 'text-[#7B2D8E]' : 'text-gray-900',
               )}
             >
               {fullName}
@@ -826,6 +838,22 @@ function ConversationStage({
     lastSeenRef.current = last?.created_at || null
   }, [])
 
+  const isNearBottomRef = useRef<boolean>(true)
+  const prevMsgCountRef = useRef<number>(0)
+  const forceScrollRef = useRef<boolean>(true)
+  const sessionStatusRef = useRef<FullSession['status'] | undefined>(
+    sessionQuery.data?.session?.status,
+  )
+  sessionStatusRef.current = sessionQuery.data?.session?.status
+  const mutateSession = sessionQuery.mutate
+
+  const handleFeedScroll = useCallback(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    isNearBottomRef.current = distFromBottom < 120
+  }, [])
+
   // Reset state on session switch
   useEffect(() => {
     setDraft('')
@@ -838,6 +866,9 @@ function ConversationStage({
     seenMsgIdsRef.current = new Set()
     lastSeenRef.current = null
     typingSentAtRef.current = 0
+    isNearBottomRef.current = true
+    prevMsgCountRef.current = 0
+    forceScrollRef.current = true
     if (typingIdleTimerRef.current) {
       window.clearTimeout(typingIdleTimerRef.current)
       typingIdleTimerRef.current = null
@@ -845,7 +876,7 @@ function ConversationStage({
     if (sessionId) void refetchAll(sessionId)
   }, [sessionId, refetchAll])
 
-  // Incremental message + presence + typing polling (1.5s)
+  // Incremental message + presence + typing + closed-state polling (1.5s)
   useEffect(() => {
     if (!sessionId) return
     let cancelled = false
@@ -865,9 +896,20 @@ function ConversationStage({
           messages: Message[]
           customerTyping?: boolean
           presence?: VisitorPresenceInfo
+          sessionStatus?: FullSession['status']
+          closedBy?: string | null
         }
         setCustomerTyping(Boolean(json.customerTyping))
         if (json.presence) setLivePresence(json.presence)
+        // If customer (or admin) ended the chat while staff is viewing it,
+        // refresh session metadata immediately so "Customer ended this chat" renders live.
+        if (
+          (json.sessionStatus === 'closed' || json.sessionStatus === 'abandoned') &&
+          sessionStatusRef.current !== json.sessionStatus
+        ) {
+          void mutateSession()
+          void globalMutate('/api/staff/live-chat/queue')
+        }
         if (json.messages.length === 0) return
 
         let hasNewUserMessage = false
@@ -901,14 +943,20 @@ function ConversationStage({
       cancelled = true
       window.clearInterval(interval)
     }
-  }, [sessionId])
+  }, [sessionId, mutateSession])
 
-  // Smooth auto-scroll when new messages arrive or visitor starts typing
+  // Smart auto-scroll: only scroll on session open, when staff sends a message,
+  // or when new messages arrive while already near the bottom — never hijack scroll-up.
   useEffect(() => {
     const el = scrollerRef.current
     if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [messages.length, customerTyping])
+    const hasNewMessages = messages.length > prevMsgCountRef.current
+    prevMsgCountRef.current = messages.length
+    if (forceScrollRef.current || (hasNewMessages && isNearBottomRef.current)) {
+      forceScrollRef.current = false
+      el.scrollTop = el.scrollHeight
+    }
+  }, [messages.length])
 
   const session = sessionQuery.data?.session
   const effectivePresence: VisitorPresenceInfo | null = useMemo(() => {
@@ -1054,7 +1102,7 @@ function ConversationStage({
       <div className="flex-1 flex items-center justify-center p-8 bg-[#FBF9FC]">
         <div className="text-center max-w-sm">
           <div className="w-14 h-14 mx-auto rounded-full bg-white border border-gray-200 text-[#7B2D8E] flex items-center justify-center mb-4">
-            <MessageSquare className="w-6 h-6" />
+            <Inbox className="w-6 h-6" />
           </div>
           <h2 className="text-[16px] font-semibold text-gray-900">
             Select a conversation
@@ -1091,7 +1139,7 @@ function ConversationStage({
             <button
               type="button"
               onClick={() => sessionQuery.mutate()}
-              className="rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] px-4 py-1.5 text-xs font-semibold text-white transition-colors cursor-pointer"
+              className="rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 px-4 py-1.5 text-xs font-semibold text-white transition-colors cursor-pointer"
             >
               Retry
             </button>
@@ -1209,7 +1257,11 @@ function ConversationStage({
                   )}
                 >
                   {isClosed
-                    ? 'Ended'
+                    ? session.closed_by === 'user'
+                      ? 'Ended by customer'
+                      : session.closed_by === 'admin'
+                        ? 'Ended by admin'
+                        : 'Ended'
                     : effectivePresence?.label ||
                       (session.status === 'active'
                         ? 'Online'
@@ -1222,7 +1274,7 @@ function ConversationStage({
                   type="button"
                   onClick={copySupportCode}
                   title="Copy Support ID"
-                  className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-[#5A1D6A] hover:text-[#7B2D8E] cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-[#7B2D8E] hover:opacity-80 cursor-pointer shrink-0"
                 >
                   <span>{supportCode}</span>
                   {copiedId && <Check className="w-3 h-3 text-[#7B2D8E]" />}
@@ -1259,7 +1311,7 @@ function ConversationStage({
                 type="button"
                 onClick={() => setEndDialogOpen(true)}
                 disabled={closing}
-                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full border border-[#7B2D8E]/25 bg-white text-[12px] font-semibold text-[#5A1D6A] hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/50 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full border border-[#7B2D8E]/25 bg-white text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/50 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <PhoneOff className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">End chat</span>
@@ -1291,7 +1343,7 @@ function ConversationStage({
               name={session.staff.displayName}
               size={22}
             />
-            <p className="text-[12px] text-[#5A1D6A] truncate">
+            <p className="text-[12px] text-[#7B2D8E] truncate">
               Currently handled by{' '}
               <span className="font-semibold">{session.staff.displayName}</span> —
               reviewing conversation history.
@@ -1311,6 +1363,7 @@ function ConversationStage({
         {/* Messages Feed */}
         <div
           ref={scrollerRef}
+          onScroll={handleFeedScroll}
           className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 min-h-0"
         >
           <div className="max-w-3xl mx-auto space-y-1">
@@ -1396,7 +1449,7 @@ function ConversationStage({
 
             {isWaiting && (
               <div className="flex justify-center pt-5">
-                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-[#5A1D6A] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-4 py-2 rounded-full">
+                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-4 py-2 rounded-full">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
                   Visitor is waiting — accept below to join the chat.
                 </div>
@@ -1430,7 +1483,7 @@ function ConversationStage({
                 type="button"
                 onClick={accept}
                 disabled={accepting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
               >
                 {accepting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1443,7 +1496,7 @@ function ConversationStage({
               <div className="space-y-2">
                 <p className="text-[11.5px] text-gray-500 text-center">
                   Taking over reassigns{' '}
-                  <span className="font-mono font-semibold text-[#5A1D6A]">
+                  <span className="font-mono font-semibold text-[#7B2D8E]">
                     {supportCode}
                   </span>{' '}
                   to you and notifies the visitor smoothly.
@@ -1452,7 +1505,7 @@ function ConversationStage({
                   type="button"
                   onClick={takeover}
                   disabled={takingOver}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white py-2.5 px-5 text-[13.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
                 >
                   {takingOver ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1465,7 +1518,13 @@ function ConversationStage({
             ) : isClosed ? (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 py-0.5">
                 <div className="flex items-center gap-2.5 text-[12.5px] text-gray-600">
-                  <span>This conversation has ended.</span>
+                  <span className={cn(session.closed_by === 'user' && 'font-semibold text-[#7B2D8E]')}>
+                    {session.closed_by === 'user'
+                      ? 'Customer ended this chat.'
+                      : session.closed_by === 'admin'
+                        ? 'Ended by admin.'
+                        : 'This conversation has ended.'}
+                  </span>
                   {session.service_rating != null && (
                     <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] tabular-nums">
                       <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
@@ -1477,7 +1536,7 @@ function ConversationStage({
                   type="button"
                   onClick={takeover}
                   disabled={takingOver}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[#5A1D6A] hover:text-white px-4 py-2 text-[12px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/30 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[#7B2D8E] hover:text-white px-4 py-2 text-[12px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
                 >
                   {takingOver ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1515,7 +1574,7 @@ function ConversationStage({
                           setShowQuickReplies(false)
                           composerRef.current?.focus()
                         }}
-                        className="px-3 py-1.5 rounded-full border border-[#7B2D8E]/25 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[11.5px] font-medium text-[#5A1D6A] hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        className="px-3 py-1.5 rounded-full border border-[#7B2D8E]/25 bg-[#FAF6FB] hover:bg-[#7B2D8E] text-[11.5px] font-medium text-[#7B2D8E] hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
                       >
                         {qr.label}
                       </button>
@@ -1536,7 +1595,7 @@ function ConversationStage({
                         : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#FAF6FB]',
                     )}
                   >
-                    <MessageSquareText className="w-4 h-4" />
+                    <List className="w-4 h-4" />
                   </button>
 
                   <textarea
@@ -1551,6 +1610,8 @@ function ConversationStage({
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault()
+                        forceScrollRef.current = true
+                        isNearBottomRef.current = true
                         void send()
                       }
                     }}
@@ -1561,10 +1622,14 @@ function ConversationStage({
 
                   <button
                     type="button"
-                    onClick={() => void send()}
+                    onClick={() => {
+                      forceScrollRef.current = true
+                      isNearBottomRef.current = true
+                      void send()
+                    }}
                     disabled={!draft.trim() || sending}
                     aria-label="Send message"
-                    className="shrink-0 w-9 h-9 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 transition-colors cursor-pointer"
+                    className="shrink-0 w-9 h-9 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white flex items-center justify-center disabled:bg-gray-200 disabled:text-gray-400 transition-colors cursor-pointer"
                   >
                     {sending ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1645,7 +1710,7 @@ function ConversationStage({
         description={
           <>
             Close{' '}
-            <span className="font-mono font-semibold text-[#5A1D6A]">{supportCode}</span>{' '}
+            <span className="font-mono font-semibold text-[#7B2D8E]">{supportCode}</span>{' '}
             with <span className="font-semibold text-gray-900">{customerFullName}</span>{' '}
             and send the transcript.
           </>
@@ -1739,49 +1804,38 @@ function MessageRow({
     [message.created_at],
   )
 
-  // System messages — centered avatar milestone for joins, horizontal hairline
-  // divider for leave/ended/general events (matching the reference screenshots).
+  // System messages — customer-facing join milestones ("X joined the chat")
+  // belong on the customer chat only; keep handover/ended dividers compact here.
   if (message.sender_role === 'system') {
-    if (isJoinMilestone(message.body)) {
-      const actionMatch = message.body.match(/\b(joined the chat|took over the chat)\b/i)
-      const milestoneAction = actionMatch ? actionMatch[1].toLowerCase() : 'joined the chat'
-      const milestoneName =
-        message.body.replace(/\s+(joined|took over)\b.*$/i, '').trim() ||
-        staffFallback?.displayName ||
-        'Customer Care'
-      return (
-        <div className="py-4 text-center">
-          <div className="flex justify-center mb-2.5">
-            <RepAvatar
-              src={message.sender_avatar_url || staffFallback?.avatarUrl}
-              name={milestoneName}
-              size={64}
-              className="border border-gray-200"
-            />
-          </div>
-          <p className="text-[15px] font-semibold text-gray-800 leading-snug">
-            {milestoneName}
-          </p>
-          <p className="text-[15px] font-semibold text-gray-800 leading-snug">
-            {milestoneAction}
-          </p>
-          {stamp && (
-            <p className="text-[11.5px] text-gray-500 mt-1 tabular-nums">
-              {stamp}
-            </p>
-          )}
-        </div>
-      )
+    if (isJoinMilestone(message.body) && !/took over/i.test(message.body)) {
+      return null
     }
-
+    const isCustomerEnded = /customer ended/i.test(message.body)
     return (
       <div className="py-2.5" role="status">
         <div className="flex items-center gap-3">
-          <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
-          <span className="text-[11.5px] font-medium text-gray-500 text-center">
+          <span
+            className={cn(
+              'h-px flex-1',
+              isCustomerEnded ? 'bg-[#7B2D8E]/25' : 'bg-gray-200',
+            )}
+            aria-hidden="true"
+          />
+          <span
+            className={cn(
+              'text-[11.5px] font-medium text-center',
+              isCustomerEnded ? 'text-[#7B2D8E] font-semibold' : 'text-gray-500',
+            )}
+          >
             {message.body}
           </span>
-          <span className="h-px flex-1 bg-gray-200" aria-hidden="true" />
+          <span
+            className={cn(
+              'h-px flex-1',
+              isCustomerEnded ? 'bg-[#7B2D8E]/25' : 'bg-gray-200',
+            )}
+            aria-hidden="true"
+          />
         </div>
         {stamp && (
           <p className="text-center text-[10.5px] text-gray-400 mt-1 tabular-nums">
@@ -1843,7 +1897,7 @@ function MessageRow({
     <div className="flex items-end justify-end gap-2.5">
       <div className="max-w-[76%] sm:max-w-[70%] flex flex-col items-end">
         {isFirstInGroup && (
-          <p className="text-[10.5px] font-medium text-[#5A1D6A] mr-1 mb-1">
+          <p className="text-[10.5px] font-medium text-[#7B2D8E] mr-1 mb-1">
             {isFromMe ? `${senderLabel} (You)` : senderLabel}
           </p>
         )}
@@ -1853,7 +1907,7 @@ function MessageRow({
             isLastInGroup && 'rounded-br-md',
             isFromMe
               ? 'bg-[#7B2D8E] text-white'
-              : 'bg-[#FAF6FB] text-[#5A1D6A] border border-[#7B2D8E]/25',
+              : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25',
           )}
         >
           <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed break-words">
@@ -2038,7 +2092,7 @@ function ProfileDialog({
             type="button"
             onClick={() => void save()}
             disabled={saving}
-            className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-[13px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 text-white text-[13px] font-semibold transition-colors disabled:opacity-60 cursor-pointer"
           >
             {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             Save identity

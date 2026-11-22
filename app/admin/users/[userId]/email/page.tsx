@@ -186,10 +186,6 @@ export default function AdminEmailClientPage() {
                 </p>
               </div>
             </div>
-
-            <span className="inline-flex items-center self-start sm:self-center rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 px-2.5 py-1 text-[11px] font-medium text-[#7B2D8E]">
-              Dermaspace email layout
-            </span>
           </div>
 
           {!hasDeliverableEmail ? (
@@ -202,7 +198,7 @@ export default function AdminEmailClientPage() {
               </p>
               <Link
                 href={`/admin/users/${encodeURIComponent(userId)}`}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A]"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#7B2D8E]/90"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to client profile
@@ -278,7 +274,7 @@ export default function AdminEmailClientPage() {
                 <button
                   type="submit"
                   disabled={sending || !subject.trim() || !message.trim()}
-                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#7B2D8E]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {sending ? (
                     <>

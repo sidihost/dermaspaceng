@@ -38,7 +38,6 @@
 import { useEffect, useState } from "react"
 
 const BRAND = "#7B2D8E"
-const BRAND_DARK = "#5A1D6A"
 
 export default function GlobalError({
   error,
@@ -140,7 +139,7 @@ export default function GlobalError({
               .ds-actions{margin-top:24px;display:flex;flex-direction:column;gap:10px}
               .ds-btn{appearance:none;width:100%;height:44px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;padding:0 24px;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
               .ds-btn-primary{background:${BRAND};color:#fff;border:1px solid ${BRAND}}
-              .ds-btn-primary:hover{background:${BRAND_DARK};border-color:${BRAND_DARK}}
+              .ds-btn-primary:hover{opacity:.92}
               .ds-btn-secondary{background:#fff;color:#1A0D1F;border:1px solid #E5E0EA}
               .ds-btn-secondary:hover{border-color:rgba(123,45,142,.4);color:${BRAND}}
               .ds-foot{padding:24px;border-top:1px solid #F1ECF5}
@@ -176,10 +175,12 @@ export default function GlobalError({
             <div aria-hidden className="ds-strip" />
             <div className="ds-top">
               <div className="ds-brand">
-                <span className="ds-brand-mark" aria-hidden>
-                  <ButterflyGlyph />
-                </span>
-                <span className="ds-brand-name">Dermaspace</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/dermaspace-logo.png"
+                  alt="Dermaspace"
+                  style={{ height: "30px", width: "auto", display: "block" }}
+                />
               </div>
               <span className="ds-tag">
                 <span
@@ -248,14 +249,6 @@ export default function GlobalError({
         </main>
       </body>
     </html>
-  )
-}
-
-function ButterflyGlyph() {
-  return (
-    <svg width={18} height={18} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M12 10.5C9.5 6 4 4.5 2.5 8c-1.2 2.8.8 6.5 4.5 7.5-2.5 1.2-3.5 4-2 6 1.5 2 4.5 1.2 6-1.5.5-.9.8-2 1-3 .2 1 .5 2.1 1 3 1.5 2.7 4.5 3.5 6 1.5 1.5-2 .5-4.8-2-6 3.7-1 5.7-4.7 4.5-7.5C20 4.5 14.5 6 12 10.5z" />
-    </svg>
   )
 }
 

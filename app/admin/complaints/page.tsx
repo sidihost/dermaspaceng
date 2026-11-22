@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  MessageSquare,
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightSm,
@@ -240,7 +239,7 @@ export default function ComplaintsPage() {
             <span>{totalAll} total messages</span>
           </div>
           {awaiting > 0 ? (
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF6FB] px-2.5 py-1 text-xs font-semibold text-[#5A1D6A] border border-[#7B2D8E]/25">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF6FB] px-2.5 py-1 text-xs font-semibold text-[#7B2D8E] border border-[#7B2D8E]/25">
               <CircleDashed className="h-3 w-3 text-[#7B2D8E]" aria-hidden="true" />
               {awaiting} awaiting reply
             </div>
@@ -404,7 +403,7 @@ export default function ComplaintsPage() {
         ) : complaints.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#7B2D8E]/10">
-              <MessageSquare className="h-6 w-6 text-[#7B2D8E]" aria-hidden="true" />
+              <Inbox className="h-6 w-6 text-[#7B2D8E]" aria-hidden="true" />
             </div>
             <p className="text-sm font-semibold text-gray-900">
               No support messages found
@@ -488,7 +487,7 @@ export default function ComplaintsPage() {
                           )}
                           {complaint.source === 'ticket' &&
                           complaint.ticket_source === 'email' ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] px-2 py-0.5 text-[10px] font-semibold text-[#5A1D6A] border border-[#7B2D8E]/20">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] px-2 py-0.5 text-[10px] font-semibold text-[#7B2D8E] border border-[#7B2D8E]/20">
                               <Mail className="h-2.5 w-2.5" aria-hidden="true" />
                               Email
                             </span>

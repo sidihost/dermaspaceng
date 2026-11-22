@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import {
   AlertCircle,
@@ -11,7 +12,6 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react'
-import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 import {
   DERMASPACE_BRANCHES,
   DERMASPACE_EMAIL,
@@ -56,13 +56,16 @@ export function SystemStatusCard({
 
         {/* Brand & status top bar */}
         <div className="px-6 sm:px-9 py-4 border-b border-[#F1ECF5] flex items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2.5 min-w-0">
-            <span className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] inline-flex items-center justify-center shrink-0">
-              <ButterflyLogo className="w-4 h-4" />
-            </span>
-            <span className="font-serif text-base font-semibold tracking-tight text-[#1A0D1F] truncate">
-              Dermaspace
-            </span>
+          <div className="inline-flex items-center min-w-0">
+            <Image
+              src="/images/dermaspace-logo.png"
+              alt="Dermaspace"
+              width={140}
+              height={30}
+              priority
+              referrerPolicy="no-referrer"
+              className="h-7 w-auto object-contain"
+            />
           </div>
 
           <span className="inline-flex items-center gap-2 text-xs font-medium text-gray-600 whitespace-nowrap">
@@ -121,7 +124,7 @@ export function SystemStatusCard({
             <button
               type="button"
               onClick={onRetry}
-              className="h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-6 text-sm font-semibold text-white hover:bg-[#5A1D6A] active:bg-[#5A1D6A] transition-colors cursor-pointer sm:flex-1"
+              className="h-11 inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-6 text-sm font-semibold text-white hover:bg-[#7B2D8E]/90 active:bg-[#7B2D8E]/85 transition-colors cursor-pointer sm:flex-1"
             >
               <RefreshCw className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>{copy.retryLabel}</span>
@@ -171,7 +174,7 @@ export function SystemStatusCard({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:opacity-80 hover:underline"
                 >
                   <span>{item.label}</span>
                   <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -201,7 +204,7 @@ export function SystemStatusCard({
                 </div>
                 <a
                   href={branch.phoneHref}
-                  className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] hover:underline w-fit"
+                  className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:opacity-80 hover:underline w-fit"
                 >
                   <Phone className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                   <span>{branch.phoneDisplay}</span>

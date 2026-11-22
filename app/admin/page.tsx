@@ -7,11 +7,11 @@ import {
   BarChart, Bar,
 } from 'recharts'
 import {
-  Users, Calendar, MessageSquare, Gift, Star,
+  Users, Calendar, LifeBuoy, Gift, Star,
   ArrowUpRight, ArrowDownRight, UserCog,
   ChevronRight, Activity, Inbox, LayoutGrid,
   TrendingUp, Clock, CheckCircle2, Bell,
-  Wallet, Mail, Headphones, Cake, CreditCard,
+  Wallet, Mail, Cake, CreditCard,
   Ticket, CircleDashed, CircleDot, Archive,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -269,7 +269,7 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: 'Invite staff', sub: 'Add team members', href: '/admin/staff', icon: UserCog },
     { label: 'Gift cards', sub: 'Review requests', href: '/admin/gift-cards', icon: Gift },
-    { label: 'Support', sub: 'Messages & tickets', href: '/admin/complaints', icon: MessageSquare },
+    { label: 'Support', sub: 'Messages & tickets', href: '/admin/complaints', icon: LifeBuoy },
     { label: 'Activity log', sub: 'View all events', href: '/admin/activity', icon: Activity },
   ]
 
@@ -318,7 +318,7 @@ export default function AdminDashboard() {
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href="/admin/users"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white text-[#5A1D6A] px-4 py-2 text-sm font-medium hover:bg-white/95 transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white text-[#7B2D8E] px-4 py-2 text-sm font-medium hover:bg-white/95 transition-colors"
                 >
                   View users
                   <ArrowUpRight className="w-3.5 h-3.5" />
@@ -392,7 +392,7 @@ export default function AdminDashboard() {
               count: stats!.liveChat!.waiting,
               href: '/admin/live-chat',
               sub: 'Customers waiting in queue right now',
-              icon: Headphones,
+              icon: Inbox,
             })
           }
           if ((stats?.pendingTransactions?.count ?? 0) > 0) {
@@ -734,7 +734,7 @@ export default function AdminDashboard() {
                     className={`inline-flex items-center gap-0.5 text-xs font-medium rounded-full px-1.5 py-0.5 ${
                       stat.delta >= 0
                         ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
-                        : 'text-[#3E104B] bg-[#3E104B]/10'
+                        : 'text-gray-700 bg-gray-100'
                     }`}
                   >
                     {stat.delta >= 0 ? (
@@ -1096,7 +1096,7 @@ export default function AdminDashboard() {
                   className={`inline-flex items-center gap-0.5 text-xs font-medium rounded-full px-1.5 py-0.5 ${
                     revenue.growth >= 0
                       ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
-                      : 'text-[#3E104B] bg-[#3E104B]/10'
+                      : 'text-gray-700 bg-gray-100'
                   }`}
                 >
                   {revenue.growth >= 0 ? (

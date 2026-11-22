@@ -29,7 +29,7 @@ export function StaffMainShell({
 
   if (isFullBleedLiveChat) {
     return (
-      <main className="h-[100dvh] pl-0 lg:pl-72 pt-14 lg:pt-0 overflow-hidden bg-white flex flex-col">
+      <main className="h-[100dvh] w-full overflow-hidden bg-white flex flex-col">
         {children}
       </main>
     )

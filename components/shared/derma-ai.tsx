@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, Inbox, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -724,8 +724,8 @@ function ToolResultCard({
       case 'getPackages': return <Gift className="w-4 h-4" />
       case 'sendPasswordResetEmail': return <Mail className="w-4 h-4" />
       case 'resendVerificationEmail': return <Mail className="w-4 h-4" />
-      case 'getSupportTickets': return <MessageSquare className="w-4 h-4" />
-      case 'createSupportTicket': return <MessageSquare className="w-4 h-4" />
+      case 'getSupportTickets': return <LifeBuoy className="w-4 h-4" />
+      case 'createSupportTicket': return <LifeBuoy className="w-4 h-4" />
       // Notifications → Bell makes more semantic sense than a decorative
       // Sparkles (which the rest of the site no longer uses).
       case 'getNotifications': return <Mail className="w-4 h-4" />
@@ -1684,7 +1684,7 @@ function ToolResultCard({
         <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] p-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-              <MessageSquare className="w-3.5 h-3.5" />
+              <LifeBuoy className="w-3.5 h-3.5" />
             </div>
             <span className="text-xs font-semibold text-gray-900">Support Tickets</span>
           </div>
@@ -1692,7 +1692,7 @@ function ToolResultCard({
           <Link
             href="/dashboard/support"
             onClick={() => onNavigate?.()}
-            className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors"
+            className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#7B2D8E]/90 transition-colors"
           >
             <Plus className="w-3 h-3" strokeWidth={2.5} />
             New ticket
@@ -1705,7 +1705,7 @@ function ToolResultCard({
         <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-              <MessageSquare className="w-3.5 h-3.5" />
+              <LifeBuoy className="w-3.5 h-3.5" />
             </div>
             <span className="text-xs font-semibold text-gray-900">Support Tickets</span>
           </div>
@@ -2380,14 +2380,30 @@ export default function DermaAI({
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  const scrollToLatestMessage = useCallback(() => {
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesScrollRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    isNearBottomRef.current = distFromBottom < 120
+  }, [])
+
+  const scrollToLatestMessage = useCallback((force = false) => {
+    if (!force && !isNearBottomRef.current) return
     setTimeout(() => {
+      const el = messagesScrollRef.current
+      if (el) {
+        if (!force && !isNearBottomRef.current) return
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+        return
+      }
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }, 60)
   }, [])
@@ -2433,7 +2449,7 @@ export default function DermaAI({
   // panel rather than popping a separate floating live-chat window).
   const inlineLiveChat = useInlineLiveChat({
     isOpen,
-    onSessionChange: scrollToLatestMessage,
+    onSessionChange: () => scrollToLatestMessage(false),
     onSessionFinalized: handleSessionFinalized,
     onLiveChatLeftAndClosed: () => onLiveChatLeftRef.current(),
   })
@@ -3330,7 +3346,13 @@ export default function DermaAI({
   }, [messages, currentSessionId, hasHydrated])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!isNearBottomRef.current) return
+    const el = messagesScrollRef.current
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages, streamingContent])
 
   useEffect(() => {
@@ -3381,7 +3403,8 @@ export default function DermaAI({
         content: m.content,
       }))
       await inlineLiveChat.triggerHandoff(cleanTopic || 'Customer support', transcript)
-      scrollToLatestMessage()
+      isNearBottomRef.current = true
+      scrollToLatestMessage(true)
     },
     [setIsOpen, inlineLiveChat, messages, scrollToLatestMessage],
   )
@@ -6094,7 +6117,8 @@ export default function DermaAI({
       setInput('')
       playChime('send')
       void inlineLiveChat.triggerHandoff(trimmed, transcript)
-      scrollToLatestMessage()
+      isNearBottomRef.current = true
+      scrollToLatestMessage(true)
       return
     }
 
@@ -6562,7 +6586,7 @@ export default function DermaAI({
               {sessions.length === 0 ? (
                 <div className="px-3 py-10 text-center">
                   <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 ring-1 ring-[#7B2D8E]/15">
-                    <MessageSquare className="w-5 h-5 text-[#7B2D8E]" />
+                    <Inbox className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
                   <p className="text-[13px] font-semibold text-gray-800">No chats yet</p>
                   <p className="text-[11px] text-gray-500 mt-1 leading-relaxed max-w-[200px] mx-auto">
@@ -7319,21 +7343,15 @@ export default function DermaAI({
                         </svg>
                       </button>
                     )}
-                    {/* Single clean avatar — representative portrait or Customer Care headset in Live Chat mode; ButterflyLogo in Derma AI mode. */}
+                    {/* Single clean avatar — keeps Derma AI while waiting for handoff (Namecheap style), and switches to the live representative avatar + name once connected. */}
                     <div className="relative flex-shrink-0">
-                      {inlineLiveChat.isLiveMode ? (
-                        inlineLiveChat.staff ? (
-                          <RepAvatar
-                            src={inlineLiveChat.staff.avatarUrl}
-                            name={inlineLiveChat.staff.displayName}
-                            size={40}
-                            className="border border-gray-200"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center">
-                            <MessageSquare className="w-4.5 h-4.5" />
-                          </div>
-                        )
+                      {inlineLiveChat.isLiveMode && inlineLiveChat.staff ? (
+                        <RepAvatar
+                          src={inlineLiveChat.staff.avatarUrl}
+                          name={inlineLiveChat.staff.displayName}
+                          size={40}
+                          className="border border-gray-200"
+                        />
                       ) : (
                         <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                           <ButterflyLogo className="w-4.5 h-4.5 text-white" />
@@ -7342,26 +7360,20 @@ export default function DermaAI({
                     </div>
                     <div className="min-w-0 leading-tight">
                       <h3 className="font-semibold text-gray-900 text-[15px] tracking-tight truncate whitespace-nowrap">
-                        {inlineLiveChat.isLiveMode
-                          ? inlineLiveChat.staff?.displayName || 'Customer Care'
+                        {inlineLiveChat.isLiveMode && inlineLiveChat.staff
+                          ? inlineLiveChat.staff.displayName
                           : 'Derma AI'}
                       </h3>
                       <p className="text-[12.5px] leading-none mt-1 truncate">
-                        {inlineLiveChat.isLiveMode ? (
-                          inlineLiveChat.status === 'active' ? (
-                            <span className="text-[#7B2D8E] font-medium">
-                              Available
-                            </span>
-                          ) : (
-                            <span className="text-[#7B2D8E] font-medium">
-                              Connecting…
-                            </span>
-                          )
+                        {inlineLiveChat.isLiveMode && inlineLiveChat.staff ? (
+                          <span className="text-[#7B2D8E] font-medium">
+                            Available
+                          </span>
                         ) : isLoading ? (
                           <span className="text-gray-500">Thinking…</span>
                         ) : isSpeaking ? (
                           <span className="text-gray-500">Speaking…</span>
-                        ) : memories.length > 0 ? (
+                        ) : memories.length > 0 && !inlineLiveChat.isLiveMode ? (
                           <span className="text-[#7B2D8E] font-medium">
                             Remembers {memories.length}
                           </span>
@@ -7478,6 +7490,9 @@ export default function DermaAI({
                     onClose={() => inlineLiveChat.setOptionsOpen(false)}
                   />
                   <div
+                    ref={messagesScrollRef}
+                    onScroll={handleMessagesScroll}
+                    data-testid="derma-messages-scroller"
                     className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50 relative ${
                       textSize === 'small'
                         ? 'text-[13px]'
@@ -7791,11 +7806,11 @@ export default function DermaAI({
                       ) : message.liveChatMeta?.kind === 'staff' ? (
                         <div className="flex justify-start">
                           <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/25 flex items-center justify-center mr-2 mt-0.5">
-                            <MessageSquare className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                            <LifeBuoy className="w-3.5 h-3.5 text-[#7B2D8E]" />
                           </div>
                           <div className="flex flex-col items-start max-w-[92%]">
                             <div className="flex items-center gap-1.5 px-1 mb-0.5 flex-wrap">
-                              <span className="text-[10px] font-semibold text-[#5A1D6A]">
+                              <span className="text-[10px] font-semibold text-[#7B2D8E]">
                                 {message.liveChatMeta.senderName || 'Representative'}
                               </span>
                               <span className="text-[9.5px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 rounded-full px-1.5 py-0.5">
@@ -9719,7 +9734,7 @@ export default function DermaAI({
                           setOpenMenuSessionId(null)
                           deleteSession(id)
                         }}
-                        className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#5A1D6A] transition-colors"
+                        className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#7B2D8E]/90 transition-colors"
                       >
                         Delete
                       </button>

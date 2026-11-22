@@ -44,6 +44,8 @@ export async function GET(req: Request, { params }: Params) {
 
   return NextResponse.json({
     messages,
+    sessionStatus: session.status,
+    closedBy: session.closed_by ?? null,
     customerTyping: isTypingActive(session.customer_typing_at),
     presence: getVisitorPresence(
       session.customer_last_seen_at ?? session.last_activity_at,
