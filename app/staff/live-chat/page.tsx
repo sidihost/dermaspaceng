@@ -15,7 +15,6 @@
 //                          guests & members, plus Wallet / Bookings / Txns.
 // ---------------------------------------------------------------------------
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -23,7 +22,10 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRightLeft,
+  Bell,
   Check,
+  CheckCheck,
+  Copy,
   Download,
   Globe,
   Inbox,
@@ -43,16 +45,23 @@ import {
 import { cn } from '@/lib/utils'
 import {
   filterAgentTimelineMessages,
+  formatAgentLifecycleMessage,
+  formatEndedByStatusLabel,
+  formatMessageDayLabel,
+  isDifferentCalendarDay,
   mergeIncrementalMessages,
+  resolveLiveChatDeepLinkSessionId,
   resolveSupportId,
   sanitizeNetworkErrorMessage,
 } from '@/lib/support-and-chat'
 import {
   fetchLiveChatSoundPreference,
+  isLiveChatSoundEnabled,
   playLiveChatChime,
   saveLiveChatSoundPreference,
   unlockLiveChatAudio,
 } from '@/lib/live-chat-sound'
+import { syncBrowserPushSubscription } from '@/components/shared/permissions-panel'
 import {
   formatChatTimestamp,
   formatLiveChatTranscriptText,
@@ -60,7 +69,10 @@ import {
   type VisitorMetadata,
   type VisitorPresenceInfo,
 } from '@/lib/visitor-telemetry'
-import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
+import {
+  CustomerAvatar,
+  RepAvatar,
+} from '@/components/shared/derma-inline-live-chat'
 import { useNotify } from '@/components/shared/notify'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import {
@@ -131,6 +143,7 @@ interface Message {
   sender_name?: string | null
   sender_avatar_url?: string | null
   body: string
+  read_at?: string | null
   created_at: string
 }
 
@@ -172,6 +185,7 @@ interface StaffProfile {
   avatarSlug: string
   displayName: string
   avatarUrl: string
+  userAvatarUrl?: string | null
   status?: string
 }
 
@@ -258,15 +272,38 @@ export default function StaffLiveChatPage() {
     currentUserId?: string
   }>(queueUrl, fetcher, { refreshInterval: 2500, revalidateOnFocus: true })
 
+  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null)
+  const [pushPerm, setPushPerm] = useState<NotificationPermission | 'unsupported'>('unsupported')
+
   // Support deep links from LiveChatRequestWatcher / Notification bell (?session=...)
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
     const targetSession = params.get('session')?.trim()
     if (targetSession) {
-      setSelected(targetSession)
+      setPendingDeepLink(targetSession)
+    }
+    if ('Notification' in window) {
+      setPushPerm(Notification.permission)
+      if (Notification.permission === 'granted') {
+        void syncBrowserPushSubscription()
+      }
     }
   }, [])
+
+  // Resolve ?session= deep-link against waiting, mine, others (handles UUID and DS-LC-...)
+  useEffect(() => {
+    const data = queueQuery.data
+    if (!pendingDeepLink || !data) return
+    const allOpen = [...data.waiting, ...data.mine, ...(data.others || [])]
+    const resolved = resolveLiveChatDeepLinkSessionId(allOpen, pendingDeepLink)
+    if (resolved) {
+      setSelected(resolved)
+    } else if (/^[0-9a-f-]{32,36}$/i.test(pendingDeepLink)) {
+      setSelected(pendingDeepLink)
+    }
+    setPendingDeepLink(null)
+  }, [pendingDeepLink, queueQuery.data])
 
   useEffect(() => {
     const refreshQueue = () => {
@@ -310,7 +347,19 @@ export default function StaffLiveChatPage() {
     }
   }, [soundEnabled, notify])
 
-  // Gentle chime when a new customer joins the waiting queue
+  const enableDesktopAlerts = useCallback(() => {
+    unlockLiveChatAudio()
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    void Notification.requestPermission().then((perm) => {
+      setPushPerm(perm)
+      if (perm === 'granted') {
+        void syncBrowserPushSubscription()
+        notify.success('Desktop alerts enabled', 'You will receive alerts for incoming chats.')
+      }
+    })
+  }, [notify])
+
+  // Gentle chime + hidden-tab notification when a new customer joins the waiting queue
   useEffect(() => {
     const waiting = queueQuery.data?.waiting
     if (!waiting) return
@@ -319,27 +368,57 @@ export default function StaffLiveChatPage() {
       seenWaitingIdsRef.current = new Set(waiting.map((w) => w.id))
       return
     }
-    let hasNewWaiting = false
+    let newlyArrived: QueueItem | null = null
     for (const w of waiting) {
       if (!seenWaitingIdsRef.current.has(w.id)) {
         seenWaitingIdsRef.current.add(w.id)
-        hasNewWaiting = true
+        newlyArrived = w
       }
     }
-    if (hasNewWaiting) {
+    if (newlyArrived) {
       playLiveChatChime('queue', 'staff')
+      if (
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        Notification.permission === 'granted' &&
+        document.hidden &&
+        isLiveChatSoundEnabled('staff')
+      ) {
+        const customer =
+          `${newlyArrived.user_first_name || 'Visitor'} ${newlyArrived.user_last_name || ''}`.trim()
+        const code = resolveSupportId(newlyArrived.support_code, newlyArrived.id)
+        const arrivedId = newlyArrived.id
+        try {
+          const notif = new Notification(`New live chat request (${code})`, {
+            body: `${customer}: ${newlyArrived.initial_topic || 'Waiting in support queue'}`,
+            icon: '/icons/icon-192x192.png',
+            tag: `live-chat-${arrivedId}`,
+          })
+          notif.onclick = () => {
+            try {
+              window.focus()
+              setSelected(arrivedId)
+              notif.close()
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch {
+          /* ignore */
+        }
+      }
     }
   }, [queueQuery.data?.waiting])
 
   // Auto-select first open session on desktop only
   useEffect(() => {
-    if (selected) return
+    if (selected || pendingDeepLink) return
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return
     const data = queueQuery.data
     if (!data) return
     const candidate = data.waiting[0] || data.mine[0] || data.others?.[0]
     if (candidate) setSelected(candidate.id)
-  }, [selected, queueQuery.data])
+  }, [selected, pendingDeepLink, queueQuery.data])
 
   const waiting = useMemo(() => queueQuery.data?.waiting || [], [queueQuery.data?.waiting])
   const mine = useMemo(() => queueQuery.data?.mine || [], [queueQuery.data?.mine])
@@ -398,6 +477,17 @@ export default function StaffLiveChatPage() {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {pushPerm === 'default' && (
+              <button
+                type="button"
+                onClick={enableDesktopAlerts}
+                aria-label="Enable desktop alerts"
+                title="Enable desktop alerts"
+                className="w-9 h-9 rounded-full border border-[#7B2D8E]/25 bg-[#FAF6FB] text-[#7B2D8E] hover:border-[#7B2D8E]/50 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <Bell className="w-4 h-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleSound}
@@ -651,30 +741,15 @@ function InboxRow({
     >
       {/* Avatar + live status indicator */}
       <div className="relative shrink-0 mt-0.5">
-        {item.user_avatar_url ? (
-          <Image
-            src={item.user_avatar_url}
-            alt={fullName}
-            width={40}
-            height={40}
-            referrerPolicy="no-referrer"
-            className={cn(
-              'w-10 h-10 rounded-full object-cover border',
-              selected ? 'border-[#7B2D8E]/40' : 'border-gray-200',
-            )}
-          />
-        ) : (
-          <div
-            className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-semibold border',
-              selected
-                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-                : 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/20',
-            )}
-          >
-            {initials}
-          </div>
-        )}
+        <CustomerAvatar
+          src={item.user_avatar_url}
+          name={fullName}
+          initials={initials}
+          size={40}
+          className={cn(
+            selected ? 'border-[#7B2D8E]/40' : 'border-gray-200',
+          )}
+        />
         <span
           aria-hidden="true"
           title={itemPresence.label}
@@ -788,6 +863,9 @@ function ConversationStage({
   const notify = useNotify()
 
   const sessionQuery = useSWR<{
+    currentUserId?: string | null
+    currentUserRole?: 'admin' | 'staff'
+    currentUserDisplayNames?: string[]
     session: FullSession
     customerTyping?: boolean
     presence?: VisitorPresenceInfo
@@ -916,15 +994,38 @@ function ConversationStage({
     if (sessionId) void refetchAll(sessionId)
   }, [sessionId, refetchAll])
 
-  // Incremental message + presence + typing + closed-state polling (900ms + focus/visibility)
+  // Incremental message + presence + typing + closed-state polling (900ms visible / ~2.7s background)
+  const metaRef = useRef<{ customerName: string; supportCode: string }>({
+    customerName: 'Visitor',
+    supportCode: '',
+  })
+  const curSession = sessionQuery.data?.session
+  metaRef.current = {
+    customerName: curSession
+      ? `${curSession.user.firstName || 'Guest'} ${curSession.user.lastName || ''}`.trim()
+      : 'Visitor',
+    supportCode: curSession
+      ? resolveSupportId(
+          curSession.supportCode || curSession.support_code,
+          curSession.id,
+        )
+      : '',
+  }
+
   useEffect(() => {
     if (!sessionId) return
     let cancelled = false
     let inFlight = false
+    let hiddenSkip = 0
 
-    const tick = async () => {
+    const tick = async (force = false) => {
       if (inFlight) return
-      if (typeof document !== 'undefined' && document.hidden) return
+      if (!force && typeof document !== 'undefined' && document.hidden) {
+        hiddenSkip = (hiddenSkip + 1) % 3
+        if (hiddenSkip !== 0) return
+      } else {
+        hiddenSkip = 0
+      }
       inFlight = true
       try {
         const since = lastSeenRef.current
@@ -957,15 +1058,46 @@ function ConversationStage({
         }
         if (json.messages.length === 0) return
 
-        let hasNewUserMessage = false
+        const newUserMessages: Message[] = []
         for (const m of json.messages) {
           if (!seenMsgIdsRef.current.has(m.id)) {
             seenMsgIdsRef.current.add(m.id)
-            if (m.sender_role === 'user') hasNewUserMessage = true
+            if (m.sender_role === 'user') newUserMessages.push(m)
           }
         }
-        if (hasNewUserMessage) {
+        if (newUserMessages.length > 0) {
           playLiveChatChime('reply', 'staff')
+          if (
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'granted' &&
+            document.hidden &&
+            isLiveChatSoundEnabled('staff')
+          ) {
+            const latest = newUserMessages[newUserMessages.length - 1]
+            const customer = metaRef.current.customerName
+            const code = metaRef.current.supportCode
+            try {
+              const notif = new Notification(
+                `${customer}${code ? ` (${code})` : ''}`,
+                {
+                  body: latest.body.slice(0, 140),
+                  icon: '/icons/icon-192x192.png',
+                  tag: `live-chat-msg-${sessionId}`,
+                },
+              )
+              notif.onclick = () => {
+                try {
+                  window.focus()
+                  notif.close()
+                } catch {
+                  /* ignore */
+                }
+              }
+            } catch {
+              /* ignore */
+            }
+          }
         }
 
         setMessages((prev) => mergeIncrementalMessages(prev, json.messages))
@@ -981,7 +1113,7 @@ function ConversationStage({
     const interval = window.setInterval(() => void tick(), 900)
     const onWake = () => {
       if (typeof document !== 'undefined' && document.hidden) return
-      void tick()
+      void tick(true)
     }
     window.addEventListener('focus', onWake)
     document.addEventListener('visibilitychange', onWake)
@@ -1289,13 +1421,36 @@ function ConversationStage({
     notify.success('Transcript downloaded', `${supportCode} saved as .txt.`)
   }
 
+  const effectiveViewerRole = sessionQuery.data?.currentUserRole ?? 'staff'
+  const effectiveViewerNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...(sessionQuery.data?.currentUserDisplayNames ?? []),
+            myDisplayName,
+          ].filter((n): n is string => Boolean(n && n.trim())),
+        ),
+      ),
+    [sessionQuery.data?.currentUserDisplayNames, myDisplayName],
+  )
+  const endedStatusMeta = useMemo(
+    () =>
+      formatEndedByStatusLabel({
+        closedBy: session.closed_by,
+        viewerRole: effectiveViewerRole,
+        isAssignedToViewer: Boolean(session.isAssignedToMe),
+      }),
+    [session.closed_by, effectiveViewerRole, session.isAssignedToMe],
+  )
+
   return (
     <>
       {/* Center Conversation Column */}
       <section className="flex-1 min-w-0 flex flex-col h-full bg-[#FBF9FC] overflow-hidden">
-        {/* Crisp White Top Header (matching reference clarity) */}
-        <header className="h-[68px] shrink-0 bg-white border-b border-gray-200 px-3.5 sm:px-5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* Crisp White Top Header (wraps cleanly on 360px screens without clipping Support ID) */}
+        <header className="min-h-[68px] py-2 shrink-0 bg-white border-b border-gray-200 px-3 sm:px-5 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
             <button
               type="button"
               onClick={onBack}
@@ -1313,9 +1468,9 @@ function ConversationStage({
               presenceState={effectivePresence?.state}
             />
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <h2 className="text-[15px] font-semibold text-gray-900 truncate">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <h2 className="text-[14.5px] sm:text-[15px] font-semibold text-gray-900 truncate">
                   {customerFullName}
                 </h2>
                 {session.isGuest && (
@@ -1325,34 +1480,30 @@ function ConversationStage({
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 text-[11.5px] mt-0.5 truncate">
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] sm:text-[11.5px] mt-0.5">
                 <span
                   className={cn(
-                    'font-medium shrink-0',
+                    'font-medium whitespace-nowrap',
                     effectivePresence?.state === 'online' || isWaiting
                       ? 'text-[#7B2D8E]'
                       : 'text-gray-500',
                   )}
                 >
                   {isClosed
-                    ? session.closed_by === 'user'
-                      ? 'Ended by customer'
-                      : session.closed_by === 'admin'
-                        ? 'Ended by admin'
-                        : 'Ended'
+                    ? endedStatusMeta.headerLabel
                     : effectivePresence?.label ||
                       (session.status === 'active'
                         ? 'Online'
                         : 'Waiting in queue')}
                 </span>
-                <span className="text-gray-300" aria-hidden="true">
+                <span className="text-gray-300 shrink-0" aria-hidden="true">
                   ·
                 </span>
                 <button
                   type="button"
                   onClick={copySupportCode}
                   title="Copy Support ID"
-                  className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-[#7B2D8E] hover:opacity-80 cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-[#7B2D8E] hover:opacity-80 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{supportCode}</span>
                   {copiedId && <Check className="w-3 h-3 text-[#7B2D8E]" />}
@@ -1362,7 +1513,7 @@ function ConversationStage({
                     <span className="hidden md:inline text-gray-300" aria-hidden="true">
                       ·
                     </span>
-                    <span className="hidden md:inline-flex items-center gap-1 text-gray-500 truncate">
+                    <span className="hidden md:inline-flex items-center gap-1 text-gray-500 truncate min-w-0">
                       <Globe className="w-3 h-3 text-gray-400 shrink-0" />
                       <span className="truncate">{envSubtitle}</span>
                     </span>
@@ -1442,14 +1593,20 @@ function ConversationStage({
         <div
           ref={scrollerRef}
           onScroll={handleFeedScroll}
-          className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 min-h-0"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 min-h-0 bg-[#FBF9FC]"
         >
           <div className="max-w-3xl mx-auto space-y-1">
             {visibleMessages.map((m, idx) => {
               const prev = idx > 0 ? visibleMessages[idx - 1] : null
               const next = idx < visibleMessages.length - 1 ? visibleMessages[idx + 1] : null
+              const showDayDivider =
+                idx === 0 || isDifferentCalendarDay(prev?.created_at, m.created_at)
+              const nextDayChange = Boolean(
+                next && isDifferentCalendarDay(m.created_at, next.created_at),
+              )
               const sameSenderAsPrev = Boolean(
-                prev &&
+                !showDayDivider &&
+                  prev &&
                   prev.sender_role !== 'system' &&
                   m.sender_role !== 'system' &&
                   prev.sender_role === m.sender_role &&
@@ -1460,7 +1617,8 @@ function ConversationStage({
                   ) < 180000,
               )
               const sameSenderAsNext = Boolean(
-                next &&
+                !nextDayChange &&
+                  next &&
                   next.sender_role !== 'system' &&
                   m.sender_role !== 'system' &&
                   next.sender_role === m.sender_role &&
@@ -1472,21 +1630,47 @@ function ConversationStage({
               )
 
               return (
-                <div
-                  key={m.id}
-                  className={cn(
-                    sameSenderAsPrev ? 'pt-0.5' : idx === 0 ? '' : 'pt-3.5',
+                <div key={m.id}>
+                  {showDayDivider && (
+                    <div className="py-3 flex items-center gap-3" role="separator">
+                      <span className="h-px flex-1 bg-gray-200/80" aria-hidden="true" />
+                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-gray-200 text-[10.5px] font-semibold text-gray-500">
+                        {formatMessageDayLabel(m.created_at)}
+                      </span>
+                      <span className="h-px flex-1 bg-gray-200/80" aria-hidden="true" />
+                    </div>
                   )}
-                >
-                  <MessageRow
-                    message={m}
-                    currentUserId={currentUserId}
-                    userName={customerFullName}
-                    userAvatarUrl={session.user.avatarUrl}
-                    staffFallback={session.staff}
-                    isFirstInGroup={!sameSenderAsPrev}
-                    isLastInGroup={!sameSenderAsNext}
-                  />
+                  <div
+                    className={cn(
+                      sameSenderAsPrev ? 'pt-0.5' : showDayDivider ? '' : 'pt-3.5',
+                    )}
+                  >
+                    <MessageRow
+                      message={m}
+                      currentUserId={currentUserId}
+                      viewerRole={effectiveViewerRole}
+                      viewerNames={effectiveViewerNames}
+                      isAssignedToViewer={Boolean(session.isAssignedToMe)}
+                      closedBy={session.closed_by}
+                      hasOwnLeaveBefore={visibleMessages
+                        .slice(0, idx)
+                        .some(
+                          (prevMsg) =>
+                            prevMsg.sender_role === 'system' &&
+                            formatAgentLifecycleMessage(prevMsg.body, {
+                              viewerNames: effectiveViewerNames,
+                              isAssignedToViewer: Boolean(session.isAssignedToMe),
+                              viewerRole: effectiveViewerRole,
+                              closedBy: session.closed_by,
+                            }) === 'You left the chat',
+                        )}
+                      userName={customerFullName}
+                      userAvatarUrl={session.user.avatarUrl}
+                      staffFallback={session.staff}
+                      isFirstInGroup={!sameSenderAsPrev}
+                      isLastInGroup={!sameSenderAsNext}
+                    />
+                  </div>
                 </div>
               )
             })}
@@ -1499,20 +1683,11 @@ function ConversationStage({
                 aria-label={`${session.user.firstName || 'Visitor'} is replying`}
               >
                 <div className="w-7 shrink-0">
-                  {session.user.avatarUrl ? (
-                    <Image
-                      src={session.user.avatarUrl}
-                      alt={customerFullName}
-                      width={28}
-                      height={28}
-                      referrerPolicy="no-referrer"
-                      className="w-7 h-7 rounded-full object-cover border border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[10px] font-semibold">
-                      {(customerFullName?.[0] || '?').toUpperCase()}
-                    </div>
-                  )}
+                  <CustomerAvatar
+                    src={session.user.avatarUrl}
+                    name={customerFullName}
+                    size={28}
+                  />
                 </div>
                 <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md inline-flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
@@ -1527,9 +1702,18 @@ function ConversationStage({
 
             {isWaiting && (
               <div className="flex justify-center pt-5">
-                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-4 py-2 rounded-full">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
-                  Visitor is waiting — accept below to join the chat.
+                <div className="w-full max-w-sm rounded-2xl bg-white border border-[#7B2D8E]/20 px-4 py-3 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 flex items-center justify-center shrink-0">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#7B2D8E]" />
+                  </span>
+                  <div className="min-w-0 text-left">
+                    <p className="text-[12.5px] font-semibold text-gray-900">
+                      Visitor is waiting in queue
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Accept below to join the chat and respond live.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1597,16 +1781,12 @@ function ConversationStage({
               <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 py-0.5">
                 <div className="flex items-center gap-2.5 text-[12.5px] text-gray-600">
                   <span className={cn(session.closed_by === 'user' && 'font-semibold text-[#7B2D8E]')}>
-                    {session.closed_by === 'user'
-                      ? 'Customer ended this chat.'
-                      : session.closed_by === 'admin'
-                        ? 'Ended by admin.'
-                        : 'This conversation has ended.'}
+                    {endedStatusMeta.footerLabel}
                   </span>
-                  {session.service_rating != null && (
+                  {(session.staff_rating ?? session.service_rating) != null && (
                     <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] tabular-nums">
                       <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
-                      {session.service_rating}/5
+                      {session.staff_rating ?? session.service_rating}/5
                     </span>
                   )}
                 </div>
@@ -1734,7 +1914,7 @@ function ConversationStage({
             isGuest={Boolean(session.isGuest)}
             topic={session.initial_topic}
             escalatedAt={session.escalated_at}
-            rating={session.service_rating}
+            rating={session.staff_rating ?? session.service_rating}
             ratingComment={session.rating_comment}
             visitorFallback={session.visitor}
             presence={effectivePresence}
@@ -1766,7 +1946,7 @@ function ConversationStage({
               isGuest={Boolean(session.isGuest)}
               topic={session.initial_topic}
               escalatedAt={session.escalated_at}
-              rating={session.service_rating}
+              rating={session.staff_rating ?? session.service_rating}
               ratingComment={session.rating_comment}
               visitorFallback={session.visitor}
               presence={effectivePresence}
@@ -1837,20 +2017,12 @@ function UserAvatar({
               : 'bg-gray-300'
   return (
     <div className="relative shrink-0">
-      {url ? (
-        <Image
-          src={url}
-          alt={firstName}
-          width={40}
-          height={40}
-          referrerPolicy="no-referrer"
-          className="w-10 h-10 rounded-full object-cover border border-gray-200"
-        />
-      ) : (
-        <div className="w-10 h-10 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[12px] font-semibold">
-          {initials}
-        </div>
-      )}
+      <CustomerAvatar
+        src={url}
+        name={firstName}
+        initials={initials}
+        size={40}
+      />
       <span
         aria-hidden="true"
         className={cn(
@@ -1865,6 +2037,11 @@ function UserAvatar({
 function MessageRow({
   message,
   currentUserId,
+  viewerRole,
+  viewerNames,
+  isAssignedToViewer,
+  closedBy,
+  hasOwnLeaveBefore,
   userName,
   userAvatarUrl,
   staffFallback,
@@ -1873,24 +2050,48 @@ function MessageRow({
 }: {
   message: Message
   currentUserId: string | null
+  viewerRole: 'admin' | 'staff'
+  viewerNames: string[]
+  isAssignedToViewer: boolean
+  closedBy?: string | null
+  hasOwnLeaveBefore: boolean
   userName: string
   userAvatarUrl: string | null
   staffFallback: FullSession['staff']
   isFirstInGroup: boolean
   isLastInGroup: boolean
 }) {
+  const [copied, setCopied] = useState(false)
   const stamp = useMemo(
     () => formatChatTimestamp(message.created_at),
     [message.created_at],
   )
 
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(message.body)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      /* ignore clipboard failures */
+    }
+  }, [message.body])
+
   // System messages — customer-facing join milestones ("X joined the chat")
-  // belong on the customer chat only; keep handover/ended dividers compact here.
+  // belong on the customer chat only; keep handover/ended dividers compact here
+  // with first-person "You left the chat" / "You ended the chat" labels.
   if (message.sender_role === 'system') {
     if (isJoinMilestone(message.body) && !/took over/i.test(message.body)) {
       return null
     }
-    const isCustomerEnded = /customer ended/i.test(message.body)
+    const formattedBody = formatAgentLifecycleMessage(message.body, {
+      viewerNames,
+      isAssignedToViewer,
+      viewerRole,
+      closedBy,
+      hasOwnLeaveBefore,
+    })
+    const isCustomerEnded = /customer ended/i.test(formattedBody)
     return (
       <div className="py-2.5" role="status">
         <div className="flex items-center gap-3">
@@ -1907,7 +2108,7 @@ function MessageRow({
               isCustomerEnded ? 'text-[#7B2D8E] font-semibold' : 'text-gray-500',
             )}
           >
-            {message.body}
+            {formattedBody}
           </span>
           <span
             className={cn(
@@ -1928,36 +2129,52 @@ function MessageRow({
 
   // Customer / Visitor bubble (left)
   if (message.sender_role === 'user') {
+    const cornerClass =
+      isFirstInGroup && isLastInGroup
+        ? 'rounded-2xl rounded-bl-md'
+        : isFirstInGroup
+          ? 'rounded-2xl rounded-bl-md'
+          : isLastInGroup
+            ? 'rounded-2xl rounded-tl-md rounded-bl-md'
+            : 'rounded-2xl rounded-l-md'
+
     return (
-      <div className="flex items-end gap-2.5">
+      <div className="group/msg flex items-end gap-2.5">
         <div className="w-7 shrink-0">
-          {isLastInGroup &&
-            (userAvatarUrl ? (
-              <Image
-                src={userAvatarUrl}
-                alt={userName}
-                width={28}
-                height={28}
-                referrerPolicy="no-referrer"
-                className="w-7 h-7 rounded-full object-cover border border-gray-200"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[10px] font-semibold">
-                {(userName?.[0] || '?').toUpperCase()}
-              </div>
-            ))}
+          {isLastInGroup && (
+            <CustomerAvatar
+              src={userAvatarUrl}
+              name={userName}
+              size={28}
+            />
+          )}
         </div>
 
         <div className="max-w-[76%] sm:max-w-[70%]">
-          <div
-            className={cn(
-              'bg-white border border-gray-200 px-3.5 py-2.5 rounded-2xl',
-              isLastInGroup && 'rounded-bl-md',
-            )}
-          >
-            <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap leading-relaxed break-words">
-              {message.body}
-            </p>
+          <div className="flex items-end gap-1.5">
+            <div
+              className={cn(
+                'bg-white border border-gray-200 px-3.5 py-2.5',
+                cornerClass,
+              )}
+            >
+              <p className="text-[13.5px] text-gray-900 whitespace-pre-wrap leading-relaxed break-words">
+                {message.body}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleCopy()}
+              aria-label="Copy message"
+              title="Copy message"
+              className="w-6 h-6 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/35 flex items-center justify-center opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+            >
+              {copied ? (
+                <Check className="w-3 h-3 text-[#7B2D8E]" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
+            </button>
           </div>
           {isLastInGroup && stamp && (
             <p className="text-[10.5px] text-gray-400 mt-1 ml-1 tabular-nums">
@@ -1971,40 +2188,71 @@ function MessageRow({
 
   // Staff bubble (right)
   const isFromMe = Boolean(currentUserId && message.sender_id === currentUserId)
-  const senderLabel = message.sender_name || (isFromMe ? 'You' : 'Previous rep')
+  const senderLabel =
+    message.sender_name || (isFromMe ? 'You' : staffFallback?.displayName || 'Previous rep')
+
+  const cornerClass =
+    isFirstInGroup && isLastInGroup
+      ? 'rounded-2xl rounded-br-md'
+      : isFirstInGroup
+        ? 'rounded-2xl rounded-br-md'
+        : isLastInGroup
+          ? 'rounded-2xl rounded-tr-md rounded-br-md'
+          : 'rounded-2xl rounded-r-md'
 
   return (
-    <div className="flex items-end justify-end gap-2.5">
+    <div className="group/msg flex items-end justify-end gap-2.5">
       <div className="max-w-[76%] sm:max-w-[70%] flex flex-col items-end">
         {isFirstInGroup && (
           <p className="text-[10.5px] font-medium text-[#7B2D8E] mr-1 mb-1">
             {isFromMe ? `${senderLabel} (You)` : senderLabel}
           </p>
         )}
-        <div
-          className={cn(
-            'px-3.5 py-2.5 rounded-2xl',
-            isLastInGroup && 'rounded-br-md',
-            isFromMe
-              ? 'bg-[#7B2D8E] text-white'
-              : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25',
-          )}
-        >
-          <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed break-words">
-            {message.body}
-          </p>
+        <div className="flex items-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => void handleCopy()}
+            aria-label="Copy message"
+            title="Copy message"
+            className="w-6 h-6 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/35 flex items-center justify-center opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+          >
+            {copied ? (
+              <Check className="w-3 h-3 text-[#7B2D8E]" />
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </button>
+          <div
+            className={cn(
+              'px-3.5 py-2.5',
+              cornerClass,
+              isFromMe
+                ? 'bg-[#7B2D8E] text-white'
+                : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25',
+            )}
+          >
+            <p className="text-[13.5px] whitespace-pre-wrap leading-relaxed break-words">
+              {message.body}
+            </p>
+          </div>
         </div>
-        {isLastInGroup && stamp && (
-          <p className="text-[10.5px] text-gray-400 mt-1 mr-1 tabular-nums">
-            {stamp}
-          </p>
+        {isLastInGroup && (stamp || (isFromMe && message.read_at)) && (
+          <div className="flex items-center gap-1 mt-1 mr-1 text-[10.5px] text-gray-400 tabular-nums">
+            {stamp && <span>{stamp}</span>}
+            {isFromMe &&
+              (message.read_at ? (
+                <CheckCheck className="w-3.5 h-3.5 text-[#7B2D8E]" aria-label="Seen by visitor" />
+              ) : (
+                <Check className="w-3 h-3 text-gray-400" aria-label="Delivered" />
+              ))}
+          </div>
         )}
       </div>
 
       <div className="w-7 shrink-0">
         {isLastInGroup && (
           <RepAvatar
-            src={message.sender_avatar_url}
+            src={message.sender_avatar_url || staffFallback?.avatarUrl}
             name={senderLabel}
             size={28}
           />
@@ -2083,13 +2331,11 @@ function ProfileDialog({
         <div className="space-y-4 pt-2">
           {/* Live Preview */}
           <div className="flex items-center gap-3 rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 p-3">
-            <Image
-              src={`/avatars/${slug}.jpg`}
-              alt=""
-              width={44}
-              height={44}
-              referrerPolicy="no-referrer"
-              className="w-11 h-11 rounded-full object-cover border border-[#7B2D8E]/20 shrink-0"
+            <RepAvatar
+              src={profile?.userAvatarUrl || `/avatars/${slug}.jpg`}
+              name={displayName.trim() || 'Customer Care'}
+              size={44}
+              brandCircles
             />
             <div className="min-w-0">
               <p className="text-[13.5px] font-semibold text-gray-900 truncate">
@@ -2098,6 +2344,11 @@ function ProfileDialog({
               <p className="text-[11px] font-medium text-[#7B2D8E]">
                 Available
               </p>
+              {profile?.userAvatarUrl && (
+                <p className="text-[10.5px] text-gray-500 mt-0.5 leading-snug">
+                  Your original account profile photo is shown to visitors.
+                </p>
+              )}
             </div>
           </div>
 
@@ -2121,7 +2372,7 @@ function ProfileDialog({
 
           <div>
             <p className="text-[12px] font-semibold text-gray-700 mb-2">
-              Avatar
+              {profile?.userAvatarUrl ? 'Fallback avatar' : 'Avatar'}
             </p>
             <div className="grid grid-cols-6 gap-2">
               {AVATAR_SLUGS.map((s) => (
@@ -2136,7 +2387,8 @@ function ProfileDialog({
                       : 'border-transparent hover:border-[#7B2D8E]/35',
                   )}
                 >
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={`/avatars/${s}.jpg`}
                     alt=""
                     width={64}

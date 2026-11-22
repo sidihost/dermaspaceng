@@ -128,6 +128,58 @@ export async function notifyUser(opts: NotifyOpts) {
   }
 }
 
+/**
+ * Send a direct Web Push for an incoming live-chat message without creating
+ * noisy persistent bell entries for every single chat bubble.
+ * Still respects the global `push_notifs` flag and per-user preferences.
+ */
+export async function sendLiveChatReplyPush(opts: {
+  userId: string
+  senderName: string
+  body: string
+  sessionId: string
+  actionUrl?: string
+}) {
+  try {
+    const pushOn = await isFeatureEnabled('push_notifs')
+    if (!pushOn) return
+
+    let allowPush = true
+    try {
+      const pref = (await sql`
+        SELECT push_enabled FROM notification_preferences WHERE user_id = ${opts.userId}
+      `) as unknown as { push_enabled: boolean }[]
+      if (pref.length > 0) {
+        allowPush = Boolean(pref[0].push_enabled)
+      }
+    } catch {
+      /* optional table */
+    }
+    if (allowPush) {
+      try {
+        const ws = (await sql`
+          SELECT push_notifications FROM wallet_settings WHERE user_id = ${opts.userId}
+        `) as unknown as { push_notifications: boolean }[]
+        if (ws.length > 0 && ws[0].push_notifications === false) {
+          allowPush = false
+        }
+      } catch {
+        /* optional table */
+      }
+    }
+    if (!allowPush) return
+
+    await sendPushToUser(opts.userId, {
+      title: `${opts.senderName} · Dermaspace`,
+      body: opts.body.slice(0, 140),
+      url: opts.actionUrl || '/?openLiveChat=1',
+      tag: `live-chat-${opts.sessionId}`,
+    })
+  } catch (err) {
+    console.error('[notify] live-chat push failed', err)
+  }
+}
+
 /** Fetch the most recent notifications for a user (newest first).
  *
  *  The "read" column is resolved at runtime — older databases still

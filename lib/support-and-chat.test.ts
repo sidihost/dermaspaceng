@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  buildLiveChatFeedbackComment,
   buildLiveChatTranscriptDownloadText,
   computeTicketSummary,
   convertLiveChatMessagesToThreadEntries,
   detectHumanHandoffIntent,
   filterAgentTimelineMessages,
+  formatAgentLifecycleMessage,
+  formatEndedByStatusLabel,
   formatFallbackSupportId,
+  formatMessageDayLabel,
   formatRelativeTimestamp,
   formatThreadMessagesForAiApi,
   formatWaitSeconds,
@@ -16,11 +20,18 @@ import {
   getPresenceStatusMeta,
   getTicketPriorityMeta,
   getTicketStatusMeta,
+  hasSupportIdBeenSharedInChat,
+  isCustomerInactiveForPush,
   isCustomerWaitingNotice,
+  isDifferentCalendarDay,
   mergeIncrementalMessages,
+  NEGATIVE_FEEDBACK_REASONS,
   normalizeSupportIdQuery,
   normalizeTicketPriority,
   normalizeTicketStatus,
+  parseLiveChatFeedbackComment,
+  POSITIVE_FEEDBACK_REASONS,
+  resolveLiveChatDeepLinkSessionId,
   resolveStaffAvatarUrl,
   resolveSupportId,
   sanitizeNetworkErrorMessage,
@@ -456,3 +467,231 @@ test('sanitizeNetworkErrorMessage masks raw browser fetch failures cleanly', () 
   )
   assert.equal(sanitizeNetworkErrorMessage(new Error('Session closed')), 'Session closed')
 })
+
+test('resolveStaffAvatarUrl supports data URIs and bare avatars/ relative paths without downgrading', () => {
+  assert.equal(
+    resolveStaffAvatarUrl({
+      avatarUrl: 'data:image/png;base64,iVBORw0KGgo=',
+      avatarSlug: 'f1',
+      staffId: 'staff-1',
+    }),
+    'data:image/png;base64,iVBORw0KGgo=',
+  )
+  assert.equal(
+    resolveStaffAvatarUrl({
+      avatarUrl: 'avatars/team/staff-1.jpg',
+      avatarSlug: 'f1',
+      staffId: 'staff-1',
+    }),
+    '/avatars/team/staff-1.jpg',
+  )
+})
+
+test('formatMessageDayLabel and isDifferentCalendarDay identify Today, Yesterday, and calendar day breaks', () => {
+  const refNow = new Date(2026, 10, 22, 15, 0, 0)
+  const todayIso = new Date(2026, 10, 22, 9, 30, 0).toISOString()
+  const yesterdayIso = new Date(2026, 10, 21, 18, 15, 0).toISOString()
+  const olderIso = new Date(2026, 10, 10, 12, 0, 0).toISOString()
+
+  assert.equal(formatMessageDayLabel(todayIso, refNow), 'Today')
+  assert.equal(formatMessageDayLabel(yesterdayIso, refNow), 'Yesterday')
+  assert.equal(typeof formatMessageDayLabel(olderIso, refNow), 'string')
+  assert.equal(formatMessageDayLabel(olderIso, refNow)?.includes('2026'), false)
+  assert.equal(isDifferentCalendarDay(todayIso, yesterdayIso), true)
+  assert.equal(isDifferentCalendarDay(todayIso, new Date(2026, 10, 22, 22, 0, 0).toISOString()), false)
+})
+
+test('convertLiveChatMessagesToThreadEntries propagates sender_avatar_url and staffAvatarUrl fallback', () => {
+  const entries = convertLiveChatMessagesToThreadEntries({
+    sessionId: 'sess-1',
+    supportCode: 'DS-LC-999999',
+    staffName: 'Itunu',
+    staffAvatarUrl: '/avatars/team/itunu.jpg',
+    messages: [
+      {
+        id: 'm1',
+        sender_role: 'staff',
+        sender_name: 'Itunu',
+        sender_avatar_url: 'https://cdn.example.com/itunu.jpg',
+        body: 'Hello there!',
+        created_at: '2026-11-22T14:00:00.000Z',
+      },
+      {
+        id: 'm2',
+        sender_role: 'staff',
+        sender_name: 'Itunu',
+        body: 'How can I help?',
+        created_at: '2026-11-22T14:01:00.000Z',
+      },
+    ],
+  })
+  assert.equal(entries[0]?.liveChatMeta.staffAvatarUrl, 'https://cdn.example.com/itunu.jpg')
+  assert.equal(entries[1]?.liveChatMeta.staffAvatarUrl, '/avatars/team/itunu.jpg')
+})
+
+test('hasSupportIdBeenSharedInChat hides ticket until explicitly sent by staff/admin', () => {
+  assert.equal(
+    hasSupportIdBeenSharedInChat('DS-LC-7K4M9P', [
+      { sender_role: 'system', body: 'Ada joined the chat' },
+      { sender_role: 'user', body: 'Hello, can I reschedule?' },
+      { sender_role: 'staff', body: 'Sure thing! Checking Friday slots now.' },
+    ]),
+    false,
+  )
+  assert.equal(
+    hasSupportIdBeenSharedInChat('DS-LC-7K4M9P', [
+      { sender_role: 'staff', body: 'Please keep your support reference ID ds-lc-7k4m9p for future reference.' },
+    ]),
+    true,
+  )
+})
+
+test('buildLiveChatTranscriptDownloadText omits Support ID line when unshared', () => {
+  const txt = buildLiveChatTranscriptDownloadText({
+    supportCode: null,
+    messages: [
+      { id: '1', sender_role: 'user', body: 'Hi', created_at: '2026-11-22T14:00:00.000Z' },
+      { id: '2', sender_role: 'staff', sender_name: 'Ada', body: 'Hello!', created_at: '2026-11-22T14:00:10.000Z' },
+    ],
+  })
+  assert.equal(/Support ID:/i.test(txt), false)
+  assert.match(txt, /Ada: Hello!/)
+})
+
+test('resolveLiveChatDeepLinkSessionId matches both session UUID and DS-LC Support ID', () => {
+  const rows = [
+    { id: 'a9f4b210-1234-5678-9abc-def012345678', support_code: 'DS-LC-7K4M9P' },
+    { id: 'b8e3a100-1111-2222-3333-444455556666', support_code: null },
+  ]
+  assert.equal(
+    resolveLiveChatDeepLinkSessionId(rows, 'ds-lc-7k4m9p'),
+    'a9f4b210-1234-5678-9abc-def012345678',
+  )
+  assert.equal(
+    resolveLiveChatDeepLinkSessionId(rows, 'DS-LC-B8E3A1'),
+    'b8e3a100-1111-2222-3333-444455556666',
+  )
+  assert.equal(
+    resolveLiveChatDeepLinkSessionId(rows, 'b8e3a100-1111-2222-3333-444455556666'),
+    'b8e3a100-1111-2222-3333-444455556666',
+  )
+  assert.equal(resolveLiveChatDeepLinkSessionId(rows, 'DS-LC-UNKNOWN'), null)
+})
+
+test('isCustomerInactiveForPush triggers push when absent or stale beyond threshold', () => {
+  const now = 1_700_000_100_000
+  assert.equal(isCustomerInactiveForPush(null, now), true)
+  assert.equal(isCustomerInactiveForPush('invalid-date', now), true)
+  assert.equal(isCustomerInactiveForPush(new Date(now - 2_000).toISOString(), now), false)
+  assert.equal(isCustomerInactiveForPush(new Date(now - 15_000).toISOString(), now), true)
+})
+
+test('formatAgentLifecycleMessage converts own leave, reopen, takeover, and end events to first-person You phrasing', () => {
+  assert.equal(
+    formatAgentLifecycleMessage('Juwon left the chat', {
+      viewerNames: ['Juwon', 'Juwon O.'],
+      viewerRole: 'admin',
+      closedBy: 'admin',
+    }),
+    'You left the chat',
+  )
+  // Another rep leaving keeps their name for Admin visibility
+  assert.equal(
+    formatAgentLifecycleMessage('Amaka O. left the chat', {
+      viewerNames: ['Juwon', 'Admin'],
+      viewerRole: 'admin',
+      closedBy: 'admin',
+    }),
+    'Amaka O. left the chat',
+  )
+  // Assigned staff member closing their own session still shows "You left the chat"
+  assert.equal(
+    formatAgentLifecycleMessage('Old Alias left the chat', {
+      viewerNames: ['Sarah O.'],
+      isAssignedToViewer: true,
+      viewerRole: 'staff',
+      closedBy: 'staff',
+    }),
+    'You left the chat',
+  )
+  // "Chat ended" turns into "You ended the chat" only if no own leave notice already preceded it
+  assert.equal(
+    formatAgentLifecycleMessage('Chat ended', {
+      viewerRole: 'admin',
+      closedBy: 'admin',
+      hasOwnLeaveBefore: false,
+    }),
+    'You ended the chat',
+  )
+  assert.equal(
+    formatAgentLifecycleMessage('Chat ended', {
+      viewerRole: 'admin',
+      closedBy: 'admin',
+      hasOwnLeaveBefore: true,
+    }),
+    'Chat ended',
+  )
+  assert.equal(
+    formatAgentLifecycleMessage('Juwon reopened and joined the chat (awaiting follow-up)', {
+      viewerNames: ['Juwon'],
+    }),
+    'You reopened and joined the chat (awaiting follow-up)',
+  )
+  assert.equal(
+    formatAgentLifecycleMessage('Juwon joined and took over the chat from Amaka O.', {
+      viewerNames: ['Juwon'],
+    }),
+    'You took over the chat from Amaka O.',
+  )
+})
+
+test('formatEndedByStatusLabel returns first-person "Ended by you" only when the viewer ended it', () => {
+  assert.deepEqual(
+    formatEndedByStatusLabel({ closedBy: 'admin', viewerRole: 'admin' }),
+    { headerLabel: 'Ended by you', footerLabel: 'Ended by you.', endedByCurrentUser: true },
+  )
+  assert.deepEqual(
+    formatEndedByStatusLabel({ closedBy: 'admin', viewerRole: 'staff', isAssignedToViewer: true }),
+    { headerLabel: 'Ended by admin', footerLabel: 'Ended by admin.', endedByCurrentUser: false },
+  )
+  assert.deepEqual(
+    formatEndedByStatusLabel({ closedBy: 'staff', viewerRole: 'staff', isAssignedToViewer: true }),
+    { headerLabel: 'Ended by you', footerLabel: 'Ended by you.', endedByCurrentUser: true },
+  )
+  assert.deepEqual(
+    formatEndedByStatusLabel({ closedBy: 'staff', viewerRole: 'admin' }),
+    { headerLabel: 'Ended by representative', footerLabel: 'Ended by representative.', endedByCurrentUser: false },
+  )
+  assert.deepEqual(
+    formatEndedByStatusLabel({ closedBy: 'user', viewerRole: 'admin' }),
+    { headerLabel: 'Ended by customer', footerLabel: 'Customer ended this chat.', endedByCurrentUser: false },
+  )
+})
+
+test('buildLiveChatFeedbackComment and parseLiveChatFeedbackComment round-trip reasons and custom note losslessly', () => {
+  const built = buildLiveChatFeedbackComment({
+    reasons: [POSITIVE_FEEDBACK_REASONS[0], POSITIVE_FEEDBACK_REASONS[1], 'Fast reply'],
+    comment: 'Super friendly rep!',
+  })
+  assert.equal(built, 'Fast reply · Solved my issue\nSuper friendly rep!')
+  assert.deepEqual(parseLiveChatFeedbackComment(built), {
+    reasons: ['Fast reply', 'Solved my issue'],
+    note: 'Super friendly rep!',
+  })
+
+  const negativeOnly = buildLiveChatFeedbackComment({
+    reasons: [NEGATIVE_FEEDBACK_REASONS[0], NEGATIVE_FEEDBACK_REASONS[1]],
+    comment: '',
+  })
+  assert.deepEqual(parseLiveChatFeedbackComment(negativeOnly), {
+    reasons: ['Slow response', 'Issue not resolved'],
+    note: '',
+  })
+
+  assert.deepEqual(parseLiveChatFeedbackComment('Quick note from customer'), {
+    reasons: [],
+    note: 'Quick note from customer',
+  })
+  assert.equal(buildLiveChatFeedbackComment({ reasons: [], comment: '   ' }), null)
+})
+

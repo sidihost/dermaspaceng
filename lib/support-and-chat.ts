@@ -426,14 +426,62 @@ export function resolveStaffAvatarUrl(opts: {
   staffId?: string | null
 }): string {
   const rawUrl = (opts.avatarUrl ?? '').trim()
-  if (rawUrl && (rawUrl.startsWith('/') || /^https?:\/\//i.test(rawUrl))) {
-    return rawUrl
+  if (rawUrl) {
+    if (
+      rawUrl.startsWith('/') ||
+      /^https?:\/\//i.test(rawUrl) ||
+      /^data:image\//i.test(rawUrl)
+    ) {
+      return rawUrl
+    }
+    if (/^avatars\//i.test(rawUrl)) {
+      return `/${rawUrl}`
+    }
   }
   const slug = (opts.avatarSlug ?? '').trim()
   if (slug && VALID_AVATAR_SLUGS.has(slug)) {
     return `/avatars/${slug}.jpg`
   }
   return `/avatars/${pickFrontDeskSlugForStaff(opts.staffId)}.jpg`
+}
+
+export function formatMessageDayLabel(
+  iso: string | null | undefined,
+  nowDate: Date = new Date(),
+): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+
+  const startOfDay = (dt: Date) =>
+    new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime()
+
+  const diffDays = Math.round(
+    (startOfDay(nowDate) - startOfDay(d)) / 86_400_000,
+  )
+  if (diffDays === 0) return 'Today'
+  if (diffDays === 1) return 'Yesterday'
+
+  return d.toLocaleDateString('en-NG', {
+    day: 'numeric',
+    month: 'short',
+    ...(d.getFullYear() !== nowDate.getFullYear() ? { year: 'numeric' } : {}),
+  })
+}
+
+export function isDifferentCalendarDay(
+  aIso: string | null | undefined,
+  bIso: string | null | undefined,
+): boolean {
+  if (!aIso || !bIso) return false
+  const a = new Date(aIso)
+  const b = new Date(bIso)
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return false
+  return (
+    a.getFullYear() !== b.getFullYear() ||
+    a.getMonth() !== b.getMonth() ||
+    a.getDate() !== b.getDate()
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -444,6 +492,7 @@ export interface SerializableLiveChatMessage {
   id: string
   sender_role: 'user' | 'staff' | 'system'
   sender_name?: string | null
+  sender_avatar_url?: string | null
   body: string
   created_at: string
 }
@@ -459,18 +508,19 @@ export interface SerializedLiveChatEntry {
     supportCode: string
     kind: 'user' | 'staff' | 'divider'
     senderName?: string
+    staffAvatarUrl?: string
   }
 }
 
 export function buildLiveChatTranscriptDownloadText(input: {
-  supportCode: string
+  supportCode?: string | null
   topic?: string | null
   messages: SerializableLiveChatMessage[]
 }): string {
-  const code = (input.supportCode || '').trim() || 'DS-LC'
+  const code = (input.supportCode || '').trim()
   const lines: string[] = [
     'Dermaspace Live Support Transcript',
-    `Support ID: ${code}`,
+    ...(code ? [`Support ID: ${code}`] : []),
     ...(input.topic?.trim() ? [`Topic: ${input.topic.trim()}`] : []),
     '----------------------------------------',
     '',
@@ -513,10 +563,12 @@ export function convertLiveChatMessagesToThreadEntries(input: {
   sessionId: string
   supportCode: string
   staffName?: string | null
+  staffAvatarUrl?: string | null
   messages: SerializableLiveChatMessage[]
 }): SerializedLiveChatEntry[] {
   const code = resolveSupportId(input.supportCode, input.sessionId)
   const fallbackStaff = (input.staffName ?? '').trim() || 'Customer Care'
+  const fallbackAvatar = (input.staffAvatarUrl ?? '').trim() || undefined
   const entries: SerializedLiveChatEntry[] = []
 
   for (const m of input.messages) {
@@ -543,6 +595,7 @@ export function convertLiveChatMessagesToThreadEntries(input: {
       })
     } else if (m.sender_role === 'staff') {
       const sender = (m.sender_name || '').trim() || fallbackStaff
+      const avatar = (m.sender_avatar_url || '').trim() || fallbackAvatar
       entries.push({
         id: `lc-${input.sessionId}-${m.id}`,
         role: 'assistant',
@@ -554,6 +607,7 @@ export function convertLiveChatMessagesToThreadEntries(input: {
           supportCode: code,
           kind: 'staff',
           senderName: sender,
+          ...(avatar ? { staffAvatarUrl: avatar } : {}),
         },
       })
     } else {
@@ -585,6 +639,7 @@ export interface ChatTurnForAi {
     supportCode: string
     kind: 'user' | 'staff' | 'divider'
     senderName?: string
+    staffAvatarUrl?: string
   }
   attachments?: Array<{ url: string; contentType: string }>
 }
@@ -773,6 +828,278 @@ export function sanitizeNetworkErrorMessage(
   return trimmed
 }
 
+/**
+ * Returns true only when an agent/admin explicitly shared the support reference ID
+ * inside the customer-visible message stream.
+ */
+export function hasSupportIdBeenSharedInChat(
+  supportCode: string | null | undefined,
+  messages: ReadonlyArray<{ sender_role: string; body: string }>,
+): boolean {
+  const code = (supportCode || '').trim().toUpperCase()
+  if (!code) return false
+  return messages.some(
+    (m) => m.sender_role === 'staff' && m.body.toUpperCase().includes(code),
+  )
+}
 
+/**
+ * Resolves a `?session=` URL deep-link parameter (which may be either a session UUID
+ * or a human-friendly Support ID like DS-LC-XXXXXX) to a canonical session ID.
+ */
+export function resolveLiveChatDeepLinkSessionId(
+  sessions: ReadonlyArray<{ id: string; support_code?: string | null }>,
+  rawSessionParam: string | null | undefined,
+): string | null {
+  const target = (rawSessionParam || '').trim()
+  if (!target) return null
+  const lowerTarget = target.toLowerCase()
+  const match = sessions.find(
+    (s) =>
+      s.id.toLowerCase() === lowerTarget ||
+      resolveSupportId(s.support_code, s.id).toLowerCase() === lowerTarget,
+  )
+  return match ? match.id : null
+}
 
+/**
+ * Returns true when a customer has not polled actively within `staleAfterMs`,
+ * indicating their widget is minimized, backgrounded, or closed and a Web Push is helpful.
+ */
+export function isCustomerInactiveForPush(
+  lastSeenAt: string | Date | null | undefined,
+  nowMs = Date.now(),
+  staleAfterMs = 10_000,
+): boolean {
+  if (!lastSeenAt) return true
+  const ts =
+    lastSeenAt instanceof Date ? lastSeenAt.getTime() : new Date(lastSeenAt).getTime()
+  if (Number.isNaN(ts)) return true
+  return nowMs - ts > staleAfterMs
+}
+
+// ---------------------------------------------------------------------------
+// Agent First-Person Lifecycle & Structured Feedback Helpers
+// ---------------------------------------------------------------------------
+
+function normalizeAgentNameToken(raw: string | null | undefined): string {
+  return (raw ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+function matchesAnyViewerName(
+  actorName: string | null | undefined,
+  viewerNames: ReadonlyArray<string | null | undefined> | undefined,
+): boolean {
+  const cleanActor = normalizeAgentNameToken(actorName)
+  if (!cleanActor || !viewerNames || viewerNames.length === 0) return false
+  for (const candidate of viewerNames) {
+    const cleanCandidate = normalizeAgentNameToken(candidate)
+    if (!cleanCandidate) continue
+    if (cleanActor === cleanCandidate) return true
+  }
+  return false
+}
+
+export function formatAgentLifecycleMessage(
+  body: string,
+  opts: {
+    viewerNames?: ReadonlyArray<string | null | undefined>
+    isAssignedToViewer?: boolean
+    viewerRole?: 'admin' | 'staff'
+    closedBy?: string | null
+    hasOwnLeaveBefore?: boolean
+  } = {},
+): string {
+  const trimmed = (body ?? '').trim()
+  if (!trimmed) return body
+
+  const leftMatch = trimmed.match(/^(.+?)\s+left the chat$/i)
+  if (leftMatch) {
+    const actor = leftMatch[1].trim()
+    const ownByName = matchesAnyViewerName(actor, opts.viewerNames)
+    const ownByAssignment = Boolean(
+      opts.isAssignedToViewer &&
+        opts.viewerRole &&
+        opts.closedBy === opts.viewerRole,
+    )
+    if (ownByName || ownByAssignment) {
+      return 'You left the chat'
+    }
+    return trimmed
+  }
+
+  const reopenMatch = trimmed.match(/^(.+?)\s+reopened and joined the chat(.*)$/i)
+  if (reopenMatch) {
+    const actor = reopenMatch[1].trim()
+    if (matchesAnyViewerName(actor, opts.viewerNames)) {
+      return `You reopened and joined the chat${reopenMatch[2] || ''}`
+    }
+    return trimmed
+  }
+
+  const takeoverMatch = trimmed.match(
+    /^(.+?)\s+joined and took over the chat from\s+(.+)$/i,
+  )
+  if (takeoverMatch) {
+    const actor = takeoverMatch[1].trim()
+    if (matchesAnyViewerName(actor, opts.viewerNames)) {
+      return `You took over the chat from ${takeoverMatch[2].trim()}`
+    }
+    return trimmed
+  }
+
+  if (/^chat ended$/i.test(trimmed)) {
+    if (
+      opts.viewerRole &&
+      opts.closedBy === opts.viewerRole &&
+      !opts.hasOwnLeaveBefore
+    ) {
+      return 'You ended the chat'
+    }
+    return 'Chat ended'
+  }
+
+  return trimmed
+}
+
+export function formatEndedByStatusLabel(opts: {
+  closedBy?: string | null
+  viewerRole: 'admin' | 'staff'
+  isAssignedToViewer?: boolean
+}): {
+  headerLabel: string
+  footerLabel: string
+  endedByCurrentUser: boolean
+} {
+  const closedBy = (opts.closedBy ?? '').trim().toLowerCase()
+  if (closedBy === 'user') {
+    return {
+      headerLabel: 'Ended by customer',
+      footerLabel: 'Customer ended this chat.',
+      endedByCurrentUser: false,
+    }
+  }
+
+  const endedByCurrentUser =
+    (opts.viewerRole === 'admin' && closedBy === 'admin') ||
+    (opts.viewerRole === 'staff' &&
+      closedBy === 'staff' &&
+      Boolean(opts.isAssignedToViewer))
+
+  if (endedByCurrentUser) {
+    return {
+      headerLabel: 'Ended by you',
+      footerLabel: 'Ended by you.',
+      endedByCurrentUser: true,
+    }
+  }
+
+  if (closedBy === 'admin') {
+    return {
+      headerLabel: 'Ended by admin',
+      footerLabel: 'Ended by admin.',
+      endedByCurrentUser: false,
+    }
+  }
+
+  if (closedBy === 'staff') {
+    return {
+      headerLabel: 'Ended by representative',
+      footerLabel: 'Ended by representative.',
+      endedByCurrentUser: false,
+    }
+  }
+
+  return {
+    headerLabel: 'Ended',
+    footerLabel: 'This conversation has ended.',
+    endedByCurrentUser: false,
+  }
+}
+
+export const POSITIVE_FEEDBACK_REASONS = [
+  'Fast reply',
+  'Solved my issue',
+  'Friendly & helpful',
+  'Clear guidance',
+] as const
+
+export const NEGATIVE_FEEDBACK_REASONS = [
+  'Slow response',
+  'Issue not resolved',
+  'Unclear answer',
+  'Ended too soon',
+] as const
+
+const ALL_KNOWN_FEEDBACK_REASONS = new Set<string>([
+  ...POSITIVE_FEEDBACK_REASONS.map((r) => r.toLowerCase()),
+  ...NEGATIVE_FEEDBACK_REASONS.map((r) => r.toLowerCase()),
+])
+
+export function buildLiveChatFeedbackComment(opts: {
+  reasons?: ReadonlyArray<string>
+  comment?: string | null
+}): string | null {
+  const seen = new Set<string>()
+  const cleanReasons: string[] = []
+  for (const r of opts.reasons ?? []) {
+    const trimmed = r.trim()
+    if (!trimmed) continue
+    const key = trimmed.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    cleanReasons.push(trimmed)
+  }
+  const cleanNote = (opts.comment ?? '').trim()
+
+  if (cleanReasons.length === 0 && !cleanNote) {
+    return null
+  }
+  if (cleanReasons.length === 0) {
+    return cleanNote.slice(0, 500)
+  }
+
+  const reasonsLine = cleanReasons.join(' · ')
+  if (!cleanNote) {
+    return reasonsLine.slice(0, 500)
+  }
+  const combined = `${reasonsLine}\n${cleanNote}`
+  return combined.slice(0, 500)
+}
+
+export function parseLiveChatFeedbackComment(raw: string | null | undefined): {
+  reasons: string[]
+  note: string
+} {
+  const trimmed = (raw ?? '').trim()
+  if (!trimmed) return { reasons: [], note: '' }
+
+  const lines = trimmed.split(/\r?\n/)
+  const firstLine = lines[0]?.trim() || ''
+  const restNote = lines.slice(1).join('\n').trim()
+
+  const candidateParts = firstLine
+    .split('·')
+    .map((p) => p.trim())
+    .filter(Boolean)
+
+  const allPartsAreReasons =
+    candidateParts.length > 0 &&
+    candidateParts.every((p) => ALL_KNOWN_FEEDBACK_REASONS.has(p.toLowerCase()))
+
+  if (allPartsAreReasons) {
+    return {
+      reasons: candidateParts,
+      note: restNote,
+    }
+  }
+
+  return {
+    reasons: [],
+    note: trimmed,
+  }
+}
 

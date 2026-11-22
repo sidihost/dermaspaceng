@@ -12,17 +12,19 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   Check,
+  CheckCheck,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
+  Copy,
   FileText,
   Loader2,
   Minus,
   Settings,
+  Star,
   ThumbsDown,
   ThumbsUp,
   User,
@@ -32,18 +34,26 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
+  buildLiveChatFeedbackComment,
   buildLiveChatTranscriptDownloadText,
+  formatMessageDayLabel,
+  hasSupportIdBeenSharedInChat,
+  isDifferentCalendarDay,
   mergeIncrementalMessages,
+  NEGATIVE_FEEDBACK_REASONS,
+  POSITIVE_FEEDBACK_REASONS,
   resolveSupportId,
   sanitizeNetworkErrorMessage,
 } from '@/lib/support-and-chat'
 import { formatChatTimestamp } from '@/lib/visitor-telemetry'
 import {
   fetchLiveChatSoundPreference,
+  isLiveChatSoundEnabled,
   playLiveChatChime,
   saveLiveChatSoundPreference,
   unlockLiveChatAudio,
 } from '@/lib/live-chat-sound'
+import { syncBrowserPushSubscription } from './permissions-panel'
 
 export type InlineLiveStatus = 'waiting' | 'active' | 'closed' | 'abandoned'
 
@@ -84,7 +94,15 @@ export interface InlineLiveMessage {
   sender_name?: string | null
   sender_avatar_url?: string | null
   body: string
+  read_at?: string | null
   created_at: string
+}
+
+export interface DermaLiveChatStatusDetail {
+  isLiveMode: boolean
+  status: InlineLiveStatus | null
+  staff: InlineLiveStaff | null
+  unreadCount?: number
 }
 
 export interface TranscriptEntry {
@@ -107,7 +125,7 @@ export interface UseInlineLiveChatOptions {
 }
 
 function triggerTranscriptTextDownload(
-  supportCode: string,
+  supportCode: string | null,
   messages: InlineLiveMessage[],
 ) {
   if (typeof window === 'undefined') return
@@ -119,7 +137,9 @@ function triggerTranscriptTextDownload(
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `dermaspace-chat-${supportCode.toLowerCase()}.txt`
+  link.download = supportCode
+    ? `dermaspace-chat-${supportCode.toLowerCase()}.txt`
+    : 'dermaspace-live-chat-transcript.txt'
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -127,69 +147,146 @@ function triggerTranscriptTextDownload(
 }
 
 // ---------------------------------------------------------------------------
-// RepAvatar — resilient staff portrait with graceful fallback
+// RepAvatar & CustomerAvatar — resilient native <img> portraits with
+// Dermaspace concentric #7B2D8E circle framing & monogram fallback.
+// Native <img> (with referrerPolicy="no-referrer") guarantees external R2/CDN,
+// Google OAuth, data:image/*, and local /avatars/* URLs never fail through
+// Next.js /_next/image optimizer and silently downgrade to a stranger's photo.
 // ---------------------------------------------------------------------------
 
 export function RepAvatar({
   src,
   name,
   size = 36,
+  brandCircles = false,
   className,
 }: {
   src?: string | null
   name?: string | null
   size?: number
+  brandCircles?: boolean
   className?: string
 }) {
   const cleanSrc = (src ?? '').trim()
-  const [stage, setStage] = useState<'primary' | 'fallback' | 'monogram'>(
-    cleanSrc ? 'primary' : 'fallback',
-  )
+  const [imgFailed, setImgFailed] = useState(false)
 
   useEffect(() => {
-    setStage(cleanSrc ? 'primary' : 'fallback')
+    setImgFailed(false)
   }, [cleanSrc])
 
   const label = (name ?? '').trim() || 'Representative'
   const initial = label.charAt(0).toUpperCase() || 'D'
 
-  if (stage === 'monogram') {
-    return (
+  const core =
+    cleanSrc && !imgFailed ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={cleanSrc}
+        alt={label}
+        width={size}
+        height={size}
+        referrerPolicy="no-referrer"
+        decoding="async"
+        onError={() => setImgFailed(true)}
+        style={{ width: size, height: size }}
+        className={cn(
+          'rounded-full object-cover shrink-0 bg-[#FAF6FB]',
+          brandCircles ? 'border-2 border-white' : 'border border-[#7B2D8E]/25',
+          className,
+        )}
+      />
+    ) : (
       <div
         aria-label={label}
         style={{ width: size, height: size }}
         className={cn(
           'rounded-full bg-[#7B2D8E] text-white font-semibold flex items-center justify-center shrink-0 select-none',
-          size <= 28 ? 'text-[11px]' : 'text-[13px]',
+          brandCircles && 'border-2 border-white',
+          size <= 28 ? 'text-[11px]' : size >= 52 ? 'text-[18px]' : 'text-[13px]',
           className,
         )}
       >
         {initial}
       </div>
     )
+
+  if (!brandCircles) return core
+
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full bg-[#7B2D8E]/20 p-[3px] shrink-0"
+      aria-hidden={false}
+    >
+      <span className="inline-flex items-center justify-center rounded-full bg-[#7B2D8E] p-[2px]">
+        {core}
+      </span>
+    </span>
+  )
+}
+
+export function CustomerAvatar({
+  src,
+  name,
+  initials,
+  size = 36,
+  className,
+}: {
+  src?: string | null
+  name?: string | null
+  initials?: string | null
+  size?: number
+  className?: string
+}) {
+  const cleanSrc = (src ?? '').trim()
+  const [imgFailed, setImgFailed] = useState(false)
+
+  useEffect(() => {
+    setImgFailed(false)
+  }, [cleanSrc])
+
+  const label = (name ?? '').trim() || 'Visitor'
+  const badgeText =
+    (initials ?? '').trim() ||
+    label
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || '')
+      .join('') ||
+    '?'
+
+  if (cleanSrc && !imgFailed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={cleanSrc}
+        alt={label}
+        width={size}
+        height={size}
+        referrerPolicy="no-referrer"
+        decoding="async"
+        onError={() => setImgFailed(true)}
+        style={{ width: size, height: size }}
+        className={cn(
+          'rounded-full object-cover shrink-0 border border-gray-200 bg-[#FAF6FB]',
+          className,
+        )}
+      />
+    )
   }
 
-  const activeSrc = stage === 'primary' ? cleanSrc : '/avatars/f1.jpg'
   return (
-    <Image
-      src={activeSrc}
-      alt={label}
-      width={size}
-      height={size}
-      referrerPolicy="no-referrer"
-      onError={() => {
-        setStage((prev) =>
-          prev === 'primary' && activeSrc !== '/avatars/f1.jpg'
-            ? 'fallback'
-            : 'monogram',
-        )
-      }}
+    <div
+      aria-label={label}
       style={{ width: size, height: size }}
       className={cn(
-        'rounded-full object-cover shrink-0 border border-[#7B2D8E]/20 bg-[#FAF6FB]',
+        'rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center font-semibold shrink-0 select-none',
+        size <= 28 ? 'text-[10px]' : size <= 38 ? 'text-[12px]' : 'text-[13px]',
         className,
       )}
-    />
+    >
+      {badgeText}
+    </div>
   )
 }
 
@@ -285,6 +382,20 @@ export function useInlineLiveChat({
   const prevStaffKeyRef = useRef<string | null>(null)
   const ratingDoneTimeoutRef = useRef<number | null>(null)
   const [justConnected, setJustConnected] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const isOpenRef = useRef(isOpen)
+
+  useEffect(() => {
+    isOpenRef.current = isOpen
+    if (isOpen && (typeof document === 'undefined' || !document.hidden)) {
+      setUnreadCount(0)
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!enabled) return
+    void fetchLiveChatSoundPreference('customer')
+  }, [enabled])
 
   useEffect(() => {
     return () => {
@@ -303,6 +414,37 @@ export function useInlineLiveChat({
   const status = session?.status ?? null
   const isLiveMode = status === 'waiting' || status === 'active'
   const staffKey = staff ? `${staff.id || ''}:${staff.displayName}` : null
+
+  useEffect(() => {
+    if (!isLiveMode) setUnreadCount(0)
+  }, [isLiveMode])
+
+  // Broadcast live chat status, unread badge & assigned rep avatar so DermaAIMount's
+  // floating launcher switches from ButterflyLogo to the rep avatar inside
+  // brand #7B2D8E concentric circles during live chat, and reverts on end.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const detail: DermaLiveChatStatusDetail = {
+      isLiveMode,
+      status,
+      staff: isLiveMode ? staff : null,
+      unreadCount: isLiveMode ? unreadCount : 0,
+    }
+    try {
+      ;(
+        window as unknown as {
+          __dermaLiveChatStatus?: DermaLiveChatStatusDetail
+        }
+      ).__dermaLiveChatStatus = detail
+      window.dispatchEvent(
+        new CustomEvent<DermaLiveChatStatusDetail>('dermaLiveChatStatus', {
+          detail,
+        }),
+      )
+    } catch {
+      /* ignore custom event errors on restricted environments */
+    }
+  }, [isLiveMode, status, staff, unreadCount])
 
   const syncAllMessages = useCallback(async (targetSessionId: string) => {
     try {
@@ -469,21 +611,37 @@ export function useInlineLiveChat({
     }
   }, [sessionId])
 
-  // Poll messages + session status + assigned rep while live session is open (800ms + focus/visibility)
+  // Poll messages + session status + assigned rep while live session is active.
+  // Polls fast (900ms) when panel is open & visible, and gently (2600ms passive)
+  // when minimized or backgrounded so unread counts, chimes, and OS alerts fire reliably.
   useEffect(() => {
-    if (!enabled || !sessionId || !isLiveMode || !isOpen) return
+    if (!enabled || !sessionId || !isLiveMode) return
     let cancelled = false
     let inFlight = false
+    let timerId: number | null = null
+
+    const isActivelyViewing = () =>
+      isOpenRef.current && (typeof document === 'undefined' || !document.hidden)
+
+    const scheduleNext = () => {
+      if (cancelled) return
+      if (timerId !== null) window.clearTimeout(timerId)
+      const delayMs = isActivelyViewing() ? 900 : 2600
+      timerId = window.setTimeout(() => {
+        void pollMessages()
+      }, delayMs)
+    }
+
     const pollMessages = async () => {
-      if (inFlight) return
-      if (typeof document !== 'undefined' && document.hidden) return
+      if (cancelled || inFlight) return
       inFlight = true
       try {
-        const since = lastFetchedRef.current
-          ? `?since=${encodeURIComponent(lastFetchedRef.current)}`
-          : ''
+        const params = new URLSearchParams()
+        if (lastFetchedRef.current) params.set('since', lastFetchedRef.current)
+        if (!isActivelyViewing()) params.set('passive', '1')
+        const qs = params.toString() ? `?${params.toString()}` : ''
         const res = await fetch(
-          `/api/live-chat/sessions/${sessionId}/messages${since}`,
+          `/api/live-chat/sessions/${sessionId}/messages${qs}`,
           { credentials: 'include', cache: 'no-store' },
         )
         if (!res.ok || cancelled) return
@@ -513,7 +671,9 @@ export function useInlineLiveChat({
           const staffChanged =
             (currentPayload.staff?.id || '') !== (nextStaff?.id || '') ||
             (currentPayload.staff?.displayName || '') !==
-              (nextStaff?.displayName || '')
+              (nextStaff?.displayName || '') ||
+            (currentPayload.staff?.avatarUrl || '') !==
+              (nextStaff?.avatarUrl || '')
           const statusChanged = currentPayload.session.status !== nextStatus
 
           if (statusChanged || staffChanged) {
@@ -540,18 +700,53 @@ export function useInlineLiveChat({
 
         if (incoming.length === 0) return
 
-        let hasNewStaffReply = false
+        const newStaffMessages: InlineLiveMessage[] = []
         for (const m of incoming) {
           if (!seenMessageIdsRef.current.has(m.id)) {
             seenMessageIdsRef.current.add(m.id)
             if (wasHydrated && m.sender_role === 'staff') {
-              hasNewStaffReply = true
+              newStaffMessages.push(m)
             }
           }
         }
 
-        if (hasNewStaffReply) {
+        if (newStaffMessages.length > 0) {
           playLiveChatChime('reply', 'customer')
+          if (!isActivelyViewing()) {
+            setUnreadCount((c) => c + newStaffMessages.length)
+            if (
+              typeof window !== 'undefined' &&
+              'Notification' in window &&
+              Notification.permission === 'granted' &&
+              isLiveChatSoundEnabled('customer')
+            ) {
+              const latest = newStaffMessages[newStaffMessages.length - 1]
+              const sender =
+                latest.sender_name?.trim() ||
+                json.staff?.displayName ||
+                activeRef.current?.staff?.displayName ||
+                'Dermaspace Support'
+              try {
+                const notif = new Notification(`${sender} · Dermaspace`, {
+                  body: latest.body.slice(0, 140),
+                  icon: '/icons/icon-192x192.png',
+                  tag: `live-chat-${sessionId}`,
+                })
+                notif.onclick = () => {
+                  try {
+                    window.focus()
+                    window.dispatchEvent(new Event('openDermaAI'))
+                    setUnreadCount(0)
+                    notif.close()
+                  } catch {
+                    /* ignore */
+                  }
+                }
+              } catch {
+                /* Notification constructor unavailable in restricted SW-only contexts */
+              }
+            }
+          }
         }
 
         setMessages((prev) => {
@@ -565,12 +760,15 @@ export function useInlineLiveChat({
         /* transient */
       } finally {
         inFlight = false
+        scheduleNext()
       }
     }
+
     void pollMessages()
-    const id = window.setInterval(() => void pollMessages(), 800)
     const onWake = () => {
-      if (typeof document !== 'undefined' && document.hidden) return
+      if (isActivelyViewing()) {
+        setUnreadCount(0)
+      }
       void pollMessages()
       void fetchActive()
     }
@@ -578,7 +776,7 @@ export function useInlineLiveChat({
     document.addEventListener('visibilitychange', onWake)
     return () => {
       cancelled = true
-      window.clearInterval(id)
+      if (timerId !== null) window.clearTimeout(timerId)
       window.removeEventListener('focus', onWake)
       document.removeEventListener('visibilitychange', onWake)
     }
@@ -1074,7 +1272,13 @@ export function useInlineLiveChat({
   }, [isLiveMode, ratingSessionId, session?.id, resetRatingAndClearTransient])
 
   const leaveAndClearChat = useCallback(
-    async (selectedRating?: 1 | 5 | null) => {
+    async (
+      feedback?: {
+        rating?: number | null
+        staffRating?: number | null
+        comment?: string | null
+      } | null,
+    ) => {
       const targetSessionId = ratingSessionId || sessionId
       if (leaving) return
       setLeaving(true)
@@ -1085,17 +1289,40 @@ export function useInlineLiveChat({
           const isStillOpen =
             activeRef.current?.session?.status === 'waiting' ||
             activeRef.current?.session?.status === 'active'
+          const rawRating = feedback?.rating
+          const validRating =
+            typeof rawRating === 'number' &&
+            Number.isFinite(rawRating) &&
+            rawRating >= 1 &&
+            rawRating <= 5
+              ? Math.round(rawRating)
+              : null
+          const rawStaffRating = feedback?.staffRating
+          const validStaffRating =
+            typeof rawStaffRating === 'number' &&
+            Number.isFinite(rawStaffRating) &&
+            rawStaffRating >= 1 &&
+            rawStaffRating <= 5
+              ? Math.round(rawStaffRating)
+              : validRating
+          const cleanComment =
+            typeof feedback?.comment === 'string' && feedback.comment.trim()
+              ? feedback.comment.trim().slice(0, 500)
+              : undefined
+
           const payload = isStillOpen
             ? {
                 action: 'close',
                 finalize: true,
-                ...(selectedRating ? { rating: selectedRating } : {}),
+                ...(validRating ? { rating: validRating, staff: validStaffRating ?? validRating } : {}),
+                ...(cleanComment ? { comment: cleanComment } : {}),
               }
-            : selectedRating
+            : validRating
               ? {
                   action: 'rate',
-                  service: selectedRating,
-                  staff: selectedRating,
+                  service: validRating,
+                  staff: validStaffRating ?? validRating,
+                  ...(cleanComment ? { comment: cleanComment } : {}),
                 }
               : { action: 'skip_rating' }
 
@@ -1205,6 +1432,7 @@ export function useInlineLiveChat({
     status,
     messages,
     isLiveMode,
+    unreadCount,
     connecting,
     sending,
     leaving,
@@ -1384,11 +1612,21 @@ export function InlineLiveOptionsPopup({
     if (next) {
       unlockLiveChatAudio()
       window.setTimeout(() => playLiveChatChime('reply'), 30)
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        if (Notification.permission === 'default') {
+          void Notification.requestPermission().then((perm) => {
+            if (perm === 'granted') void syncBrowserPushSubscription()
+          })
+        } else if (Notification.permission === 'granted') {
+          void syncBrowserPushSubscription()
+        }
+      }
     }
   }, [soundEnabled])
 
   const handleDownloadTranscript = useCallback(() => {
-    triggerTranscriptTextDownload(supportCode || 'DS-LC', messages)
+    const shared = hasSupportIdBeenSharedInChat(supportCode, messages)
+    triggerTranscriptTextDownload(shared && supportCode ? supportCode : null, messages)
     onClose()
   }, [supportCode, messages, onClose])
 
@@ -1609,6 +1847,20 @@ export function InlineLiveOptionsPopup({
 // the entire conversation from the user's end, and closes the chat panel.
 // ---------------------------------------------------------------------------
 
+export interface LeaveChatFeedbackSubmission {
+  rating?: number | null
+  staffRating?: number | null
+  comment?: string | null
+}
+
+const STAR_LABELS: Record<number, string> = {
+  1: 'Poor',
+  2: 'Needs work',
+  3: 'Okay',
+  4: 'Good',
+  5: 'Excellent',
+}
+
 export function InlineLeaveFeedbackScreen({
   open,
   canGoBack,
@@ -1631,60 +1883,143 @@ export function InlineLeaveFeedbackScreen({
     email: string
   }) => Promise<{ ok: boolean; error?: string }>
   onGoBack: () => void
-  onLeaveChat: (rating?: 1 | 5 | null) => void
+  onLeaveChat: (feedback?: LeaveChatFeedbackSubmission | null) => void
 }) {
   const [selectedThumb, setSelectedThumb] = useState<'up' | 'down' | null>(null)
+  const [starRating, setStarRating] = useState<number>(0)
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([])
+  const [feedbackNote, setFeedbackNote] = useState('')
   const [optionsOpen, setOptionsOpen] = useState(false)
 
   useEffect(() => {
     if (!open) {
       setSelectedThumb(null)
+      setStarRating(0)
+      setSelectedReasons([])
+      setFeedbackNote('')
       setOptionsOpen(false)
     }
   }, [open])
 
   if (!open) return null
 
-  const ratingValue: 1 | 5 | null =
-    selectedThumb === 'up' ? 5 : selectedThumb === 'down' ? 1 : null
+  const reasonOptions: ReadonlyArray<string> =
+    selectedThumb === 'up'
+      ? POSITIVE_FEEDBACK_REASONS
+      : selectedThumb === 'down'
+        ? NEGATIVE_FEEDBACK_REASONS
+        : []
+
+  const handleSelectThumb = (direction: 'up' | 'down') => {
+    if (selectedThumb === direction) {
+      setSelectedThumb(null)
+      setStarRating(0)
+      setSelectedReasons([])
+      return
+    }
+    setSelectedThumb(direction)
+    setStarRating(direction === 'up' ? 5 : 2)
+    setSelectedReasons((prev) => {
+      const allowed = new Set<string>(
+        direction === 'up'
+          ? POSITIVE_FEEDBACK_REASONS
+          : NEGATIVE_FEEDBACK_REASONS,
+      )
+      return prev.filter((r) => allowed.has(r))
+    })
+  }
+
+  const toggleReason = (reason: string) => {
+    setSelectedReasons((prev) =>
+      prev.includes(reason)
+        ? prev.filter((item) => item !== reason)
+        : [...prev, reason],
+    )
+  }
+
+  const handleConfirm = () => {
+    if (!selectedThumb) {
+      onLeaveChat(null)
+      return
+    }
+    const effectiveStars =
+      starRating >= 1 && starRating <= 5
+        ? starRating
+        : selectedThumb === 'up'
+          ? 5
+          : 2
+    const combinedComment = buildLiveChatFeedbackComment({
+      reasons: selectedReasons,
+      comment: feedbackNote,
+    })
+    onLeaveChat({
+      rating: effectiveStars,
+      staffRating: effectiveStars,
+      comment: combinedComment,
+    })
+  }
+
+  const primaryLabel = canGoBack
+    ? selectedThumb
+      ? 'End & Submit'
+      : 'End Chat'
+    : selectedThumb
+      ? 'Submit Feedback'
+      : 'Done'
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Leave live chat"
+      aria-label={canGoBack ? 'End live chat' : 'Rate support chat'}
       data-testid="live-chat-leave-screen"
       className="absolute inset-0 z-50 flex flex-col bg-white"
     >
-      {/* Top header: Back chevron + Settings gear */}
+      {/* Top header: clear back / session-ended context + options + close */}
       <div className="px-3.5 py-2.5 flex items-center justify-between gap-2 border-b border-gray-200 bg-white shrink-0">
         {canGoBack ? (
           <button
             type="button"
             onClick={onGoBack}
             aria-label="Back to chat"
-            className="w-9 h-9 rounded-full inline-flex items-center justify-center text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E] transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 rounded-full pr-2.5 pl-1.5 h-9 text-[13px] font-semibold text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E] transition-colors cursor-pointer"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4 shrink-0" />
+            <span>Back to chat</span>
           </button>
         ) : (
-          <span className="w-9 h-9" aria-hidden="true" />
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2.5 py-1 text-[11.5px] font-semibold text-[#7B2D8E]">
+            Session ended
+          </span>
         )}
 
-        <button
-          type="button"
-          onClick={() => setOptionsOpen((v) => !v)}
-          aria-label="Live chat options"
-          aria-expanded={optionsOpen}
-          className={cn(
-            'w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
-            optionsOpen
-              ? 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25'
-              : 'bg-gray-100 text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setOptionsOpen((v) => !v)}
+            aria-label="Live chat options"
+            aria-expanded={optionsOpen}
+            className={cn(
+              'w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
+              optionsOpen
+                ? 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/25'
+                : 'bg-gray-100 text-gray-800 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
+            )}
+          >
+            <Settings className="w-[18px] h-[18px]" />
+          </button>
+          {!canGoBack && (
+            <button
+              type="button"
+              onClick={() => onLeaveChat(null)}
+              disabled={leaving}
+              aria-label="Close feedback screen"
+              className="w-9 h-9 rounded-full inline-flex items-center justify-center text-gray-700 hover:bg-[#FAF6FB] hover:text-[#7B2D8E] transition-colors cursor-pointer"
+            >
+              <X className="w-[18px] h-[18px]" />
+            </button>
           )}
-        >
-          <Settings className="w-[18px] h-[18px]" />
-        </button>
+        </div>
       </div>
 
       {/* Relative body so Settings gear drawer slides flush under the header */}
@@ -1698,90 +2033,201 @@ export function InlineLeaveFeedbackScreen({
           onClose={() => setOptionsOpen(false)}
         />
 
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-          <h2 className="text-[20px] font-bold text-gray-900 tracking-tight">
-            Did we help you?
-          </h2>
-          <p className="text-[14px] text-gray-500 mt-1">
-            Your Feedback Matters
-          </p>
+        <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col items-center justify-center text-center">
+          <div className="w-full max-w-[340px] my-auto flex flex-col items-center">
+            <h2 className="text-[19px] font-bold text-gray-900 tracking-tight">
+              {canGoBack ? 'Did we help you?' : 'How was your support chat?'}
+            </h2>
+            <p className="text-[13px] text-gray-500 mt-1">
+              Your feedback helps our team serve you better
+            </p>
 
-          {/* Circular Thumbs Up / Thumbs Down */}
-          <div
-            className="mt-6 flex items-center justify-center gap-4"
-            role="group"
-            aria-label="Rate your support experience"
-          >
-            <button
-              type="button"
-              onClick={() =>
-                setSelectedThumb((prev) => (prev === 'up' ? null : 'up'))
-              }
-              aria-label="Yes, this helped"
-              aria-pressed={selectedThumb === 'up'}
-              data-testid="live-chat-thumb-up"
-              className={cn(
-                'w-14 h-14 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
-                selectedThumb === 'up'
-                  ? 'bg-[#7B2D8E] text-white'
-                  : 'bg-[#F5F3F7] text-gray-900 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
-              )}
+            {/* Circular Thumbs Up / Thumbs Down */}
+            <div
+              className="mt-5 flex items-center justify-center gap-4"
+              role="group"
+              aria-label="Rate your support experience"
             >
-              <ThumbsUp className="w-6 h-6" strokeWidth={1.9} />
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setSelectedThumb((prev) => (prev === 'down' ? null : 'down'))
-              }
-              aria-label="No, I still need help"
-              aria-pressed={selectedThumb === 'down'}
-              data-testid="live-chat-thumb-down"
-              className={cn(
-                'w-14 h-14 rounded-full inline-flex items-center justify-center transition-colors cursor-pointer',
-                selectedThumb === 'down'
-                  ? 'bg-[#7B2D8E] text-white'
-                  : 'bg-[#F5F3F7] text-gray-900 hover:bg-[#FAF6FB] hover:text-[#7B2D8E]',
-              )}
-            >
-              <ThumbsDown className="w-6 h-6" strokeWidth={1.9} />
-            </button>
-          </div>
-
-          {/* Side-by-side Go Back & Leave Chat pills in brand purple */}
-          <div className="mt-7 w-full max-w-[310px] flex items-center justify-center gap-3">
-            {canGoBack && (
               <button
                 type="button"
-                onClick={onGoBack}
-                disabled={leaving}
-                className="flex-1 rounded-full py-2.5 px-4 text-[14.5px] font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors disabled:opacity-50 cursor-pointer"
+                onClick={() => handleSelectThumb('up')}
+                aria-label="Yes, this helped"
+                aria-pressed={selectedThumb === 'up'}
+                data-testid="live-chat-thumb-up"
+                className={cn(
+                  'w-13 h-13 rounded-full border inline-flex items-center justify-center transition-colors cursor-pointer',
+                  selectedThumb === 'up'
+                    ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+                    : 'bg-[#FAF6FB] border-[#7B2D8E]/20 text-gray-900 hover:border-[#7B2D8E] hover:text-[#7B2D8E]',
+                )}
               >
-                Go Back
+                <ThumbsUp className="w-5 h-5" strokeWidth={1.9} />
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onLeaveChat(ratingValue)}
-              disabled={leaving}
-              data-testid="live-chat-leave-confirm-btn"
-              className={cn(
-                'flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 px-4 text-[14.5px] font-semibold transition-colors disabled:opacity-60 cursor-pointer',
-                selectedThumb
-                  ? 'bg-[#7B2D8E] text-white hover:bg-[#7B2D8E]/90'
-                  : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/15 hover:bg-[#7B2D8E] hover:text-white',
-              )}
-            >
-              {leaving && <Loader2 className="w-4 h-4 animate-spin" />}
-              Leave Chat
-            </button>
-          </div>
 
-          <p className="mt-5 max-w-[310px] text-[12.5px] leading-relaxed text-gray-500">
-            Leaving chat will end this session. If you need to chat to us again,
-            we will have a record of your chat history.
-          </p>
+              <button
+                type="button"
+                onClick={() => handleSelectThumb('down')}
+                aria-label="No, something went wrong"
+                aria-pressed={selectedThumb === 'down'}
+                data-testid="live-chat-thumb-down"
+                className={cn(
+                  'w-13 h-13 rounded-full border inline-flex items-center justify-center transition-colors cursor-pointer',
+                  selectedThumb === 'down'
+                    ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+                    : 'bg-[#FAF6FB] border-[#7B2D8E]/20 text-gray-900 hover:border-[#7B2D8E] hover:text-[#7B2D8E]',
+                )}
+              >
+                <ThumbsDown className="w-5 h-5" strokeWidth={1.9} />
+              </button>
+            </div>
+
+            {/* Dynamic Follow-up Card: "What did we do well?" or "What went wrong?" + Stars + Note */}
+            {selectedThumb && (
+              <div
+                data-testid="live-chat-feedback-details"
+                className="mt-5 w-full rounded-2xl border border-[#7B2D8E]/20 bg-[#FAF6FB]/60 p-4 text-left space-y-3.5"
+              >
+                <div>
+                  <p className="text-[13px] font-semibold text-gray-900">
+                    {selectedThumb === 'up'
+                      ? 'What did we do well?'
+                      : 'What went wrong?'}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {reasonOptions.map((reason) => {
+                      const active = selectedReasons.includes(reason)
+                      return (
+                        <button
+                          key={reason}
+                          type="button"
+                          onClick={() => toggleReason(reason)}
+                          aria-pressed={active}
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors cursor-pointer',
+                            active
+                              ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+                              : 'bg-white border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]',
+                          )}
+                        >
+                          {reason}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 1-5 Star Staff & Support Rating */}
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold text-gray-700">
+                      Rate representative
+                    </span>
+                    <span className="text-[11.5px] font-semibold text-[#7B2D8E] tabular-nums">
+                      {starRating}/5 · {STAR_LABELS[starRating] || ''}
+                    </span>
+                  </div>
+                  <div
+                    className="mt-1.5 flex items-center gap-1.5"
+                    role="radiogroup"
+                    aria-label="Star rating"
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const filled = star <= starRating
+                      return (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setStarRating(star)}
+                          aria-label={`Rate ${star} out of 5 stars`}
+                          aria-checked={starRating === star}
+                          role="radio"
+                          data-testid={`live-chat-star-${star}`}
+                          className="w-8 h-8 rounded-lg inline-flex items-center justify-center bg-white border border-gray-200 hover:border-[#7B2D8E]/40 transition-colors cursor-pointer"
+                        >
+                          <Star
+                            className={cn(
+                              'w-4 h-4 transition-colors',
+                              filled
+                                ? 'fill-[#7B2D8E] text-[#7B2D8E]'
+                                : 'text-gray-300',
+                            )}
+                          />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Optional comment */}
+                <div>
+                  <label
+                    htmlFor="live-chat-feedback-note"
+                    className="sr-only"
+                  >
+                    Additional feedback
+                  </label>
+                  <textarea
+                    id="live-chat-feedback-note"
+                    rows={2}
+                    maxLength={350}
+                    value={feedbackNote}
+                    onChange={(e) => setFeedbackNote(e.target.value)}
+                    placeholder={
+                      selectedThumb === 'up'
+                        ? 'Anything else we did well? (optional)'
+                        : 'Tell us what went wrong (optional)'
+                    }
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-base sm:text-[13px] text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Side-by-side Context-Accurate Buttons */}
+            <div className="mt-6 w-full flex items-center justify-center gap-2.5">
+              {canGoBack ? (
+                <button
+                  type="button"
+                  onClick={onGoBack}
+                  disabled={leaving}
+                  className="flex-1 rounded-full py-2.5 px-4 text-[14px] font-semibold border border-gray-200 text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Go Back
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onLeaveChat(null)}
+                  disabled={leaving}
+                  className="flex-1 rounded-full py-2.5 px-4 text-[14px] font-semibold border border-gray-200 text-gray-700 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Skip
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={leaving}
+                data-testid="live-chat-leave-confirm-btn"
+                className={cn(
+                  'flex-1 inline-flex items-center justify-center gap-1.5 rounded-full py-2.5 px-4 text-[14px] font-semibold transition-colors disabled:opacity-60 cursor-pointer',
+                  selectedThumb
+                    ? 'bg-[#7B2D8E] text-white hover:bg-[#7B2D8E]/90'
+                    : 'bg-[#FAF6FB] text-[#7B2D8E] border border-[#7B2D8E]/20 hover:bg-[#7B2D8E] hover:text-white',
+                )}
+              >
+                {leaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {primaryLabel}
+              </button>
+            </div>
+
+            <p className="mt-4 text-[12px] leading-relaxed text-gray-500">
+              {canGoBack
+                ? 'Leaving will end this session. Your chat record stays with our team.'
+                : 'This session has already ended. Share a quick rating or tap Skip to return.'}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -1863,7 +2309,31 @@ export function InlineLiveFeed({
 
   return (
     <div className="space-y-3 pt-1" data-testid="inline-live-chat-feed">
-      {/* Waiting handoff is communicated naturally by Derma AI's message in the stream (Namecheap style) — no extra waiting pill banner. */}
+      {/* Waiting queue card — crisp, zero-shadow card with Support ID copy */}
+      {isWaiting && !isClosed && (
+        <div
+          data-testid="live-chat-waiting-card"
+          className="rounded-2xl bg-white border border-[#7B2D8E]/20 p-3.5 flex items-start gap-3"
+        >
+          <span
+            aria-hidden="true"
+            className="w-9 h-9 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 flex items-center justify-center shrink-0 mt-0.5"
+          >
+            <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
+              Live support queue
+            </p>
+            <p className="text-[13px] font-semibold text-gray-900 mt-0.5 leading-snug">
+              Connecting you to a Dermaspace specialist
+            </p>
+            <p className="text-[12px] text-gray-500 mt-0.5 leading-relaxed">
+              You can write your message below while the next representative joins.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Inline guest details form */}
       {guestFormOpen && (
@@ -1875,29 +2345,87 @@ export function InlineLiveFeed({
         />
       )}
 
-      {/* Live messages — stay mounted while session is active */}
+      {/* Live messages — grouped turns with day dividers & read receipts */}
       {(isLive || isClosed || showRating) && visibleMessages.length > 0 && (() => {
         const firstJoinIdx = visibleMessages.findIndex(
           (msg) => msg.sender_role === 'system' && isJoinMilestoneText(msg.body),
         )
         return (
-          <div className="space-y-3" data-testid="live-chat-messages-list">
-            {visibleMessages.map((m, idx) => (
-              <InlineLiveBubble
-                key={m.id}
-                message={m}
-                staff={staff}
-                showAiLeftDivider={idx === firstJoinIdx}
-              />
-            ))}
+          <div className="space-y-1" data-testid="live-chat-messages-list">
+            {visibleMessages.map((m, idx) => {
+              const prev = idx > 0 ? visibleMessages[idx - 1] : null
+              const next =
+                idx < visibleMessages.length - 1 ? visibleMessages[idx + 1] : null
+              const showDayDivider =
+                idx === 0 || isDifferentCalendarDay(prev?.created_at, m.created_at)
+              const dayLabel = showDayDivider
+                ? formatMessageDayLabel(m.created_at)
+                : null
+
+              const sameAsPrev = Boolean(
+                prev &&
+                  !showDayDivider &&
+                  prev.sender_role !== 'system' &&
+                  m.sender_role !== 'system' &&
+                  prev.sender_role === m.sender_role &&
+                  (prev.sender_id || prev.sender_name || null) ===
+                    (m.sender_id || m.sender_name || null) &&
+                  Math.abs(
+                    new Date(m.created_at).getTime() -
+                      new Date(prev.created_at).getTime(),
+                  ) < 180_000,
+              )
+              const nextStartsNewDay = Boolean(
+                next && isDifferentCalendarDay(m.created_at, next.created_at),
+              )
+              const sameAsNext = Boolean(
+                next &&
+                  !nextStartsNewDay &&
+                  next.sender_role !== 'system' &&
+                  m.sender_role !== 'system' &&
+                  next.sender_role === m.sender_role &&
+                  (next.sender_id || next.sender_name || null) ===
+                    (m.sender_id || m.sender_name || null) &&
+                  Math.abs(
+                    new Date(next.created_at).getTime() -
+                      new Date(m.created_at).getTime(),
+                  ) < 180_000,
+              )
+
+              return (
+                <div key={m.id}>
+                  {dayLabel && (
+                    <div
+                      className="flex items-center gap-3 py-2.5"
+                      data-testid="live-chat-day-divider"
+                    >
+                      <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
+                      <span className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                        {dayLabel}
+                      </span>
+                      <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
+                    </div>
+                  )}
+                  <div className={cn(sameAsPrev ? 'pt-0.5' : idx === 0 || showDayDivider ? '' : 'pt-3')}>
+                    <InlineLiveBubble
+                      message={m}
+                      staff={staff}
+                      showAiLeftDivider={idx === firstJoinIdx}
+                      isFirstInGroup={!sameAsPrev}
+                      isLastInGroup={!sameAsNext}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )
       })()}
 
-      {/* Live typing indicator — classic 3-dot reply bubble, no "typing" text */}
+      {/* Live typing indicator — classic 3-dot reply bubble */}
       {isActive && staffTyping && (
         <div
-          className="flex items-end gap-2 pt-0.5"
+          className="flex items-end gap-2 pt-1"
           data-testid="live-chat-staff-typing"
           role="status"
           aria-live="polite"
@@ -1907,8 +2435,9 @@ export function InlineLiveFeed({
             src={staff?.avatarUrl}
             name={typingLabel}
             size={28}
+            brandCircles
           />
-          <div className="inline-flex items-center gap-1.5 bg-[#FAF6FB] border border-[#7B2D8E]/15 px-4 py-3.5 rounded-2xl rounded-bl-sm">
+          <div className="inline-flex items-center gap-1.5 bg-white border border-gray-200 px-4 py-3.5 rounded-2xl rounded-bl-sm">
             <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/35 animate-bounce [animation-delay:-0.3s]" />
             <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/65 animate-bounce [animation-delay:-0.15s]" />
             <span className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-bounce" />
@@ -1943,15 +2472,31 @@ function InlineLiveBubble({
   message,
   staff,
   showAiLeftDivider = false,
+  isFirstInGroup = true,
+  isLastInGroup = true,
 }: {
   message: InlineLiveMessage
   staff: InlineLiveStaff | null
   showAiLeftDivider?: boolean
+  isFirstInGroup?: boolean
+  isLastInGroup?: boolean
 }) {
+  const [copied, setCopied] = useState(false)
   const stamp = useMemo(
     () => formatChatTimestamp(message.created_at),
     [message.created_at],
   )
+
+  const handleCopy = useCallback(() => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    navigator.clipboard
+      .writeText(message.body)
+      .then(() => {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1400)
+      })
+      .catch(() => {})
+  }, [message.body])
 
   if (message.sender_role === 'system') {
     if (isJoinMilestoneText(message.body)) {
@@ -1963,24 +2508,27 @@ function InlineLiveBubble({
         'Customer Care'
 
       return (
-        <div className="space-y-4 py-3" data-testid="live-chat-join-milestone">
-          <div className="text-center">
+        <div className="space-y-3 py-2" data-testid="live-chat-join-milestone">
+          <div className="rounded-2xl bg-white border border-gray-200 px-4 py-4 text-center">
             <div className="flex justify-center mb-2.5">
               <RepAvatar
                 src={message.sender_avatar_url || staff?.avatarUrl}
                 name={milestoneName}
-                size={68}
-                className="border border-gray-200"
+                size={56}
+                brandCircles
               />
             </div>
-            <p className="text-[15.5px] font-semibold text-gray-800 leading-snug">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E] mb-1">
+              Live Representative
+            </p>
+            <p className="text-[15.5px] font-semibold text-gray-900 leading-snug">
               {milestoneName}
             </p>
-            <p className="text-[15.5px] font-semibold text-gray-800 leading-snug">
+            <p className="text-[13px] font-medium text-gray-600 mt-0.5">
               {milestoneAction}
             </p>
             {stamp && (
-              <p className="text-[11.5px] text-gray-500 mt-1 tabular-nums">
+              <p className="text-[11px] text-gray-400 mt-1.5 tabular-nums">
                 {stamp}
               </p>
             )}
@@ -1989,17 +2537,12 @@ function InlineLiveBubble({
           {showAiLeftDivider && (
             <div className="pt-0.5" data-testid="live-chat-ai-left-divider">
               <div className="flex items-center gap-3 px-2">
-                <span className="w-8 h-px bg-gray-300 shrink-0" />
-                <span className="flex-1 text-[13px] font-normal text-gray-600 text-center">
-                  Derma AI left the chat
+                <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
+                <span className="text-[11.5px] font-medium text-gray-500 text-center">
+                  Derma AI handed over to customer care
                 </span>
-                <span className="w-8 h-px bg-gray-300 shrink-0" />
+                <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
               </div>
-              {stamp && (
-                <p className="text-[11.5px] text-gray-500 text-center mt-1 tabular-nums">
-                  {stamp}
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -2010,13 +2553,13 @@ function InlineLiveBubble({
       <div className="py-2" data-testid="live-chat-system-divider">
         <div className="flex items-center gap-3 px-2">
           <span className="flex-1 h-px bg-gray-200" />
-          <span className="text-[12px] font-medium text-gray-600 text-center px-1">
+          <span className="text-[11.5px] font-medium text-gray-600 text-center px-1">
             {message.body}
           </span>
           <span className="flex-1 h-px bg-gray-200" />
         </div>
         {stamp && (
-          <p className="text-[11px] text-gray-400 text-center mt-1 tabular-nums">
+          <p className="text-[10.5px] text-gray-400 text-center mt-1 tabular-nums">
             {stamp}
           </p>
         )}
@@ -2032,18 +2575,48 @@ function InlineLiveBubble({
 
     return (
       <div
-        className="flex items-end gap-2"
+        className="group/msg flex items-end gap-2"
         data-testid="live-chat-staff-bubble"
       >
-        <RepAvatar src={senderAvatarUrl} name={senderName} size={28} />
-        <div className="max-w-[82%] min-w-0">
-          <div className="bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3.5 py-2.5 rounded-2xl rounded-bl-sm">
-            <p className="text-[14px] text-gray-900 whitespace-pre-wrap break-words leading-relaxed">
-              {message.body}
-            </p>
+        <div className="w-7 shrink-0">
+          {isLastInGroup && (
+            <RepAvatar src={senderAvatarUrl} name={senderName} size={28} />
+          )}
+        </div>
+        <div className="max-w-[82%] min-w-0 flex flex-col items-start">
+          {isFirstInGroup && (
+            <span className="text-[11px] font-semibold text-[#7B2D8E] ml-1 mb-1">
+              {senderName}
+            </span>
+          )}
+          <div className="flex items-end gap-1.5 max-w-full">
+            <div
+              className={cn(
+                'bg-white border border-gray-200 px-3.5 py-2.5 rounded-2xl transition-colors',
+                !isFirstInGroup && 'rounded-tl-md',
+                isLastInGroup && 'rounded-bl-sm',
+              )}
+            >
+              <p className="text-[14px] text-gray-900 whitespace-pre-wrap break-words leading-relaxed">
+                {message.body}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopy}
+              aria-label="Copy message"
+              title="Copy message"
+              className="w-7 h-7 rounded-full inline-flex items-center justify-center text-gray-400 hover:text-[#7B2D8E] hover:bg-[#FAF6FB] opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
           </div>
-          {stamp && (
-            <p className="text-[11px] text-gray-500 mt-1 ml-1 tabular-nums">
+          {isLastInGroup && stamp && (
+            <p className="text-[10.5px] text-gray-500 mt-1 ml-1 tabular-nums">
               {stamp}
             </p>
           )}
@@ -2053,17 +2626,46 @@ function InlineLiveBubble({
   }
 
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[82%] min-w-0">
-        <div className="bg-[#7B2D8E] text-white px-3.5 py-2 rounded-2xl rounded-br-sm">
-          <p className="text-[13.5px] whitespace-pre-wrap break-words leading-relaxed">
-            {message.body}
-          </p>
+    <div className="group/msg flex justify-end">
+      <div className="max-w-[82%] min-w-0 flex flex-col items-end">
+        <div className="flex items-end gap-1.5 max-w-full">
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copy message"
+            title="Copy message"
+            className="w-7 h-7 rounded-full inline-flex items-center justify-center text-gray-400 hover:text-[#7B2D8E] hover:bg-[#FAF6FB] opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+          >
+            {copied ? (
+              <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
+            ) : (
+              <Copy className="w-3.5 h-3.5" />
+            )}
+          </button>
+          <div
+            className={cn(
+              'bg-[#7B2D8E] text-white px-3.5 py-2.5 rounded-2xl',
+              !isFirstInGroup && 'rounded-tr-md',
+              isLastInGroup && 'rounded-br-sm',
+            )}
+          >
+            <p className="text-[13.5px] whitespace-pre-wrap break-words leading-relaxed">
+              {message.body}
+            </p>
+          </div>
         </div>
-        {stamp && (
-          <p className="text-[10px] text-gray-400 mt-1 mr-2 text-right tabular-nums">
-            {stamp}
-          </p>
+        {isLastInGroup && (
+          <div className="flex items-center justify-end gap-1 mt-1 mr-1 text-[10px] text-gray-400 tabular-nums">
+            {stamp && <span>{stamp}</span>}
+            {message.read_at ? (
+              <CheckCheck
+                className="w-3.5 h-3.5 text-[#7B2D8E]"
+                aria-label="Read"
+              />
+            ) : (
+              <Check className="w-3 h-3 text-gray-400" aria-label="Sent" />
+            )}
+          </div>
         )}
       </div>
     </div>

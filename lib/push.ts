@@ -19,6 +19,7 @@ import { sql } from './db'
 import {
   filterValidPushSubscriptions,
   isPreviewDeploymentEnv,
+  isServiceWorkerAllowedOrigin,
   isValidWebPushEndpoint,
   sanitizePushActionUrl,
   sanitizeVapidSubject,
@@ -120,9 +121,13 @@ async function sendToSubscription(
   if (!isValidWebPushEndpoint(sub.endpoint)) {
     return { ok: false, expired: true }
   }
+  const allowedOrigin =
+    sub.origin && isServiceWorkerAllowedOrigin(sub.origin, subscriptionFilterOptions())
+      ? sub.origin
+      : undefined
   const safePayload: PushPayload = {
     ...payload,
-    url: sanitizePushActionUrl(payload.url),
+    url: sanitizePushActionUrl(payload.url, allowedOrigin),
   }
   try {
     await webpush.sendNotification(

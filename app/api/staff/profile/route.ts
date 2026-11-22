@@ -31,6 +31,7 @@ export async function GET() {
       profile: {
         avatarSlug: defaultSlug,
         displayName: user.first_name,
+        userAvatarUrl: user.avatar_url ?? null,
         avatarUrl: resolveStaffAvatarUrl({
           avatarUrl: user.avatar_url,
           avatarSlug: defaultSlug,
@@ -43,6 +44,7 @@ export async function GET() {
     profile: {
       avatarSlug: profile.avatar_slug,
       displayName: profile.display_name,
+      userAvatarUrl: user.avatar_url ?? null,
       avatarUrl: resolveStaffAvatarUrl({
         avatarUrl: user.avatar_url,
         avatarSlug: profile.avatar_slug,

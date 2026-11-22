@@ -166,7 +166,7 @@ export function ServiceWorkerRegister() {
           // Check for updates periodically — sw.js calls skipWaiting() and
           // clients.claim(), and controllerchange below reloads seamlessly.
           setInterval(() => {
-            registration.update()
+            registration.update().catch(() => {})
           }, 60 * 60 * 1000) // Check every hour
         })
         .catch((error) => {
@@ -180,6 +180,13 @@ export function ServiceWorkerRegister() {
         if (!hadController || swReloading) return
         swReloading = true
         window.location.reload()
+      })
+
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'ds.pushReceived') {
+          window.dispatchEvent(new CustomEvent('notifications:refresh'))
+          window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
+        }
       })
     } else if ('serviceWorker' in navigator && !canRegisterSw) {
       console.log('[SW] Cleaning up SW and push subscriptions on preview domain')

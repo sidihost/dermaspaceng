@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import {
@@ -11,8 +11,10 @@ import {
   resolveStaffAvatarUrl,
   staffDisplayName,
 } from '@/lib/live-chat'
+import { sendLiveChatReplyPush } from '@/lib/notifications'
 import { invalidateAdminStats } from '@/lib/stats-cache'
 import { logStaffActivity } from '@/lib/activity-log'
+import { isCustomerInactiveForPush } from '@/lib/support-and-chat'
 import { getVisitorPresence, isTypingActive } from '@/lib/visitor-telemetry'
 
 interface Params {
@@ -202,6 +204,22 @@ export async function POST(req: Request, { params }: Params) {
        SET last_activity_at = NOW()
      WHERE id = ${session.id}
   `
+
+  if (
+    session.user_id &&
+    isCustomerInactiveForPush(session.customer_last_seen_at)
+  ) {
+    const targetUserId = session.user_id
+    after(async () => {
+      await sendLiveChatReplyPush({
+        userId: targetUserId,
+        senderName: finalDisplay,
+        body: text,
+        sessionId: session.id,
+        actionUrl: '/?openLiveChat=1',
+      })
+    })
+  }
 
   return NextResponse.json({
     message,

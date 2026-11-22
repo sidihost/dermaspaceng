@@ -1,11 +1,15 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
+import { sql } from '@/lib/db'
 import { requireAdminOrStaff } from '@/lib/auth'
 import {
   addMessage,
   getMessages,
   getSessionById,
   markUserMessagesRead,
+  staffDisplayName,
 } from '@/lib/live-chat'
+import { sendLiveChatReplyPush } from '@/lib/notifications'
+import { isCustomerInactiveForPush } from '@/lib/support-and-chat'
 import { getVisitorPresence, isTypingActive } from '@/lib/visitor-telemetry'
 
 // ---------------------------------------------------------------------------
@@ -92,5 +96,30 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   const message = await addMessage(session.id, 'staff', user.id, text)
+
+  if (
+    session.user_id &&
+    isCustomerInactiveForPush(session.customer_last_seen_at)
+  ) {
+    const targetUserId = session.user_id
+    after(async () => {
+      const profileRows = (await sql`
+        SELECT display_name FROM staff_profiles WHERE user_id = ${user.id} LIMIT 1
+      `.catch(() => [])) as Array<{ display_name?: string | null }>
+      const repName = staffDisplayName({
+        display_name: profileRows[0]?.display_name ?? null,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      })
+      await sendLiveChatReplyPush({
+        userId: targetUserId,
+        senderName: repName,
+        body: text,
+        sessionId: session.id,
+        actionUrl: '/?openLiveChat=1',
+      })
+    })
+  }
+
   return NextResponse.json({ message })
 }

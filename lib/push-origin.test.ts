@@ -82,6 +82,14 @@ test('sanitizePushActionUrl rewrites preview URLs back to canonical origin and r
     sanitizePushActionUrl('javascript:alert(1)', 'https://dermaspaceng.com'),
     'https://dermaspaceng.com/dashboard/notifications',
   )
+  assert.equal(
+    sanitizePushActionUrl('https://dermaspaceng.com/admin/live-chat?session=123', 'http://localhost:3000'),
+    'http://localhost:3000/admin/live-chat?session=123',
+  )
+  assert.equal(
+    sanitizePushActionUrl('/?openLiveChat=1', 'https://app-123.run.app'),
+    'https://app-123.run.app/?openLiveChat=1',
+  )
 })
 
 test('isValidWebPushEndpoint accepts public HTTPS endpoints and blocks SSRF targets', () => {

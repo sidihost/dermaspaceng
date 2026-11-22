@@ -4,6 +4,10 @@ import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ButterflyLogo } from './butterfly-logo'
+import {
+  RepAvatar,
+  type DermaLiveChatStatusDetail,
+} from './derma-inline-live-chat'
 
 /**
  * DermaAI is large (≈6,600 lines + speech / audio / map deps), so we
@@ -95,6 +99,7 @@ export default function DermaAIMount() {
   // book-a-facial CTA card and the `/derma-ai` deep-link all use
   // them). This keeps the two state machines in lock-step.
   const [isOpen, setIsOpen] = useState(false)
+  const [liveStatus, setLiveStatus] = useState<DermaLiveChatStatusDetail | null>(null)
   // Timestamp of the most recent open transition. Used by the
   // backdrop in `derma-ai.tsx` to ignore phantom clicks fired by
   // mobile Safari / older Android right after a tap (the
@@ -180,13 +185,49 @@ export default function DermaAIMount() {
       handleOpen()
     }
     const handleClose = () => setIsOpen(false)
+    const handleLiveStatus = (event: Event) => {
+      const detail = (event as CustomEvent<DermaLiveChatStatusDetail>).detail
+      if (detail) {
+        setLiveStatus(detail)
+      }
+    }
+
+    try {
+      const initialLiveStatus = (
+        window as unknown as {
+          __dermaLiveChatStatus?: DermaLiveChatStatusDetail
+        }
+      ).__dermaLiveChatStatus
+      if (initialLiveStatus) {
+        setLiveStatus(initialLiveStatus)
+      }
+    } catch {
+      /* ignore */
+    }
+
     window.addEventListener('openDermaAI', handleOpen)
     window.addEventListener('openLiveChat', handleOpenLiveChat as EventListener)
     window.addEventListener('closeDermaAI', handleClose)
+    window.addEventListener('dermaLiveChatStatus', handleLiveStatus as EventListener)
+
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('openLiveChat') === '1') {
+        handleOpen()
+        params.delete('openLiveChat')
+        const remaining = params.toString()
+        const cleanUrl = `${window.location.pathname}${remaining ? `?${remaining}` : ''}${window.location.hash}`
+        window.history.replaceState(null, '', cleanUrl)
+      }
+    } catch {
+      /* ignore URL parsing issues */
+    }
+
     return () => {
       window.removeEventListener('openDermaAI', handleOpen)
       window.removeEventListener('openLiveChat', handleOpenLiveChat as EventListener)
       window.removeEventListener('closeDermaAI', handleClose)
+      window.removeEventListener('dermaLiveChatStatus', handleLiveStatus as EventListener)
     }
   }, [])
 
@@ -197,6 +238,9 @@ export default function DermaAIMount() {
 
   if (blocked) return null
 
+  const isLiveRepActive = Boolean(liveStatus?.isLiveMode && liveStatus?.staff)
+  const liveRepName = liveStatus?.staff?.displayName?.trim() || 'Live Support'
+
   return (
     <>
       {/* Floating launcher — intentionally NOT wrapped by any error
@@ -206,7 +250,11 @@ export default function DermaAIMount() {
       <button
         ref={buttonRef}
         type="button"
-        aria-label="Open Derma AI — drag to reposition"
+        aria-label={
+          isLiveRepActive
+            ? `Open Live Support with ${liveRepName} — drag to reposition`
+            : 'Open Derma AI — drag to reposition'
+        }
         onClick={() => {
           // Swallow the click if it was actually the tail-end of a
           // drag gesture. Otherwise lifting your finger after
@@ -314,15 +362,43 @@ export default function DermaAIMount() {
             : 'scale-100 opacity-100'
         } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       >
-        <div
-          className={`relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 ${
-            isDragging
-              ? 'scale-110'
-              : 'group-hover:scale-[1.04] group-active:scale-95'
-          }`}
-        >
-          <ButterflyLogo className="w-5 h-5 md:w-6 md:h-6 text-white" />
-        </div>
+        {isLiveRepActive && liveStatus?.staff ? (
+          <div
+            className={`relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E]/20 p-[3px] flex items-center justify-center transition-transform ${
+              isDragging
+                ? 'scale-110'
+                : 'group-hover:scale-[1.04] group-active:scale-95'
+            }`}
+          >
+            <div className="w-full h-full rounded-full bg-[#7B2D8E] p-[2px] flex items-center justify-center">
+              <RepAvatar
+                src={liveStatus.staff.avatarUrl}
+                name={liveRepName}
+                size={42}
+                className="w-full h-full border-2 border-white"
+              />
+            </div>
+          </div>
+        ) : (
+          <div
+            className={`relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 ${
+              isDragging
+                ? 'scale-110'
+                : 'group-hover:scale-[1.04] group-active:scale-95'
+            }`}
+          >
+            <ButterflyLogo className="w-5 h-5 md:w-6 md:h-6 text-white" />
+          </div>
+        )}
+        {(liveStatus?.unreadCount ?? 0) > 0 && !isOpen && (
+          <span
+            aria-label={`${liveStatus?.unreadCount} unread live chat message${(liveStatus?.unreadCount ?? 0) > 1 ? 's' : ''}`}
+            data-testid="derma-live-unread-badge"
+            className="absolute -top-1 -right-1 min-w-[20px] h-[20px] px-1 rounded-full bg-[#7B2D8E] text-white text-[10.5px] font-bold flex items-center justify-center border-2 border-white tabular-nums"
+          >
+            {(liveStatus?.unreadCount ?? 0) > 99 ? '99+' : liveStatus?.unreadCount}
+          </span>
+        )}
       </button>
 
       {/* The heavy chat tree.

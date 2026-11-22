@@ -109,11 +109,18 @@ async function handleSessionAction(req: Request, { params }: Params) {
 
     if (hasValidRating) {
       const rounded = Math.round(numericRating)
+      const rawStaff = body.staff ?? body.staffRating
+      const numericStaff =
+        rawStaff !== undefined && rawStaff !== null ? Number(rawStaff) : NaN
+      const roundedStaff =
+        Number.isFinite(numericStaff) && numericStaff >= 1 && numericStaff <= 5
+          ? Math.round(numericStaff)
+          : rounded
       const comment =
         typeof body.comment === 'string' && body.comment.trim()
           ? body.comment.trim().slice(0, 500)
           : null
-      await rateSession(session.id, rounded, rounded, comment)
+      await rateSession(session.id, rounded, roundedStaff, comment)
     } else if (body.finalize) {
       await skipSessionRating(session.id)
     }

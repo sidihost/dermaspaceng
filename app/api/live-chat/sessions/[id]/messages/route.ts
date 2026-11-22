@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import {
@@ -11,6 +11,8 @@ import {
   touchCustomerPresence,
 } from '@/lib/live-chat'
 import { authoriseSessionAccess } from '@/lib/live-chat-guest'
+import { sendLiveChatReplyPush } from '@/lib/notifications'
+import { isCustomerInactiveForPush } from '@/lib/support-and-chat'
 import { isTypingActive } from '@/lib/visitor-telemetry'
 
 // ---------------------------------------------------------------------------
@@ -40,13 +42,15 @@ export async function GET(req: Request, { params }: Params) {
 
   const url = new URL(req.url)
   const since = url.searchParams.get('since') || undefined
+  const isPassivePoll = url.searchParams.get('passive') === '1'
   const messages = await getMessages(session.id, since)
 
-  // Mark all staff replies as read by the user side. Powers the unread
-  // badge on the staff dashboard. Also update customer online presence.
-  await markStaffMessagesRead(session.id)
-  if (session.status === 'waiting' || session.status === 'active') {
-    await touchCustomerPresence(session.id).catch(() => {})
+  // Mark all staff replies as read & update presence only when actively open/visible.
+  if (!isPassivePoll) {
+    await markStaffMessagesRead(session.id)
+    if (session.status === 'waiting' || session.status === 'active') {
+      await touchCustomerPresence(session.id).catch(() => {})
+    }
   }
 
   let staff: { id: string; displayName: string; avatarUrl: string } | null = null
@@ -133,5 +137,29 @@ export async function POST(req: Request, { params }: Params) {
   // sender_id (no users row). The staff-side rendering already tolerates
   // a null sender_id.
   const message = await addMessage(session.id, 'user', user?.id ?? null, text)
+
+  if (
+    session.assigned_staff_id &&
+    isCustomerInactiveForPush(session.last_activity_at, Date.now(), 20_000)
+  ) {
+    const staffId = session.assigned_staff_id
+    const customerName = user
+      ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Visitor'
+      : session.guest_name?.trim() || 'Visitor'
+    after(async () => {
+      const rows = (await sql`
+        SELECT role FROM users WHERE id = ${staffId} LIMIT 1
+      `.catch(() => [])) as Array<{ role?: string | null }>
+      const role = rows[0]?.role === 'admin' ? 'admin' : 'staff'
+      await sendLiveChatReplyPush({
+        userId: staffId,
+        senderName: customerName,
+        body: text,
+        sessionId: session.id,
+        actionUrl: `/${role}/live-chat?session=${encodeURIComponent(session.id)}`,
+      })
+    })
+  }
+
   return NextResponse.json({ message })
 }

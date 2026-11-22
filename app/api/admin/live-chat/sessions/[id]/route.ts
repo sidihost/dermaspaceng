@@ -39,10 +39,31 @@ export async function GET(_req: Request, { params }: Params) {
   })
   const customerTyping = isTypingActive(view.session.customer_typing_at)
 
+  const profileRows = (await sql`
+    SELECT display_name FROM staff_profiles WHERE user_id = ${admin.id} LIMIT 1
+  `.catch(() => [])) as Array<{ display_name: string | null }>
+  const profileDisplay = profileRows[0]?.display_name?.trim() || null
+  const currentUserDisplayNames = Array.from(
+    new Set(
+      [
+        profileDisplay,
+        staffDisplayName({
+          display_name: profileDisplay,
+          first_name: admin.first_name,
+          last_name: admin.last_name,
+        }),
+        `${admin.first_name || ''} ${admin.last_name || ''}`.trim(),
+        admin.first_name?.trim() || null,
+      ].filter((n): n is string => Boolean(n && n.trim())),
+    ),
+  )
+
   return NextResponse.json(
     {
       ...view,
       currentUserId: admin.id,
+      currentUserRole: 'admin' as const,
+      currentUserDisplayNames,
       customerTyping,
       customerLastSeenAt: view.session.customer_last_seen_at ?? null,
       presence,

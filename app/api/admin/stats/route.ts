@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdmin } from '@/lib/auth'
 import { cached, KEYS } from '@/lib/redis'
+import {
+  resolveStaffAvatarUrl,
+  resolveSupportId,
+  staffDisplayName,
+} from '@/lib/live-chat'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -118,6 +123,38 @@ async function computeAdminStats() {
     // endpoint.
     let liveChatWaiting = 0
     let liveChatActive = 0
+    let liveChatRatings: {
+      avgRating: number
+      ratedCount: number
+      positiveCount: number
+      negativeCount: number
+      staffSummary: Array<{
+        staffId: string
+        staffName: string
+        staffAvatarUrl: string
+        avgRating: number
+        ratingsCount: number
+        positiveCount: number
+      }>
+      recentFeedback: Array<{
+        sessionId: string
+        supportCode: string
+        customerName: string
+        staffId: string | null
+        staffName: string | null
+        staffAvatarUrl: string | null
+        rating: number
+        comment: string | null
+        ratedAt: string
+      }>
+    } = {
+      avgRating: 0,
+      ratedCount: 0,
+      positiveCount: 0,
+      negativeCount: 0,
+      staffSummary: [],
+      recentFeedback: [],
+    }
     try {
       const liveChatResult = await sql`
         SELECT
@@ -129,6 +166,116 @@ async function computeAdminStats() {
       liveChatActive  = Number(liveChatResult[0].active) || 0
     } catch {
       // Table missing or query error — leave counts at 0.
+    }
+    try {
+      const lcTotals = await sql`
+        SELECT
+          COALESCE(AVG(COALESCE(staff_rating, service_rating)), 0)::float AS avg_rating,
+          COUNT(*) FILTER (WHERE COALESCE(staff_rating, service_rating) IS NOT NULL)::int AS rated_count,
+          COUNT(*) FILTER (WHERE COALESCE(staff_rating, service_rating) >= 4)::int AS positive_count,
+          COUNT(*) FILTER (WHERE COALESCE(staff_rating, service_rating) IS NOT NULL AND COALESCE(staff_rating, service_rating) <= 2)::int AS negative_count
+        FROM live_chat_sessions
+      `
+      const lcStaffRows = await sql`
+        SELECT
+          u.id AS staff_id,
+          u.first_name,
+          u.last_name,
+          sp.display_name,
+          u.avatar_url,
+          sp.avatar_slug,
+          AVG(COALESCE(s.staff_rating, s.service_rating))::float AS avg_rating,
+          COUNT(s.id)::int AS ratings_count,
+          COUNT(s.id) FILTER (WHERE COALESCE(s.staff_rating, s.service_rating) >= 4)::int AS positive_count
+        FROM live_chat_sessions s
+        JOIN users u ON u.id = s.assigned_staff_id
+        LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+        WHERE COALESCE(s.staff_rating, s.service_rating) IS NOT NULL
+        GROUP BY u.id, u.first_name, u.last_name, sp.display_name, u.avatar_url, sp.avatar_slug
+        ORDER BY ratings_count DESC, avg_rating DESC
+        LIMIT 6
+      `
+      const lcRecentRows = await sql`
+        SELECT
+          s.id AS session_id,
+          s.support_code,
+          COALESCE(s.staff_rating, s.service_rating)::int AS rating,
+          s.rating_comment,
+          COALESCE(s.rated_at, s.closed_at, s.updated_at, s.created_at) AS rated_at,
+          COALESCE(
+            NULLIF(TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')), ''),
+            NULLIF(TRIM(s.guest_name), ''),
+            'Anonymous Visitor'
+          ) AS customer_name,
+          s.assigned_staff_id AS staff_id,
+          st.first_name AS staff_first_name,
+          st.last_name AS staff_last_name,
+          sp.display_name AS staff_display_name,
+          st.avatar_url AS staff_user_avatar_url,
+          sp.avatar_slug AS staff_avatar_slug
+        FROM live_chat_sessions s
+        LEFT JOIN users u ON u.id = s.user_id
+        LEFT JOIN users st ON st.id = s.assigned_staff_id
+        LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+        WHERE COALESCE(s.staff_rating, s.service_rating) IS NOT NULL
+        ORDER BY COALESCE(s.rated_at, s.closed_at, s.updated_at, s.created_at) DESC
+        LIMIT 6
+      `
+      liveChatRatings = {
+        avgRating: Number(lcTotals[0]?.avg_rating) || 0,
+        ratedCount: Number(lcTotals[0]?.rated_count) || 0,
+        positiveCount: Number(lcTotals[0]?.positive_count) || 0,
+        negativeCount: Number(lcTotals[0]?.negative_count) || 0,
+        staffSummary: lcStaffRows.map((r) => ({
+          staffId: String(r.staff_id),
+          staffName: staffDisplayName({
+            display_name: r.display_name ? String(r.display_name) : null,
+            first_name: r.first_name ? String(r.first_name) : null,
+            last_name: r.last_name ? String(r.last_name) : null,
+          }),
+          staffAvatarUrl: resolveStaffAvatarUrl({
+            avatarUrl: r.avatar_url ? String(r.avatar_url) : null,
+            avatarSlug: r.avatar_slug ? String(r.avatar_slug) : null,
+            staffId: String(r.staff_id),
+          }),
+          avgRating: Number(r.avg_rating) || 0,
+          ratingsCount: Number(r.ratings_count) || 0,
+          positiveCount: Number(r.positive_count) || 0,
+        })),
+        recentFeedback: lcRecentRows.map((r) => {
+          const staffId = r.staff_id ? String(r.staff_id) : null
+          return {
+            sessionId: String(r.session_id),
+            supportCode: resolveSupportId(
+              r.support_code ? String(r.support_code) : null,
+              String(r.session_id),
+            ),
+            customerName: String(r.customer_name || 'Visitor'),
+            staffId,
+            staffName: staffId
+              ? staffDisplayName({
+                  display_name: r.staff_display_name ? String(r.staff_display_name) : null,
+                  first_name: r.staff_first_name ? String(r.staff_first_name) : null,
+                  last_name: r.staff_last_name ? String(r.staff_last_name) : null,
+                })
+              : null,
+            staffAvatarUrl: staffId
+              ? resolveStaffAvatarUrl({
+                  avatarUrl: r.staff_user_avatar_url ? String(r.staff_user_avatar_url) : null,
+                  avatarSlug: r.staff_avatar_slug ? String(r.staff_avatar_slug) : null,
+                  staffId,
+                })
+              : null,
+            rating: Number(r.rating) || 0,
+            comment: r.rating_comment ? String(r.rating_comment) : null,
+            ratedAt: r.rated_at
+              ? new Date(r.rated_at as string).toISOString()
+              : new Date().toISOString(),
+          }
+        }),
+      }
+    } catch {
+      /* rating columns missing on old environments — leave empty */
     }
 
     // Feedback queue health — drives the new Feedback sidebar badge
@@ -680,6 +827,7 @@ async function computeAdminStats() {
           waiting: liveChatWaiting,
           active: liveChatActive,
         },
+        liveChatRatings,
         bookings: {
           pending: bookingsPending,
           upcoming: bookingsUpcoming,

@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Inbox, X } from 'lucide-react'
+import { Bell, Inbox, X } from 'lucide-react'
 import { playLiveChatChime, unlockLiveChatAudio } from '@/lib/live-chat-sound'
 import { resolveSupportId } from '@/lib/support-and-chat'
+import { syncBrowserPushSubscription } from './permissions-panel'
 
 interface WaitingSummaryItem {
   id: string
@@ -28,15 +29,22 @@ export function LiveChatRequestWatcher({ role }: { role: 'admin' | 'staff' }) {
 
   const [waitingList, setWaitingList] = useState<WaitingSummaryItem[]>([])
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set())
+  const [pushPerm, setPushPerm] = useState<NotificationPermission | 'unsupported'>('unsupported')
   const hydratedRef = useRef(false)
   const seenIdsRef = useRef<Set<string>>(new Set())
   const prevCountRef = useRef<number>(-1)
 
-  // Unlock shared AudioContext on first user interaction so queue chimes can play
+  // Unlock shared AudioContext on first user interaction + keep Web Push subscription synced
   useEffect(() => {
     const unlock = () => unlockLiveChatAudio()
     window.addEventListener('pointerdown', unlock, { once: true, passive: true })
     window.addEventListener('keydown', unlock, { once: true })
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushPerm(Notification.permission)
+      if (Notification.permission === 'granted') {
+        void syncBrowserPushSubscription()
+      }
+    }
     return () => {
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
@@ -101,10 +109,22 @@ export function LiveChatRequestWatcher({ role }: { role: 'admin' | 'staff' }) {
                 `${newlyArrived.user_first_name || 'Visitor'} ${newlyArrived.user_last_name || ''}`.trim()
               const code = resolveSupportId(newlyArrived.support_code, newlyArrived.id)
               try {
-                new Notification(`New live chat request (${code})`, {
+                const notif = new Notification(`New live chat request (${code})`, {
                   body: `${name}: ${newlyArrived.initial_topic || 'Requested live support'}`,
+                  icon: '/icons/icon-192x192.png',
                   tag: `live-chat-${newlyArrived.id}`,
                 })
+                notif.onclick = () => {
+                  try {
+                    window.focus()
+                    window.location.assign(
+                      `${basePath}?session=${encodeURIComponent(newlyArrived.id)}`,
+                    )
+                    notif.close()
+                  } catch {
+                    /* ignore */
+                  }
+                }
               } catch {
                 /* ignore Notification constructor issues in restricted browsers */
               }
@@ -119,19 +139,22 @@ export function LiveChatRequestWatcher({ role }: { role: 'admin' | 'staff' }) {
     void poll()
     const interval = window.setInterval(poll, 6000)
     const onFocus = () => void poll()
+    const onRefresh = () => void poll()
     const onVisibility = () => {
       if (!document.hidden) void poll()
     }
     window.addEventListener('focus', onFocus)
+    window.addEventListener('live-chat:waiting-changed', onRefresh)
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       cancelled = true
       window.clearInterval(interval)
       window.removeEventListener('focus', onFocus)
+      window.removeEventListener('live-chat:waiting-changed', onRefresh)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [isOnLiveChatPage])
+  }, [isOnLiveChatPage, basePath])
 
   if (isOnLiveChatPage) return null
 
@@ -189,13 +212,31 @@ export function LiveChatRequestWatcher({ role }: { role: 'admin' | 'staff' }) {
             </p>
           )}
 
-          <div className="mt-2.5 flex items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <Link
               href={`${basePath}?session=${encodeURIComponent(activeAlert.id)}`}
               className="inline-flex items-center justify-center rounded-full bg-[#7B2D8E] hover:bg-[#7B2D8E]/90 px-3.5 py-1.5 text-[11.5px] font-semibold text-white transition-colors"
             >
               Accept chat
             </Link>
+            {pushPerm === 'default' && (
+              <button
+                type="button"
+                onClick={() => {
+                  unlockLiveChatAudio()
+                  if (typeof window !== 'undefined' && 'Notification' in window) {
+                    void Notification.requestPermission().then((perm) => {
+                      setPushPerm(perm)
+                      if (perm === 'granted') void syncBrowserPushSubscription()
+                    })
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-1 rounded-full border border-[#7B2D8E]/25 bg-[#FAF6FB] hover:border-[#7B2D8E]/50 px-3 py-1.5 text-[11.5px] font-medium text-[#7B2D8E] transition-colors cursor-pointer"
+              >
+                <Bell className="w-3 h-3" />
+                Enable alerts
+              </button>
+            )}
             <button
               type="button"
               onClick={() =>

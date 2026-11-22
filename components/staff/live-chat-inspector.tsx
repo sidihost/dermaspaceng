@@ -1,8 +1,8 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import { CustomerAvatar } from '@/components/shared/derma-inline-live-chat'
 import {
   Check,
   Clock,
@@ -31,6 +31,7 @@ import { getReceiptHref } from '@/lib/receipt-access'
 import {
   getPresenceStatusMeta,
   getTicketStatusMeta,
+  parseLiveChatFeedbackComment,
 } from '@/lib/support-and-chat'
 import {
   formatChatTimestamp,
@@ -226,20 +227,12 @@ export function LiveChatInspector({
         <section className="p-4 space-y-3.5">
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
-              {customerAvatarUrl ? (
-                <Image
-                  src={customerAvatarUrl}
-                  alt={customerName}
-                  width={44}
-                  height={44}
-                  referrerPolicy="no-referrer"
-                  className="w-11 h-11 rounded-full object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[13px] font-semibold">
-                  {initials}
-                </div>
-              )}
+              <CustomerAvatar
+                src={customerAvatarUrl}
+                name={customerName}
+                initials={initials}
+                size={44}
+              />
               {presence && (
                 <span
                   aria-hidden="true"
@@ -448,24 +441,53 @@ export function LiveChatInspector({
               </p>
             </div>
           )}
-          {rating != null && (
-            <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[10.5px] font-medium text-[#5A1D6A]">
-                  Customer feedback
-                </span>
-                <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
-                  <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
-                  {rating}/5
-                </span>
+          {rating != null && (() => {
+            const parsed = parseLiveChatFeedbackComment(ratingComment)
+            return (
+              <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/15 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10.5px] font-medium text-[#7B2D8E]">
+                    Customer feedback
+                  </span>
+                  <div className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          className={cn(
+                            'w-3 h-3',
+                            n <= rating
+                              ? 'fill-[#7B2D8E] text-[#7B2D8E]'
+                              : 'text-[#7B2D8E]/25',
+                          )}
+                        />
+                      ))}
+                    </span>
+                    <span className="text-[11.5px] font-semibold text-[#7B2D8E] tabular-nums">
+                      {rating}/5
+                    </span>
+                  </div>
+                </div>
+                {parsed.reasons.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {parsed.reasons.map((reason) => (
+                      <span
+                        key={reason}
+                        className="inline-flex items-center rounded-full bg-white border border-[#7B2D8E]/20 px-2 py-0.5 text-[10.5px] font-medium text-[#7B2D8E]"
+                      >
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {parsed.note && (
+                  <p className="text-[11.5px] text-gray-700 leading-relaxed">
+                    &ldquo;{parsed.note}&rdquo;
+                  </p>
+                )}
               </div>
-              {ratingComment && (
-                <p className="text-[11.5px] text-gray-700 mt-1 italic">
-                  &ldquo;{ratingComment}&rdquo;
-                </p>
-              )}
-            </div>
-          )}
+            )
+          })()}
           <button
             type="button"
             onClick={onDownloadTranscript}

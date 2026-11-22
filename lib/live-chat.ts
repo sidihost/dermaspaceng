@@ -1350,6 +1350,7 @@ export interface StaffPerformanceRow {
   staff_id: string
   first_name: string
   last_name: string
+  display_name?: string | null
   avatar_slug: string | null
   avatar_url: string | null
   status: string | null
@@ -1367,6 +1368,8 @@ export interface StaffPerformanceRow {
   avg_rating: number | null
   rated_count: number
   ratings_count: number
+  positive_count: number
+  negative_count: number
 }
 
 export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRow[]> {
@@ -1380,6 +1383,7 @@ export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRo
       u.id            AS staff_id,
       u.first_name    AS first_name,
       u.last_name     AS last_name,
+      sp.display_name AS display_name,
       sp.avatar_slug  AS avatar_slug,
       CASE WHEN NULLIF(TRIM(u.avatar_url), '') IS NOT NULL
            THEN TRIM(u.avatar_url)
@@ -1397,18 +1401,20 @@ export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRo
       AVG(EXTRACT(EPOCH FROM (s.closed_at - s.escalated_at)))::float                   AS avg_resolution_seconds,
       AVG(EXTRACT(EPOCH FROM (s.closed_at - s.accepted_at)))::float                    AS avg_handle_seconds,
       AVG(s.service_rating)::float                                                     AS avg_service_rating,
-      AVG(s.staff_rating)::float                                                       AS avg_staff_rating,
-      AVG(s.staff_rating)::float                                                       AS avg_rating,
-      COUNT(s.id) FILTER (WHERE s.staff_rating IS NOT NULL)::int                       AS rated_count,
-      COUNT(s.id) FILTER (WHERE s.staff_rating IS NOT NULL)::int                       AS ratings_count
+      AVG(COALESCE(s.staff_rating, s.service_rating))::float                           AS avg_staff_rating,
+      AVG(COALESCE(s.staff_rating, s.service_rating))::float                           AS avg_rating,
+      COUNT(s.id) FILTER (WHERE COALESCE(s.staff_rating, s.service_rating) IS NOT NULL)::int AS rated_count,
+      COUNT(s.id) FILTER (WHERE COALESCE(s.staff_rating, s.service_rating) IS NOT NULL)::int AS ratings_count,
+      COUNT(s.id) FILTER (WHERE COALESCE(s.staff_rating, s.service_rating) >= 4)::int  AS positive_count,
+      COUNT(s.id) FILTER (WHERE COALESCE(s.staff_rating, s.service_rating) IS NOT NULL AND COALESCE(s.staff_rating, s.service_rating) <= 2)::int AS negative_count
     FROM users u
     LEFT JOIN staff_profiles sp ON sp.user_id = u.id
     LEFT JOIN live_chat_sessions s
       ON s.assigned_staff_id = u.id
      AND s.created_at >= NOW() - make_interval(days => ${safeDays})
    WHERE u.role IN ('staff', 'admin')
-   GROUP BY u.id, u.avatar_url, sp.avatar_slug, sp.status
-   ORDER BY handled DESC, u.first_name ASC
+   GROUP BY u.id, u.avatar_url, sp.display_name, sp.avatar_slug, sp.status
+   ORDER BY handled DESC, avg_rating DESC NULLS LAST, u.first_name ASC
   `) as StaffPerformanceRow[]
 
   return rows.map((r) => ({
@@ -1418,6 +1424,114 @@ export async function getStaffPerformance(days = 30): Promise<StaffPerformanceRo
       avatarSlug: r.avatar_slug,
       staffId: r.staff_id,
     }),
+  }))
+}
+
+export interface LiveChatFeedbackItem {
+  session_id: string
+  support_code: string
+  customer_name: string
+  is_guest: boolean
+  staff_id: string | null
+  staff_name: string | null
+  staff_avatar_url: string | null
+  service_rating: number | null
+  staff_rating: number | null
+  rating: number
+  rating_comment: string | null
+  initial_topic: string | null
+  rated_at: string
+}
+
+export async function getRecentLiveChatFeedback(
+  days = 30,
+  limit = 25,
+): Promise<LiveChatFeedbackItem[]> {
+  await ensureLiveChatSupportCodeColumn()
+  const safeDays =
+    typeof days === 'number' && Number.isFinite(days) && days > 0
+      ? Math.min(Math.floor(days), 365)
+      : 30
+  const safeLimit =
+    typeof limit === 'number' && Number.isFinite(limit) && limit > 0
+      ? Math.min(Math.floor(limit), 100)
+      : 25
+
+  const rows = (await sql`
+    SELECT
+      s.id AS session_id,
+      s.support_code,
+      s.initial_topic,
+      s.service_rating,
+      s.staff_rating,
+      COALESCE(s.staff_rating, s.service_rating)::int AS effective_rating,
+      s.rating_comment,
+      COALESCE(s.rated_at, s.closed_at, s.updated_at, s.created_at) AS rated_at,
+      (s.user_id IS NULL) AS is_guest,
+      COALESCE(
+        NULLIF(TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')), ''),
+        NULLIF(TRIM(s.guest_name), ''),
+        'Anonymous Visitor'
+      ) AS customer_name,
+      s.assigned_staff_id AS staff_id,
+      st.first_name AS staff_first_name,
+      st.last_name AS staff_last_name,
+      sp.display_name AS staff_display_name,
+      st.avatar_url AS staff_user_avatar_url,
+      sp.avatar_slug AS staff_avatar_slug
+    FROM live_chat_sessions s
+    LEFT JOIN users u ON u.id = s.user_id
+    LEFT JOIN users st ON st.id = s.assigned_staff_id
+    LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
+    WHERE COALESCE(s.staff_rating, s.service_rating) IS NOT NULL
+      AND COALESCE(s.rated_at, s.closed_at, s.created_at) >= NOW() - make_interval(days => ${safeDays})
+    ORDER BY COALESCE(s.rated_at, s.closed_at, s.updated_at, s.created_at) DESC
+    LIMIT ${safeLimit}
+  `) as Array<{
+    session_id: string
+    support_code: string | null
+    initial_topic: string | null
+    service_rating: number | null
+    staff_rating: number | null
+    effective_rating: number
+    rating_comment: string | null
+    rated_at: string
+    is_guest: boolean
+    customer_name: string
+    staff_id: string | null
+    staff_first_name: string | null
+    staff_last_name: string | null
+    staff_display_name: string | null
+    staff_user_avatar_url: string | null
+    staff_avatar_slug: string | null
+  }>
+
+  return rows.map((r) => ({
+    session_id: r.session_id,
+    support_code: resolveSupportId(r.support_code, r.session_id),
+    customer_name: r.customer_name || 'Visitor',
+    is_guest: Boolean(r.is_guest),
+    staff_id: r.staff_id,
+    staff_name: r.staff_id
+      ? staffDisplayName({
+          display_name: r.staff_display_name,
+          first_name: r.staff_first_name,
+          last_name: r.staff_last_name,
+        })
+      : null,
+    staff_avatar_url: r.staff_id
+      ? resolveStaffAvatarUrl({
+          avatarUrl: r.staff_user_avatar_url,
+          avatarSlug: r.staff_avatar_slug,
+          staffId: r.staff_id,
+        })
+      : null,
+    service_rating: r.service_rating != null ? Number(r.service_rating) : null,
+    staff_rating: r.staff_rating != null ? Number(r.staff_rating) : null,
+    rating: Number(r.effective_rating) || 0,
+    rating_comment: r.rating_comment || null,
+    initial_topic: r.initial_topic || null,
+    rated_at: new Date(r.rated_at).toISOString(),
   }))
 }
 

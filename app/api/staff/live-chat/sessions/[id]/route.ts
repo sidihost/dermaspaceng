@@ -74,7 +74,29 @@ export async function GET(_req: Request, { params }: Params) {
   const rawUa = (r.visitor_user_agent as string | null) ?? null
   const parsedUa = parseVisitorUserAgent(rawUa)
 
+  const viewerProfileRows = (await sql`
+    SELECT display_name FROM staff_profiles WHERE user_id = ${user.id} LIMIT 1
+  `.catch(() => [])) as Array<{ display_name: string | null }>
+  const viewerProfileDisplay = viewerProfileRows[0]?.display_name?.trim() || null
+  const currentUserDisplayNames = Array.from(
+    new Set(
+      [
+        viewerProfileDisplay,
+        staffDisplayName({
+          display_name: viewerProfileDisplay,
+          first_name: user.first_name,
+          last_name: user.last_name,
+        }),
+        `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+        user.first_name?.trim() || null,
+      ].filter((n): n is string => Boolean(n && n.trim())),
+    ),
+  )
+
   return NextResponse.json({
+    currentUserId: user.id,
+    currentUserRole: user.role === 'admin' ? ('admin' as const) : ('staff' as const),
+    currentUserDisplayNames,
     session: {
       id: r.id,
       supportCode,

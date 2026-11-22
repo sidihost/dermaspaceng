@@ -13,7 +13,6 @@
  *   3. Performance — Per-staff response, resolution, and rating scoreboard
  */
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { mutate as swrMutate } from 'swr'
@@ -23,7 +22,9 @@ import {
   ArrowRightLeft,
   ArrowUpRight,
   BarChart3,
+  Bell,
   Check,
+  CheckCheck,
   CheckCircle2,
   Clock,
   Copy,
@@ -48,27 +49,48 @@ import {
   Smartphone,
   Star,
   Tablet,
+  ThumbsDown,
+  ThumbsUp,
   Ticket,
   Trash2,
   UserRound,
+  Volume2,
+  VolumeX,
   Wallet,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
-import { RepAvatar } from '@/components/shared/derma-inline-live-chat'
+import {
+  CustomerAvatar,
+  RepAvatar,
+} from '@/components/shared/derma-inline-live-chat'
+import { syncBrowserPushSubscription } from '@/components/shared/permissions-panel'
 import { useNotify } from '@/components/shared/notify'
 import { type InspectorContextData } from '@/components/staff/live-chat-inspector'
 import { getReceiptHref } from '@/lib/receipt-access'
-import { playLiveChatChime } from '@/lib/live-chat-sound'
+import {
+  fetchLiveChatSoundPreference,
+  isLiveChatSoundEnabled,
+  playLiveChatChime,
+  saveLiveChatSoundPreference,
+  unlockLiveChatAudio,
+} from '@/lib/live-chat-sound'
 import {
   filterAgentTimelineMessages,
+  formatAgentLifecycleMessage,
+  formatEndedByStatusLabel,
+  formatMessageDayLabel,
+  formatRelativeTimestamp,
   formatWaitSeconds,
   getLiveChatStatusMeta,
   getPresenceStatusMeta,
   getTicketStatusMeta,
+  isDifferentCalendarDay,
   mergeIncrementalMessages,
+  parseLiveChatFeedbackComment,
+  resolveLiveChatDeepLinkSessionId,
   resolveSupportId,
   sanitizeNetworkErrorMessage,
 } from '@/lib/support-and-chat'
@@ -137,7 +159,10 @@ interface SessionRow {
   staff_avatar_url: string | null
   initial_topic: string | null
   rating: number | null
+  staff_rating?: number | null
+  service_rating?: number | null
   rating_comment: string | null
+  rated_at?: string | null
   unread_for_staff: number
   created_at: string
   escalated_at?: string
@@ -160,6 +185,7 @@ interface SessionMessage {
   sender_name?: string | null
   sender_avatar_url?: string | null
   body: string
+  read_at?: string | null
   created_at: string
   _pending?: boolean
 }
@@ -168,6 +194,8 @@ interface SessionDetailResponse {
   session: SessionRow
   messages: SessionMessage[]
   currentUserId?: string | null
+  currentUserRole?: 'admin' | 'staff'
+  currentUserDisplayNames?: string[]
   customerTyping?: boolean
   customerLastSeenAt?: string | null
   presence?: VisitorPresenceInfo
@@ -177,6 +205,7 @@ interface PerformanceRow {
   staff_id: string
   first_name: string | null
   last_name: string | null
+  display_name?: string | null
   avatar_url: string | null
   handled: number
   active_now: number
@@ -184,6 +213,24 @@ interface PerformanceRow {
   avg_resolution_seconds: number | null
   avg_rating: number | null
   ratings_count: number
+  positive_count?: number
+  negative_count?: number
+}
+
+interface FeedbackEntry {
+  session_id: string
+  support_code: string
+  customer_name: string
+  is_guest: boolean
+  staff_id: string | null
+  staff_name: string | null
+  staff_avatar_url: string | null
+  service_rating: number | null
+  staff_rating: number | null
+  rating: number
+  rating_comment: string | null
+  initial_topic: string | null
+  rated_at: string
 }
 
 interface ListResponse {
@@ -192,6 +239,7 @@ interface ListResponse {
 
 interface PerformanceResponse {
   performance: PerformanceRow[]
+  feedback?: FeedbackEntry[]
   range: { from: string; to: string; days: number }
 }
 
@@ -283,9 +331,15 @@ function extractVisitorMetadata(session: SessionRow): Partial<VisitorMetadata> {
 // ---------------------------------------------------------------------------
 
 export default function AdminLiveChatPage() {
+  const notify = useNotify()
   const [tab, setTab] = useState<Tab>('live')
   const [selectedLiveId, setSelectedLiveId] = useState<string | null>(null)
+  const [pendingDeepLink, setPendingDeepLink] = useState<string | null>(null)
   const [historyDetailId, setHistoryDetailId] = useState<string | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [pushPerm, setPushPerm] = useState<NotificationPermission | 'unsupported'>('unsupported')
+  const queueHydratedRef = useRef(false)
+  const seenWaitingIdsRef = useRef<Set<string>>(new Set())
 
   const openQuery = useSWR<ListResponse>(
     '/api/admin/live-chat/sessions?status=open',
@@ -299,9 +353,43 @@ export default function AdminLiveChatPage() {
     const targetSession = params.get('session')?.trim()
     if (targetSession) {
       setTab('live')
-      setSelectedLiveId(targetSession)
+      setPendingDeepLink(targetSession)
+    }
+    void fetchLiveChatSoundPreference('staff').then((enabled) => {
+      setSoundEnabled(enabled)
+    })
+    if ('Notification' in window) {
+      setPushPerm(Notification.permission)
+      if (Notification.permission === 'granted') {
+        void syncBrowserPushSubscription()
+      }
     }
   }, [])
+
+  const toggleSound = useCallback(() => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    void saveLiveChatSoundPreference('staff', next)
+    if (next) {
+      unlockLiveChatAudio()
+      window.setTimeout(() => playLiveChatChime('reply'), 30)
+      notify.info('Sound enabled', 'You will hear alerts for new chats and replies.')
+    } else {
+      notify.info('Sound muted', 'Notification chimes are muted.')
+    }
+  }, [soundEnabled, notify])
+
+  const enableDesktopAlerts = useCallback(() => {
+    unlockLiveChatAudio()
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    void Notification.requestPermission().then((perm) => {
+      setPushPerm(perm)
+      if (perm === 'granted') {
+        void syncBrowserPushSubscription()
+        notify.success('Desktop alerts enabled', 'You will receive alerts for incoming chats.')
+      }
+    })
+  }, [notify])
 
   useEffect(() => {
     const refreshOpen = () => {
@@ -323,20 +411,83 @@ export default function AdminLiveChatPage() {
     [openSessions],
   )
 
+  // Resolve ?session= deep-link (works for both UUID and DS-LC-... Support IDs, including closed rated chats)
+  useEffect(() => {
+    if (!pendingDeepLink || openQuery.isLoading) return
+    const resolved = resolveLiveChatDeepLinkSessionId(openSessions, pendingDeepLink)
+    if (resolved) {
+      setTab('live')
+      setSelectedLiveId(resolved)
+    } else if (/^[0-9a-f-]{32,36}$/i.test(pendingDeepLink)) {
+      setHistoryDetailId(pendingDeepLink)
+    }
+    setPendingDeepLink(null)
+  }, [pendingDeepLink, openSessions, openQuery.isLoading])
+
   useEffect(() => {
     markSurfaceSeen('live-chat', waitingSessions.length)
   }, [waitingSessions.length])
+
+  // Chime & hidden-tab OS notification when a new customer joins the waiting queue
+  useEffect(() => {
+    if (!openQuery.data?.sessions) return
+    if (!queueHydratedRef.current) {
+      queueHydratedRef.current = true
+      seenWaitingIdsRef.current = new Set(waitingSessions.map((w) => w.id))
+      return
+    }
+    let newlyArrived: SessionRow | null = null
+    for (const w of waitingSessions) {
+      if (!seenWaitingIdsRef.current.has(w.id)) {
+        seenWaitingIdsRef.current.add(w.id)
+        newlyArrived = w
+      }
+    }
+    if (newlyArrived) {
+      playLiveChatChime('queue', 'staff')
+      if (
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        Notification.permission === 'granted' &&
+        document.hidden &&
+        isLiveChatSoundEnabled('staff')
+      ) {
+        const customer = getSessionCustomerLabel(newlyArrived)
+        const code = resolveSupportId(newlyArrived.support_code, newlyArrived.id)
+        const arrivedId = newlyArrived.id
+        try {
+          const notif = new Notification(`New live chat request (${code})`, {
+            body: `${customer}: ${newlyArrived.initial_topic || 'Waiting in support queue'}`,
+            icon: '/icons/icon-192x192.png',
+            tag: `live-chat-${arrivedId}`,
+          })
+          notif.onclick = () => {
+            try {
+              window.focus()
+              setTab('live')
+              setSelectedLiveId(arrivedId)
+              notif.close()
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch {
+          /* ignore restricted notification errors */
+        }
+      }
+    }
+  }, [openQuery.data?.sessions, waitingSessions])
 
   // Auto-select first open session on desktop when entering Live Desk with nothing selected.
   // Never clear an already-selected session if the customer just ended it so admin clearly sees
   // the "Ended by customer" status instead of the conversation vanishing.
   useEffect(() => {
     if (tab !== 'live') return
-    if (selectedLiveId) return
+    if (selectedLiveId || pendingDeepLink) return
     if (typeof window !== 'undefined' && window.innerWidth < 1024) return
     const first = waitingSessions[0] || activeSessions[0] || openSessions[0]
     if (first) setSelectedLiveId(first.id)
-  }, [tab, openSessions, waitingSessions, activeSessions, selectedLiveId])
+  }, [tab, openSessions, waitingSessions, activeSessions, selectedLiveId, pendingDeepLink])
 
   const avgWait = useMemo(() => {
     if (waitingSessions.length === 0) return '—'
@@ -390,48 +541,83 @@ export default function AdminLiveChatPage() {
           </span>
         </div>
 
-        {/* Segmented Navigation */}
-        <nav
-          aria-label="Live chat views"
-          className="flex w-full sm:w-auto sm:inline-flex bg-[#FAF6FB] rounded-full p-1 border border-gray-200 shrink-0"
-        >
-          {(
-            [
-              { id: 'live', label: 'Live Desk', icon: Inbox, count: openSessions.length },
-              { id: 'history', label: 'History', icon: History, count: null },
-              { id: 'performance', label: 'Performance', icon: BarChart3, count: null },
-            ] as const
-          ).map((item) => {
-            const Icon = item.icon
-            const active = tab === item.id
-            return (
+        {/* Segmented Navigation + Sound & Alert Controls */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          <nav
+            aria-label="Live chat views"
+            className="flex flex-1 sm:flex-initial sm:inline-flex bg-[#FAF6FB] rounded-full p-1 border border-gray-200 shrink-0"
+          >
+            {(
+              [
+                { id: 'live', label: 'Live Desk', icon: Inbox, count: openSessions.length },
+                { id: 'history', label: 'History', icon: History, count: null },
+                { id: 'performance', label: 'Performance', icon: BarChart3, count: null },
+              ] as const
+            ).map((item) => {
+              const Icon = item.icon
+              const active = tab === item.id
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTab(item.id)}
+                  className={cn(
+                    'flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer',
+                    active
+                      ? 'bg-[#7B2D8E] text-white'
+                      : 'text-gray-600 hover:text-[#7B2D8E]',
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span>{item.label}</span>
+                  {item.count !== null && item.count > 0 && (
+                    <span
+                      className={cn(
+                        'text-[10.5px] tabular-nums',
+                        active ? 'text-white/85' : 'text-[#7B2D8E]',
+                      )}
+                    >
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {pushPerm === 'default' && (
               <button
-                key={item.id}
                 type="button"
-                onClick={() => setTab(item.id)}
-                className={cn(
-                  'flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer',
-                  active
-                    ? 'bg-[#7B2D8E] text-white'
-                    : 'text-gray-600 hover:text-[#7B2D8E]',
-                )}
+                onClick={enableDesktopAlerts}
+                aria-label="Enable desktop alerts"
+                title="Enable desktop alerts"
+                className="inline-flex items-center gap-1 h-8 px-2.5 rounded-full border border-[#7B2D8E]/25 bg-[#FAF6FB] text-[#7B2D8E] hover:border-[#7B2D8E]/50 text-[11.5px] font-semibold transition-colors cursor-pointer"
               >
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span>{item.label}</span>
-                {item.count !== null && item.count > 0 && (
-                  <span
-                    className={cn(
-                      'text-[10.5px] tabular-nums',
-                      active ? 'text-white/85' : 'text-[#7B2D8E]',
-                    )}
-                  >
-                    {item.count}
-                  </span>
-                )}
+                <Bell className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Alerts</span>
               </button>
-            )
-          })}
-        </nav>
+            )}
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={soundEnabled ? 'Mute notification sounds' : 'Unmute notification sounds'}
+              title={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}
+              className={cn(
+                'w-8 h-8 rounded-full border flex items-center justify-center transition-colors cursor-pointer',
+                soundEnabled
+                  ? 'border-[#7B2D8E]/25 bg-[#FAF6FB] text-[#7B2D8E] hover:border-[#7B2D8E]/50'
+                  : 'border-gray-200 bg-white text-gray-400 hover:text-gray-700',
+              )}
+            >
+              {soundEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* TAB 1: FULL-SCREEN LIVE DESK (3-PANE RESPONSIVE WORKSPACE) */}
@@ -463,7 +649,7 @@ export default function AdminLiveChatPage() {
       {tab === 'performance' && (
         <div className="flex-1 min-h-0 overflow-y-auto bg-[#FBF9FC] p-4 sm:p-6">
           <div className="max-w-[1400px] mx-auto">
-            <PerformanceTab />
+            <PerformanceTab onOpenSession={(id) => setHistoryDetailId(id)} />
           </div>
         </div>
       )}
@@ -773,30 +959,15 @@ function QueueListRow({
     >
       {/* Avatar with real-time online/offline dot */}
       <div className="relative shrink-0 mt-0.5">
-        {session.user_avatar_url ? (
-          <Image
-            src={session.user_avatar_url}
-            alt={name}
-            width={40}
-            height={40}
-            referrerPolicy="no-referrer"
-            className={cn(
-              'w-10 h-10 rounded-full object-cover border',
-              selected ? 'border-[#7B2D8E]/40' : 'border-gray-200',
-            )}
-          />
-        ) : (
-          <div
-            className={cn(
-              'w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-semibold border',
-              selected
-                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-                : 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/20',
-            )}
-          >
-            {initials}
-          </div>
-        )}
+        <CustomerAvatar
+          src={session.user_avatar_url}
+          name={name}
+          initials={initials}
+          size={40}
+          className={cn(
+            selected ? 'border-[#7B2D8E]/40' : 'border-gray-200',
+          )}
+        />
         <span
           aria-hidden="true"
           title={presence.label}
@@ -922,6 +1093,7 @@ function AdminSessionWorkspace({
 
   const [pending, setPending] = useState<SessionMessage[]>([])
   const [displayName, setDisplayName] = useState<string>('Admin')
+  const [adminAvatarUrl, setAdminAvatarUrl] = useState<string | null>(null)
   const [editingDisplay, setEditingDisplay] = useState<boolean>(false)
   const [customDisplay, setCustomDisplay] = useState<string>('')
   const [savingAlias, setSavingAlias] = useState(false)
@@ -985,15 +1157,32 @@ function AdminSessionWorkspace({
     hydratedSessionRef.current = sessionId
   }, [data?.messages, sessionId])
 
-  // Fast incremental polling (900ms + focus/visibility) for near-instant reply & status reflection
+  // Fast incremental polling (900ms visible / ~2.7s background) for instant reply & background alert reflection
+  const metaRef = useRef<{ customerLabel: string; supportCode: string }>({
+    customerLabel: 'Visitor',
+    supportCode: '',
+  })
+  metaRef.current = {
+    customerLabel: data?.session ? getSessionCustomerLabel(data.session) : 'Visitor',
+    supportCode: data?.session
+      ? resolveSupportId(data.session.support_code, data.session.id)
+      : '',
+  }
+
   useEffect(() => {
     if (!sessionId || isOverlay) return
     let cancelled = false
     let inFlight = false
+    let hiddenSkip = 0
 
-    const tick = async () => {
+    const tick = async (force = false) => {
       if (inFlight) return
-      if (typeof document !== 'undefined' && document.hidden) return
+      if (!force && typeof document !== 'undefined' && document.hidden) {
+        hiddenSkip = (hiddenSkip + 1) % 3
+        if (hiddenSkip !== 0) return
+      } else {
+        hiddenSkip = 0
+      }
       inFlight = true
       try {
         const since = lastSeenRef.current
@@ -1029,17 +1218,48 @@ function AdminSessionWorkspace({
         const wasHydrated = hydratedSessionRef.current === sessionId
         hydratedSessionRef.current = sessionId
 
-        let hasNewCustomerMsg = false
+        const newCustomerMsgs: SessionMessage[] = []
         for (const m of incoming) {
           if (!seenMsgIdsRef.current.has(m.id)) {
             seenMsgIdsRef.current.add(m.id)
             if (wasHydrated && m.sender_role === 'user') {
-              hasNewCustomerMsg = true
+              newCustomerMsgs.push(m)
             }
           }
         }
-        if (hasNewCustomerMsg) {
+        if (newCustomerMsgs.length > 0) {
           playLiveChatChime('reply', 'staff')
+          if (
+            typeof window !== 'undefined' &&
+            'Notification' in window &&
+            Notification.permission === 'granted' &&
+            document.hidden &&
+            isLiveChatSoundEnabled('staff')
+          ) {
+            const latest = newCustomerMsgs[newCustomerMsgs.length - 1]
+            const label = metaRef.current.customerLabel
+            const code = metaRef.current.supportCode
+            try {
+              const notif = new Notification(
+                `${label}${code ? ` (${code})` : ''}`,
+                {
+                  body: latest.body.slice(0, 140),
+                  icon: '/icons/icon-192x192.png',
+                  tag: `live-chat-msg-${sessionId}`,
+                },
+              )
+              notif.onclick = () => {
+                try {
+                  window.focus()
+                  notif.close()
+                } catch {
+                  /* ignore */
+                }
+              }
+            } catch {
+              /* ignore Notification errors */
+            }
+          }
         }
 
         setLiveMessages((prev) => mergeIncrementalMessages(prev, incoming))
@@ -1054,7 +1274,7 @@ function AdminSessionWorkspace({
     const interval = window.setInterval(() => void tick(), 900)
     const onWake = () => {
       if (typeof document !== 'undefined' && document.hidden) return
-      void tick()
+      void tick(true)
     }
     window.addEventListener('focus', onWake)
     document.addEventListener('visibilitychange', onWake)
@@ -1075,8 +1295,11 @@ function AdminSessionWorkspace({
         if (!activeMount) return
         if (res.ok) {
           const json = (await res.json().catch(() => null)) as {
-            profile?: { displayName?: string | null }
+            profile?: { displayName?: string | null; avatarUrl?: string | null }
           } | null
+          if (json?.profile?.avatarUrl) {
+            setAdminAvatarUrl(json.profile.avatarUrl)
+          }
           const stored = json?.profile?.displayName?.trim()
           if (stored) {
             setDisplayName(stored)
@@ -1548,13 +1771,40 @@ function AdminSessionWorkspace({
     .filter(Boolean)
     .join(' · ')
 
+  const effectiveViewerRole = data?.currentUserRole ?? 'admin'
+  const isAssignedToViewer = Boolean(
+    currentUserId && session.staff_id && session.staff_id === currentUserId,
+  )
+  const effectiveViewerNames = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...(data?.currentUserDisplayNames ?? []),
+            displayName,
+          ].filter((n): n is string => Boolean(n && n.trim())),
+        ),
+      ),
+    [data?.currentUserDisplayNames, displayName],
+  )
+  const endedStatusMeta = useMemo(
+    () =>
+      formatEndedByStatusLabel({
+        closedBy: session.closed_by,
+        viewerRole: effectiveViewerRole,
+        isAssignedToViewer,
+      }),
+    [session.closed_by, effectiveViewerRole, isAssignedToViewer],
+  )
+  const effectiveRating = session.staff_rating ?? session.rating
+
   return (
     <>
       {/* CENTER CONVERSATION COLUMN */}
       <section className="flex-1 min-w-0 flex flex-col h-full bg-[#FBF9FC] overflow-hidden">
-        {/* Clean Single Conversation Header */}
-        <header className="h-[66px] shrink-0 bg-white border-b border-gray-200 px-3 sm:px-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* Clean Single Conversation Header — wraps cleanly on 360px screens so Support ID never clips */}
+        <header className="min-h-[66px] py-2 shrink-0 bg-white border-b border-gray-200 px-3 sm:px-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
             {onBack && (
               <button
                 type="button"
@@ -1570,20 +1820,12 @@ function AdminSessionWorkspace({
             )}
 
             <div className="relative shrink-0">
-              {session.user_avatar_url ? (
-                <Image
-                  src={session.user_avatar_url}
-                  alt={customerLabel}
-                  width={38}
-                  height={38}
-                  referrerPolicy="no-referrer"
-                  className="w-9 h-9 rounded-full object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[12px] font-semibold">
-                  {customerInitials}
-                </div>
-              )}
+              <CustomerAvatar
+                src={session.user_avatar_url}
+                name={customerLabel}
+                initials={customerInitials}
+                size={36}
+              />
               <span
                 aria-hidden="true"
                 className={cn(
@@ -1597,7 +1839,7 @@ function AdminSessionWorkspace({
               />
             </div>
 
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
                 <h2 className="text-[14px] sm:text-[15px] font-semibold text-gray-900 truncate">
                   {customerLabel}
@@ -1609,34 +1851,28 @@ function AdminSessionWorkspace({
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 text-[11px] mt-0.5 truncate">
+              <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] mt-0.5">
                 <span
                   className={cn(
-                    'font-medium shrink-0',
+                    'font-medium whitespace-nowrap',
                     presence?.state === 'online' || session.status === 'waiting'
                       ? 'text-[#7B2D8E]'
                       : 'text-gray-500',
                   )}
                 >
                   {!isLiveStatus
-                    ? session.closed_by === 'user'
-                      ? 'Ended by customer'
-                      : session.closed_by === 'admin'
-                        ? 'Ended by admin'
-                        : session.closed_by === 'staff'
-                          ? 'Ended by representative'
-                          : 'Ended'
+                    ? endedStatusMeta.headerLabel
                     : presence?.label ||
                       (session.status === 'waiting' ? 'Waiting' : 'Active')}
                 </span>
-                <span className="text-gray-300" aria-hidden="true">
+                <span className="text-gray-300 shrink-0" aria-hidden="true">
                   ·
                 </span>
                 <button
                   type="button"
                   onClick={copySupportCode}
                   title="Copy Support ID"
-                  className="inline-flex items-center gap-1 font-mono text-[10.5px] font-semibold text-[#7B2D8E] hover:opacity-80 cursor-pointer shrink-0"
+                  className="inline-flex items-center gap-1 font-mono text-[10.5px] font-semibold text-[#7B2D8E] hover:opacity-80 cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <span>{supportCode}</span>
                   {copiedId && <Check className="w-3 h-3 text-[#7B2D8E]" />}
@@ -1646,7 +1882,7 @@ function AdminSessionWorkspace({
                     <span className="hidden md:inline text-gray-300" aria-hidden="true">
                       ·
                     </span>
-                    <span className="hidden md:inline text-gray-500 truncate">
+                    <span className="hidden md:inline text-gray-500 truncate min-w-0">
                       {envPreview}
                     </span>
                   </>
@@ -1708,11 +1944,12 @@ function AdminSessionWorkspace({
 
         {/* Handover Banner when active with another rep */}
         {!isOverlay && isAssignedToOther && repName && (
-          <div className="px-4 py-2 bg-[#FAF6FB] border-b border-[#7B2D8E]/15 flex items-center gap-2 shrink-0">
+          <div className="px-4 py-2 bg-[#FAF6FB] border-b border-[#7B2D8E]/15 flex items-center gap-2.5 shrink-0">
             <RepAvatar
               src={session.staff_avatar_url}
               name={repName}
               size={22}
+              brandCircles
             />
             <p className="text-[12px] text-[#7B2D8E] truncate">
               Currently handled by <strong className="font-semibold">{repName}</strong> — reviewing conversation history.
@@ -1734,15 +1971,21 @@ function AdminSessionWorkspace({
         <div
           ref={scrollerRef}
           onScroll={handleFeedScroll}
-          className="flex-1 overflow-y-auto px-3.5 sm:px-5 py-4 min-h-0"
+          className="flex-1 overflow-y-auto px-3.5 sm:px-5 py-4 min-h-0 bg-[#FBF9FC]"
         >
           <div className="max-w-2xl mx-auto space-y-1">
             {visibleMessages.map((m, idx) => {
               const prev = idx > 0 ? visibleMessages[idx - 1] : null
               const next =
                 idx < visibleMessages.length - 1 ? visibleMessages[idx + 1] : null
+              const showDayDivider =
+                idx === 0 || isDifferentCalendarDay(prev?.created_at, m.created_at)
+              const nextDayChange = Boolean(
+                next && isDifferentCalendarDay(m.created_at, next.created_at),
+              )
               const sameAsPrev = Boolean(
-                prev &&
+                !showDayDivider &&
+                  prev &&
                   prev.sender_role !== 'system' &&
                   m.sender_role !== 'system' &&
                   prev.sender_role === m.sender_role &&
@@ -1753,7 +1996,8 @@ function AdminSessionWorkspace({
                   ) < 180_000,
               )
               const sameAsNext = Boolean(
-                next &&
+                !nextDayChange &&
+                  next &&
                   next.sender_role !== 'system' &&
                   m.sender_role !== 'system' &&
                   next.sender_role === m.sender_role &&
@@ -1765,20 +2009,48 @@ function AdminSessionWorkspace({
               )
 
               return (
-                <div
-                  key={m.id}
-                  className={cn(sameAsPrev ? 'pt-0.5' : idx === 0 ? '' : 'pt-3.5')}
-                >
-                  <AdminMessageRow
-                    message={m}
-                    customerLabel={customerLabel}
-                    customerInitials={customerInitials}
-                    customerAvatarUrl={session.user_avatar_url ?? null}
-                    staffAvatarFallback={session.staff_avatar_url}
-                    staffNameFallback={repName}
-                    isFirstInGroup={!sameAsPrev}
-                    isLastInGroup={!sameAsNext}
-                  />
+                <div key={m.id}>
+                  {showDayDivider && (
+                    <div className="py-3 flex items-center gap-3" role="separator">
+                      <span className="h-px flex-1 bg-gray-200/80" aria-hidden="true" />
+                      <span className="px-2.5 py-0.5 rounded-full bg-white border border-gray-200 text-[10.5px] font-semibold text-gray-500">
+                        {formatMessageDayLabel(m.created_at)}
+                      </span>
+                      <span className="h-px flex-1 bg-gray-200/80" aria-hidden="true" />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      sameAsPrev ? 'pt-0.5' : showDayDivider ? '' : 'pt-3.5',
+                    )}
+                  >
+                    <AdminMessageRow
+                      message={m}
+                      customerLabel={customerLabel}
+                      customerInitials={customerInitials}
+                      customerAvatarUrl={session.user_avatar_url ?? null}
+                      staffAvatarFallback={session.staff_avatar_url}
+                      staffNameFallback={repName}
+                      viewerRole={effectiveViewerRole}
+                      viewerNames={effectiveViewerNames}
+                      isAssignedToViewer={isAssignedToViewer}
+                      closedBy={session.closed_by}
+                      hasOwnLeaveBefore={visibleMessages
+                        .slice(0, idx)
+                        .some(
+                          (prevMsg) =>
+                            prevMsg.sender_role === 'system' &&
+                            formatAgentLifecycleMessage(prevMsg.body, {
+                              viewerNames: effectiveViewerNames,
+                              isAssignedToViewer,
+                              viewerRole: effectiveViewerRole,
+                              closedBy: session.closed_by,
+                            }) === 'You left the chat',
+                        )}
+                      isFirstInGroup={!sameAsPrev}
+                      isLastInGroup={!sameAsNext}
+                    />
+                  </div>
                 </div>
               )
             })}
@@ -1791,9 +2063,18 @@ function AdminSessionWorkspace({
 
             {!isOverlay && isWaiting && (
               <div className="flex justify-center pt-5">
-                <div className="inline-flex items-center gap-2 text-[12px] font-medium text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/20 px-4 py-2 rounded-full">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
-                  Visitor is waiting — accept below to join the chat.
+                <div className="w-full max-w-sm rounded-2xl bg-white border border-[#7B2D8E]/20 px-4 py-3 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 flex items-center justify-center shrink-0">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#7B2D8E]" />
+                  </span>
+                  <div className="min-w-0 text-left">
+                    <p className="text-[12.5px] font-semibold text-gray-900">
+                      Visitor is waiting in queue
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Accept below to join as {displayName || 'Admin'} and start replying.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1806,9 +2087,12 @@ function AdminSessionWorkspace({
                 aria-live="polite"
                 aria-label={`${customerLabel} is replying`}
               >
-                <div className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[10px] font-semibold shrink-0">
-                  {customerInitials}
-                </div>
+                <CustomerAvatar
+                  src={session.user_avatar_url}
+                  name={customerLabel}
+                  initials={customerInitials}
+                  size={28}
+                />
                 <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md inline-flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
                   <span className="w-2 h-2 rounded-full bg-[#7B2D8E]/70 animate-bounce [animation-delay:-0.15s]" />
@@ -1944,9 +2228,12 @@ function AdminSessionWorkspace({
               ) : (
                 <div className="flex items-center justify-between gap-2 text-[11.5px]">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="w-6 h-6 rounded-full bg-[#7B2D8E] text-white text-[10px] font-semibold flex items-center justify-center shrink-0">
-                      {displayName.charAt(0).toUpperCase() || 'A'}
-                    </span>
+                    <RepAvatar
+                      src={adminAvatarUrl || session.staff_avatar_url}
+                      name={displayName || 'Admin'}
+                      size={24}
+                      brandCircles
+                    />
                     <span className="text-gray-500 truncate">
                       Replying as{' '}
                       <strong className="font-semibold text-[#7B2D8E]">
@@ -2043,18 +2330,12 @@ function AdminSessionWorkspace({
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-[#7B2D8E] shrink-0" />
                 <span className={cn(session.closed_by === 'user' && 'font-semibold text-[#7B2D8E]')}>
-                  {session.closed_by === 'user'
-                    ? 'Customer ended this chat.'
-                    : session.closed_by === 'admin'
-                      ? 'Ended by admin.'
-                      : session.closed_by === 'staff'
-                        ? 'Ended by representative.'
-                        : 'This conversation has ended.'}
+                  {endedStatusMeta.footerLabel}
                 </span>
-                {session.rating != null && (
+                {effectiveRating != null && (
                   <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] tabular-nums">
                     <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
-                    {session.rating}/5
+                    {effectiveRating}/5
                   </span>
                 )}
               </div>
@@ -2258,20 +2539,12 @@ function AdminProfileDetailsPanel({
         <section className="p-4 space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
-              {session.user_avatar_url ? (
-                <Image
-                  src={session.user_avatar_url}
-                  alt={customerName}
-                  width={44}
-                  height={44}
-                  referrerPolicy="no-referrer"
-                  className="w-11 h-11 rounded-full object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="w-11 h-11 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[13px] font-semibold">
-                  {initials}
-                </div>
-              )}
+              <CustomerAvatar
+                src={session.user_avatar_url}
+                name={customerName}
+                initials={initials}
+                size={44}
+              />
               <span
                 aria-hidden="true"
                 className={cn(
@@ -2473,24 +2746,54 @@ function AdminProfileDetailsPanel({
             </div>
           </div>
 
-          {session.rating != null && (
-            <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-medium text-[#7B2D8E]">
-                  Customer feedback
-                </span>
-                <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
-                  <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
-                  {session.rating}/5
-                </span>
+          {(session.staff_rating ?? session.rating) != null && (() => {
+            const displayRating = (session.staff_rating ?? session.rating) as number
+            const parsed = parseLiveChatFeedbackComment(session.rating_comment)
+            return (
+              <div className="rounded-xl bg-[#FAF6FB] border border-[#7B2D8E]/20 px-3 py-2.5 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium text-[#7B2D8E]">
+                    Customer feedback
+                  </span>
+                  <div className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star
+                          key={n}
+                          className={cn(
+                            'w-3 h-3',
+                            n <= displayRating
+                              ? 'fill-[#7B2D8E] text-[#7B2D8E]'
+                              : 'text-[#7B2D8E]/25',
+                          )}
+                        />
+                      ))}
+                    </span>
+                    <span className="text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
+                      {displayRating}/5
+                    </span>
+                  </div>
+                </div>
+                {parsed.reasons.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {parsed.reasons.map((reason) => (
+                      <span
+                        key={reason}
+                        className="inline-flex items-center rounded-full bg-white border border-[#7B2D8E]/20 px-2 py-0.5 text-[10.5px] font-medium text-[#7B2D8E]"
+                      >
+                        {reason}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {parsed.note && (
+                  <p className="text-[11.5px] text-gray-700 leading-relaxed">
+                    &ldquo;{parsed.note}&rdquo;
+                  </p>
+                )}
               </div>
-              {session.rating_comment && (
-                <p className="text-[11.5px] text-gray-700 mt-1 leading-relaxed">
-                  &ldquo;{session.rating_comment}&rdquo;
-                </p>
-              )}
-            </div>
-          )}
+            )
+          })()}
 
           <button
             type="button"
@@ -2763,6 +3066,11 @@ function AdminMessageRow({
   customerAvatarUrl,
   staffAvatarFallback,
   staffNameFallback,
+  viewerRole,
+  viewerNames,
+  isAssignedToViewer,
+  closedBy,
+  hasOwnLeaveBefore,
   isFirstInGroup,
   isLastInGroup,
 }: {
@@ -2772,13 +3080,29 @@ function AdminMessageRow({
   customerAvatarUrl: string | null
   staffAvatarFallback: string | null
   staffNameFallback: string | null
+  viewerRole: 'admin' | 'staff'
+  viewerNames: string[]
+  isAssignedToViewer: boolean
+  closedBy?: string | null
+  hasOwnLeaveBefore: boolean
   isFirstInGroup: boolean
   isLastInGroup: boolean
 }) {
+  const [copied, setCopied] = useState(false)
   const stamp = useMemo(
     () => formatChatTimestamp(message.created_at),
     [message.created_at],
   )
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(message.body)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1600)
+    } catch {
+      /* ignore clipboard failures */
+    }
+  }, [message.body])
 
   if (message.sender_role === 'system') {
     // Customer-facing join milestones ("X joined the chat") belong on the customer
@@ -2786,7 +3110,14 @@ function AdminMessageRow({
     if (isJoinMilestone(message.body) && !/took over/i.test(message.body)) {
       return null
     }
-    const isCustomerEnded = /customer ended/i.test(message.body)
+    const formattedBody = formatAgentLifecycleMessage(message.body, {
+      viewerNames,
+      isAssignedToViewer,
+      viewerRole,
+      closedBy,
+      hasOwnLeaveBefore,
+    })
+    const isCustomerEnded = /customer ended/i.test(formattedBody)
     return (
       <div className="py-2.5" role="status">
         <div className="flex items-center gap-3">
@@ -2803,7 +3134,7 @@ function AdminMessageRow({
               isCustomerEnded ? 'text-[#7B2D8E] font-semibold' : 'text-gray-500',
             )}
           >
-            {message.body}
+            {formattedBody}
           </span>
           <span
             className={cn(
@@ -2824,35 +3155,52 @@ function AdminMessageRow({
 
   // Visitor / customer bubble (left)
   if (message.sender_role === 'user') {
+    const cornerClass =
+      isFirstInGroup && isLastInGroup
+        ? 'rounded-2xl rounded-bl-md'
+        : isFirstInGroup
+          ? 'rounded-2xl rounded-bl-md'
+          : isLastInGroup
+            ? 'rounded-2xl rounded-tl-md rounded-bl-md'
+            : 'rounded-2xl rounded-l-md'
+
     return (
-      <div className="flex items-end gap-2">
+      <div className="group/msg flex items-end gap-2">
         <div className="w-7 shrink-0">
-          {isLastInGroup &&
-            (customerAvatarUrl ? (
-              <Image
-                src={customerAvatarUrl}
-                alt={customerLabel}
-                width={28}
-                height={28}
-                referrerPolicy="no-referrer"
-                className="w-7 h-7 rounded-full object-cover border border-gray-200"
-              />
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[#7B2D8E] flex items-center justify-center text-[10px] font-semibold">
-                {customerInitials}
-              </div>
-            ))}
+          {isLastInGroup && (
+            <CustomerAvatar
+              src={customerAvatarUrl}
+              name={customerLabel}
+              initials={customerInitials}
+              size={28}
+            />
+          )}
         </div>
         <div className="max-w-[80%] sm:max-w-[74%]">
-          <div
-            className={cn(
-              'bg-white border border-gray-200 px-3.5 py-2.5 rounded-2xl',
-              isLastInGroup && 'rounded-bl-md',
-            )}
-          >
-            <p className="text-[13px] text-gray-900 whitespace-pre-wrap leading-relaxed break-words">
-              {message.body}
-            </p>
+          <div className="flex items-end gap-1.5">
+            <div
+              className={cn(
+                'bg-white border border-gray-200 px-3.5 py-2.5',
+                cornerClass,
+              )}
+            >
+              <p className="text-[13px] text-gray-900 whitespace-pre-wrap leading-relaxed break-words">
+                {message.body}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleCopy()}
+              aria-label="Copy message"
+              title="Copy message"
+              className="w-6 h-6 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/35 flex items-center justify-center opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+            >
+              {copied ? (
+                <Check className="w-3 h-3 text-[#7B2D8E]" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
+            </button>
           </div>
           {isLastInGroup && stamp && (
             <p className="text-[10.5px] text-gray-400 mt-1 ml-1 tabular-nums">
@@ -2871,10 +3219,21 @@ function AdminMessageRow({
       message.sender_first_name,
       message.sender_last_name,
       message.sender_role === 'admin' ? 'Admin' : 'Rep',
-    )
+    ) ||
+    staffNameFallback ||
+    'Rep'
+
+  const cornerClass =
+    isFirstInGroup && isLastInGroup
+      ? 'rounded-2xl rounded-br-md'
+      : isFirstInGroup
+        ? 'rounded-2xl rounded-br-md'
+        : isLastInGroup
+          ? 'rounded-2xl rounded-tr-md rounded-br-md'
+          : 'rounded-2xl rounded-r-md'
 
   return (
-    <div className="flex items-end justify-end gap-2">
+    <div className="group/msg flex items-end justify-end gap-2">
       <div className="max-w-[80%] sm:max-w-[74%] flex flex-col items-end">
         {isFirstInGroup && (
           <p className="text-[10.5px] font-medium text-[#7B2D8E] mr-1 mb-1">
@@ -2882,21 +3241,43 @@ function AdminMessageRow({
             {message._pending && <span className="ml-1.5 text-gray-400">Sending…</span>}
           </p>
         )}
-        <div
-          className={cn(
-            'bg-[#7B2D8E] text-white px-3.5 py-2.5 rounded-2xl',
-            isLastInGroup && 'rounded-br-md',
-            message._pending && 'opacity-70',
-          )}
-        >
-          <p className="text-[13px] whitespace-pre-wrap leading-relaxed break-words">
-            {message.body}
-          </p>
+        <div className="flex items-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => void handleCopy()}
+            aria-label="Copy message"
+            title="Copy message"
+            className="w-6 h-6 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/35 flex items-center justify-center opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity shrink-0 cursor-pointer"
+          >
+            {copied ? (
+              <Check className="w-3 h-3 text-[#7B2D8E]" />
+            ) : (
+              <Copy className="w-3 h-3" />
+            )}
+          </button>
+          <div
+            className={cn(
+              'bg-[#7B2D8E] text-white px-3.5 py-2.5',
+              cornerClass,
+              message._pending && 'opacity-70',
+            )}
+          >
+            <p className="text-[13px] whitespace-pre-wrap leading-relaxed break-words">
+              {message.body}
+            </p>
+          </div>
         </div>
-        {isLastInGroup && stamp && (
-          <p className="text-[10.5px] text-gray-400 mt-1 mr-1 tabular-nums">
-            {stamp}
-          </p>
+        {isLastInGroup && (stamp || message._pending || message.read_at) && (
+          <div className="flex items-center gap-1 mt-1 mr-1 text-[10.5px] text-gray-400 tabular-nums">
+            {stamp && <span>{stamp}</span>}
+            {message._pending ? (
+              <Clock className="w-3 h-3 text-gray-400" aria-label="Sending" />
+            ) : message.read_at ? (
+              <CheckCheck className="w-3.5 h-3.5 text-[#7B2D8E]" aria-label="Seen by visitor" />
+            ) : (
+              <Check className="w-3 h-3 text-gray-400" aria-label="Delivered" />
+            )}
+          </div>
         )}
       </div>
       <div className="w-7 shrink-0">
@@ -3130,6 +3511,16 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                     <p className="text-[12px] text-gray-600 line-clamp-1">
                       {s.initial_topic || 'Customer inquiry'}
                     </p>
+                    {s.rating_comment && (() => {
+                      const parsed = parseLiveChatFeedbackComment(s.rating_comment)
+                      const snippet = parsed.note || parsed.reasons.join(' · ')
+                      if (!snippet) return null
+                      return (
+                        <p className="text-[11px] text-[#7B2D8E] bg-[#FAF6FB] border border-[#7B2D8E]/15 rounded-lg px-2.5 py-1.5 line-clamp-2">
+                          {snippet}
+                        </p>
+                      )
+                    })()}
 
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 text-[11px] text-gray-500">
                       <span className="truncate">
@@ -3137,10 +3528,10 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                         {s.visitor_location ? ` · ${s.visitor_location}` : ''}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
-                        {s.rating != null && (
+                        {(s.staff_rating ?? s.rating) != null && (
                           <span className="inline-flex items-center gap-0.5 font-semibold text-[#7B2D8E] tabular-nums">
                             <Star className="w-3 h-3 fill-[#7B2D8E] text-[#7B2D8E]" />
-                            {s.rating}/5
+                            {s.staff_rating ?? s.rating}/5
                           </span>
                         )}
                         <span className="tabular-nums text-gray-400">
@@ -3219,12 +3610,23 @@ function HistoryTab({ onOpenSession }: { onOpenSession: (id: string) => void }) 
                         <td className="py-3 px-4 text-[12.5px] font-medium text-gray-800 whitespace-nowrap">
                           {rep}
                         </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          {s.rating != null ? (
-                            <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
-                              <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
-                              {s.rating}/5
-                            </span>
+                        <td className="py-3 px-4">
+                          {(s.staff_rating ?? s.rating) != null ? (
+                            <div className="min-w-0 max-w-[200px]">
+                              <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] tabular-nums">
+                                <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
+                                {s.staff_rating ?? s.rating}/5
+                              </span>
+                              {s.rating_comment && (() => {
+                                const parsed = parseLiveChatFeedbackComment(s.rating_comment)
+                                const snippet = parsed.note || parsed.reasons.join(' · ')
+                                return snippet ? (
+                                  <p className="text-[11px] text-gray-500 truncate mt-0.5" title={snippet}>
+                                    {snippet}
+                                  </p>
+                                ) : null
+                              })()}
+                            </div>
                           ) : (
                             <span className="text-[12px] text-gray-400">—</span>
                           )}
@@ -3325,19 +3727,24 @@ function StatusPill({ status }: { status: SessionRow['status'] }) {
 }
 
 // ---------------------------------------------------------------------------
-// PerformanceTab — Per-Staff Response, Resolution & Rating Scoreboard
+// PerformanceTab — Per-Staff Response, Resolution, Ratings & Customer Feedback
 // ---------------------------------------------------------------------------
 
-function PerformanceTab() {
+function PerformanceTab({
+  onOpenSession,
+}: {
+  onOpenSession: (id: string) => void
+}) {
   const [days, setDays] = useState(30)
   const { data, isLoading } = useSWR<PerformanceResponse>(
     `/api/admin/live-chat/performance?days=${days}`,
     fetcher,
   )
   const rows = data?.performance ?? []
+  const feedbackEntries = data?.feedback ?? []
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex w-full sm:w-auto sm:inline-flex bg-white rounded-full p-1 border border-gray-200">
         {[7, 30, 90].map((d) => (
           <button
@@ -3370,7 +3777,9 @@ function PerformanceTab() {
           {/* Mobile & Tablet Cards */}
           <div className="lg:hidden space-y-2.5">
             {rows.map((r) => {
-              const name = fullName(r.first_name, r.last_name, 'Rep')
+              const name = r.display_name?.trim() || fullName(r.first_name, r.last_name, 'Rep')
+              const pos = r.positive_count ?? 0
+              const neg = r.negative_count ?? 0
               return (
                 <div
                   key={r.staff_id}
@@ -3383,8 +3792,11 @@ function PerformanceTab() {
                         <p className="text-sm font-semibold text-gray-900 truncate">
                           {name}
                         </p>
-                        <p className="text-[11px] text-gray-500">
+                        <p className="text-[11px] text-gray-500 tabular-nums">
                           {r.ratings_count} rating{r.ratings_count === 1 ? '' : 's'}
+                          {(pos > 0 || neg > 0) && (
+                            <span> · {pos} positive / {neg} low</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -3446,11 +3858,14 @@ function PerformanceTab() {
                     <th className="py-3 px-4">Avg first reply</th>
                     <th className="py-3 px-4">Avg resolution</th>
                     <th className="py-3 px-4">Rating</th>
+                    <th className="py-3 px-4">Feedback</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {rows.map((r) => {
-                    const name = fullName(r.first_name, r.last_name, 'Rep')
+                    const name = r.display_name?.trim() || fullName(r.first_name, r.last_name, 'Rep')
+                    const pos = r.positive_count ?? 0
+                    const neg = r.negative_count ?? 0
                     return (
                       <tr key={r.staff_id} className="hover:bg-[#FAF6FB]/50">
                         <td className="py-3 px-4">
@@ -3493,6 +3908,22 @@ function PerformanceTab() {
                             <span className="text-gray-400 text-xs">—</span>
                           )}
                         </td>
+                        <td className="py-3 px-4 text-xs tabular-nums">
+                          {r.ratings_count > 0 ? (
+                            <div className="inline-flex items-center gap-2.5">
+                              <span className="inline-flex items-center gap-1 font-medium text-[#7B2D8E]">
+                                <ThumbsUp className="w-3.5 h-3.5" />
+                                {pos}
+                              </span>
+                              <span className="inline-flex items-center gap-1 font-medium text-gray-500">
+                                <ThumbsDown className="w-3.5 h-3.5" />
+                                {neg}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -3502,6 +3933,133 @@ function PerformanceTab() {
           </div>
         </>
       )}
+
+      {/* Customer Feedback on Staff Feed */}
+      <section className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">
+              Customer feedback on staff
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Ratings, reasons, and comments from visitors paired with the representative who assisted them.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+            {feedbackEntries.length} review{feedbackEntries.length === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        {feedbackEntries.length === 0 ? (
+          <div className="px-4 py-10 text-center text-xs text-gray-500">
+            No customer ratings submitted in this window yet.
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {feedbackEntries.map((fb) => {
+              const parsed = parseLiveChatFeedbackComment(fb.rating_comment)
+              const isPositive = fb.rating >= 4
+              const isLow = fb.rating <= 2
+              return (
+                <li
+                  key={fb.session_id}
+                  className="px-4 sm:px-5 py-4 hover:bg-[#FAF6FB]/50 transition-colors"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <RepAvatar
+                        src={fb.staff_avatar_url}
+                        name={fb.staff_name || 'Unassigned'}
+                        size={36}
+                      />
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[13px] font-semibold text-gray-900">
+                            {fb.staff_name || 'Queue / Unassigned'}
+                          </span>
+                          <span className="text-gray-300" aria-hidden="true">
+                            ·
+                          </span>
+                          <span className="text-[12px] text-gray-600 truncate">
+                            Rated by <strong className="font-medium text-gray-900">{fb.customer_name}</strong>
+                          </span>
+                          <span className="font-mono text-[11px] font-medium text-[#7B2D8E]">
+                            {fb.support_code}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-0.5" aria-label={`${fb.rating} out of 5 stars`}>
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <Star
+                                key={n}
+                                className={cn(
+                                  'w-3.5 h-3.5',
+                                  n <= fb.rating
+                                    ? 'fill-[#7B2D8E] text-[#7B2D8E]'
+                                    : 'text-[#7B2D8E]/20',
+                                )}
+                              />
+                            ))}
+                          </span>
+                          <span className="text-[11.5px] font-semibold text-[#7B2D8E] tabular-nums">
+                            {fb.rating}/5
+                          </span>
+                          {isPositive ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2 py-0.5 text-[10.5px] font-semibold text-[#7B2D8E]">
+                              <ThumbsUp className="w-3 h-3" />
+                              What went well
+                            </span>
+                          ) : isLow ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 border border-gray-200 px-2 py-0.5 text-[10.5px] font-semibold text-gray-700">
+                              <ThumbsDown className="w-3 h-3" />
+                              Needs review
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {parsed.reasons.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {parsed.reasons.map((reason) => (
+                              <span
+                                key={reason}
+                                className="inline-flex items-center rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2.5 py-0.5 text-[11px] font-medium text-[#7B2D8E]"
+                              >
+                                {reason}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {parsed.note && (
+                          <p className="text-[12.5px] text-gray-700 leading-relaxed">
+                            &ldquo;{parsed.note}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 shrink-0">
+                      <span className="text-[11px] text-gray-400 tabular-nums">
+                        {formatRelativeTimestamp(fb.rated_at)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onOpenSession(fb.session_id)}
+                        className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/25 bg-white hover:bg-[#FAF6FB] px-3 py-1 text-[11.5px] font-semibold text-[#7B2D8E] transition-colors cursor-pointer whitespace-nowrap"
+                      >
+                        View chat
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }
+

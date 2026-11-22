@@ -13,6 +13,7 @@ import {
   TrendingUp, Clock, CheckCircle2, Bell,
   Wallet, Mail, Cake, CreditCard,
   Ticket, CircleDashed, CircleDot, Archive,
+  ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
@@ -23,6 +24,7 @@ import {
   formatRelativeTimestamp,
   getTicketPriorityMeta,
   getTicketStatusMeta,
+  parseLiveChatFeedbackComment,
 } from '@/lib/support-and-chat'
 
 interface RecentTicketItem {
@@ -66,6 +68,31 @@ interface Stats {
   surveys: { total: number; avgRating: number; thisWeek: number }
   staff: { total: number }
   liveChat?: { waiting: number; active: number }
+  liveChatRatings?: {
+    avgRating: number
+    ratedCount: number
+    positiveCount: number
+    negativeCount: number
+    staffSummary: Array<{
+      staffId: string
+      staffName: string
+      staffAvatarUrl: string
+      avgRating: number
+      ratingsCount: number
+      positiveCount: number
+    }>
+    recentFeedback: Array<{
+      sessionId: string
+      supportCode: string
+      customerName: string
+      staffId: string | null
+      staffName: string | null
+      staffAvatarUrl: string | null
+      rating: number
+      comment: string | null
+      ratedAt: string
+    }>
+  }
   bookings?: { pending: number; upcoming: number }
   pendingTransactions?: { count: number; totalAmount: number }
   birthdaysToday?: Array<{
@@ -1067,6 +1094,259 @@ export default function AdminDashboard() {
               )
             })}
           </ul>
+        )}
+      </section>
+
+      {/* Live Support Staff Ratings & Customer Feedback */}
+      <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5 border-b border-gray-100">
+          <div className="flex items-center gap-2 min-w-0">
+            <Star className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-gray-900 truncate">
+                Live support staff ratings &amp; feedback
+              </h2>
+              <p className="text-xs text-gray-500">
+                {stats?.liveChatRatings && stats.liveChatRatings.ratedCount > 0 ? (
+                  <>
+                    <span className="tabular-nums font-semibold text-[#7B2D8E]">
+                      {stats.liveChatRatings.avgRating.toFixed(1)}/5
+                    </span>{' '}
+                    average across{' '}
+                    <span className="tabular-nums font-medium text-gray-700">
+                      {stats.liveChatRatings.ratedCount}
+                    </span>{' '}
+                    rated chat{stats.liveChatRatings.ratedCount === 1 ? '' : 's'}
+                    <span aria-hidden="true"> · </span>
+                    <span className="tabular-nums">
+                      {stats.liveChatRatings.positiveCount} helpful
+                    </span>
+                    {stats.liveChatRatings.negativeCount > 0 && (
+                      <>
+                        <span aria-hidden="true"> · </span>
+                        <span className="tabular-nums text-gray-700">
+                          {stats.liveChatRatings.negativeCount} flagged
+                        </span>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  'Customer ratings and feedback per attending representative'
+                )}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/live-chat"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:underline whitespace-nowrap"
+          >
+            View all in Live Chat
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {!stats?.liveChatRatings || stats.liveChatRatings.ratedCount === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-2">
+              <Star className="w-4 h-4" />
+            </div>
+            <p className="text-sm font-medium text-gray-900">
+              No live chat ratings yet
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              When customers rate a live support chat, per-staff scores and comments will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
+            {/* Staff Rating Leaderboard */}
+            <div className="p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Representative scores
+                </h3>
+                <span className="text-[11px] text-gray-400 tabular-nums">
+                  {stats.liveChatRatings.staffSummary.length} rep
+                  {stats.liveChatRatings.staffSummary.length === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              {stats.liveChatRatings.staffSummary.length === 0 ? (
+                <p className="text-xs text-gray-400 py-4">
+                  Ratings have not been linked to an individual representative yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {stats.liveChatRatings.staffSummary.map((rep) => (
+                    <li
+                      key={rep.staffId}
+                      className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2.5"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={rep.staffAvatarUrl}
+                          alt={rep.staffName}
+                          referrerPolicy="no-referrer"
+                          className="w-8 h-8 rounded-full object-cover border border-[#7B2D8E]/20 bg-[#FAF6FB] shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/admin/staff/${rep.staffId}`}
+                            className="block text-xs font-semibold text-gray-900 hover:text-[#7B2D8E] truncate"
+                          >
+                            {rep.staffName}
+                          </Link>
+                          <p className="text-[11px] text-gray-500 tabular-nums truncate">
+                            {rep.ratingsCount} rating{rep.ratingsCount === 1 ? '' : 's'} · {rep.positiveCount} helpful
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 rounded-lg bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2 py-1">
+                        <Star className="w-3.5 h-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
+                        <span className="text-xs font-semibold text-gray-900 tabular-nums">
+                          {rep.avgRating.toFixed(1)}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Recent Feedback on Staff */}
+            <div className="lg:col-span-2 p-4">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                  Recent customer feedback
+                </h3>
+                <span className="text-[11px] text-gray-400 tabular-nums">
+                  Latest {stats.liveChatRatings.recentFeedback.length}
+                </span>
+              </div>
+
+              {stats.liveChatRatings.recentFeedback.length === 0 ? (
+                <p className="text-xs text-gray-400 py-4">
+                  No recent comments submitted.
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {stats.liveChatRatings.recentFeedback.map((fb) => {
+                    const parsed = parseLiveChatFeedbackComment(fb.comment)
+                    const isPositive = fb.rating >= 4
+                    const isNegative = fb.rating <= 2
+                    return (
+                      <li
+                        key={fb.sessionId}
+                        className="py-3 first:pt-0 last:pb-0 flex flex-col gap-2"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {fb.staffAvatarUrl ? (
+                              <img
+                                src={fb.staffAvatarUrl}
+                                alt={fb.staffName || 'Representative'}
+                                referrerPolicy="no-referrer"
+                                className="w-7 h-7 rounded-full object-cover border border-[#7B2D8E]/20 bg-[#FAF6FB] shrink-0"
+                              />
+                            ) : (
+                              <span className="w-7 h-7 rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20 text-[11px] font-semibold text-[#7B2D8E] inline-flex items-center justify-center shrink-0">
+                                {(fb.staffName || 'S').slice(0, 1).toUpperCase()}
+                              </span>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                                <span className="font-semibold text-gray-900 truncate">
+                                  {fb.staffName || 'Unassigned rep'}
+                                </span>
+                                <span aria-hidden="true" className="text-gray-300">
+                                  ·
+                                </span>
+                                <span className="text-gray-500 truncate">
+                                  by {fb.customerName}
+                                </span>
+                                <span className="font-mono text-[10.5px] text-gray-500 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5 tabular-nums">
+                                  {fb.supportCode}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span
+                              className="inline-flex items-center gap-0.5"
+                              aria-label={`${fb.rating} out of 5 stars`}
+                            >
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <Star
+                                  key={n}
+                                  className={`w-3.5 h-3.5 ${
+                                    n <= fb.rating
+                                      ? 'fill-[#7B2D8E] text-[#7B2D8E]'
+                                      : 'text-gray-200'
+                                  }`}
+                                />
+                              ))}
+                            </span>
+                            {(isPositive || isNegative) && (
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold ${
+                                  isPositive
+                                    ? 'bg-[#FAF6FB] text-[#7B2D8E] border-[#7B2D8E]/25'
+                                    : 'bg-gray-100 text-gray-700 border-gray-200'
+                                }`}
+                              >
+                                {isPositive ? (
+                                  <ThumbsUp className="w-3 h-3" />
+                                ) : (
+                                  <ThumbsDown className="w-3 h-3" />
+                                )}
+                                {isPositive ? 'Helpful' : 'Needs review'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {(parsed.reasons.length > 0 || parsed.note) && (
+                          <div className="pl-9 space-y-1.5">
+                            {parsed.reasons.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {parsed.reasons.map((reason) => (
+                                  <span
+                                    key={reason}
+                                    className="inline-flex items-center rounded-md bg-[#FAF6FB] border border-[#7B2D8E]/20 px-2 py-0.5 text-[11px] font-medium text-[#7B2D8E]"
+                                  >
+                                    {reason}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {parsed.note && (
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                &ldquo;{parsed.note}&rdquo;
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="pl-9 flex items-center justify-between gap-2 text-[11px] text-gray-400">
+                          <span className="tabular-nums">
+                            {formatRelativeTimestamp(fb.ratedAt)}
+                          </span>
+                          <Link
+                            href={`/admin/live-chat?session=${fb.sessionId}`}
+                            className="font-semibold text-[#7B2D8E] hover:underline inline-flex items-center gap-0.5"
+                          >
+                            View chat
+                            <ArrowUpRight className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
         )}
       </section>
 
