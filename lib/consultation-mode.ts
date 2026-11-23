@@ -208,3 +208,49 @@ export function resolveSignedInConsultationIdentity(args: {
     phone: (sameUserDraft ? args.draft?.phone : undefined) || args.user.phone || '',
   }
 }
+
+export type ConsultationCaptchaGateDecision =
+  | { action: 'skip' }
+  | { action: 'reject'; error: string }
+  | { action: 'verify'; token: string }
+
+/**
+ * Determines whether a consultation POST request must pass hCaptcha
+ * verification. Prevents the empty-token bypass where omitting `captchaToken`
+ * previously skipped verification even when `HCAPTCHA_SECRET_KEY` was set.
+ */
+export function evaluateConsultationCaptchaGate(args: {
+  isSignedIn: boolean
+  hasSecretKey: boolean
+  hasSiteKey?: boolean
+  captchaToken: unknown
+}): ConsultationCaptchaGateDecision {
+  if (args.isSignedIn) {
+    return { action: 'skip' }
+  }
+
+  const token = typeof args.captchaToken === 'string' ? args.captchaToken.trim() : ''
+
+  // Never allow anonymous submissions with an empty/missing captcha token.
+  if (!token) {
+    return {
+      action: 'reject',
+      error: 'Please complete the captcha verification before submitting.',
+    }
+  }
+
+  // If the public hCaptcha widget is enabled, reject spoofed dev bypass tokens.
+  if ((args.hasSecretKey || args.hasSiteKey) && token === 'dev-token') {
+    return {
+      action: 'reject',
+      error: 'Please complete the captcha verification before submitting.',
+    }
+  }
+
+  if (args.hasSecretKey) {
+    return { action: 'verify', token }
+  }
+
+  return { action: 'skip' }
+}
+

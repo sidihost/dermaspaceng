@@ -136,7 +136,7 @@ const adminNavItems: NavItem[] = [
   // etc.) with deep links into each module's own admin surface. Sits
   // at the top of the platform group so admins land on the catalogue
   // before they reach the developer-only feature flag console.
-  { href: '/admin/addons', icon: Layers, label: 'Add-ons', badge: 'NEW', group: 'platform' },
+  { href: '/admin/addons', icon: Layers, label: 'Plugins & Add-ons', badge: 'NEW', group: 'platform' },
   { href: '/admin/features', icon: Power, label: 'Feature Flags', badge: null, group: 'platform' },
   { href: '/admin/banners', icon: Megaphone, label: 'Banners', badge: null, group: 'platform' },
     { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },

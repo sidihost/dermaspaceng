@@ -332,14 +332,24 @@ export async function checkNewDevice(userId: string, deviceInfo: string): Promis
 
 // Verify hCaptcha
 export async function verifyHCaptcha(token: string): Promise<boolean> {
+  const cleaned = typeof token === 'string' ? token.trim() : ''
+  const secret = process.env.HCAPTCHA_SECRET_KEY
+  if (!cleaned || !secret) {
+    return false
+  }
   try {
+    const body = new URLSearchParams({
+      response: cleaned,
+      secret,
+    })
     const response = await fetch('https://hcaptcha.com/siteverify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `response=${token}&secret=${process.env.HCAPTCHA_SECRET_KEY}`
+      body: body.toString(),
     })
+    if (!response.ok) return false
     const data = await response.json()
-    return data.success
+    return data?.success === true
   } catch {
     return false
   }

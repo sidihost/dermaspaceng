@@ -3,6 +3,11 @@ import { neon } from '@neondatabase/serverless'
 import { aliasFor } from '@/lib/reserved-usernames'
 import { inspectRequest } from '@/lib/firewall'
 import { isOnboardingGatedPath, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
+import {
+  isCountryBlocked,
+  isGeoBlockExemptApiPath,
+  resolveRequestCountry,
+} from '@/lib/geo-blocking'
 
 // Supported countries with their currencies
 const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; name: string }> = {
@@ -13,9 +18,6 @@ const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; na
   GH: { currency: 'GHS', symbol: '₵', name: 'Ghana' },
   ZA: { currency: 'ZAR', symbol: 'R', name: 'South Africa' },
 }
-
-// Blocked countries
-const BLOCKED_COUNTRIES = ['IN']
 
 // ---------------------------------------------------------------------------
 // Maintenance-mode gate
@@ -226,8 +228,41 @@ export async function middleware(request: NextRequest) {
     )
   }
 
+  // Resolve visitor country from Vercel / Cloudflare / proxy geo headers
+  // BEFORE the `/api` early return so spam origins cannot bypass geo-blocking
+  // by posting directly to `/api/consultation`, `/api/contact`, etc.
+  const requestGeoCountry = (request as NextRequest & { geo?: { country?: string } }).geo?.country
+  const detectedCountry = resolveRequestCountry(request.headers, requestGeoCountry)
+  const blockedRegion = isCountryBlocked(detectedCountry)
+
+  if (blockedRegion) {
+    if (pathname.startsWith('/api')) {
+      if (!isGeoBlockExemptApiPath(pathname)) {
+        return new NextResponse(
+          JSON.stringify({
+            error: 'Dermaspace is not available in your region.',
+          }),
+          {
+            status: 451,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Robots-Tag': 'noindex',
+            },
+          },
+        )
+      }
+    } else if (
+      !pathname.startsWith('/_next') &&
+      !pathname.startsWith('/blocked') &&
+      !pathname.includes('.') &&
+      pathname !== '/favicon.ico'
+    ) {
+      return NextResponse.redirect(new URL('/blocked', request.url), 307)
+    }
+  }
+
   // Skip the rest of the middleware for API routes, static files,
-  // and asset paths. The firewall above still covered them.
+  // and asset paths. The firewall and geo-block above still covered them.
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
@@ -259,13 +294,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Get country from Vercel's geo headers (works on Vercel deployment)
-  const country = request.geo?.country || request.headers.get('x-vercel-ip-country') || 'NG'
-
-  // Block India
-  if (BLOCKED_COUNTRIES.includes(country) && !pathname.startsWith('/blocked')) {
-    return NextResponse.redirect(new URL('/blocked', request.url))
-  }
+  const country = detectedCountry || 'NG'
 
   // Maintenance gate — runs after geo-blocking so an admin in a
   // blocked country still hits /blocked first (which is the policy

@@ -13,8 +13,10 @@ import { generateConsultationAnalysis } from '@/lib/consultation-ai'
 import {
   buildConsultationPersistencePlan,
   buildConsultationEmailAction,
+  evaluateConsultationCaptchaGate,
 } from '@/lib/consultation-mode'
 import { resolveEmailOrigin } from '@/lib/email-url'
+import { requireSameOrigin, withRateLimit } from '@/lib/api-guard'
 
 const locationNames: Record<string, string> = {
   vi: 'Victoria Island - 237b Muri Okunola St',
@@ -28,6 +30,16 @@ const consultationBookingDays = [3, 4, 5, 6]
 
 export async function POST(request: Request) {
   try {
+    const csrf = requireSameOrigin(request)
+    if (csrf) return csrf
+
+    const rl = await withRateLimit(request, {
+      bucket: 'consultation:ip',
+      limit: 8,
+      windowSec: 600,
+    })
+    if (rl) return rl
+
     const body = await request.json()
     const { 
       firstName, 
@@ -72,13 +84,22 @@ export async function POST(request: Request) {
     const currentUser = await getCurrentUser().catch(() => null)
     const userId = currentUser?.id ?? null
 
-    // Verify hCaptcha for anonymous submissions when configured
-    if (!currentUser && process.env.HCAPTCHA_SECRET_KEY && captchaToken) {
-      const captchaValid = await verifyHCaptcha(captchaToken)
+    // Enforce hCaptcha for anonymous submissions — never bypass when token is empty.
+    const captchaGate = evaluateConsultationCaptchaGate({
+      isSignedIn: Boolean(currentUser),
+      hasSecretKey: Boolean(process.env.HCAPTCHA_SECRET_KEY),
+      hasSiteKey: Boolean(process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY),
+      captchaToken,
+    })
+    if (captchaGate.action === 'reject') {
+      return NextResponse.json({ error: captchaGate.error }, { status: 400 })
+    }
+    if (captchaGate.action === 'verify') {
+      const captchaValid = await verifyHCaptcha(captchaGate.token)
       if (!captchaValid) {
         return NextResponse.json(
-          { error: 'Captcha verification failed' },
-          { status: 400 }
+          { error: 'Captcha verification failed. Please complete the security check again.' },
+          { status: 400 },
         )
       }
     }

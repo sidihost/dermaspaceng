@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
@@ -21,7 +21,7 @@ import {
   Heart,
   Stethoscope,
 } from 'lucide-react'
-import HCaptcha from '@/components/shared/hcaptcha'
+import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { resolvePreferredLocationId } from '@/lib/location-pref'
 import { resolveSignedInConsultationIdentity } from '@/lib/consultation-mode'
 import { formatAccountSubtitle } from '@/lib/auth-onboarding'
@@ -184,6 +184,7 @@ export default function ConsultationPage() {
   const [submittedAnonymous, setSubmittedAnonymous] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [captchaToken, setCaptchaToken] = useState('')
+  const captchaRef = useRef<HCaptchaRef>(null)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
@@ -382,13 +383,27 @@ export default function ConsultationPage() {
     setStep((s) => Math.min(TOTAL_STEPS, s + 1))
   }
   const goBack = () => {
+    if (step === TOTAL_STEPS) {
+      setCaptchaToken('')
+      setSubmissionError('')
+    }
     if (step > 1) setStep((s) => s - 1)
     else router.back()
   }
 
+  const requiresCaptcha = authChecked && !user
+  const isCaptchaSatisfied = !requiresCaptcha || Boolean(captchaToken.trim())
+
   const handleSubmit = async () => {
+    if (!authChecked) return
+
     if (!formData.date || !isConsultationBookingDate(formData.date)) {
       setSubmissionError('Please select a Wednesday through Saturday appointment date.')
+      return
+    }
+
+    if (requiresCaptcha && !captchaToken.trim()) {
+      setSubmissionError('Please complete the captcha verification before confirming your booking.')
       return
     }
 
@@ -401,7 +416,7 @@ export default function ConsultationPage() {
         body: JSON.stringify({
           ...formData,
           date: toAppointmentDate(formData.date),
-          captchaToken,
+          captchaToken: captchaToken.trim(),
         }),
       })
       if (res.ok) {
@@ -428,9 +443,17 @@ export default function ConsultationPage() {
         setSubmissionError(
           data?.error || 'We could not submit your consultation. Please try again.',
         )
+        if (requiresCaptcha) {
+          setCaptchaToken('')
+          captchaRef.current?.reset()
+        }
       }
     } catch {
       setSubmissionError('Something went wrong. Please check your connection and try again.')
+      if (requiresCaptcha) {
+        setCaptchaToken('')
+        captchaRef.current?.reset()
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -1059,12 +1082,34 @@ export default function ConsultationPage() {
               )}
             </div>
 
-            {authChecked && !user && <HCaptcha onVerify={setCaptchaToken} />}
+            {requiresCaptcha && (
+              <div className="space-y-2">
+                <HCaptcha
+                  ref={captchaRef}
+                  onVerify={(token) => {
+                    setCaptchaToken(token)
+                    setSubmissionError('')
+                  }}
+                  onExpire={() => setCaptchaToken('')}
+                  onError={() => {
+                    setCaptchaToken('')
+                    setSubmissionError(
+                      'Security check could not load. Please retry the captcha before submitting.',
+                    )
+                  }}
+                />
+                {!captchaToken.trim() && (
+                  <p className="text-center text-xs text-gray-500">
+                    Complete the security check above to confirm your booking.
+                  </p>
+                )}
+              </div>
+            )}
 
             {submissionError && (
               <p
                 role="alert"
-                className="rounded-lg bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700"
               >
                 {submissionError}
               </p>
@@ -1106,7 +1151,7 @@ export default function ConsultationPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !authChecked || !isCaptchaSatisfied}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (

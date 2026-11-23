@@ -4,6 +4,7 @@ import {
   buildConsultationPersistencePlan,
   buildConsultationEmailAction,
   buildConsultationReplyTarget,
+  evaluateConsultationCaptchaGate,
   formatConsultationDateLabel,
   formatConsultationLocation,
   normalizePublicOrigin,
@@ -186,3 +187,58 @@ test('signed-in user keeps account identity even when stale draft has another em
   assert.equal(identity.email, 'ada@dermaspaceng.com')
   assert.equal(identity.phone, '+2348011111111')
 })
+
+test('consultation captcha gate rejects missing or blank tokens for anonymous visitors', () => {
+  const missing = evaluateConsultationCaptchaGate({
+    isSignedIn: false,
+    hasSecretKey: true,
+    captchaToken: '',
+  })
+  assert.equal(missing.action, 'reject')
+
+  const whitespace = evaluateConsultationCaptchaGate({
+    isSignedIn: false,
+    hasSecretKey: true,
+    captchaToken: '   ',
+  })
+  assert.equal(whitespace.action, 'reject')
+
+  const siteKeyOnlyMissing = evaluateConsultationCaptchaGate({
+    isSignedIn: false,
+    hasSecretKey: false,
+    hasSiteKey: true,
+    captchaToken: undefined,
+  })
+  assert.equal(siteKeyOnlyMissing.action, 'reject')
+
+  const noEnvKeysBlank = evaluateConsultationCaptchaGate({
+    isSignedIn: false,
+    hasSecretKey: false,
+    hasSiteKey: false,
+    captchaToken: '',
+  })
+  assert.equal(noEnvKeysBlank.action, 'reject')
+
+  const spoofedDevToken = evaluateConsultationCaptchaGate({
+    isSignedIn: false,
+    hasSecretKey: true,
+    hasSiteKey: true,
+    captchaToken: 'dev-token',
+  })
+  assert.equal(spoofedDevToken.action, 'reject')
+
+  const valid = evaluateConsultationCaptchaGate({
+    isSignedIn: false,
+    hasSecretKey: true,
+    captchaToken: 'hcaptcha-token-xyz',
+  })
+  assert.deepEqual(valid, { action: 'verify', token: 'hcaptcha-token-xyz' })
+
+  const signedIn = evaluateConsultationCaptchaGate({
+    isSignedIn: true,
+    hasSecretKey: true,
+    captchaToken: '',
+  })
+  assert.equal(signedIn.action, 'skip')
+})
+

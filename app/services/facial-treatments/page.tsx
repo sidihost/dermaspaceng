@@ -1,12 +1,11 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { ServiceHero } from '@/components/services/service-hero'
 // `Leaf` replaces the old `Zap` lightning-bolt for detox facials — it reads as
 // soothing/restorative, much more on-brand for a spa than an electric icon.
-import { Clock, ArrowRight, CheckCircle2, Flower2, Droplets, Leaf, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
+import { Clock, ArrowRight, Flower2, Droplets, Leaf, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Facial Treatments',
@@ -107,59 +106,6 @@ export default function FacialTreatmentsPage() {
         title="Facial Treatments"
         subtitle="Expert facial therapies for radiant, healthy-looking skin"
       />
-
-      {/* In the Treatment Room Spotlight */}
-      <section className="py-10 bg-white border-b border-gray-200">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid md:grid-cols-[290px_1fr] gap-6 md:gap-10 items-center rounded-2xl border border-gray-200 bg-[#FAF6FB] p-5 sm:p-7">
-            <div className="relative aspect-[3/4] w-full max-w-[290px] mx-auto md:mx-0 rounded-xl overflow-hidden border border-gray-200 bg-white">
-              <Image
-                src="/images/facial-treatment-hd.jpg"
-                alt="Dermaspace esthetician performing an ultrasonic deep-cleansing facial"
-                fill
-                quality={95}
-                sizes="(max-width: 768px) 100vw, 440px"
-                referrerPolicy="no-referrer"
-                className="object-cover object-[center_18%]"
-              />
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B2D8E] mb-2">
-                Inside the Treatment Room
-              </p>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
-                Clinical-grade care, customized for your skin
-              </h2>
-              <p className="text-sm text-gray-600 leading-relaxed mb-5 max-w-xl">
-                Every facial at Dermaspace begins with a careful skin assessment by our licensed estheticians. From ultrasonic exfoliation and gentle extractions to targeted corrective peels, each step is tailored to restore clarity, hydration, and long-term skin confidence.
-              </p>
-
-              <ul className="grid sm:grid-cols-2 gap-2.5 mb-6 text-xs text-gray-700">
-                {[
-                  'Ultrasonic & deep-pore cleansing protocols',
-                  'Tailored for acne-prone, sensitive & dull skin',
-                  'Clinical-grade serums and soothing hydrojelly masks',
-                  'Available at Victoria Island & Ikoyi branches',
-                ].map((point) => (
-                  <li key={point} className="flex items-start gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-[#7B2D8E] shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <Link
-                href="/booking"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] transition-colors"
-              >
-                Book a Facial
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Treatments Grid */}
       <section className="py-16 bg-gray-50">

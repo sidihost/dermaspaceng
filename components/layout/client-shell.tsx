@@ -69,10 +69,19 @@ const ChristmasAnimation = dynamic(
   { ssr: false, loading: () => null },
 )
 
+// Installed public plugins runtime — loads active built-in & custom plugins
+const PluginRuntime = dynamic(
+  () => import('@/components/shared/plugin-runtime'),
+  { ssr: false, loading: () => null },
+)
+
 export default function ClientShell() {
   const aiEnabled = useFeatureFlag('ai_chat')
   return (
     <>
+      <RootErrorBoundary label="plugin-runtime">
+        <PluginRuntime />
+      </RootErrorBoundary>
       <RootErrorBoundary label="christmas-animation">
         <ChristmasAnimation />
       </RootErrorBoundary>
