@@ -175,12 +175,23 @@ export default function GlobalError({
             <div aria-hidden className="ds-strip" />
             <div className="ds-top">
               <div className="ds-brand">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/dermaspace-logo.png"
-                  alt="Dermaspace"
-                  style={{ height: "30px", width: "auto", display: "block" }}
-                />
+                <span className="ds-brand-mark" aria-hidden>
+                  <svg width={18} height={18} viewBox="0 0 64 64" fill="none">
+                    <path
+                      d="M21 8C10.5 16.5 6.5 31 11.5 43.2C16.8 56 32 61.5 45.5 55.2C50.2 53 54 49.6 56.8 45.4C52.6 49.4 47.2 52 41 52.8C27.2 54.6 15.2 44.8 13.8 31.2C12.9 22.5 15.8 14.2 21 8Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M24.2 14.8C29.4 15.6 36.2 19.6 39.2 26.8C40.5 30 40.3 33.4 39.2 35.6C35.8 35.8 30.8 34.8 27 31.6C22.4 27.7 21.8 20.6 24.2 14.8Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M41.2 28.4C41.8 22.8 45.6 16.8 52.6 14.8C53.6 20.4 51.4 26.8 46.6 30.2C44.8 31.4 42.8 31.9 41.2 31.7C41 30.6 41 29.5 41.2 28.4Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span>
+                <span className="ds-brand-name">Dermaspace</span>
               </div>
               <span className="ds-tag">
                 <span

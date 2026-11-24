@@ -91,6 +91,17 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'terms',
   'verify-email',
 
+  // International country storefront routes (/UK, /US, /AE, /GH, /ZA)
+  'uk',
+  'gb',
+  'us',
+  'usa',
+  'ae',
+  'uae',
+  'gh',
+  'za',
+  'ng',
+
   // Common auth/account synonyms — also handled as redirects below,
   // but reserved here so they can't be claimed as handles.
   'login',

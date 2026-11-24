@@ -48,11 +48,12 @@ test('resolves country from Vercel, Cloudflare, or proxy headers', () => {
   assert.equal(resolveRequestCountry(makeHeaders({})), null)
 })
 
-test('exempts webhook, cron, internal, and inbound API routes from geo-blocking', () => {
+test('exempts webhook, cron, internal, inbound, and regional waitlist API routes from geo-blocking', () => {
   assert.equal(isGeoBlockExemptApiPath('/api/webhooks/paystack'), true)
   assert.equal(isGeoBlockExemptApiPath('/api/cron/reconcile-payments'), true)
   assert.equal(isGeoBlockExemptApiPath('/api/internal/reminders/dispatch'), true)
   assert.equal(isGeoBlockExemptApiPath('/api/inbound/email'), true)
+  assert.equal(isGeoBlockExemptApiPath('/api/regional-waitlist'), true)
   assert.equal(isGeoBlockExemptApiPath('/api/consultation'), false)
   assert.equal(isGeoBlockExemptApiPath('/api/contact'), false)
   assert.equal(isGeoBlockExemptApiPath('/api/auth/signup'), false)

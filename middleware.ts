@@ -8,6 +8,10 @@ import {
   isGeoBlockExemptApiPath,
   resolveRequestCountry,
 } from '@/lib/geo-blocking'
+import {
+  getInternationalRegionByIso,
+  getInternationalRegionBySlug,
+} from '@/lib/international-regions'
 
 // Supported countries with their currencies
 const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; name: string }> = {
@@ -281,7 +285,19 @@ export async function middleware(request: NextRequest) {
   // `/signup`. Anything below the first segment (e.g. `/register/foo`)
   // is also redirected to the canonical root, since none of the
   // aliased pages have nested children.
+  // Canonicalize international country storefront URLs (e.g. /uk or /gb -> /UK,
+  // /us -> /US, /uae -> /AE) before alias or catch-all username resolution.
   if (pathname !== '/') {
+    const segments = pathname.split('/').filter(Boolean)
+    if (segments.length === 1) {
+      const matchedRegion = getInternationalRegionBySlug(segments[0])
+      if (matchedRegion && segments[0] !== matchedRegion.slug) {
+        const canonicalUrl = new URL(`/${matchedRegion.slug}`, request.url)
+        canonicalUrl.search = request.nextUrl.search
+        return NextResponse.redirect(canonicalUrl, 308)
+      }
+    }
+
     const firstSegment = pathname.split('/')[1] ?? ''
     const target = aliasFor(firstSegment)
     if (target) {
@@ -291,6 +307,52 @@ export async function middleware(request: NextRequest) {
       const url = new URL(target, request.url)
       url.search = request.nextUrl.search
       return NextResponse.redirect(url, 308)
+    }
+  }
+
+  // Explicit Nigeria flagship switch (`/?region=NG`) sets the override cookie
+  // and strips the query param so international visitors can browse Lagos freely.
+  const requestedRegionParam = request.nextUrl.searchParams.get('region')?.trim().toUpperCase()
+  if (pathname === '/' && requestedRegionParam === 'NG') {
+    const cleanUrl = new URL('/', request.url)
+    cleanUrl.searchParams.delete('region')
+    const overrideRes = NextResponse.redirect(cleanUrl, 307)
+    overrideRes.cookies.set('user_selected_country', 'NG', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    })
+    return overrideRes
+  }
+
+  // Automatic international storefront redirect on `/` — e.g. a visitor from
+  // the United Kingdom (`GB`) lands on `https://dermaspaceng.com/UK` with the
+  // dedicated regional design and calibrated GBP pricing. Visitors who
+  // explicitly selected Nigeria (`user_selected_country=NG`) stay on `/`.
+  const userSelectedCountry = request.cookies.get('user_selected_country')?.value?.toUpperCase()
+  if (pathname === '/' && userSelectedCountry !== 'NG') {
+    const autoRegion = getInternationalRegionByIso(detectedCountry)
+    if (autoRegion) {
+      const targetUrl = new URL(`/${autoRegion.slug}`, request.url)
+      targetUrl.search = request.nextUrl.search
+      const redirectRes = NextResponse.redirect(targetUrl, 307)
+      redirectRes.cookies.set('geo_country', autoRegion.isoCode, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24,
+        path: '/',
+      })
+      redirectRes.cookies.set('geo_currency', autoRegion.currency, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24,
+        path: '/',
+      })
+      return redirectRes
     }
   }
 

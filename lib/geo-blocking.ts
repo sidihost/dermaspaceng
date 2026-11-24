@@ -124,8 +124,11 @@ const GEO_EXEMPT_API_PREFIXES = [
   '/api/cron/',
   '/api/internal/',
   '/api/inbound/',
+  '/api/regional-waitlist',
 ] as const
 
 export function isGeoBlockExemptApiPath(pathname: string): boolean {
-  return GEO_EXEMPT_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  return GEO_EXEMPT_API_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}`),
+  )
 }

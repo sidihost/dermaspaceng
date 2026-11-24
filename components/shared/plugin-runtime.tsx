@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowUpRight, MessageCircle, X } from 'lucide-react'
+import { ArrowUpRight, X } from 'lucide-react'
+import { SiWhatsapp } from 'react-icons/si'
 import {
   isSafeHref,
   isSafePublicHttpsUrl,
@@ -313,7 +314,7 @@ export default function PluginRuntime() {
               rel="noopener noreferrer"
               className="pointer-events-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#7B2D8E] text-white border border-[#5A1D6A] hover:bg-[#5A1D6A] text-xs font-semibold transition-colors"
             >
-              <MessageCircle className="w-4 h-4" aria-hidden />
+              <SiWhatsapp className="w-4 h-4" aria-hidden="true" />
               <span>{whatsapp.config.label?.trim() || 'WhatsApp Us'}</span>
             </a>
           )}

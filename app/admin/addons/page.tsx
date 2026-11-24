@@ -7,46 +7,39 @@
  *   1. Browse and install curated Dermaspace plugins (WhatsApp Quick
  *      Concierge, Google Analytics 4, GTM, Meta Pixel, TikTok Pixel,
  *      Microsoft Clarity, Tawk.to, Top Promo Strip, Slot Waitlist,
- *      Webhook Automations) with one click.
- *   2. Enable, pause, configure, and uninstall installed plugins.
- *   3. Install custom plugins via a manual form or by uploading/pasting
- *      a validated JSON manifest.
+ *      Webhook Automations) with authentic brand icons.
+ *   2. Enable, pause, uninstall (inline), or open any plugin's dedicated
+ *      configuration page at `/admin/addons/[slug]`.
+ *   3. Install custom plugins on the dedicated `/admin/addons/custom` page.
  *   4. Access every built-in core booking/operations module.
  *
  * Design system compliance:
  *   - Brand purple #7B2D8E, white surfaces, hairline gray-200 borders
  *   - Strictly flat: NO shadows, NO gradients
  *   - Strictly NO Sparkles or Zap icons
+ *   - Strictly NO popups or modal dialogs
  */
 
 import Link from 'next/link'
-import { useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import {
-  Activity,
   AlertCircle,
   ArrowRight,
   BadgeCheck,
-  BarChart3,
   Bell,
   BookOpen,
   Boxes,
   CalendarCheck2,
   CalendarClock,
-  Check,
   Clock,
-  Code2,
   CreditCard,
   Download,
-  FileJson,
   Gift,
-  Globe,
   Layers,
   Loader2,
-  Lock,
   MapPin,
-  Megaphone,
-  MessageCircle,
   MessageSquare,
   Plug,
   Plus,
@@ -65,10 +58,10 @@ import {
   UserCog,
   Users,
   Wallet,
-  Webhook,
-  X,
 } from 'lucide-react'
+import { SiGooglecalendar } from 'react-icons/si'
 import { useNotify } from '@/components/shared/notify'
+import { PluginIconBadge } from '@/components/admin/plugin-icon'
 import {
   PLUGIN_CATALOG,
   type InstalledPlugin,
@@ -87,11 +80,16 @@ type ModuleCategory =
 
 type ModuleStatus = 'active' | 'inactive' | 'coming-soon'
 
+type ModuleIconComponent = React.ComponentType<{
+  className?: string
+  'aria-hidden'?: boolean
+}>
+
 type AddonModule = {
   key: string
   name: string
   description: string
-  icon: typeof Boxes
+  icon: ModuleIconComponent
   category: ModuleCategory
   status: ModuleStatus
   href?: string
@@ -280,7 +278,7 @@ const MODULES: AddonModule[] = [
     name: 'Google Calendar 2-way Sync',
     description:
       'Connect each therapist\u2019s Google Calendar so their personal events block availability automatically and every booking auto-creates an event with reminders.',
-    icon: CalendarCheck2,
+    icon: SiGooglecalendar,
     category: 'integrations',
     status: 'active',
     href: '/admin/integrations/google-calendar',
@@ -391,49 +389,6 @@ const PLUGIN_CATEGORY_LABELS: Record<PluginCategory | 'all', string> = {
   integrations: 'Integrations',
 }
 
-const SAMPLE_MANIFEST_JSON = JSON.stringify(
-  {
-    slug: 'instagram-concierge',
-    name: 'Instagram Direct Button',
-    version: '1.0.0',
-    author: 'Dermaspace Studio',
-    description:
-      'Adds a floating button on public pages that directs visitors straight to our Instagram profile.',
-    category: 'marketing',
-    kind: 'widget',
-    widgetLabel: 'Follow on Instagram',
-    widgetUrl: 'https://instagram.com/dermaspaceng',
-  },
-  null,
-  2,
-)
-
-function getPluginIcon(iconKey: PluginCatalogEntry['iconKey']) {
-  switch (iconKey) {
-    case 'message-circle':
-      return MessageCircle
-    case 'bar-chart':
-      return BarChart3
-    case 'megaphone':
-      return Megaphone
-    case 'globe':
-      return Globe
-    case 'activity':
-      return Activity
-    case 'bell':
-      return Bell
-    case 'code':
-      return Code2
-    case 'layers':
-      return Layers
-    case 'webhook':
-      return Webhook
-    case 'plug':
-    default:
-      return Plug
-  }
-}
-
 type PluginsApiResponse = {
   catalog: PluginCatalogEntry[]
   installed: InstalledPlugin[]
@@ -459,6 +414,7 @@ function pluginNeedsConfiguration(
 }
 
 export default function AdminAddonsPage() {
+  const router = useRouter()
   const notify = useNotify()
 
   const [tab, setTab] = useState<SurfaceTab>('store')
@@ -467,9 +423,7 @@ export default function AdminAddonsPage() {
   const [query, setQuery] = useState('')
 
   const [busySlug, setBusySlug] = useState<string | null>(null)
-  const [configuringPlugin, setConfiguringPlugin] = useState<InstalledPlugin | null>(null)
-  const [uninstallingPlugin, setUninstallingPlugin] = useState<InstalledPlugin | null>(null)
-  const [customModalOpen, setCustomModalOpen] = useState(false)
+  const [confirmingUninstallSlug, setConfirmingUninstallSlug] = useState<string | null>(null)
 
   const { data, isLoading, error, mutate } = useSWR<PluginsApiResponse>(
     '/api/admin/plugins',
@@ -584,7 +538,7 @@ export default function AdminAddonsPage() {
       notify.success(`${entry.name} installed`, 'Configure settings or toggle it anytime.')
 
       if (payload.plugin && pluginNeedsConfiguration(payload.plugin, entry)) {
-        setConfiguringPlugin(payload.plugin)
+        router.push(`/admin/addons/${encodeURIComponent(entry.slug)}`)
       }
     } catch {
       notify.error('Network error', 'Failed to reach the server while installing plugin.')
@@ -629,9 +583,7 @@ export default function AdminAddonsPage() {
     }
   }
 
-  const handleConfirmUninstall = async () => {
-    if (!uninstallingPlugin) return
-    const target = uninstallingPlugin
+  const handleUninstallPlugin = async (target: InstalledPlugin) => {
     setBusySlug(target.slug)
     try {
       const res = await fetch(`/api/admin/plugins/${encodeURIComponent(target.slug)}`, {
@@ -651,7 +603,7 @@ export default function AdminAddonsPage() {
       } else {
         await mutate()
       }
-      setUninstallingPlugin(null)
+      setConfirmingUninstallSlug(null)
       notify.info(`${target.name} uninstalled`, 'Removed from active site plugins.')
     } catch {
       notify.error('Network error', 'Failed to uninstall plugin.')
@@ -687,14 +639,13 @@ export default function AdminAddonsPage() {
             <Divider />
             <Stat label="Catalogue" value={catalog.length} muted />
           </div>
-          <button
-            type="button"
-            onClick={() => setCustomModalOpen(true)}
+          <Link
+            href="/admin/addons/custom"
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] transition-colors"
           >
             <Plus className="w-3.5 h-3.5" aria-hidden />
             Install Custom Plugin
-          </button>
+          </Link>
         </div>
       </header>
 
@@ -804,9 +755,11 @@ export default function AdminAddonsPage() {
                 installed={plugin}
                 needsConfig={false}
                 busy={busySlug === plugin.slug}
+                confirmingUninstall={confirmingUninstallSlug === plugin.slug}
                 onToggle={() => handleToggleEnabled(plugin)}
-                onConfigure={() => setConfiguringPlugin(plugin)}
-                onUninstall={() => setUninstallingPlugin(plugin)}
+                onRequestUninstall={() => setConfirmingUninstallSlug(plugin.slug)}
+                onCancelUninstall={() => setConfirmingUninstallSlug(null)}
+                onConfirmUninstall={() => handleUninstallPlugin(plugin)}
               />
             ))}
 
@@ -828,10 +781,16 @@ export default function AdminAddonsPage() {
                     installedRec ? pluginNeedsConfiguration(installedRec, entry) : false
                   }
                   busy={busySlug === entry.slug}
+                  confirmingUninstall={confirmingUninstallSlug === entry.slug}
                   onInstall={() => handleInstallCatalogPlugin(entry)}
                   onToggle={installedRec ? () => handleToggleEnabled(installedRec) : undefined}
-                  onConfigure={installedRec ? () => setConfiguringPlugin(installedRec) : undefined}
-                  onUninstall={installedRec ? () => setUninstallingPlugin(installedRec) : undefined}
+                  onRequestUninstall={
+                    installedRec ? () => setConfirmingUninstallSlug(installedRec.slug) : undefined
+                  }
+                  onCancelUninstall={() => setConfirmingUninstallSlug(null)}
+                  onConfirmUninstall={
+                    installedRec ? () => handleUninstallPlugin(installedRec) : undefined
+                  }
                 />
               )
             })}
@@ -857,14 +816,13 @@ export default function AdminAddonsPage() {
                   <span className="text-[10.5px] font-semibold uppercase tracking-wide text-[#7B2D8E]">
                     Custom / JSON
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setCustomModalOpen(true)}
+                  <Link
+                    href="/admin/addons/custom"
                     className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors"
                   >
                     Add plugin
                     <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}
@@ -898,13 +856,12 @@ export default function AdminAddonsPage() {
                 >
                   Browse Plugin Store
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setCustomModalOpen(true)}
-                  className="h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:border-[#7B2D8E]/40 transition-colors"
+                <Link
+                  href="/admin/addons/custom"
+                  className="inline-flex items-center justify-center h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-semibold hover:border-[#7B2D8E]/40 transition-colors"
                 >
                   Install Custom Plugin
-                </button>
+                </Link>
               </div>
             )}
           </div>
@@ -923,9 +880,11 @@ export default function AdminAddonsPage() {
                 installed={plugin}
                 needsConfig={pluginNeedsConfiguration(plugin, catalogBySlug.get(plugin.slug))}
                 busy={busySlug === plugin.slug}
+                confirmingUninstall={confirmingUninstallSlug === plugin.slug}
                 onToggle={() => handleToggleEnabled(plugin)}
-                onConfigure={() => setConfiguringPlugin(plugin)}
-                onUninstall={() => setUninstallingPlugin(plugin)}
+                onRequestUninstall={() => setConfirmingUninstallSlug(plugin.slug)}
+                onCancelUninstall={() => setConfirmingUninstallSlug(null)}
+                onConfirmUninstall={() => handleUninstallPlugin(plugin)}
               />
             ))}
           </div>
@@ -946,89 +905,6 @@ export default function AdminAddonsPage() {
             {moduleFilter === 'all' && !query.trim() && <BuildYourOwnCard />}
           </div>
         )
-      )}
-
-      {/* ── Configure Plugin Modal ─────────────────────────────────── */}
-      {configuringPlugin && (
-        <ConfigurePluginModal
-          plugin={configuringPlugin}
-          catalogEntry={catalogBySlug.get(configuringPlugin.slug)}
-          onClose={() => setConfiguringPlugin(null)}
-          onSaved={async (updatedList) => {
-            await mutate({ catalog, installed: updatedList }, false)
-            setConfiguringPlugin(null)
-            notify.success('Plugin settings saved', `${configuringPlugin.name} updated.`)
-          }}
-        />
-      )}
-
-      {/* ── Install Custom Plugin Modal ────────────────────────────── */}
-      {customModalOpen && (
-        <InstallCustomPluginModal
-          onClose={() => setCustomModalOpen(false)}
-          onInstalled={async (plugin, updatedList) => {
-            await mutate({ catalog, installed: updatedList }, false)
-            setCustomModalOpen(false)
-            notify.success(`${plugin.name} installed`, 'Your custom plugin is now active.')
-          }}
-        />
-      )}
-
-      {/* ── Uninstall Confirmation Modal ───────────────────────────── */}
-      {uninstallingPlugin && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="uninstall-plugin-title"
-        >
-          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center flex-shrink-0">
-                  <Trash2 className="w-5 h-5" />
-                </span>
-                <div>
-                  <h2 id="uninstall-plugin-title" className="text-sm font-semibold text-gray-900">
-                    Uninstall {uninstallingPlugin.name}?
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    This stops the plugin immediately and clears its saved configuration.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setUninstallingPlugin(null)}
-                aria-label="Close dialog"
-                className="w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
-              <button
-                type="button"
-                onClick={() => setUninstallingPlugin(null)}
-                disabled={busySlug === uninstallingPlugin.slug}
-                className="h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmUninstall}
-                disabled={busySlug === uninstallingPlugin.slug}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
-              >
-                {busySlug === uninstallingPlugin.slug && (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                Uninstall Plugin
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   )
@@ -1094,6 +970,7 @@ function Divider() {
 }
 
 function PluginCard({
+  slug,
   name,
   version,
   author,
@@ -1103,10 +980,12 @@ function PluginCard({
   installed,
   needsConfig,
   busy,
+  confirmingUninstall,
   onInstall,
   onToggle,
-  onConfigure,
-  onUninstall,
+  onRequestUninstall,
+  onCancelUninstall,
+  onConfirmUninstall,
 }: {
   slug: string
   name: string
@@ -1118,29 +997,20 @@ function PluginCard({
   installed?: InstalledPlugin
   needsConfig: boolean
   busy: boolean
+  confirmingUninstall: boolean
   onInstall?: () => void
   onToggle?: () => void
-  onConfigure?: () => void
-  onUninstall?: () => void
+  onRequestUninstall?: () => void
+  onCancelUninstall?: () => void
+  onConfirmUninstall?: () => void
 }) {
-  const Icon = getPluginIcon(iconKey)
   const isInstalled = Boolean(installed)
   const isActive = Boolean(installed?.enabled)
 
   return (
     <div className="relative rounded-2xl border border-gray-200 bg-white p-5 flex flex-col gap-4 transition-colors hover:border-[#7B2D8E]/40 overflow-hidden">
       <div className="flex items-start gap-3">
-        <span
-          className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            isActive
-              ? 'bg-[#7B2D8E] text-white'
-              : isInstalled
-                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                : 'bg-gray-100 text-gray-600'
-          }`}
-        >
-          <Icon className="w-[18px] h-[18px]" aria-hidden />
-        </span>
+        <PluginIconBadge slug={slug} iconKey={iconKey} size="md" />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
@@ -1184,7 +1054,7 @@ function PluginCard({
         </div>
       </div>
 
-      {/* Footer actions */}
+      {/* Footer actions — strictly inline, zero popups */}
       <div className="flex items-center justify-between gap-2 pt-3 border-t border-gray-100 mt-auto">
         {!isInstalled ? (
           <>
@@ -1205,6 +1075,31 @@ function PluginCard({
               Install Plugin
             </button>
           </>
+        ) : confirmingUninstall ? (
+          <div className="w-full flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-red-700">
+              Remove plugin?
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onCancelUninstall}
+                className="h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onConfirmUninstall}
+                className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+              >
+                {busy && <Loader2 className="w-3 h-3 animate-spin" />}
+                Uninstall
+              </button>
+            </div>
+          </div>
         ) : (
           <>
             <button
@@ -1229,19 +1124,17 @@ function PluginCard({
             </button>
 
             <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={onConfigure}
-                className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] disabled:opacity-50 transition-colors"
+              <Link
+                href={`/admin/addons/${encodeURIComponent(slug)}`}
+                className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden />
                 Configure
-              </button>
+              </Link>
               <button
                 type="button"
                 disabled={busy}
-                onClick={onUninstall}
+                onClick={onRequestUninstall}
                 aria-label={`Uninstall ${name}`}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 bg-white text-gray-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50 transition-colors"
               >
@@ -1250,651 +1143,6 @@ function PluginCard({
             </div>
           </>
         )}
-      </div>
-    </div>
-  )
-}
-
-function ConfigurePluginModal({
-  plugin,
-  catalogEntry,
-  onClose,
-  onSaved,
-}: {
-  plugin: InstalledPlugin
-  catalogEntry?: PluginCatalogEntry
-  onClose: () => void
-  onSaved: (installed: InstalledPlugin[]) => Promise<void>
-}) {
-  const [config, setConfig] = useState<Record<string, string>>(() => ({
-    ...(catalogEntry?.defaultConfig ?? {}),
-    ...(plugin.config ?? {}),
-  }))
-  const [name, setName] = useState(plugin.name)
-  const [description, setDescription] = useState(plugin.description)
-  const [scriptUrl, setScriptUrl] = useState(plugin.scriptUrl ?? '')
-  const [widgetLabel, setWidgetLabel] = useState(plugin.widgetLabel ?? '')
-  const [widgetUrl, setWidgetUrl] = useState(plugin.widgetUrl ?? '')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSaving(true)
-
-    try {
-      const body = plugin.isCustom
-        ? {
-            name,
-            description,
-            ...(plugin.kind === 'script'
-              ? { scriptUrl }
-              : { widgetLabel, widgetUrl }),
-          }
-        : { config }
-
-      const res = await fetch(`/api/admin/plugins/${encodeURIComponent(plugin.slug)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      })
-      const data = (await res.json()) as {
-        installed?: InstalledPlugin[]
-        error?: string
-      }
-      if (!res.ok) {
-        setError(data.error || 'Could not save settings.')
-        return
-      }
-      if (data.installed) {
-        await onSaved(data.installed)
-      }
-    } catch {
-      setError('Network error while saving configuration.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="configure-plugin-title"
-    >
-      <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white overflow-hidden">
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
-          <div>
-            <h2 id="configure-plugin-title" className="text-sm font-semibold text-gray-900">
-              Configure {plugin.name}
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Changes take effect immediately across the site.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close modal"
-            className="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {plugin.isCustom ? (
-            <>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Plugin Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={2}
-                  required
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full p-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none resize-none"
-                />
-              </div>
-              {plugin.kind === 'script' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Verified HTTPS Script URL
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    value={scriptUrl}
-                    onChange={(e) => setScriptUrl(e.target.value)}
-                    placeholder="https://cdn.example.com/widget.js"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Floating Button Label
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={widgetLabel}
-                      onChange={(e) => setWidgetLabel(e.target.value)}
-                      className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Destination Link (/path or https://...)
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={widgetUrl}
-                      onChange={(e) => setWidgetUrl(e.target.value)}
-                      className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                    />
-                  </div>
-                </>
-              )}
-            </>
-          ) : (
-            (catalogEntry?.fields ?? []).map((field) => (
-              <div key={field.key}>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <label className="text-xs font-semibold text-gray-700">
-                    {field.label}
-                    {field.required && <span className="text-red-500 ml-0.5">*</span>}
-                  </label>
-                  {field.secret && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded-full">
-                      <Lock className="w-2.5 h-2.5" />
-                      Server-only
-                    </span>
-                  )}
-                </div>
-                {field.type === 'textarea' ? (
-                  <textarea
-                    rows={3}
-                    required={field.required}
-                    value={config[field.key] ?? ''}
-                    onChange={(e) =>
-                      setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))
-                    }
-                    placeholder={field.placeholder}
-                    className="w-full p-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none resize-none"
-                  />
-                ) : (
-                  <input
-                    type={field.type}
-                    required={field.required}
-                    value={config[field.key] ?? ''}
-                    onChange={(e) =>
-                      setConfig((prev) => ({ ...prev, [field.key]: e.target.value }))
-                    }
-                    placeholder={field.placeholder}
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                )}
-                {field.help && (
-                  <p className="text-[11px] text-gray-500 mt-1">{field.help}</p>
-                )}
-              </div>
-            ))
-          )}
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-60 transition-colors"
-            >
-              {saving ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Check className="w-3.5 h-3.5" />
-              )}
-              Save Configuration
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function InstallCustomPluginModal({
-  onClose,
-  onInstalled,
-}: {
-  onClose: () => void
-  onInstalled: (plugin: InstalledPlugin, installed: InstalledPlugin[]) => Promise<void>
-}) {
-  const [mode, setMode] = useState<'custom' | 'manifest'>('custom')
-  const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
-  const [version, setVersion] = useState('1.0.0')
-  const [author, setAuthor] = useState('Dermaspace')
-  const [category, setCategory] = useState<PluginCategory>('integrations')
-  const [description, setDescription] = useState('')
-  const [kind, setKind] = useState<'script' | 'widget'>('script')
-  const [scriptUrl, setScriptUrl] = useState('')
-  const [widgetLabel, setWidgetLabel] = useState('')
-  const [widgetUrl, setWidgetUrl] = useState('')
-  const [manifestJson, setManifestJson] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 16_000) {
-      setError('Manifest file must be 16 KB or smaller.')
-      return
-    }
-    try {
-      const text = await file.text()
-      setManifestJson(text)
-      setError(null)
-    } catch {
-      setError('Could not read the selected JSON file.')
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setSubmitting(true)
-
-    try {
-      const payload =
-        mode === 'manifest'
-          ? { mode: 'manifest', manifest: manifestJson }
-          : {
-              mode: 'custom',
-              plugin: {
-                name,
-                slug: slug.trim() || undefined,
-                version,
-                author,
-                category,
-                description,
-                kind,
-                scriptUrl: kind === 'script' ? scriptUrl : undefined,
-                widgetLabel: kind === 'widget' ? widgetLabel : undefined,
-                widgetUrl: kind === 'widget' ? widgetUrl : undefined,
-              },
-            }
-
-      const res = await fetch('/api/admin/plugins', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-      })
-      const data = (await res.json()) as {
-        plugin?: InstalledPlugin
-        installed?: InstalledPlugin[]
-        error?: string
-      }
-      if (!res.ok) {
-        setError(data.error || 'Could not install custom plugin.')
-        return
-      }
-      if (data.plugin && data.installed) {
-        await onInstalled(data.plugin, data.installed)
-      }
-    } catch {
-      setError('Network error while installing plugin.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="install-custom-plugin-title"
-    >
-      <div className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white overflow-hidden my-8">
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-gray-100">
-          <div>
-            <h2 id="install-custom-plugin-title" className="text-sm font-semibold text-gray-900">
-              Install Custom Plugin
-            </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Connect a verified HTTPS script, add a floating widget, or import a JSON manifest.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close modal"
-            className="w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="px-6 pt-4">
-          <div className="grid grid-cols-2 gap-1 bg-gray-100 p-1 rounded-lg border border-gray-200">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('custom')
-                setError(null)
-              }}
-              className={`h-8 rounded-md text-xs font-semibold border transition-colors ${
-                mode === 'custom'
-                  ? 'bg-white text-[#7B2D8E] border-gray-200'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Manual Setup
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('manifest')
-                setError(null)
-              }}
-              className={`h-8 rounded-md text-xs font-semibold border transition-colors inline-flex items-center justify-center gap-1.5 ${
-                mode === 'manifest'
-                  ? 'bg-white text-[#7B2D8E] border-gray-200'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FileJson className="w-3.5 h-3.5" />
-              Import JSON Manifest
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-700 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {mode === 'custom' ? (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Plugin Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Hotjar Heatmaps"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Slug (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    placeholder="auto-generated from name"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as PluginCategory)}
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 bg-white focus:border-[#7B2D8E] outline-none"
-                  >
-                    <option value="integrations">Integrations</option>
-                    <option value="analytics">Analytics</option>
-                    <option value="marketing">Marketing</option>
-                    <option value="customer">Customer</option>
-                    <option value="booking">Booking</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Version
-                  </label>
-                  <input
-                    type="text"
-                    value={version}
-                    onChange={(e) => setVersion(e.target.value)}
-                    placeholder="1.0.0"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Author
-                  </label>
-                  <input
-                    type="text"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    placeholder="Vendor name"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={2}
-                  required
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Briefly explain what this plugin adds to Dermaspace."
-                  className="w-full p-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Plugin Type
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setKind('script')}
-                    className={`p-3 rounded-xl border text-left transition-colors ${
-                      kind === 'script'
-                        ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold text-gray-900">
-                      HTTPS Script Embed
-                    </div>
-                    <div className="text-[11px] text-gray-500 mt-0.5">
-                      Loads an external public https:// script async.
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setKind('widget')}
-                    className={`p-3 rounded-xl border text-left transition-colors ${
-                      kind === 'widget'
-                        ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-xs font-semibold text-gray-900">
-                      Floating Action Widget
-                    </div>
-                    <div className="text-[11px] text-gray-500 mt-0.5">
-                      Shows a floating quick-link button on public pages.
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {kind === 'script' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
-                    Public HTTPS Script URL <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    value={scriptUrl}
-                    onChange={(e) => setScriptUrl(e.target.value)}
-                    placeholder="https://cdn.vendor.com/plugin.min.js"
-                    className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                  />
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    Only verified public https:// URLs are permitted.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Button Label <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={widgetLabel}
-                      onChange={(e) => setWidgetLabel(e.target.value)}
-                      placeholder="e.g. Follow on Instagram"
-                      className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Destination Link <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={widgetUrl}
-                      onChange={(e) => setWidgetUrl(e.target.value)}
-                      placeholder="/consultation or https://..."
-                      className="w-full h-10 px-3 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] outline-none"
-                    />
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/json,.json"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    Choose .json file
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setManifestJson(SAMPLE_MANIFEST_JSON)
-                      setError(null)
-                    }}
-                    className="text-xs font-semibold text-[#7B2D8E] hover:underline"
-                  >
-                    Load sample template
-                  </button>
-                </div>
-                <span className="text-[11px] text-gray-400">Max 16 KB</span>
-              </div>
-
-              <textarea
-                rows={10}
-                required
-                value={manifestJson}
-                onChange={(e) => setManifestJson(e.target.value)}
-                placeholder={SAMPLE_MANIFEST_JSON}
-                className="w-full p-3 text-xs font-mono rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:border-[#7B2D8E] outline-none resize-y"
-              />
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-60 transition-colors"
-            >
-              {submitting ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Download className="w-3.5 h-3.5" />
-              )}
-              Install Plugin
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   )

@@ -18,6 +18,28 @@ import {
 } from '@/lib/plugins'
 import { getInstalledPlugins, saveInstalledPlugins } from '@/lib/plugins-store'
 
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ slug: string }> },
+) {
+  try {
+    await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { slug } = await context.params
+  const installed = await getInstalledPlugins(true)
+  const plugin = installed.find((p) => p.slug === slug) ?? null
+  const catalogEntry = getCatalogPlugin(slug) ?? null
+
+  if (!plugin && !catalogEntry) {
+    return NextResponse.json({ error: 'Plugin not found.' }, { status: 404 })
+  }
+
+  return NextResponse.json({ plugin, catalogEntry })
+}
+
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ slug: string }> },

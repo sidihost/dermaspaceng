@@ -38,7 +38,8 @@ export function CookieBanner() {
     Boolean(pathname?.startsWith('/admin')) ||
     Boolean(pathname?.startsWith('/staff')) ||
     Boolean(pathname?.startsWith('/offline')) ||
-    Boolean(pathname?.startsWith('/maintenance'))
+    Boolean(pathname?.startsWith('/maintenance')) ||
+    Boolean(pathname?.startsWith('/blocked'))
 
   useEffect(() => {
     // SSR safety + suppression on admin/staff/system status surfaces.

@@ -18,6 +18,12 @@ const EXCLUDED_PREFIXES = [
   '/accept-invite',
   '/offline',
   '/maintenance',
+  '/blocked',
+  '/UK',
+  '/US',
+  '/AE',
+  '/GH',
+  '/ZA',
 ]
 
 export function LocationBanner() {

@@ -45,6 +45,14 @@ export interface PluginCatalogEntry {
   category: PluginCategory
   kind: PluginKind
   iconKey:
+    | 'whatsapp'
+    | 'google-analytics'
+    | 'google-tag-manager'
+    | 'meta'
+    | 'tiktok'
+    | 'microsoft'
+    | 'tawk'
+    | 'calendar-clock'
     | 'message-circle'
     | 'bar-chart'
     | 'megaphone'
@@ -98,7 +106,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Adds a clean, floating WhatsApp booking button on public pages so visitors can message your front desk in one tap.',
     category: 'customer',
     kind: 'builtin',
-    iconKey: 'message-circle',
+    iconKey: 'whatsapp',
     fields: [
       {
         key: 'phone',
@@ -138,7 +146,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Measure site traffic, service page engagement, and booking conversions using your GA4 Measurement ID.',
     category: 'analytics',
     kind: 'builtin',
-    iconKey: 'bar-chart',
+    iconKey: 'google-analytics',
     fields: [
       {
         key: 'measurementId',
@@ -162,7 +170,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Connect your GTM container to manage marketing and analytics tags centrally without code deployments.',
     category: 'analytics',
     kind: 'builtin',
-    iconKey: 'code',
+    iconKey: 'google-tag-manager',
     fields: [
       {
         key: 'containerId',
@@ -185,7 +193,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Track Instagram & Facebook ad conversions, optimize campaigns, and build retargeting audiences.',
     category: 'marketing',
     kind: 'builtin',
-    iconKey: 'megaphone',
+    iconKey: 'meta',
     fields: [
       {
         key: 'pixelId',
@@ -209,7 +217,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Attribute bookings and consultations driven by your TikTok campaigns with lightweight conversion tracking.',
     category: 'marketing',
     kind: 'builtin',
-    iconKey: 'activity',
+    iconKey: 'tiktok',
     fields: [
       {
         key: 'pixelId',
@@ -232,7 +240,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Privacy-friendly session heatmaps and scroll insights to see how clients navigate services and booking.',
     category: 'analytics',
     kind: 'builtin',
-    iconKey: 'bar-chart',
+    iconKey: 'microsoft',
     fields: [
       {
         key: 'projectId',
@@ -255,7 +263,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Embed an external Tawk.to customer messaging widget alongside or instead of built-in chat.',
     category: 'customer',
     kind: 'builtin',
-    iconKey: 'message-circle',
+    iconKey: 'tawk',
     fields: [
       {
         key: 'propertyId',
@@ -287,7 +295,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Displays a slim, brand-purple promotional strip above public pages with a customizable call-to-action link.',
     category: 'marketing',
     kind: 'builtin',
-    iconKey: 'bell',
+    iconKey: 'megaphone',
     fields: [
       {
         key: 'message',
@@ -324,7 +332,7 @@ export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
       'Allow clients to register interest for fully booked dates and notify your team automatically when a slot opens.',
     category: 'booking',
     kind: 'builtin',
-    iconKey: 'layers',
+    iconKey: 'calendar-clock',
     fields: [
       {
         key: 'noticeText',

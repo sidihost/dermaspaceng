@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   AlertCircle,
@@ -12,6 +11,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react'
+import { DermaspaceWordmark } from '@/components/shared/dermaspace-emblem'
 import {
   DERMASPACE_BRANCHES,
   DERMASPACE_EMAIL,
@@ -57,14 +57,10 @@ export function SystemStatusCard({
         {/* Brand & status top bar */}
         <div className="px-6 sm:px-9 py-4 border-b border-[#F1ECF5] flex items-center justify-between gap-3">
           <div className="inline-flex items-center min-w-0">
-            <Image
-              src="/images/dermaspace-logo.png"
-              alt="Dermaspace"
-              width={140}
-              height={30}
-              priority
-              referrerPolicy="no-referrer"
-              className="h-7 w-auto object-contain"
+            <DermaspaceWordmark
+              showSubtitle
+              className="text-[#7B2D8E]"
+              emblemClassName="h-7 w-7"
             />
           </div>
 

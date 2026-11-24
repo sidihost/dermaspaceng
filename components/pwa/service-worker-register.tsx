@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { X, Wifi, WifiOff } from 'lucide-react'
+import { X } from 'lucide-react'
 import Image from 'next/image'
 import { isServiceWorkerAllowedOrigin } from '@/lib/push-origin'
 import { isPrivateOrAuthRoute } from '@/lib/sw-cache-helpers'
@@ -15,17 +15,9 @@ export function ServiceWorkerRegister() {
   // Default to `null` and guard the cache-precaching effect below.
   const pathname = usePathname()
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
-  const [isOffline, setIsOffline] = useState(false)
-  const [showOnlineBanner, setShowOnlineBanner] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
-  const wasOfflineRef = useRef(false)
-  const onlineBannerTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
-    // Check initial online status
-    const initialOffline = !navigator.onLine
-    setIsOffline(initialOffline)
-    wasOfflineRef.current = initialOffline
 
     // -----------------------------------------------------------------
     // Stale-bundle self-heal.
@@ -169,8 +161,8 @@ export function ServiceWorkerRegister() {
             registration.update().catch(() => {})
           }, 60 * 60 * 1000) // Check every hour
         })
-        .catch((error) => {
-          console.error('SW registration failed:', error)
+        .catch(() => {
+          // Silently skip when /sw.js is not deployed in the current environment.
         })
 
       // Handle controller change only when replacing an existing controller so
@@ -222,37 +214,10 @@ export function ServiceWorkerRegister() {
       }
     }
 
-    // Handle online/offline status
-    const handleOnline = () => {
-      setIsOffline(false)
-      if (wasOfflineRef.current) {
-        wasOfflineRef.current = false
-        setShowOnlineBanner(true)
-        if (onlineBannerTimerRef.current) {
-          window.clearTimeout(onlineBannerTimerRef.current)
-        }
-        onlineBannerTimerRef.current = window.setTimeout(() => {
-          setShowOnlineBanner(false)
-        }, 3500)
-      }
-    }
-    const handleOffline = () => {
-      wasOfflineRef.current = true
-      setShowOnlineBanner(false)
-      setIsOffline(true)
-    }
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
 
     return () => {
-      if (onlineBannerTimerRef.current) {
-        window.clearTimeout(onlineBannerTimerRef.current)
-      }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
       window.removeEventListener('error', onError)
       window.removeEventListener('unhandledrejection', onUnhandledRejection)
     }
@@ -369,47 +334,10 @@ export function ServiceWorkerRegister() {
     localStorage.setItem('pwa-install-prompt-seen', 'true')
   }
 
+  if (!showInstallPrompt) return null
+
   return (
     <>
-      {/* Offline Banner — was previously `fixed top-0`, which sat
-          on the same row as the page's `sticky top-0` header and
-          obscured the wordmark + greeting (the team flagged this
-          in a screenshot). We now render it in normal document
-          flow as the very first element in <body>, so it sits
-          ABOVE the sticky header at scroll-top and scrolls away
-          naturally as the user moves down the page (the same
-          treatment Linear / Slack / GitHub use for "you're
-          offline" strips). Reverting to a sticky layout would
-          re-introduce the overlap because two `sticky top-0`
-          siblings compete for the same pin point. Copy matches
-          /offline + the SW shell so the three states read as
-          one. */}
-      {isOffline && (
-        <div
-          className="relative z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-[13px] font-medium flex items-center justify-center gap-2 animate-in slide-in-from-top duration-300"
-          role="status"
-          aria-live="polite"
-        >
-          <WifiOff className="w-3.5 h-3.5" aria-hidden />
-          <span>You&apos;re offline — some access might be limited.</span>
-        </div>
-      )}
-
-      {/* Online Restored Banner — kept in-flow for the same
-          reason; the previous `fixed top-0` would re-cover the
-          header for the brief moment we flip it on. */}
-      {!isOffline && showOnlineBanner && (
-        <div
-          id="online-banner"
-          className="relative z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2"
-          role="status"
-          aria-live="polite"
-        >
-          <Wifi className="w-4 h-4" aria-hidden />
-          <span>Back online!</span>
-        </div>
-      )}
-
       {/* Install Prompt */}
       {showInstallPrompt && (
         <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">

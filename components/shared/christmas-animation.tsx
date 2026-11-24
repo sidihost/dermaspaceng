@@ -43,11 +43,15 @@ interface SnowflakeParticle {
 const fetcher = (url: string) =>
   fetch(url, { cache: 'no-store' }).then((r) => r.json())
 
+const INTERNATIONAL_STOREFRONT_PATHS = new Set(['/UK', '/US', '/AE', '/GH', '/ZA'])
+
 export default function ChristmasAnimation() {
   const pathname = usePathname()
   const isSuppressedRoute =
     Boolean(pathname?.startsWith('/offline')) ||
     Boolean(pathname?.startsWith('/maintenance')) ||
+    Boolean(pathname?.startsWith('/blocked')) ||
+    Boolean(pathname && INTERNATIONAL_STOREFRONT_PATHS.has(pathname)) ||
     Boolean(pathname?.startsWith('/admin/live-chat')) ||
     Boolean(pathname?.startsWith('/staff/live-chat')) ||
     isCelebrationStoryRoute(pathname)
