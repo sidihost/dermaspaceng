@@ -19,11 +19,6 @@ const EXCLUDED_PREFIXES = [
   '/offline',
   '/maintenance',
   '/blocked',
-  '/UK',
-  '/US',
-  '/AE',
-  '/GH',
-  '/ZA',
 ]
 
 export function LocationBanner() {

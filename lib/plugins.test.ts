@@ -85,7 +85,7 @@ test('public active serializer strips disabled plugins, unconfigured plugins, an
   const installed: InstalledPlugin[] = [
     {
       slug: 'whatsapp-float',
-      name: 'WhatsApp Quick Concierge',
+      name: 'WhatsApp Direct Chat',
       version: '1.2.0',
       author: 'Dermaspace',
       description: 'Floating WhatsApp button',
@@ -150,4 +150,20 @@ test('public active serializer strips disabled plugins, unconfigured plugins, an
   assert.equal(publicList[0].slug, 'whatsapp-float')
   assert.equal(publicList[0].config.phone, '2349061836625')
   assert.ok(PLUGIN_CATALOG.length >= 8)
+})
+
+test('plugin catalog contains zero concierge wording', () => {
+  for (const entry of PLUGIN_CATALOG) {
+    const combined = [
+      entry.slug,
+      entry.name,
+      entry.description,
+      ...Object.values(entry.defaultConfig),
+    ].join(' ')
+    assert.equal(
+      /concierge/i.test(combined),
+      false,
+      `Plugin "${entry.slug}" unexpectedly contains concierge wording`,
+    )
+  }
 })

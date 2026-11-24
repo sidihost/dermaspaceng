@@ -99,7 +99,7 @@ export interface PublicActivePlugin {
 export const PLUGIN_CATALOG: readonly PluginCatalogEntry[] = [
   {
     slug: 'whatsapp-float',
-    name: 'WhatsApp Quick Concierge',
+    name: 'WhatsApp Direct Chat',
     version: '1.2.0',
     author: 'Dermaspace',
     description:

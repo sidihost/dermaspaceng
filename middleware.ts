@@ -4,14 +4,13 @@ import { aliasFor } from '@/lib/reserved-usernames'
 import { inspectRequest } from '@/lib/firewall'
 import { isOnboardingGatedPath, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import {
+  extractPublicClientIp,
   isCountryBlocked,
   isGeoBlockExemptApiPath,
+  lookupCountryByIp,
+  normalizeCountryCode,
   resolveRequestCountry,
 } from '@/lib/geo-blocking'
-import {
-  getInternationalRegionByIso,
-  getInternationalRegionBySlug,
-} from '@/lib/international-regions'
 
 // Supported countries with their currencies
 const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; name: string }> = {
@@ -232,11 +231,25 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  // Resolve visitor country from Vercel / Cloudflare / proxy geo headers
-  // BEFORE the `/api` early return so spam origins cannot bypass geo-blocking
-  // by posting directly to `/api/consultation`, `/api/contact`, etc.
+  // Resolve visitor country from Vercel / Cloudflare / CloudFront / GCP geo
+  // headers first; if the host proxy (e.g. Cloud Run) does not inject a geo
+  // header, fall back to a cached public-IP lookup from `x-forwarded-for` so
+  // VPN switches and geo-blocking work accurately on every host.
   const requestGeoCountry = (request as NextRequest & { geo?: { country?: string } }).geo?.country
-  const detectedCountry = resolveRequestCountry(request.headers, requestGeoCountry)
+  const clientIp = extractPublicClientIp(request.headers)
+  let detectedCountry = resolveRequestCountry(request.headers, requestGeoCountry)
+
+  if (!detectedCountry && clientIp) {
+    const cookieIp = request.cookies.get('geo_ip')?.value?.trim()
+    const cookieCountry = normalizeCountryCode(request.cookies.get('geo_country')?.value)
+    const cookieDetected = request.cookies.get('geo_detected')?.value === '1'
+    if (cookieDetected && cookieIp === clientIp && cookieCountry) {
+      detectedCountry = cookieCountry
+    } else {
+      detectedCountry = await lookupCountryByIp(clientIp)
+    }
+  }
+
   const blockedRegion = isCountryBlocked(detectedCountry)
 
   if (blockedRegion) {
@@ -285,19 +298,7 @@ export async function middleware(request: NextRequest) {
   // `/signup`. Anything below the first segment (e.g. `/register/foo`)
   // is also redirected to the canonical root, since none of the
   // aliased pages have nested children.
-  // Canonicalize international country storefront URLs (e.g. /uk or /gb -> /UK,
-  // /us -> /US, /uae -> /AE) before alias or catch-all username resolution.
   if (pathname !== '/') {
-    const segments = pathname.split('/').filter(Boolean)
-    if (segments.length === 1) {
-      const matchedRegion = getInternationalRegionBySlug(segments[0])
-      if (matchedRegion && segments[0] !== matchedRegion.slug) {
-        const canonicalUrl = new URL(`/${matchedRegion.slug}`, request.url)
-        canonicalUrl.search = request.nextUrl.search
-        return NextResponse.redirect(canonicalUrl, 308)
-      }
-    }
-
     const firstSegment = pathname.split('/')[1] ?? ''
     const target = aliasFor(firstSegment)
     if (target) {
@@ -307,52 +308,6 @@ export async function middleware(request: NextRequest) {
       const url = new URL(target, request.url)
       url.search = request.nextUrl.search
       return NextResponse.redirect(url, 308)
-    }
-  }
-
-  // Explicit Nigeria flagship switch (`/?region=NG`) sets the override cookie
-  // and strips the query param so international visitors can browse Lagos freely.
-  const requestedRegionParam = request.nextUrl.searchParams.get('region')?.trim().toUpperCase()
-  if (pathname === '/' && requestedRegionParam === 'NG') {
-    const cleanUrl = new URL('/', request.url)
-    cleanUrl.searchParams.delete('region')
-    const overrideRes = NextResponse.redirect(cleanUrl, 307)
-    overrideRes.cookies.set('user_selected_country', 'NG', {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    })
-    return overrideRes
-  }
-
-  // Automatic international storefront redirect on `/` — e.g. a visitor from
-  // the United Kingdom (`GB`) lands on `https://dermaspaceng.com/UK` with the
-  // dedicated regional design and calibrated GBP pricing. Visitors who
-  // explicitly selected Nigeria (`user_selected_country=NG`) stay on `/`.
-  const userSelectedCountry = request.cookies.get('user_selected_country')?.value?.toUpperCase()
-  if (pathname === '/' && userSelectedCountry !== 'NG') {
-    const autoRegion = getInternationalRegionByIso(detectedCountry)
-    if (autoRegion) {
-      const targetUrl = new URL(`/${autoRegion.slug}`, request.url)
-      targetUrl.search = request.nextUrl.search
-      const redirectRes = NextResponse.redirect(targetUrl, 307)
-      redirectRes.cookies.set('geo_country', autoRegion.isoCode, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24,
-        path: '/',
-      })
-      redirectRes.cookies.set('geo_currency', autoRegion.currency, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 60 * 60 * 24,
-        path: '/',
-      })
-      return redirectRes
     }
   }
 
@@ -384,30 +339,24 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
   const countryData = SUPPORTED_COUNTRIES[country] || SUPPORTED_COUNTRIES['NG']
-
-  response.cookies.set('geo_country', country, {
+  const isHttps =
+    request.nextUrl.protocol === 'https:' ||
+    request.headers.get('x-forwarded-proto') === 'https'
+  const cookieOpts = {
     httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isHttps,
+    sameSite: (isHttps ? 'none' : 'lax') as 'none' | 'lax',
     maxAge: 60 * 60 * 24, // 24 hours
     path: '/',
-  })
+  }
 
-  response.cookies.set('geo_currency', countryData.currency, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24,
-    path: '/',
-  })
-
-  response.cookies.set('geo_country_name', countryData.name, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24,
-    path: '/',
-  })
+  response.cookies.set('geo_country', country, cookieOpts)
+  response.cookies.set('geo_currency', countryData.currency, cookieOpts)
+  response.cookies.set('geo_country_name', countryData.name, cookieOpts)
+  response.cookies.set('geo_detected', detectedCountry ? '1' : '0', cookieOpts)
+  if (clientIp) {
+    response.cookies.set('geo_ip', clientIp, cookieOpts)
+  }
 
   return response
 }

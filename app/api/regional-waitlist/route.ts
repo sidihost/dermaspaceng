@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireSameOrigin, withRateLimit } from '@/lib/api-guard'
 import { resolveRequestCountry } from '@/lib/geo-blocking'
-import { validateWaitlistSubmission } from '@/lib/international-regions'
+import { validateWaitlistSubmission } from '@/lib/regional-waitlist'
 import { saveRegionalWaitlistEntry } from '@/lib/regional-waitlist-store'
 
 export async function POST(req: NextRequest) {

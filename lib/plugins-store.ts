@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import { sql } from '@/lib/db'
-import type { InstalledPlugin } from '@/lib/plugins'
+import { getCatalogPlugin, type InstalledPlugin } from '@/lib/plugins'
 
 const SETTINGS_KEY = 'installed_plugins'
 const CACHE_TTL_MS = 5_000
@@ -18,13 +18,24 @@ let cacheExpiresAt = 0
 
 function normalizeList(raw: unknown): InstalledPlugin[] {
   if (!Array.isArray(raw)) return []
-  return raw.filter(
-    (item): item is InstalledPlugin =>
-      Boolean(item) &&
-      typeof item === 'object' &&
-      typeof (item as InstalledPlugin).slug === 'string' &&
-      typeof (item as InstalledPlugin).name === 'string',
-  )
+  return raw
+    .filter(
+      (item): item is InstalledPlugin =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof (item as InstalledPlugin).slug === 'string' &&
+        typeof (item as InstalledPlugin).name === 'string',
+    )
+    .map((item) => {
+      if (item.isCustom) return item
+      const catalogEntry = getCatalogPlugin(item.slug)
+      if (!catalogEntry) return item
+      return {
+        ...item,
+        name: catalogEntry.name,
+        iconKey: catalogEntry.iconKey,
+      }
+    })
 }
 
 export async function getInstalledPlugins(force = false): Promise<InstalledPlugin[]> {

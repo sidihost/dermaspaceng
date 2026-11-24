@@ -28,10 +28,7 @@ export default function BodyWrapper({ children }: { children: React.ReactNode })
     '/staff',
     '/blocked',
   ]
-  const regionalRoutes = ['/UK', '/US', '/AE', '/GH', '/ZA']
-  const shouldHavePadding =
-    !noPaddingPages.some((page) => pathname.startsWith(page)) &&
-    !regionalRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+  const shouldHavePadding = !noPaddingPages.some((page) => pathname.startsWith(page))
 
   // Reserve room for the floating mobile nav AND the system safe-area
   // inset so content never hides behind the bar or the OS gesture

@@ -5,7 +5,7 @@ import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from 'lucide-react'
 
 interface RegionalWaitlistFormProps {
   region: string
-  source: 'blocked' | 'regional-storefront'
+  source: 'blocked' | 'waitlist'
   title?: string
   description?: string
   cityPlaceholder?: string

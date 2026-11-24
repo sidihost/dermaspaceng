@@ -1,35 +1,16 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { isCountryBlocked, normalizeCountryCode } from './geo-blocking'
+import {
+  COUNTRIES,
+  EXCHANGE_RATES,
+  computeEffectiveCountry,
+  type CountryCode,
+  type CountryInfo,
+} from './geo-display'
 
-export type CountryCode = 'NG' | 'GB' | 'US' | 'AE' | 'GH' | 'ZA'
-
-interface CountryInfo {
-  code: CountryCode
-  name: string
-  currency: string
-  symbol: string
-  flag: string
-}
-
-export const COUNTRIES: Record<CountryCode, CountryInfo> = {
-  NG: { code: 'NG', name: 'Nigeria', currency: 'NGN', symbol: '₦', flag: '🇳🇬' },
-  GB: { code: 'GB', name: 'United Kingdom', currency: 'GBP', symbol: '£', flag: '🇬🇧' },
-  US: { code: 'US', name: 'United States', currency: 'USD', symbol: '$', flag: '🇺🇸' },
-  AE: { code: 'AE', name: 'UAE', currency: 'AED', symbol: 'د.إ', flag: '🇦🇪' },
-  GH: { code: 'GH', name: 'Ghana', currency: 'GHS', symbol: '₵', flag: '🇬🇭' },
-  ZA: { code: 'ZA', name: 'South Africa', currency: 'ZAR', symbol: 'R', flag: '🇿🇦' },
-}
-
-// Approximate exchange rates from NGN (updated manually or via API)
-export const EXCHANGE_RATES: Record<string, number> = {
-  NGN: 1,
-  GBP: 0.00052,   // 1 NGN ≈ 0.00052 GBP
-  USD: 0.00065,   // 1 NGN ≈ 0.00065 USD
-  AED: 0.0024,    // 1 NGN ≈ 0.0024 AED
-  GHS: 0.0078,    // 1 NGN ≈ 0.0078 GHS
-  ZAR: 0.012,     // 1 NGN ≈ 0.012 ZAR
-}
+export { COUNTRIES, EXCHANGE_RATES, type CountryCode, type CountryInfo }
 
 interface GeoContextType {
   country: CountryInfo
@@ -54,7 +35,78 @@ function getCookie(name: string): string | null {
 function setCookie(name: string, value: string, days: number = 30) {
   if (typeof document === 'undefined') return
   const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString()
-  document.cookie = `${name}=${value}; expires=${expires}; path=/; SameSite=Lax`
+  const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const sameSite = isHttps ? 'SameSite=None; Secure' : 'SameSite=Lax'
+  document.cookie = `${name}=${value}; expires=${expires}; path=/; ${sameSite}`
+}
+
+function clearCookie(name: string) {
+  if (typeof document === 'undefined') return
+  const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:'
+  const sameSite = isHttps ? 'SameSite=None; Secure' : 'SameSite=Lax'
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; ${sameSite}`
+}
+
+function readStoredLastDetected(): string | null {
+  try {
+    const fromStorage = window.localStorage.getItem('ds.geo.last_detected')
+    if (fromStorage) return normalizeCountryCode(fromStorage)
+  } catch {
+    // ignore storage restrictions
+  }
+  return normalizeCountryCode(getCookie('geo_last_detected'))
+}
+
+function writeStoredLastDetected(code: string) {
+  try {
+    window.localStorage.setItem('ds.geo.last_detected', code)
+  } catch {
+    // ignore storage restrictions
+  }
+  setCookie('geo_last_detected', code, 30)
+}
+
+async function detectBrowserEgressCountry(): Promise<string | null> {
+  // Used only when server `/api/geo` could not see a public IP (e.g. local dev).
+  try {
+    const res = await fetch('https://api.country.is/', {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(2500),
+    })
+    if (res.ok) {
+      const data = (await res.json()) as { country?: string }
+      const code = normalizeCountryCode(data.country)
+      if (code) return code
+    }
+  } catch {
+    // try backup
+  }
+
+  try {
+    const res = await fetch('https://get.geojs.io/v1/ip/country.json', {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(2500),
+    })
+    if (res.ok) {
+      const data = (await res.json()) as { country?: string }
+      const code = normalizeCountryCode(data.country)
+      if (code) return code
+    }
+  } catch {
+    // ignore
+  }
+
+  return null
+}
+
+function isBlockedExemptPathname(pathname: string): boolean {
+  return (
+    pathname.startsWith('/blocked') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/staff') ||
+    pathname.startsWith('/offline') ||
+    pathname.startsWith('/maintenance')
+  )
 }
 
 export function GeoProvider({ children }: { children: ReactNode }) {
@@ -63,30 +115,93 @@ export function GeoProvider({ children }: { children: ReactNode }) {
   const [showBanner, setShowBanner] = useState(false)
 
   useEffect(() => {
-    // Check if user has already selected a country
-    const savedCountry = getCookie('user_selected_country')
-    const bannerDismissed = getCookie('geo_banner_dismissed')
-    
-    if (savedCountry && COUNTRIES[savedCountry as CountryCode]) {
-      setCountryState(COUNTRIES[savedCountry as CountryCode])
-      setIsDetected(true)
-      return
-    }
-    
-    // Get detected country from middleware cookie
-    const detectedCountry = getCookie('geo_country')
-    
-    if (detectedCountry && COUNTRIES[detectedCountry as CountryCode]) {
-      const countryInfo = COUNTRIES[detectedCountry as CountryCode]
-      setCountryState(countryInfo)
-      setIsDetected(true)
-      
-      // Show banner if not Nigeria and not already dismissed
-      if (detectedCountry !== 'NG' && !bannerDismissed) {
-        setShowBanner(true)
+    let cancelled = false
+
+    const applyDetectedCountry = (detectedCode: string | null) => {
+      if (cancelled) return
+
+      if (
+        detectedCode &&
+        isCountryBlocked(detectedCode) &&
+        typeof window !== 'undefined' &&
+        !isBlockedExemptPathname(window.location.pathname)
+      ) {
+        window.location.replace('/blocked')
+        return
       }
-    } else {
+
+      const savedManualCode = getCookie('user_selected_country')
+      const bannerDismissed = getCookie('geo_banner_dismissed') === 'true'
+      const lastDetectedCode = readStoredLastDetected()
+
+      const decision = computeEffectiveCountry({
+        detectedCode,
+        lastDetectedCode,
+        savedManualCode,
+        bannerDismissed,
+      })
+
+      if (decision.shouldClearManualOverride) {
+        clearCookie('user_selected_country')
+        clearCookie('geo_banner_dismissed')
+      }
+
+      if (detectedCode) {
+        writeStoredLastDetected(detectedCode)
+      }
+
+      setCountryState(decision.country)
+      setShowBanner(decision.showBanner)
       setIsDetected(true)
+    }
+
+    // 1) Fast synchronous paint from middleware cookie if middleware genuinely detected it.
+    const cookieDetectedFlag = getCookie('geo_detected') === '1'
+    const cookieCountry = cookieDetectedFlag
+      ? normalizeCountryCode(getCookie('geo_country'))
+      : null
+    if (cookieCountry) {
+      applyDetectedCountry(cookieCountry)
+    }
+
+    // 2) Always verify live against `/api/geo` (uncached) so VPN switches,
+    //    static-cached pages, and iframe cookie partitioning never leave a
+    //    stale country. Fall back to browser egress lookup only when the
+    //    server saw no geo header and no public IP (e.g. localhost).
+    const detectLive = async () => {
+      let liveCode: string | null = null
+      try {
+        const res = await fetch('/api/geo', { cache: 'no-store' })
+        if (res.ok) {
+          const data = (await res.json()) as {
+            country?: string | null
+            detected?: boolean
+          }
+          if (data.detected && data.country) {
+            liveCode = normalizeCountryCode(data.country)
+          }
+        }
+      } catch {
+        // network error — try fallback below
+      }
+
+      if (!liveCode && !cancelled) {
+        liveCode = await detectBrowserEgressCountry()
+      }
+
+      if (cancelled) return
+
+      if (liveCode) {
+        applyDetectedCountry(liveCode)
+      } else if (!cookieCountry) {
+        applyDetectedCountry(null)
+      }
+    }
+
+    void detectLive()
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -111,28 +226,30 @@ export function GeoProvider({ children }: { children: ReactNode }) {
 
   const formatPrice = (priceInNGN: number): string => {
     const converted = convertPrice(priceInNGN)
-    
+
     // Format based on currency
     if (country.currency === 'NGN') {
       return `₦${converted.toLocaleString()}`
     }
-    
-    return `${country.symbol}${converted.toLocaleString(undefined, { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
+
+    return `${country.symbol}${converted.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     })}`
   }
 
   return (
-    <GeoContext.Provider value={{ 
-      country, 
-      setCountry, 
-      formatPrice, 
-      convertPrice,
-      isDetected,
-      showBanner,
-      dismissBanner
-    }}>
+    <GeoContext.Provider
+      value={{
+        country,
+        setCountry,
+        formatPrice,
+        convertPrice,
+        isDetected,
+        showBanner,
+        dismissBanner,
+      }}
+    >
       {children}
     </GeoContext.Provider>
   )

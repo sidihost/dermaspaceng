@@ -40,17 +40,7 @@ function isSuppressedRoute(pathname: string) {
     pathname.startsWith('/reset-password') ||
     pathname.startsWith('/blocked') ||
     pathname.startsWith('/maintenance') ||
-    pathname.startsWith('/offline') ||
-    pathname === '/UK' ||
-    pathname.startsWith('/UK/') ||
-    pathname === '/US' ||
-    pathname.startsWith('/US/') ||
-    pathname === '/AE' ||
-    pathname.startsWith('/AE/') ||
-    pathname === '/GH' ||
-    pathname.startsWith('/GH/') ||
-    pathname === '/ZA' ||
-    pathname.startsWith('/ZA/')
+    pathname.startsWith('/offline')
   )
 }
 

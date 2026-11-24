@@ -30,7 +30,7 @@ import type { InstalledPlugin, PluginCategory } from '@/lib/plugins'
 
 const SAMPLE_MANIFEST_JSON = JSON.stringify(
   {
-    slug: 'instagram-concierge',
+    slug: 'instagram-direct',
     name: 'Instagram Direct Button',
     version: '1.0.0',
     author: 'Dermaspace Studio',

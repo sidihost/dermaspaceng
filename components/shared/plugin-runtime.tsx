@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ArrowUpRight, X } from 'lucide-react'
-import { SiWhatsapp } from 'react-icons/si'
 import {
   isSafeHref,
   isSafePublicHttpsUrl,
@@ -314,7 +313,14 @@ export default function PluginRuntime() {
               rel="noopener noreferrer"
               className="pointer-events-auto inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#7B2D8E] text-white border border-[#5A1D6A] hover:bg-[#5A1D6A] text-xs font-semibold transition-colors"
             >
-              <SiWhatsapp className="w-4 h-4" aria-hidden="true" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/plugins/whatsapp.svg"
+                alt=""
+                aria-hidden="true"
+                className="w-4 h-4 object-contain"
+                referrerPolicy="no-referrer"
+              />
               <span>{whatsapp.config.label?.trim() || 'WhatsApp Us'}</span>
             </a>
           )}

@@ -316,10 +316,7 @@ export default function MobileNav() {
     '/maintenance',
   ]
   const hiddenPages = [...authPages, '/admin', '/staff', '/blocked']
-  const regionalRoutes = ['/UK', '/US', '/AE', '/GH', '/ZA']
-  const isHiddenPage =
-    hiddenPages.some((page) => pathname.startsWith(page)) ||
-    regionalRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
+  const isHiddenPage = hiddenPages.some((page) => pathname.startsWith(page))
   if (isHiddenPage) return null
 
   // Render the bottom nav and its Sign in / Profile slot immediately

@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { sql } from '@/lib/db'
-import type { RegionalWaitlistInput } from '@/lib/international-regions'
+import type { RegionalWaitlistInput } from '@/lib/regional-waitlist'
 
 export interface RegionalWaitlistRecord extends RegionalWaitlistInput {
   detectedCountry: string | null

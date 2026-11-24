@@ -4,10 +4,10 @@
  * /admin/addons — Plugins & Add-ons Manager
  *
  * Unified admin surface where administrators can:
- *   1. Browse and install curated Dermaspace plugins (WhatsApp Quick
- *      Concierge, Google Analytics 4, GTM, Meta Pixel, TikTok Pixel,
+ *   1. Browse and install curated Dermaspace plugins (WhatsApp Direct
+ *      Chat, Google Analytics 4, GTM, Meta Pixel, TikTok Pixel,
  *      Microsoft Clarity, Tawk.to, Top Promo Strip, Slot Waitlist,
- *      Webhook Automations) with authentic brand icons.
+ *      Webhook Automations) with authentic original brand logos.
  *   2. Enable, pause, uninstall (inline), or open any plugin's dedicated
  *      configuration page at `/admin/addons/[slug]`.
  *   3. Install custom plugins on the dedicated `/admin/addons/custom` page.
@@ -59,7 +59,6 @@ import {
   Users,
   Wallet,
 } from 'lucide-react'
-import { SiGooglecalendar } from 'react-icons/si'
 import { useNotify } from '@/components/shared/notify'
 import { PluginIconBadge } from '@/components/admin/plugin-icon'
 import {
@@ -90,6 +89,8 @@ type AddonModule = {
   name: string
   description: string
   icon: ModuleIconComponent
+  brandLogoSrc?: string
+  brandLogoAlt?: string
   category: ModuleCategory
   status: ModuleStatus
   href?: string
@@ -278,7 +279,9 @@ const MODULES: AddonModule[] = [
     name: 'Google Calendar 2-way Sync',
     description:
       'Connect each therapist\u2019s Google Calendar so their personal events block availability automatically and every booking auto-creates an event with reminders.',
-    icon: SiGooglecalendar,
+    icon: CalendarClock,
+    brandLogoSrc: '/images/plugins/google-calendar.svg',
+    brandLogoAlt: 'Google Calendar logo',
     category: 'integrations',
     status: 'active',
     href: '/admin/integrations/google-calendar',
@@ -1158,17 +1161,29 @@ function ModuleCard({ module: m }: { module: AddonModule }) {
       {(isActive || isComing) && <StatusRibbon status={m.status} />}
 
       <div className="flex items-start gap-3">
-        <span
-          className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-            isActive
-              ? 'bg-[#7B2D8E] text-white'
-              : isComing
-                ? 'bg-gray-100 text-gray-400'
-                : 'bg-gray-100 text-gray-500'
-          }`}
-        >
-          <Icon className="w-[18px] h-[18px]" aria-hidden />
-        </span>
+        {m.brandLogoSrc ? (
+          <span className="w-11 h-11 rounded-xl bg-white border border-gray-200 p-2 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={m.brandLogoSrc}
+              alt={m.brandLogoAlt ?? `${m.name} logo`}
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </span>
+        ) : (
+          <span
+            className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              isActive
+                ? 'bg-[#7B2D8E] text-white'
+                : isComing
+                  ? 'bg-gray-100 text-gray-400'
+                  : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            <Icon className="w-[18px] h-[18px]" aria-hidden />
+          </span>
+        )}
         <div className="min-w-0 flex-1 pr-12">
           <h3 className="text-sm font-semibold text-gray-900 leading-tight">
             {m.name}
