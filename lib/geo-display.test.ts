@@ -30,32 +30,55 @@ test('resolves known markets and arbitrary VPN countries with accurate currency 
   assert.equal(countryCodeToFlag('DE'), '🇩🇪')
 })
 
-test('VPN country change immediately overrides stale manual selection and shows banner', () => {
-  const switchedToUk = computeEffectiveCountry({
+test('first-time visitors and crawlers from US/international IPs default to NGN (Nigeria)', () => {
+  const googlebotUs = computeEffectiveCountry({
+    detectedCode: 'US',
+    lastDetectedCode: null,
+    savedManualCode: null,
+    bannerDismissed: false,
+  })
+  assert.equal(googlebotUs.country.code, 'NG')
+  assert.equal(googlebotUs.country.currency, 'NGN')
+  assert.equal(googlebotUs.country.symbol, '₦')
+  assert.equal(googlebotUs.showBanner, true)
+  assert.equal(googlebotUs.shouldClearManualOverride, false)
+
+  const ukVisitor = computeEffectiveCountry({
     detectedCode: 'GB',
     lastDetectedCode: 'NG',
-    savedManualCode: 'NG',
+    savedManualCode: null,
     bannerDismissed: true,
   })
-  assert.equal(switchedToUk.country.code, 'GB')
-  assert.equal(switchedToUk.country.currency, 'GBP')
-  assert.equal(switchedToUk.showBanner, true)
-  assert.equal(switchedToUk.shouldClearManualOverride, true)
+  assert.equal(ukVisitor.country.code, 'NG')
+  assert.equal(ukVisitor.country.currency, 'NGN')
+  assert.equal(ukVisitor.showBanner, false)
 })
 
-test('manual currency selection is respected while staying in the same detected country', () => {
-  const keptManual = computeEffectiveCountry({
-    detectedCode: 'GB',
-    lastDetectedCode: 'GB',
-    savedManualCode: 'NG',
+test('explicit manual currency selection is respected regardless of detected IP country', () => {
+  const manualUsd = computeEffectiveCountry({
+    detectedCode: 'NG',
+    lastDetectedCode: 'NG',
+    savedManualCode: 'US',
     bannerDismissed: true,
   })
-  assert.equal(keptManual.country.code, 'NG')
-  assert.equal(keptManual.showBanner, false)
-  assert.equal(keptManual.shouldClearManualOverride, false)
+  assert.equal(manualUsd.country.code, 'US')
+  assert.equal(manualUsd.country.currency, 'USD')
+  assert.equal(manualUsd.showBanner, false)
+  assert.equal(manualUsd.shouldClearManualOverride, false)
+
+  const manualGbpOnNewIp = computeEffectiveCountry({
+    detectedCode: 'US',
+    lastDetectedCode: 'NG',
+    savedManualCode: 'GB',
+    bannerDismissed: false,
+  })
+  assert.equal(manualGbpOnNewIp.country.code, 'GB')
+  assert.equal(manualGbpOnNewIp.country.currency, 'GBP')
+  assert.equal(manualGbpOnNewIp.showBanner, false)
+  assert.equal(manualGbpOnNewIp.shouldClearManualOverride, false)
 })
 
-test('Nigeria visitors stay in NGN without showing the international banner', () => {
+test('Nigeria visitors stay in NGN without showing the currency banner', () => {
   const ng = computeEffectiveCountry({
     detectedCode: 'NG',
     lastDetectedCode: null,
@@ -63,5 +86,6 @@ test('Nigeria visitors stay in NGN without showing the international banner', ()
     bannerDismissed: false,
   })
   assert.equal(ng.country.code, 'NG')
+  assert.equal(ng.country.currency, 'NGN')
   assert.equal(ng.showBanner, false)
 })

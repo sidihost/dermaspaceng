@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { MapPin, Phone, Clock, Navigation, Home, ChevronDown, ArrowRight } from 'lucide-react'
@@ -16,21 +16,21 @@ function WhatsAppIcon({ className }: { className?: string }) {
   )
 }
 
-// Leaflet has no SSR — dynamically import on the client only
-const InteractiveMap = dynamic(() => import('./interactive-map'), {
-  ssr: false,
-  loading: () => (
+function MapPlaceholder() {
+  return (
     <div className="w-full h-64 sm:h-72 rounded-2xl ring-1 ring-gray-200 bg-gray-50 flex items-center justify-center">
       <div className="flex items-center gap-2 text-[#7B2D8E] text-xs font-medium">
-        <span className="inline-flex gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
-          <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
-          <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
-        </span>
+        <MapPin className="w-3.5 h-3.5" />
         Preparing your map
       </div>
     </div>
-  ),
+  )
+}
+
+// Leaflet has no SSR — dynamically import on the client only
+const InteractiveMap = dynamic(() => import('./interactive-map'), {
+  ssr: false,
+  loading: () => <MapPlaceholder />,
 })
 
 type BranchId = 'vi' | 'ikoyi'
@@ -84,6 +84,30 @@ export default function LocationsSection() {
   const preferredId = toBranchId(preferences?.preferredLocation) ?? null
   const [activeId, setActiveId] = useState<BranchId>(preferredId ?? 'vi')
   const [showOther, setShowOther] = useState(false)
+  // Defer downloading Leaflet JS/CSS + ~30 map tiles until the visitor
+  // scrolls near the Locations section (saves RAM & bandwidth on load).
+  const [shouldLoadMap, setShouldLoadMap] = useState(false)
+  const sectionRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el || shouldLoadMap) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setShouldLoadMap(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoadMap(true)
+          observer.disconnect()
+        }
+      },
+      { rootMargin: '300px 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [shouldLoadMap])
 
   // Keep activeId in sync if preferences load after first paint
   useEffect(() => {
@@ -98,7 +122,7 @@ export default function LocationsSection() {
   const isPersonalised = Boolean(preferredId)
 
   return (
-    <section className="py-12 md:py-16 bg-white">
+    <section ref={sectionRef} className="py-12 md:py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header — matches sibling home sections */}
         <div className="text-center mb-6">
@@ -200,11 +224,15 @@ export default function LocationsSection() {
                 for anyone who wants to interact with the map without fighting
                 the rest of the home sections. */}
             <MapErrorBoundary height="288px">
-              <InteractiveMap
-                activeBranchId={activeId}
-                onSelectBranch={setActiveId}
-                height="288px"
-              />
+              {shouldLoadMap ? (
+                <InteractiveMap
+                  activeBranchId={activeId}
+                  onSelectBranch={setActiveId}
+                  height="288px"
+                />
+              ) : (
+                <MapPlaceholder />
+              )}
             </MapErrorBoundary>
 
             {/* Full-map CTA — more prominent than the "other location" toggle
@@ -247,11 +275,15 @@ export default function LocationsSection() {
 
             <div className="mt-4">
               <MapErrorBoundary height="288px">
-                <InteractiveMap
-                  activeBranchId={activeId}
-                  onSelectBranch={setActiveId}
-                  height="288px"
-                />
+                {shouldLoadMap ? (
+                  <InteractiveMap
+                    activeBranchId={activeId}
+                    onSelectBranch={setActiveId}
+                    height="288px"
+                  />
+                ) : (
+                  <MapPlaceholder />
+                )}
               </MapErrorBoundary>
             </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -254,25 +254,41 @@ function AppShowcase({
   variant: 'phone' | 'desktop'
 }) {
   const [idx, setIdx] = useState(0)
+  const [isInView, setIsInView] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
   const isDesktop = variant === 'desktop'
 
-  // Auto-advance through the screenshots. Pauses are unnecessary — each
-  // shot is a static image so there's nothing to "finish" before moving
-  // on, unlike the old bubble-by-bubble chat reveal.
   useEffect(() => {
-    if (shots.length < 2) return
+    const el = containerRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setIsInView(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // Auto-advance through the screenshots only while visible in the viewport.
+  useEffect(() => {
+    if (shots.length < 2 || !isInView) return
     const tick = setTimeout(() => {
-      setIdx((i) => (i + 1) % shots.length)
+      if (!document.hidden) {
+        setIdx((i) => (i + 1) % shots.length)
+      }
     }, 4200)
     return () => clearTimeout(tick)
-  }, [idx, shots.length])
+  }, [idx, isInView, shots.length])
 
   // Keep the index valid if the shot set ever changes length.
   const safeIdx = idx % shots.length
   const active = shots[safeIdx]
 
   return (
-    <div className="w-full flex flex-col items-center gap-5 md:gap-6">
+    <div ref={containerRef} className="w-full flex flex-col items-center gap-5 md:gap-6">
       <div
         className={`relative w-full mx-auto pb-6 ${
           isDesktop
@@ -319,7 +335,8 @@ function AppShowcase({
                 key={shot.id}
                 src={shot.src || '/placeholder.svg'}
                 alt={shot.alt}
-                loading={i === 0 ? 'eager' : 'lazy'}
+                loading="lazy"
+                decoding="async"
                 className={`absolute inset-0 w-full h-full transition-opacity duration-700 ${
                   isDesktop ? 'object-cover object-top' : 'object-contain'
                 } ${i === safeIdx ? 'opacity-100' : 'opacity-0'}`}

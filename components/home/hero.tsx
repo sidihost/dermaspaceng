@@ -139,9 +139,9 @@ export default function Hero() {
     CHRISTMAS_HERO_SLIDE_ENABLED ? '/api/festive' : null,
     festiveFetcher,
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnMount: true,
-      dedupingInterval: 2_000,
+      dedupingInterval: 60_000,
     },
   )
 
@@ -154,49 +154,60 @@ export default function Hero() {
   )
 
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [prevSlideIndex, setPrevSlideIndex] = useState<number | null>(null)
   const [isPaused, setIsPaused] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const progressRef = useRef(0)
+  const [isInView, setIsInView] = useState(true)
+  const [isDocHidden, setIsDocHidden] = useState(false)
+  const sectionRef = useRef<HTMLElement | null>(null)
 
   const safeSlideIndex = currentSlide % slides.length
 
   const goToSlide = useCallback(
     (index: number) => {
       if (index === safeSlideIndex) return
+      setPrevSlideIndex(safeSlideIndex)
       setCurrentSlide(index)
-      progressRef.current = 0
-      setProgress(0)
     },
     [safeSlideIndex],
   )
 
   const nextSlide = useCallback(() => {
+    setPrevSlideIndex(safeSlideIndex)
     setCurrentSlide((prev) => (prev + 1) % slides.length)
-    progressRef.current = 0
-    setProgress(0)
-  }, [slides.length])
+  }, [safeSlideIndex, slides.length])
 
   const prevSlide = useCallback(() => {
+    setPrevSlideIndex(safeSlideIndex)
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)
-    progressRef.current = 0
-    setProgress(0)
-  }, [slides.length])
+  }, [safeSlideIndex, slides.length])
 
   useEffect(() => {
-    if (isPaused) return
-    const progressInterval = setInterval(() => {
-      const nextVal = progressRef.current + 1.67
-      if (nextVal >= 100) {
-        progressRef.current = 0
-        setProgress(0)
-        setCurrentSlide((prev) => (prev + 1) % slides.length)
-      } else {
-        progressRef.current = nextVal
-        setProgress(nextVal)
-      }
-    }, 100)
-    return () => clearInterval(progressInterval)
-  }, [isPaused, slides.length])
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { threshold: 0.05 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const onVis = () => setIsDocHidden(document.hidden)
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+
+  const isRunning = !isPaused && isInView && !isDocHidden
+
+  useEffect(() => {
+    if (!isRunning) return
+    const timer = window.setTimeout(() => {
+      setPrevSlideIndex(safeSlideIndex)
+      setCurrentSlide((prev) => (prev + 1) % slides.length)
+    }, 6000)
+    return () => window.clearTimeout(timer)
+  }, [isRunning, safeSlideIndex, slides.length])
 
   const scrollToBooking = () => {
     const bookingSection = document.getElementById('booking-section')
@@ -214,6 +225,7 @@ export default function Hero() {
 
   return (
     <section
+      ref={sectionRef}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       className="relative h-[500px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden"
@@ -222,30 +234,34 @@ export default function Hero() {
       <div className="absolute inset-0 bg-[#7B2D8E]">
         {(() => {
           const firstPhotoSlideIndex = slides.findIndex((s) => !s.festive)
-          return slides.map((slide, index) => (
-            <div
-              key={slide.eyebrow}
-              className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
-                index === safeSlideIndex ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-              }`}
-            >
-              {slide.festive ? (
-                <ChristmasHeroIllustration active={index === safeSlideIndex} />
-              ) : (
-                <Image
-                  src={slide.image}
-                  alt={slide.title}
-                  fill
-                  sizes="100vw"
-                  referrerPolicy="no-referrer"
-                  className={`object-cover object-[center_28%] transition-transform duration-[6000ms] ease-out ${
-                    index === safeSlideIndex ? 'scale-105' : 'scale-100'
-                  }`}
-                  priority={index === firstPhotoSlideIndex}
-                />
-              )}
-            </div>
-          ))
+          return slides.map((slide, index) => {
+            const isActiveSlide = index === safeSlideIndex
+            const shouldMountPhoto = isActiveSlide || index === prevSlideIndex
+            return (
+              <div
+                key={slide.eyebrow}
+                className={`absolute inset-0 transition-opacity duration-[900ms] ease-in-out ${
+                  isActiveSlide ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                }`}
+              >
+                {slide.festive ? (
+                  <ChristmasHeroIllustration active={isActiveSlide && isInView && !isDocHidden} />
+                ) : shouldMountPhoto ? (
+                  <Image
+                    src={slide.image}
+                    alt={slide.title}
+                    fill
+                    sizes="100vw"
+                    referrerPolicy="no-referrer"
+                    className={`object-cover object-[center_28%] transition-transform duration-[6000ms] ease-out ${
+                      isActiveSlide ? 'scale-105' : 'scale-100'
+                    }`}
+                    priority={index === firstPhotoSlideIndex && isActiveSlide}
+                  />
+                ) : null}
+              </div>
+            )
+          })
         })()}
 
         {/* Clean solid contrast veil on photographic slides only (zero CSS gradients, zero CSS shadows) */}
@@ -302,7 +318,7 @@ export default function Hero() {
           className="text-[10px] font-medium uppercase tracking-[0.5em] text-white/50 whitespace-nowrap"
           style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
         >
-          Dermaspace · Estd. 2014
+          Dermaspace · Estd. 2019
         </span>
       </div>
 
@@ -593,8 +609,12 @@ export default function Hero() {
                 </span>
                 <div className="w-16 sm:w-24 h-[3px] bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear rounded-full"
-                    style={{ width: `${progress}%` }}
+                    key={safeSlideIndex}
+                    className="h-full w-full bg-[#7B2D8E] rounded-full origin-left"
+                    style={{
+                      animation: 'hero-slide-progress 6000ms linear forwards',
+                      animationPlayState: isRunning ? 'running' : 'paused',
+                    }}
                   />
                 </div>
                 <span className="text-xs font-medium text-gray-400 tabular-nums">

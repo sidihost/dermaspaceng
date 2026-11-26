@@ -57,10 +57,10 @@ export default function ChristmasAnimation() {
     isSuppressedRoute ? null : '/api/festive',
     fetcher,
     {
-      revalidateOnFocus: true,
+      revalidateOnFocus: false,
       revalidateOnMount: true,
-      dedupingInterval: 2_000,
-      refreshInterval: 30_000,
+      dedupingInterval: 60_000,
+      refreshInterval: 0,
     },
   )
 
@@ -77,9 +77,8 @@ export default function ChristmasAnimation() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let animationFrameId: number
+    let animationFrameId = 0
     let isRunning = true
-    let isPaused = false
 
     // Check prefers-reduced-motion for a gentle, slow drift
     const reducedMotion =
@@ -94,11 +93,11 @@ export default function ChristmasAnimation() {
       if (!canvas || !ctx) return
       cssWidth = window.innerWidth || document.documentElement.clientWidth || 1024
       cssHeight = window.innerHeight || document.documentElement.clientHeight || 768
-      const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1
-      canvas.width = cssWidth * dpr
-      canvas.height = cssHeight * dpr
+      // Cap backing store to 1x CSS pixels: cuts GPU texture RAM by 75% on
+      // Retina/HiDPI displays while soft falling snow remains visually crisp.
+      canvas.width = cssWidth
+      canvas.height = cssHeight
       ctx.setTransform(1, 0, 0, 1, 0, 0)
-      ctx.scale(dpr, dpr)
     }
 
     setupCanvasSize()
@@ -114,12 +113,12 @@ export default function ChristmasAnimation() {
     const FLAKE_COLORS = ['#7B2D8E', '#5A1D6A', '#D4AF37', '#9333EA', '#7B2D8E']
     const BELL_COLORS = ['#7B2D8E', '#D4AF37', '#7B2D8E', '#5A1D6A']
 
-    // Particle count: optimal for smooth 60fps performance across all devices
+    // Lightweight particle count for low GPU/CPU overhead across devices
     const count = reducedMotion
-      ? 14
+      ? 8
       : cssWidth < 640
-        ? 24
-        : 44
+        ? 14
+        : 24
 
     const particles: SnowflakeParticle[] = []
 
@@ -307,25 +306,24 @@ export default function ChristmasAnimation() {
       context.restore()
     }
 
-    const handleVisibility = () => {
-      isPaused = document.hidden
-      if (!isPaused) {
-        lastTime = performance.now()
-      }
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-
+    // Target ~30fps to cut GPU upload & draw overhead in half while
+    // keeping slow drifting snow smooth.
+    const FRAME_INTERVAL_MS = 33
     let lastTime = performance.now()
 
     const render = (time: number) => {
-      if (!isRunning) return
+      if (!isRunning || document.hidden) {
+        animationFrameId = 0
+        return
+      }
 
       const now = time || performance.now()
       const elapsed = now - lastTime
-      const delta = Math.min(Math.max(elapsed / 16.67, 0.5), 2.5)
-      lastTime = now
 
-      if (!isPaused && ctx) {
+      if (elapsed >= FRAME_INTERVAL_MS) {
+        const delta = Math.min(Math.max(elapsed / 16.67, 0.5), 3)
+        lastTime = now
+
         ctx.clearRect(0, 0, cssWidth, cssHeight)
 
         for (let i = 0; i < particles.length; i++) {
@@ -373,13 +371,37 @@ export default function ChristmasAnimation() {
       animationFrameId = requestAnimationFrame(render)
     }
 
-    animationFrameId = requestAnimationFrame(render)
+    const startLoop = () => {
+      if (!isRunning || document.hidden || animationFrameId) return
+      lastTime = performance.now()
+      animationFrameId = requestAnimationFrame(render)
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId)
+          animationFrameId = 0
+        }
+      } else {
+        startLoop()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    startLoop()
 
     return () => {
       isRunning = false
-      cancelAnimationFrame(animationFrameId)
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+        animationFrameId = 0
+      }
       window.removeEventListener('resize', handleResize)
       document.removeEventListener('visibilitychange', handleVisibility)
+      // Explicitly release GPU canvas backing store memory on unmount
+      canvas.width = 0
+      canvas.height = 0
     }
   }, [isEnabled])
 

@@ -1,19 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { X } from 'lucide-react'
 import Image from 'next/image'
 import { isServiceWorkerAllowedOrigin } from '@/lib/push-origin'
-import { isPrivateOrAuthRoute } from '@/lib/sw-cache-helpers'
+import { ACTIVE_SW_CACHE_NAME, getStaleCacheNames } from '@/lib/sw-cache-helpers'
 
 export function ServiceWorkerRegister() {
-  // `usePathname()` can return `null` during certain app-shell
-  // transitions (and during the `_not-found` prerender, which was
-  // failing the production build with "ReferenceError: pathname is
-  // not defined" because this hook used to be missing entirely).
-  // Default to `null` and guard the cache-precaching effect below.
-  const pathname = usePathname()
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
 
@@ -113,53 +106,57 @@ export function ServiceWorkerRegister() {
     window.addEventListener('error', onError)
     window.addEventListener('unhandledrejection', onUnhandledRejection)
 
-    // Register service worker on canonical, localhost, and hosted app origins
+    // Immediately purge any legacy/bloated Cache Storage buckets (e.g. old
+    // multi-megabyte image or page caches padded by Chromium's opaque quota)
+    // and unused legacy `dermaspace-offline` IndexedDB database so returning
+    // mobile devices drop from 40+ MB stored data to < 1 MB right away.
+    const cleanupLegacyStorage = async () => {
+      try {
+        if ('caches' in window) {
+          const names = await caches.keys()
+          const stale = getStaleCacheNames(names, ACTIVE_SW_CACHE_NAME)
+          if (stale.length > 0) {
+            await Promise.all(stale.map((n) => caches.delete(n).catch(() => false)))
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      try {
+        if (typeof indexedDB !== 'undefined' && typeof indexedDB.deleteDatabase === 'function') {
+          indexedDB.deleteDatabase('dermaspace-offline')
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    void cleanupLegacyStorage()
+
+    // Register lean service worker on canonical, localhost, and hosted app origins
     // (never on *.vercel.app or other ephemeral preview deployments).
     const canRegisterSw = isServiceWorkerAllowedOrigin(window.location.origin, {
       configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
       allowLocalhost: true,
     })
 
+    let updateInterval: number | null = null
+    let onControllerChange: (() => void) | null = null
+    let onSwMessage: ((event: MessageEvent) => void) | null = null
+
     if ('serviceWorker' in navigator && canRegisterSw) {
       const hadController = Boolean(navigator.serviceWorker.controller)
       let swReloading = false
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/sw.js', { updateViaCache: 'none' })
         .then((registration) => {
-          console.log('SW registered:', registration.scope)
+          // Proactively check for SW updates so returning users with the old
+          // bloated SW upgrade to `dermaspace-lean-v1` immediately.
+          registration.update().catch(() => {})
 
-          // Warm core offline landing pages only after initial page load & idle
-          // so critical images, avatars, and /api/auth/me never compete with
-          // background SSR precaching.
-          const scheduleWarmup = () => {
-            const runWarmup = () => {
-              navigator.serviceWorker.ready
-                .then((readyReg) => {
-                  readyReg.active?.postMessage({
-                    type: 'CACHE_URLS',
-                    urls: ['/', '/offline', '/services', '/gift-cards', '/contact', '/blog', '/about'],
-                  })
-                })
-                .catch(() => {})
-            }
-            const ric = (window as { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number }).requestIdleCallback
-            if (ric) {
-              ric(runWarmup, { timeout: 4000 })
-            } else {
-              window.setTimeout(runWarmup, 3000)
-            }
-          }
-          if (document.readyState === 'complete') {
-            window.setTimeout(scheduleWarmup, 1500)
-          } else {
-            window.addEventListener('load', () => window.setTimeout(scheduleWarmup, 1500), { once: true })
-          }
-
-          // Check for updates periodically — sw.js calls skipWaiting() and
-          // clients.claim(), and controllerchange below reloads seamlessly.
-          setInterval(() => {
+          // Check for updates periodically.
+          updateInterval = window.setInterval(() => {
             registration.update().catch(() => {})
-          }, 60 * 60 * 1000) // Check every hour
+          }, 60 * 60 * 1000)
         })
         .catch(() => {
           // Silently skip when /sw.js is not deployed in the current environment.
@@ -168,18 +165,20 @@ export function ServiceWorkerRegister() {
       // Handle controller change only when replacing an existing controller so
       // first-time SW activation (skipWaiting + clients.claim) never interrupts
       // initial image and avatar loading with an unexpected reload.
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
+      onControllerChange = () => {
         if (!hadController || swReloading) return
         swReloading = true
         window.location.reload()
-      })
+      }
+      navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
 
-      navigator.serviceWorker.addEventListener('message', (event) => {
+      onSwMessage = (event: MessageEvent) => {
         if (event.data?.type === 'ds.pushReceived') {
           window.dispatchEvent(new CustomEvent('notifications:refresh'))
           window.dispatchEvent(new CustomEvent('live-chat:waiting-changed'))
         }
-      })
+      }
+      navigator.serviceWorker.addEventListener('message', onSwMessage)
     } else if ('serviceWorker' in navigator && !canRegisterSw) {
       console.log('[SW] Cleaning up SW and push subscriptions on preview domain')
       navigator.serviceWorker
@@ -217,106 +216,20 @@ export function ServiceWorkerRegister() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
     return () => {
+      if (updateInterval !== null) window.clearInterval(updateInterval)
+      if ('serviceWorker' in navigator) {
+        if (onControllerChange) {
+          navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
+        }
+        if (onSwMessage) {
+          navigator.serviceWorker.removeEventListener('message', onSwMessage)
+        }
+      }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('error', onError)
       window.removeEventListener('unhandledrejection', onUnhandledRejection)
     }
   }, [])
-
-  // ---------------------------------------------------------------
-  // Tell the SW to precache every page the user actually visits.
-  //
-  // The SW's navigation handler only sees full-page navigations
-  // (`request.mode === 'navigate'`), but Next.js' client router
-  // renders in-app link clicks via RSC payloads — meaning a user
-  // who taps Home → Services → Booking only ever issued ONE real
-  // navigation. The other URLs were never seen by the SW and so
-  // never landed in PAGES_CACHE, which is why "pages I visited
-  // don't work offline" was the reported symptom.
-  //
-  // On every pathname change we post `CACHE_NAVIGATION` to the
-  // active SW with the current URL (path + search). The SW does a
-  // background navigation-mode fetch and stores the HTML in
-  // PAGES_CACHE under the same key its navigation handler would
-  // use, so the existing offline-lookup path serves it
-  // transparently next time the user reaches that URL offline.
-  //
-  // Skipped when:
-  //   - SW isn't installed yet (no controller + no `ready`)
-  //   - The user is currently offline (network fetch would fail)
-  //   - The URL is an /api/* or /_next/* path (not a page)
-  // ---------------------------------------------------------------
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (!('serviceWorker' in navigator)) return
-    if (
-      !isServiceWorkerAllowedOrigin(window.location.origin, {
-        configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL,
-        allowLocalhost: true,
-      })
-    ) {
-      return
-    }
-    if (!navigator.onLine) return
-    if (!pathname) return
-    // Skip non-page and private/authenticated routes — defence in depth; the SW also filters
-    // these, but skipping the postMessage prevents private pages from being warmed into shared Cache Storage.
-    if (
-      pathname.startsWith('/api/') ||
-      pathname.startsWith('/_next/') ||
-      isPrivateOrAuthRoute(pathname)
-    ) {
-      return
-    }
-
-    const url = pathname + window.location.search
-
-    // Use a bounded 350ms idle window so rapid client navigations are
-    // still warmed in cache before the user loses connectivity.
-    const ric = (window as any).requestIdleCallback as
-      | ((cb: () => void, opts?: { timeout?: number }) => number)
-      | undefined
-    const cic = (window as any).cancelIdleCallback as
-      | ((id: number) => void)
-      | undefined
-
-    const triggerCache = () => {
-      const send = (target?: ServiceWorker | null) => {
-        try {
-          const worker = target ?? navigator.serviceWorker.controller
-          worker?.postMessage({
-            type: 'CACHE_NAVIGATION',
-            url,
-          })
-        } catch {
-          /* ignore — best-effort */
-        }
-      }
-      if (navigator.serviceWorker.controller) {
-        send(navigator.serviceWorker.controller)
-      } else {
-        navigator.serviceWorker.ready
-          .then((reg) => send(reg.active))
-          .catch(() => {})
-      }
-    }
-
-    const handle = ric
-      ? ric(triggerCache, { timeout: 350 })
-      : window.setTimeout(triggerCache, 350)
-
-    return () => {
-      try {
-        if (ric && cic) {
-          cic(handle)
-        } else {
-          window.clearTimeout(handle)
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [pathname])
 
   const handleInstall = async () => {
     if (deferredPrompt) {

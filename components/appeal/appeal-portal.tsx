@@ -5,8 +5,6 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
-  ArrowRight,
-  Briefcase,
   Check,
   CheckCircle2,
   Clock,
@@ -20,8 +18,6 @@ import {
   APPEAL_MIN_LENGTH,
 } from '@/lib/suspension-appeal-constants'
 import { useNotify } from '@/components/shared/notify'
-
-export type AppealPortalKind = 'client' | 'staff'
 
 type VerifyResponse = {
   valid: boolean
@@ -42,13 +38,11 @@ const DERMASPACE_LOGO =
   'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
 
 function BrandSidePanel({
-  isStaff,
   eyebrow,
   title,
   description,
   points,
 }: {
-  isStaff: boolean
   eyebrow: string
   title: string
   description: string
@@ -58,11 +52,7 @@ function BrandSidePanel({
     <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-10 bg-[#7B2D8E]">
       <div className="text-white max-w-md w-full">
         <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/15 flex items-center justify-center mb-6">
-          {isStaff ? (
-            <Briefcase className="w-6 h-6 text-white" />
-          ) : (
-            <ShieldAlert className="w-6 h-6 text-white" />
-          )}
+          <ShieldAlert className="w-6 h-6 text-white" />
         </div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/75 mb-2">
           {eyebrow}
@@ -83,7 +73,7 @@ function BrandSidePanel({
   )
 }
 
-function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
+function AppealPortalContent() {
   const searchParams = useSearchParams()
   const notify = useNotify()
   const token = searchParams.get('token') || ''
@@ -123,10 +113,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
         if (!cancelled) {
           setTokenInfo({
             valid: false,
-            error:
-              portal === 'staff'
-                ? 'Could not verify your staff appeal link. Enter your work email below to submit.'
-                : 'Could not verify your link. Please enter your account email below.',
+            error: 'Could not verify your link. Please enter your account email below.',
           })
         }
       })
@@ -136,26 +123,19 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
     return () => {
       cancelled = true
     }
-  }, [token, portal])
+  }, [token])
 
   const hasValidToken = Boolean(token && tokenInfo?.valid)
-  const isStaff =
-    hasValidToken && tokenInfo?.role
-      ? tokenInfo.role === 'staff' || tokenInfo.role === 'admin'
-      : portal === 'staff'
+  const isStaff = Boolean(
+    hasValidToken && (tokenInfo?.role === 'staff' || tokenInfo?.role === 'admin'),
+  )
 
-  const eyebrow = isStaff ? 'Dermaspace Team Security' : 'Dermaspace Account Security'
-  const sidePoints = isStaff
-    ? [
-        'Console access and active staff sessions remain paused until review is complete.',
-        'Every staff appeal is routed directly to Dermaspace Leadership & Security.',
-        'Automated status updates are emailed to your work address or alternate contact email.',
-      ]
-    : [
-        'Your bookings, wallet balance, and appointment history remain safely preserved.',
-        'Every reinstatement appeal is reviewed personally by our Care & Security team.',
-        'Automated updates are sent directly to your email once a decision is made.',
-      ]
+  const eyebrow = 'Dermaspace Account Security'
+  const sidePoints = [
+    'Your account details, history, and records remain safely preserved during review.',
+    'Every reinstatement request is automatically routed to the appropriate Dermaspace review team.',
+    'Automated updates are sent directly to your email once a decision is made.',
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -196,17 +176,15 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
       if (data?.generic) {
         const genericMsg = String(
           data.message ||
-            (isStaff
-              ? 'If a suspended Dermaspace team account matches that email, your staff appeal has been logged for leadership review.'
-              : 'If a suspended account matches that email address, your appeal has been recorded and updates will be sent to the email address on file.'),
+            'If a suspended account matches that email address, your appeal has been recorded and updates will be sent to the email address on file.',
         )
         setSubmittedGenericMessage(genericMsg)
-        notify.success(isStaff ? 'Staff appeal submitted' : 'Account appeal submitted')
+        notify.success('Account appeal submitted')
       } else {
         const refId = String(data.appealId || 'Submitted')
         setSubmittedAppealId(refId)
         notify.success(
-          isStaff ? 'Staff appeal received' : 'Account appeal received',
+          'Account appeal received',
           `Reference ${refId} has been queued for review.`,
         )
       }
@@ -222,22 +200,15 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
     return (
       <div className="min-h-screen bg-white lg:flex lg:flex-row">
         <BrandSidePanel
-          isStaff={isStaff}
           eyebrow={eyebrow}
-          title={isStaff ? 'Staff Access Appeal' : 'Client Account Appeal'}
-          description={
-            isStaff
-              ? 'Verifying your staff suspension notice so you can submit an internal reinstatement appeal.'
-              : 'We are verifying your suspension notice so you can submit an appeal for review.'
-          }
+          title="Account Appeal"
+          description="We are verifying your suspension notice so you can submit an appeal for review."
           points={sidePoints}
         />
         <div className="flex-1 flex items-center justify-center px-6 py-16">
           <div className="text-center">
             <Loader2 className="w-7 h-7 animate-spin text-[#7B2D8E] mx-auto mb-3" />
-            <p className="text-sm text-gray-600">
-              {isStaff ? 'Checking your team access status...' : 'Checking your account status...'}
-            </p>
+            <p className="text-sm text-gray-600">Checking your account status...</p>
           </div>
         </div>
       </div>
@@ -248,14 +219,9 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
     return (
       <div className="min-h-screen bg-white lg:flex lg:flex-row">
         <BrandSidePanel
-          isStaff={isStaff}
           eyebrow={eyebrow}
-          title={isStaff ? 'Staff Appeal Logged' : 'Appeal Submitted'}
-          description={
-            isStaff
-              ? 'Dermaspace Leadership & Security has received your staff reinstatement request and will send an update by email.'
-              : 'Our team reviews every reinstatement request carefully and will send an automated update to your email.'
-          }
+          title="Appeal Submitted"
+          description="Our team reviews every reinstatement request carefully and will send an automated update to your email."
           points={sidePoints}
         />
         <div className="flex-1 flex items-center justify-center px-6 pt-12 pb-24 lg:p-8">
@@ -264,24 +230,16 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
               <Check className="w-7 h-7 text-[#7B2D8E]" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">
-              {submittedGenericMessage
-                ? isStaff
-                  ? 'Staff Appeal Submitted'
-                  : 'Request Submitted'
-                : isStaff
-                  ? 'Staff Appeal Received'
-                  : 'Appeal Received'}
+              {submittedGenericMessage ? 'Request Submitted' : 'Appeal Received'}
             </h1>
             <p className="text-sm text-gray-600 mb-5 leading-relaxed">
               {submittedGenericMessage ||
-                (isStaff
-                  ? 'Thank you for submitting your appeal. Dermaspace Leadership & Security is reviewing your staff access and will email you once a decision is made.'
-                  : 'Thank you for reaching out. Our team is reviewing your request and will send an update to your email address.')}
+                'Thank you for reaching out. Our team is reviewing your request and will send an update to your email address.'}
             </p>
             {submittedAppealId && (
               <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] p-4 mb-6 text-left">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                  {isStaff ? 'Staff Appeal Reference' : 'Appeal Reference'}
+                  Appeal Reference
                 </p>
                 <p className="mt-1 font-mono text-sm font-semibold text-[#7B2D8E]">
                   {submittedAppealId}
@@ -304,14 +262,9 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
     return (
       <div className="min-h-screen bg-white lg:flex lg:flex-row">
         <BrandSidePanel
-          isStaff={isStaff}
           eyebrow={eyebrow}
-          title={isStaff ? 'Staff Access Active' : 'Account Active'}
-          description={
-            isStaff
-              ? 'Your Dermaspace staff console access is active and ready for sign in.'
-              : 'Your Dermaspace access is active and ready for sign in.'
-          }
+          title="Account Active"
+          description="Your Dermaspace access is active and ready for sign in."
           points={sidePoints}
         />
         <div className="flex-1 flex items-center justify-center px-6 pt-12 pb-24 lg:p-8">
@@ -320,7 +273,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
               <UserCheck className="w-7 h-7 text-[#7B2D8E]" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">
-              {isStaff ? 'Your Staff Access Is Active' : 'Your Account Is Active'}
+              Your Account Is Active
             </h1>
             <p className="text-sm text-gray-600 mb-6 leading-relaxed">
               Good news — {tokenInfo.maskedEmail ? `${tokenInfo.maskedEmail} has` : 'your account has'} already been reinstated. You can sign back in now.
@@ -329,7 +282,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
               href="/signin"
               className="block w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
             >
-              {isStaff ? 'Sign In to Staff Workspace' : 'Sign In to Dermaspace'}
+              Sign In to Dermaspace
             </Link>
           </div>
         </div>
@@ -341,14 +294,9 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
     return (
       <div className="min-h-screen bg-white lg:flex lg:flex-row">
         <BrandSidePanel
-          isStaff={isStaff}
           eyebrow={eyebrow}
-          title={isStaff ? 'Staff Appeal In Queue' : 'Under Review'}
-          description={
-            isStaff
-              ? 'Your staff reinstatement appeal is already queued for leadership review. We will email you once a decision is made.'
-              : 'Your reinstatement appeal is already in our queue. We will email you as soon as a decision is made.'
-          }
+          title="Under Review"
+          description="Your reinstatement appeal is already in our queue. We will email you as soon as a decision is made."
           points={sidePoints}
         />
         <div className="flex-1 flex items-center justify-center px-6 pt-12 pb-24 lg:p-8">
@@ -357,16 +305,14 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
               <Clock className="w-7 h-7 text-[#7B2D8E]" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-2">
-              {isStaff ? 'Staff Appeal Already Under Review' : 'Appeal Already Under Review'}
+              Appeal Already Under Review
             </h1>
             <p className="text-sm text-gray-600 mb-5 leading-relaxed">
-              {isStaff
-                ? 'We already have an open staff appeal for your team account and will notify you by email once leadership completes the review.'
-                : 'We already have an open appeal for your account and will notify you by email once our team finishes reviewing it.'}
+              We already have an open appeal for your account and will notify you by email once our team finishes reviewing it.
             </p>
             <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] p-4 mb-6 text-left space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                {isStaff ? 'Staff Appeal Reference' : 'Reference ID'}
+                Reference ID
               </p>
               <p className="font-mono text-sm font-semibold text-[#7B2D8E]">
                 {tokenInfo.appeal.id}
@@ -395,14 +341,9 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
   return (
     <div className="min-h-screen bg-white lg:flex lg:flex-row">
       <BrandSidePanel
-        isStaff={isStaff}
         eyebrow={eyebrow}
-        title={isStaff ? 'Staff Access Appeal' : 'Client Account Appeal'}
-        description={
-          isStaff
-            ? 'If your Dermaspace staff or administrator access was suspended in error or resolved with your manager, share details below for leadership review.'
-            : 'If your Dermaspace client account was suspended by mistake or you have resolved the issue, submit an appeal below.'
-        }
+        title="Account Appeal"
+        description="If your Dermaspace account was suspended by mistake or you have resolved the issue, submit an appeal below for review."
         points={sidePoints}
       />
 
@@ -425,30 +366,17 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
             />
           </Link>
 
-          <div className="inline-flex items-center gap-1.5 rounded-lg border border-[#7B2D8E]/20 bg-[#FAF6FB] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[#5A1D6A] mb-3">
-            {isStaff ? (
-              <Briefcase className="w-3.5 h-3.5 text-[#7B2D8E]" />
-            ) : (
-              <ShieldAlert className="w-3.5 h-3.5 text-[#7B2D8E]" />
-            )}
-            {isStaff ? 'Staff & Admin Access Appeal' : 'Client Account Appeal'}
-          </div>
-
           <h1 className="text-xl font-bold text-gray-900 mb-1">
-            {isStaff ? 'Appeal Staff Suspension' : 'Appeal Account Suspension'}
+            Appeal Account Suspension
           </h1>
           <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-            {isStaff
-              ? 'Explain why your Dermaspace staff access should be reinstated. Staff appeals are reviewed directly by Dermaspace Leadership & Security.'
-              : 'Tell our team why your client account should be reinstated. Every appeal is reviewed personally.'}
+            Tell our team why your account should be reinstated. Every appeal is reviewed personally.
           </p>
 
           {hasValidToken && tokenInfo && (
             <div className="mb-4 rounded-xl border border-gray-200 bg-[#FAF6FB] p-3.5 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-gray-500">
-                  {isStaff ? 'Staff Account' : 'Client Account'}
-                </span>
+                <span className="text-xs font-medium text-gray-500">Account</span>
                 <span className="text-xs font-semibold text-gray-900">
                   {tokenInfo.maskedEmail}
                 </span>
@@ -479,7 +407,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
                   htmlFor="appeal-email"
                   className="block text-xs font-medium text-gray-700 mb-1"
                 >
-                  {isStaff ? 'Suspended Staff Work Email' : 'Suspended Account Email'}
+                  Suspended Account Email
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -489,7 +417,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder={isStaff ? 'name@dermaspaceng.com' : 'you@email.com'}
+                    placeholder="you@email.com"
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
                   />
                 </div>
@@ -502,9 +430,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
                   htmlFor="appeal-message"
                   className="block text-xs font-medium text-gray-700"
                 >
-                  {isStaff
-                    ? 'Operational context & reinstatement details'
-                    : 'Why should your account be reinstated?'}
+                  Why should your account be reinstated?
                 </label>
                 <span className="text-[11px] text-gray-400 tabular-nums">
                   {appealMessage.trim().length}/{APPEAL_MAX_LENGTH}
@@ -518,11 +444,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
                 maxLength={APPEAL_MAX_LENGTH}
                 value={appealMessage}
                 onChange={(e) => setAppealMessage(e.target.value)}
-                placeholder={
-                  isStaff
-                    ? 'Share context on what occurred, any follow-up with your branch lead, and why your team access should be restored...'
-                    : 'Explain what happened or share any context that helps us review your account...'
-                }
+                placeholder="Explain what happened or share any context that helps us review your account..."
                 className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-y"
               />
               <p className="mt-1 text-[11px] text-gray-500">
@@ -535,7 +457,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
                 htmlFor="appeal-contact-email"
                 className="block text-xs font-medium text-gray-700 mb-1"
               >
-                {isStaff ? 'Alternate Contact Email' : 'Preferred Notification Email'}{' '}
+                Preferred Notification Email{' '}
                 <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <input
@@ -543,11 +465,7 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                placeholder={
-                  isStaff
-                    ? 'Optional personal email if you cannot access your work inbox'
-                    : 'Leave blank to receive updates on your account email'
-                }
+                placeholder="Leave blank to receive updates on your account email"
                 className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
               />
             </div>
@@ -560,39 +478,20 @@ function AppealPortalContent({ portal }: { portal: AppealPortalKind }) {
               {submitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {isStaff ? 'Submitting staff appeal...' : 'Submitting appeal...'}
+                  Submitting appeal...
                 </>
-              ) : isStaff ? (
-                'Submit Staff Appeal'
               ) : (
                 'Submit Account Appeal'
               )}
             </button>
           </form>
-
-          {!hasValidToken && (
-            <div className="mt-6 pt-5 border-t border-gray-200 flex items-center justify-between gap-2 text-xs text-gray-500">
-              <span>
-                {isStaff
-                  ? 'Looking for a client account appeal?'
-                  : 'Dermaspace staff or admin member?'}
-              </span>
-              <Link
-                href={isStaff ? '/appeal' : '/appeal/staff'}
-                className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors whitespace-nowrap"
-              >
-                {isStaff ? 'Client Appeal' : 'Staff Appeal'}
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </div>
   )
 }
 
-export function AppealPortal({ portal }: { portal: AppealPortalKind }) {
+export function AppealPortal() {
   return (
     <Suspense
       fallback={
@@ -601,7 +500,7 @@ export function AppealPortal({ portal }: { portal: AppealPortalKind }) {
         </div>
       }
     >
-      <AppealPortalContent portal={portal} />
+      <AppealPortalContent />
     </Suspense>
   )
 }

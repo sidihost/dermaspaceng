@@ -1,5 +1,51 @@
+export const ACTIVE_SW_CACHE_NAME = 'dermaspace-lean-v1'
+export const MAX_SW_CACHE_ENTRY_BYTES = 256 * 1024 // 256 KB ceiling
 export const IMAGE_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const PAGE_WARM_FRESH_MS = 10 * 60 * 1000
+
+/**
+ * Returns every Cache Storage bucket name that should be purged so legacy
+ * multi-megabyte / opaque-padded caches never linger on returning devices.
+ */
+export function getStaleCacheNames(
+  cacheNames: readonly string[],
+  activeCacheName = ACTIVE_SW_CACHE_NAME,
+): string[] {
+  return cacheNames.filter((name) => name !== activeCacheName)
+}
+
+/**
+ * Guard against Chromium's ~7 MB opaque-response padding and unbounded asset
+ * caching: only small, same-origin, 200 OK `basic` responses are eligible for
+ * Service Worker Cache Storage.
+ */
+export function isSafeResponseToCache(input: {
+  ok: boolean
+  status: number
+  type: string
+  url: string
+  origin: string
+  contentLength?: number | null
+  maxBytes?: number
+}): boolean {
+  if (!input.ok || input.status !== 200) return false
+  if (input.type !== 'basic') return false
+  try {
+    const parsed = new URL(input.url, input.origin)
+    if (parsed.origin !== input.origin) return false
+  } catch {
+    return false
+  }
+  const limit = input.maxBytes ?? MAX_SW_CACHE_ENTRY_BYTES
+  if (
+    typeof input.contentLength === 'number' &&
+    Number.isFinite(input.contentLength) &&
+    input.contentLength > limit
+  ) {
+    return false
+  }
+  return true
+}
 
 /**
  * Pure decision helper mirrored by `public/sw.js` image caching.

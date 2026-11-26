@@ -4411,7 +4411,7 @@ export async function sendDirectUserEmail(data: {
  * Pure HTML builder for client vs. staff suspension notifications.
  * Uses the exact Dermaspace flat transactional shell with distinct copy,
  * sender titles ("Dermaspace Team Security" vs "Dermaspace Security"),
- * and dedicated appeal portal links (/appeal/staff vs /appeal).
+ * and unified appeal portal links (/appeal) with automatic role detection.
  */
 export function buildAccountSuspendedEmailHtml(data: {
   firstName?: string | null
@@ -4473,7 +4473,7 @@ export function buildAccountSuspendedEmailHtml(data: {
     </table>
 
     <p style="margin: 0 0 12px; font-size: 12px; color: #666; line-height: 1.55; word-break: break-all;">
-      Or copy and paste your dedicated staff appeal link into your browser:<br />
+      Or copy and paste your appeal link into your browser:<br />
       <a href="${safeAppealUrl}" style="color: ${BRAND_COLOR}; text-decoration: underline;">${safeAppealUrl}</a>
     </p>
 

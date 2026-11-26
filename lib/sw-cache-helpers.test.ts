@@ -1,9 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  ACTIVE_SW_CACHE_NAME,
   filterWarmablePageUrls,
+  getStaleCacheNames,
   IMAGE_CACHE_TTL_MS,
   isPrivateOrAuthRoute,
+  isSafeResponseToCache,
+  MAX_SW_CACHE_ENTRY_BYTES,
   PAGE_WARM_FRESH_MS,
   shouldServeCachedImageDirectly,
   shouldSkipPageWarm,
@@ -62,4 +66,66 @@ test('filterWarmablePageUrls deduplicates, strips _rsc, and excludes api/_next/c
     'https://dermaspaceng.com/services',
     'https://dermaspaceng.com/about',
   ])
+})
+
+test('getStaleCacheNames selects all legacy caches for deletion and preserves only active lean cache', () => {
+  assert.deepEqual(
+    getStaleCacheNames([
+      'dermaspace-pages-v4',
+      'dermaspace-images-v4',
+      ACTIVE_SW_CACHE_NAME,
+      'dermaspace-static-v3',
+    ]),
+    ['dermaspace-pages-v4', 'dermaspace-images-v4', 'dermaspace-static-v3'],
+  )
+})
+
+test('isSafeResponseToCache rejects opaque, cross-origin, non-200, and oversized responses', () => {
+  const origin = 'https://dermaspaceng.com'
+  assert.equal(
+    isSafeResponseToCache({
+      ok: true,
+      status: 200,
+      type: 'basic',
+      url: 'https://dermaspaceng.com/offline',
+      origin,
+      contentLength: 18_000,
+    }),
+    true,
+  )
+  // Opaque responses trigger Chromium ~7 MB storage padding — must NEVER be cached
+  assert.equal(
+    isSafeResponseToCache({
+      ok: false,
+      status: 0,
+      type: 'opaque',
+      url: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo.webp',
+      origin,
+    }),
+    false,
+  )
+  // Cross-origin CORS responses must also be rejected from SW Cache Storage
+  assert.equal(
+    isSafeResponseToCache({
+      ok: true,
+      status: 200,
+      type: 'cors',
+      url: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/photo.webp',
+      origin,
+      contentLength: 40_000,
+    }),
+    false,
+  )
+  // Oversized same-origin responses must be rejected
+  assert.equal(
+    isSafeResponseToCache({
+      ok: true,
+      status: 200,
+      type: 'basic',
+      url: 'https://dermaspaceng.com/large-asset',
+      origin,
+      contentLength: MAX_SW_CACHE_ENTRY_BYTES + 1,
+    }),
+    false,
+  )
 })

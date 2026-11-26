@@ -519,6 +519,12 @@
   50% { transform: scaleY(1.3); opacity: 1; }
 }
 
+/* Hero slide progress bar — pure CSS transform replaces 100ms React state loop. */
+@keyframes hero-slide-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 /* Festive winter snow drift — gentle diagonal fall with subtle sway. */
 @keyframes hero-snow {
   0% {

@@ -47,6 +47,25 @@ function clearCookie(name: string) {
   document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; ${sameSite}`
 }
 
+function readStoredManualCountry(): string | null {
+  try {
+    const fromStorage = window.localStorage.getItem('ds.geo.manual_country')
+    if (fromStorage) return normalizeCountryCode(fromStorage)
+  } catch {
+    // ignore storage restrictions
+  }
+  return normalizeCountryCode(getCookie('user_selected_country'))
+}
+
+function writeStoredManualCountry(code: CountryCode) {
+  try {
+    window.localStorage.setItem('ds.geo.manual_country', code)
+  } catch {
+    // ignore storage restrictions
+  }
+  setCookie('user_selected_country', code, 30)
+}
+
 function readStoredLastDetected(): string | null {
   try {
     const fromStorage = window.localStorage.getItem('ds.geo.last_detected')
@@ -130,7 +149,7 @@ export function GeoProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const savedManualCode = getCookie('user_selected_country')
+      const savedManualCode = readStoredManualCountry()
       const bannerDismissed = getCookie('geo_banner_dismissed') === 'true'
       const lastDetectedCode = readStoredLastDetected()
 
@@ -155,7 +174,16 @@ export function GeoProvider({ children }: { children: ReactNode }) {
       setIsDetected(true)
     }
 
-    // 1) Fast synchronous paint from middleware cookie if middleware genuinely detected it.
+    // 1) Immediately restore any explicit manual currency selection (leaving
+    //    default first-time renders & crawlers strictly in NGN / Nigeria).
+    const initialManualCode = readStoredManualCountry()
+    if (initialManualCode && initialManualCode in COUNTRIES) {
+      setCountryState(COUNTRIES[initialManualCode as CountryCode])
+      setShowBanner(false)
+      setIsDetected(true)
+    }
+
+    // 2) Fast synchronous check from middleware cookie (for geo-blocking & banner).
     const cookieDetectedFlag = getCookie('geo_detected') === '1'
     const cookieCountry = cookieDetectedFlag
       ? normalizeCountryCode(getCookie('geo_country'))
@@ -164,10 +192,8 @@ export function GeoProvider({ children }: { children: ReactNode }) {
       applyDetectedCountry(cookieCountry)
     }
 
-    // 2) Always verify live against `/api/geo` (uncached) so VPN switches,
-    //    static-cached pages, and iframe cookie partitioning never leave a
-    //    stale country. Fall back to browser egress lookup only when the
-    //    server saw no geo header and no public IP (e.g. localhost).
+    // 3) Verify live against `/api/geo` for geo-blocking and optional banner
+    //    visibility; currency stays NGN unless the user manually selects one.
     const detectLive = async () => {
       let liveCode: string | null = null
       try {
@@ -209,7 +235,7 @@ export function GeoProvider({ children }: { children: ReactNode }) {
     const countryInfo = COUNTRIES[code]
     if (countryInfo) {
       setCountryState(countryInfo)
-      setCookie('user_selected_country', code, 30)
+      writeStoredManualCountry(code)
       setShowBanner(false)
     }
   }

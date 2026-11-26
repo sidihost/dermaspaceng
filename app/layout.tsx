@@ -19,7 +19,6 @@ import { IncompleteProfileBanner } from '@/components/auth/incomplete-profile-ba
 import { UnverifiedEmailBanner } from '@/components/auth/unverified-email-banner'
 import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prompt-gate'
 import { PageViewTracker } from '@/components/shared/page-view-tracker'
-import { RoleBadge } from '@/components/shared/role-badge'
 import { CookieBanner } from '@/components/shared/cookie-banner'
 import { AuthProvider } from '@/components/auth/auth-provider'
 import { getServerInitialAuth } from '@/lib/server-auth-bootstrap'
@@ -335,61 +334,83 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               "@context": "https://schema.org",
-              "@type": "DaySpa",
-              "name": "Dermaspace Esthetic & Wellness Centre",
-              "image": "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp",
-              "url": "https://dermaspaceng.com",
-              "telephone": "+2349061836625",
-              "email": "info@dermaspaceng.com",
-              "address": [
+              "@graph": [
                 {
-                  "@type": "PostalAddress",
-                  "streetAddress": "237b Muri Okunola St",
-                  "addressLocality": "Victoria Island",
-                  "addressRegion": "Lagos",
-                  "postalCode": "106104",
-                  "addressCountry": "NG"
+                  "@type": "DaySpa",
+                  "@id": "https://dermaspaceng.com/#victoria-island",
+                  "name": "Dermaspace Esthetic and Wellness Centre - Victoria Island",
+                  "url": "https://dermaspaceng.com/locations",
+                  "telephone": "+2349061836625",
+                  "priceRange": "₦₦",
+                  "sameAs": [
+                    "https://www.instagram.com/dermaspace.ng"
+                  ],
+                  "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": "237b Muri Okunola Street, Victoria Island",
+                    "addressLocality": "Lagos",
+                    "addressRegion": "Lagos",
+                    "addressCountry": "NG"
+                  },
+                  "geo": {
+                    "@type": "GeoCoordinates",
+                    "latitude": 6.4318565,
+                    "longitude": 3.4367421
+                  },
+                  "openingHoursSpecification": [
+                    {
+                      "@type": "OpeningHoursSpecification",
+                      "dayOfWeek": ["Sunday", "Monday"],
+                      "opens": "13:00",
+                      "closes": "19:00"
+                    },
+                    {
+                      "@type": "OpeningHoursSpecification",
+                      "dayOfWeek": ["Tuesday", "Wednesday", "Thursday"],
+                      "opens": "10:00",
+                      "closes": "19:00"
+                    },
+                    {
+                      "@type": "OpeningHoursSpecification",
+                      "dayOfWeek": ["Friday", "Saturday"],
+                      "opens": "10:00",
+                      "closes": "22:00"
+                    }
+                  ]
                 },
                 {
-                  "@type": "PostalAddress",
-                  "streetAddress": "9 Agbeke Rotinwa Close, Dolphin Extension Estate",
-                  "addressLocality": "Ikoyi",
-                  "addressRegion": "Lagos",
-                  "postalCode": "106104",
-                  "addressCountry": "NG"
+                  "@type": "DaySpa",
+                  "@id": "https://dermaspaceng.com/#ikoyi",
+                  "name": "Dermaspace Esthetic and Wellness Centre - Ikoyi",
+                  "url": "https://dermaspaceng.com/locations",
+                  "telephone": "+2349013134945",
+                  "priceRange": "₦₦",
+                  "sameAs": [
+                    "https://www.instagram.com/dermaspace.ng"
+                  ],
+                  "address": {
+                    "@type": "PostalAddress",
+                    "streetAddress": "9 Agbeke Rotinwa Close, Dolphin Extension Estate, Ikoyi",
+                    "addressLocality": "Lagos",
+                    "postalCode": "106104",
+                    "addressRegion": "Lagos",
+                    "addressCountry": "NG"
+                  },
+                  "openingHoursSpecification": [
+                    {
+                      "@type": "OpeningHoursSpecification",
+                      "dayOfWeek": ["Tuesday", "Wednesday", "Thursday"],
+                      "opens": "10:00",
+                      "closes": "19:00"
+                    },
+                    {
+                      "@type": "OpeningHoursSpecification",
+                      "dayOfWeek": ["Friday", "Saturday"],
+                      "opens": "10:00",
+                      "closes": "22:00"
+                    }
+                  ]
                 }
-              ],
-              "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": 6.4281,
-                "longitude": 3.4219
-              },
-              "openingHoursSpecification": [
-                {
-                  "@type": "OpeningHoursSpecification",
-                  "dayOfWeek": ["Sunday", "Monday"],
-                  "opens": "13:00",
-                  "closes": "19:00"
-                },
-                {
-                  "@type": "OpeningHoursSpecification",
-                  "dayOfWeek": ["Tuesday", "Wednesday", "Thursday"],
-                  "opens": "10:00",
-                  "closes": "19:00"
-                },
-                {
-                  "@type": "OpeningHoursSpecification",
-                  "dayOfWeek": ["Friday", "Saturday"],
-                  "opens": "10:00",
-                  "closes": "22:00"
-                }
-              ],
-              "priceRange": "₦₦₦",
-              "servesCuisine": "Spa & Wellness Services",
-              "sameAs": [
-                "https://www.facebook.com/dermaspaceng/",
-                "https://x.com/DermaspaceN",
-                "https://www.instagram.com/dermaspace.ng/"
               ]
             }),
           }}
@@ -563,15 +584,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               </RootErrorBoundary>
             </BodyWrapper>
             <RootErrorBoundary label="mobile-nav"><MobileNav /></RootErrorBoundary>
-            {/* Global role badge — renders a small "Admin mode" /
-                "Staff mode" pill on every public page when the
-                viewer is signed in with a privileged account. The
-                component self-suppresses on /admin and /staff
-                (those surfaces already announce the role through
-                their sidebar) and on auth screens. For regular
-                customers and guests it returns null, so this has
-                zero impact on the public site for them. */}
-            <RootErrorBoundary label="role-badge"><RoleBadge /></RootErrorBoundary>
             {/* ePrivacy / cookie consent banner — bottom-anchored,
                 self-gated on a localStorage flag so it only ever
                 shows on the first visit, and self-suppressed on

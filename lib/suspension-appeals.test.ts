@@ -74,9 +74,17 @@ describe('suspension-appeals pure helpers', () => {
     assert.deepEqual(verifyAppealToken(wrongPurpose), { ok: false, code: 'invalid' })
   })
 
-  it('builds a canonical appeal URL with encoded token', () => {
+  it('builds a canonical unified /appeal URL with encoded token for all roles', () => {
     const url = buildAppealUrl('abc+123/xyz=', 'https://www.dermaspaceng.com')
     assert.equal(url, 'https://www.dermaspaceng.com/appeal?token=abc%2B123%2Fxyz%3D')
+    assert.equal(
+      buildAppealUrl('staff+1', 'staff', 'https://www.dermaspaceng.com'),
+      'https://www.dermaspaceng.com/appeal?token=staff%2B1',
+    )
+    assert.equal(
+      buildAppealUrl('admin+1', 'admin', 'https://www.dermaspaceng.com'),
+      'https://www.dermaspaceng.com/appeal?token=admin%2B1',
+    )
   })
 
   it('validates appeal message length and optional contact email', () => {

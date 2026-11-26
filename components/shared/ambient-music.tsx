@@ -12,7 +12,6 @@ const MUSIC_URLS = [
 export default function AmbientMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
   // `usePathname()` can return `null` in edge cases (pre-hydration,
   // app-shell transitions). Default to an empty string so the
   // downstream `.startsWith()` call never throws, which was crashing
@@ -22,69 +21,67 @@ export default function AmbientMusic() {
   const musicPages = ['/', '/services', '/about', '/gallery', '/contact', '/booking', '/packages']
   const shouldPlayMusic = musicPages.some(page => pathname === page || pathname.startsWith(page + '/'))
 
+  const releaseAudio = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    try {
+      audio.pause()
+      audio.removeAttribute('src')
+      audio.load()
+    } catch {
+      /* ignore teardown errors */
+    }
+    audioRef.current = null
+  }
+
   useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio()
-      audioRef.current.loop = true
-      audioRef.current.volume = 0.12
-      audioRef.current.preload = 'auto'
-      audioRef.current.src = MUSIC_URLS[0]
-      audioRef.current.onerror = () => {
-        if (audioRef.current) {
-          audioRef.current.src = MUSIC_URLS[1]
-        }
-      }
-    }
-
-    const tryAutoPlay = async () => {
-      if (audioRef.current && shouldPlayMusic) {
-        try {
-          await audioRef.current.play()
-          setIsPlaying(true)
-        } catch {
-          setIsPlaying(false)
-        }
-      }
-      setIsVisible(true)
-    }
-
-    tryAutoPlay()
-    
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
+      releaseAudio()
     }
   }, [])
 
   useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-
-    if (!shouldPlayMusic && isPlaying) {
-      audio.pause()
+    if (!shouldPlayMusic && (isPlaying || audioRef.current)) {
+      releaseAudio()
       setIsPlaying(false)
     }
   }, [shouldPlayMusic, isPlaying])
 
-  const toggleMusic = async () => {
-    if (!audioRef.current) return
-    
-    if (isPlaying) {
-      audioRef.current.pause()
-      setIsPlaying(false)
-    } else {
-      try {
-        await audioRef.current.play()
-        setIsPlaying(true)
-      } catch {
-        // Autoplay blocked
+  const getOrCreateAudio = () => {
+    if (!audioRef.current) {
+      const audio = new Audio()
+      audio.loop = true
+      audio.volume = 0.12
+      audio.preload = 'none'
+      audio.src = MUSIC_URLS[0]
+      let triedFallback = false
+      audio.onerror = () => {
+        if (!triedFallback && audioRef.current === audio) {
+          triedFallback = true
+          audio.src = MUSIC_URLS[1]
+        }
       }
+      audioRef.current = audio
+    }
+    return audioRef.current
+  }
+
+  const toggleMusic = async () => {
+    if (isPlaying) {
+      audioRef.current?.pause()
+      setIsPlaying(false)
+      return
+    }
+    const audio = getOrCreateAudio()
+    try {
+      await audio.play()
+      setIsPlaying(true)
+    } catch {
+      setIsPlaying(false)
     }
   }
 
-  if (!shouldPlayMusic || !isVisible) return null
+  if (!shouldPlayMusic) return null
 
   return (
     <button

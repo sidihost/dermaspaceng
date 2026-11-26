@@ -81,10 +81,31 @@ export default function GalleryPreview() {
   }, [preferred])
 
   const [currentIndex, setCurrentIndex] = useState(0)
+  const currentIndexRef = useRef(0)
   const [isPaused, setIsPaused] = useState(false)
+  const [isInView, setIsInView] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalIndex, setModalIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex
+  }, [currentIndex])
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setIsInView(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // Whenever the filtered set changes (preference loads in), reset to the
   // first image so indexes can't point outside the new array.
@@ -130,17 +151,26 @@ export default function GalleryPreview() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [modalOpen, modalIndex])
 
-  // Auto-slide every 4 seconds
+  // Auto-slide every 4 seconds only while visible in viewport and tab is active
   useEffect(() => {
-    if (isPaused) return
-    
+    if (isPaused || !isInView) return
+
     const interval = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % galleryItems.length
-      scrollToIndex(nextIndex)
+      if (document.hidden) return
+      const nextIndex = (currentIndexRef.current + 1) % galleryItems.length
+      if (scrollRef.current) {
+        const cardWidth = scrollRef.current.offsetWidth * 0.85
+        scrollRef.current.scrollTo({
+          left: nextIndex * (cardWidth + 16),
+          behavior: 'smooth',
+        })
+      }
+      currentIndexRef.current = nextIndex
+      setCurrentIndex(nextIndex)
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [currentIndex, isPaused])
+  }, [isPaused, isInView, galleryItems.length])
 
   const scrollToIndex = (index: number) => {
     if (scrollRef.current) {
@@ -175,7 +205,7 @@ export default function GalleryPreview() {
 
   return (
     // Standard home-section rhythm: 48px mobile, 64px desktop.
-    <section className="py-12 md:py-16 bg-white">
+    <section ref={sectionRef} className="py-12 md:py-16 bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="px-4">
           <SectionHeader

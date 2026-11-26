@@ -4,10 +4,59 @@ import dynamic from 'next/dynamic'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ButterflyLogo } from './butterfly-logo'
-import {
-  RepAvatar,
-  type DermaLiveChatStatusDetail,
-} from './derma-inline-live-chat'
+import type { DermaLiveChatStatusDetail } from './derma-inline-live-chat'
+
+/**
+ * Lightweight avatar for the floating launcher when a live rep is active.
+ * Kept inline here so we don't statically import the ~2,700-line
+ * `derma-inline-live-chat.tsx` module into every page bundle.
+ */
+function LauncherRepAvatar({
+  src,
+  name,
+  size = 42,
+}: {
+  src?: string | null
+  name?: string | null
+  size?: number
+}) {
+  const cleanSrc = (src ?? '').trim()
+  const [imgFailed, setImgFailed] = useState(false)
+
+  useEffect(() => {
+    setImgFailed(false)
+  }, [cleanSrc])
+
+  const label = (name ?? '').trim() || 'Live Support'
+  const initial = label.charAt(0).toUpperCase() || 'D'
+
+  if (cleanSrc && !imgFailed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={cleanSrc}
+        alt={label}
+        width={size}
+        height={size}
+        referrerPolicy="no-referrer"
+        decoding="async"
+        onError={() => setImgFailed(true)}
+        style={{ width: size, height: size }}
+        className="w-full h-full rounded-full object-cover shrink-0 bg-[#FAF6FB] border-2 border-white"
+      />
+    )
+  }
+
+  return (
+    <div
+      aria-label={label}
+      style={{ width: size, height: size }}
+      className="w-full h-full rounded-full bg-[#7B2D8E] text-white text-[13px] font-semibold flex items-center justify-center shrink-0 select-none border-2 border-white"
+    >
+      {initial}
+    </div>
+  )
+}
 
 /**
  * DermaAI is large (≈6,600 lines + speech / audio / map deps), so we
@@ -99,6 +148,11 @@ export default function DermaAIMount() {
   // book-a-facial CTA card and the `/derma-ai` deep-link all use
   // them). This keeps the two state machines in lock-step.
   const [isOpen, setIsOpen] = useState(false)
+  // Keep the ~9,700-line DermaAI tree completely unmounted (and its JS
+  // chunk undownloaded) until the visitor opens the assistant or has an
+  // active live-chat session. This saves tens of MB of renderer RAM on
+  // every page load.
+  const [hasMountedPanel, setHasMountedPanel] = useState(false)
   const [liveStatus, setLiveStatus] = useState<DermaLiveChatStatusDetail | null>(null)
   // Timestamp of the most recent open transition. Used by the
   // backdrop in `derma-ai.tsx` to ignore phantom clicks fired by
@@ -171,6 +225,7 @@ export default function DermaAIMount() {
       } catch {
         /* old browsers — backdrop falls back to its own opened-at ref */
       }
+      setHasMountedPanel(true)
       setIsOpen(true)
     }
     const handleOpenLiveChat = (event: Event) => {
@@ -200,6 +255,9 @@ export default function DermaAIMount() {
       ).__dermaLiveChatStatus
       if (initialLiveStatus) {
         setLiveStatus(initialLiveStatus)
+        if (initialLiveStatus.isLiveMode) {
+          setHasMountedPanel(true)
+        }
       }
     } catch {
       /* ignore */
@@ -371,11 +429,10 @@ export default function DermaAIMount() {
             }`}
           >
             <div className="w-full h-full rounded-full bg-[#7B2D8E] p-[2px] flex items-center justify-center">
-              <RepAvatar
+              <LauncherRepAvatar
                 src={liveStatus.staff.avatarUrl}
                 name={liveRepName}
                 size={42}
-                className="w-full h-full border-2 border-white"
               />
             </div>
           </div>
@@ -425,11 +482,13 @@ export default function DermaAIMount() {
             and renders a recoverable fallback in-place, so any
             real render error degrades to a "Derma AI hit a snag"
             card the user can retry from. */}
-      <DermaAI
-        hideLauncher
-        open={isOpen}
-        onOpenChange={(next) => setIsOpen(next)}
-      />
+      {hasMountedPanel && (
+        <DermaAI
+          hideLauncher
+          open={isOpen}
+          onOpenChange={(next) => setIsOpen(next)}
+        />
+      )}
     </>
   )
 }

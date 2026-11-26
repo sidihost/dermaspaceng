@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Calendar,
   Clock,
@@ -46,16 +46,35 @@ const STAGE_DURATION_MS = 3800
 
 export default function BookingSection() {
   const [stage, setStage] = useState<Stage>(0)
+  const [isInView, setIsInView] = useState(false)
+  const sectionRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
+    const el = sectionRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setIsInView(true)
+      return
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInView(entry.isIntersecting),
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!isInView) return
     const id = window.setInterval(() => {
+      if (document.hidden) return
       setStage((s) => ((s + 1) % 3) as Stage)
     }, STAGE_DURATION_MS)
     return () => window.clearInterval(id)
-  }, [])
+  }, [isInView])
 
   return (
     <section
+      ref={sectionRef}
       id="booking-section"
       className="py-12 md:py-20 bg-[#FAF6FC] overflow-hidden"
     >

@@ -94,10 +94,11 @@ export interface EffectiveCountryDecision {
 
 /**
  * Determines which country & banner state to apply given the freshly detected
- * network country and any previously stored user preference / last detected
- * country. If the visitor's network country changed (e.g. they turned on or
- * switched a VPN), the newly detected country automatically takes precedence
- * so VPN switches are reflected immediately.
+ * network country and any previously stored manual user preference.
+ *
+ * Initial renders and crawlers (e.g. Googlebot from US IPs) ALWAYS default to
+ * Nigeria (NGN / ₦). Currency only changes when a visitor explicitly selects
+ * another currency manually via the switcher.
  */
 export function computeEffectiveCountry(params: {
   detectedCode: string | null
@@ -106,29 +107,7 @@ export function computeEffectiveCountry(params: {
   bannerDismissed: boolean
 }): EffectiveCountryDecision {
   const detected = normalizeCountryCode(params.detectedCode)
-  const lastDetected = normalizeCountryCode(params.lastDetectedCode)
   const savedManual = normalizeCountryCode(params.savedManualCode)
-
-  const networkCountryChanged = Boolean(detected && detected !== lastDetected)
-
-  if (!networkCountryChanged && savedManual && savedManual in COUNTRIES) {
-    return {
-      country: COUNTRIES[savedManual as CountryCode],
-      showBanner: false,
-      shouldClearManualOverride: false,
-    }
-  }
-
-  if (detected) {
-    const info = resolveCountryInfo(detected)
-    const shouldShowBanner =
-      detected !== 'NG' && (networkCountryChanged || !params.bannerDismissed)
-    return {
-      country: info,
-      showBanner: shouldShowBanner,
-      shouldClearManualOverride: networkCountryChanged,
-    }
-  }
 
   if (savedManual && savedManual in COUNTRIES) {
     return {
@@ -138,9 +117,11 @@ export function computeEffectiveCountry(params: {
     }
   }
 
+  const shouldShowBanner = Boolean(detected && detected !== 'NG' && !params.bannerDismissed)
+
   return {
     country: COUNTRIES.NG,
-    showBanner: false,
+    showBanner: shouldShowBanner,
     shouldClearManualOverride: false,
   }
 }

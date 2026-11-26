@@ -54,12 +54,24 @@ export function LocationBanner() {
           </span>
           <p className="min-w-0 truncate leading-tight text-gray-700">
             <span className="sm:hidden">
-              {country.flag} <strong className="font-semibold text-gray-900">{country.name}</strong> · Prices in{' '}
+              {country.flag}{' '}
+              <strong className="font-semibold text-gray-900">
+                {country.code === 'NG' ? 'Lagos, Nigeria' : country.name}
+              </strong>{' '}
+              · Prices in{' '}
               <strong className="font-semibold text-[#7B2D8E]">{country.currency}</strong>
             </span>
             <span className="hidden sm:inline">
-              {country.flag} Visiting from{' '}
-              <strong className="font-semibold text-gray-900">{country.name}</strong> — prices are shown in{' '}
+              {country.flag}{' '}
+              {country.code === 'NG' ? (
+                <strong className="font-semibold text-gray-900">Lagos, Nigeria</strong>
+              ) : (
+                <>
+                  Visiting from{' '}
+                  <strong className="font-semibold text-gray-900">{country.name}</strong>
+                </>
+              )}{' '}
+              — prices are shown in{' '}
               <strong className="font-semibold text-[#7B2D8E]">
                 {country.currency} ({country.symbol})
               </strong>

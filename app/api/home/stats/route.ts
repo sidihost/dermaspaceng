@@ -27,7 +27,7 @@ import { homeStatsKey } from "@/lib/stats-cache"
 // to the calendar year of the original Victoria Island opening and
 // derive the rest so the home page never says "7 years" when we've
 // rolled into year 8.
-const FOUNDED_YEAR = 2018
+const FOUNDED_YEAR = 2019
 
 const TTL_SECONDS = 60
 

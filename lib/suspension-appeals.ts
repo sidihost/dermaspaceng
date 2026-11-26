@@ -94,9 +94,8 @@ export function verifyAppealToken(
   }
 }
 
-export function getAppealPathForRole(role?: string | null): '/appeal/staff' | '/appeal' {
-  const normalized = normalizeAppealRole(role)
-  return normalized === 'staff' || normalized === 'admin' ? '/appeal/staff' : '/appeal'
+export function getAppealPathForRole(_role?: string | null): '/appeal' {
+  return '/appeal'
 }
 
 export function buildAppealUrl(

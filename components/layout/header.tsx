@@ -261,14 +261,10 @@ export default function Header() {
               shimmer. Decorative only, so it's aria-hidden. */}
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
             {[
-              { left: '8%', dur: '3.2s', delay: '0s', drift: '8px', color: '#FFFFFF', w: 5, h: 8, round: false },
-              { left: '20%', dur: '4.1s', delay: '0.8s', drift: '-6px', color: '#F6C453', w: 6, h: 6, round: true },
-              { left: '33%', dur: '3.6s', delay: '1.6s', drift: '10px', color: '#FFFFFF', w: 4, h: 7, round: false },
-              { left: '46%', dur: '4.4s', delay: '0.4s', drift: '-9px', color: '#F6C453', w: 5, h: 5, round: true },
-              { left: '58%', dur: '3.0s', delay: '2.1s', drift: '7px', color: '#FFFFFF', w: 6, h: 9, round: false },
-              { left: '70%', dur: '4.0s', delay: '1.1s', drift: '-7px', color: '#F6C453', w: 5, h: 5, round: true },
-              { left: '82%', dur: '3.5s', delay: '0.2s', drift: '9px', color: '#FFFFFF', w: 4, h: 7, round: false },
-              { left: '92%', dur: '4.3s', delay: '1.9s', drift: '-5px', color: '#F6C453', w: 6, h: 6, round: true },
+              { left: '12%', dur: '3.6s', delay: '0s', drift: '8px', color: '#FFFFFF', w: 5, h: 8, round: false },
+              { left: '36%', dur: '4.2s', delay: '1.1s', drift: '-7px', color: '#F6C453', w: 5, h: 5, round: true },
+              { left: '64%', dur: '3.4s', delay: '1.8s', drift: '7px', color: '#FFFFFF', w: 5, h: 8, round: false },
+              { left: '88%', dur: '4.1s', delay: '0.6s', drift: '-6px', color: '#F6C453', w: 5, h: 5, round: true },
             ].map((p, i) => (
               <span
                 key={i}
@@ -280,6 +276,7 @@ export default function Header() {
                   backgroundColor: p.color,
                   borderRadius: p.round ? '9999px' : '1px',
                   opacity: 0.85,
+                  animationPlayState: isScrolled ? 'paused' : 'running',
                   // CSS custom props consumed by the keyframe.
                   '--dur': p.dur,
                   '--delay': p.delay,

@@ -78,18 +78,18 @@ describe('resolveEmailSender', () => {
   })
 })
 
-describe('Dedicated Staff vs. Client suspension appeals', () => {
-  it('routes staff and admin roles to /appeal/staff and users to /appeal', () => {
-    assert.equal(getAppealPathForRole('staff'), '/appeal/staff')
-    assert.equal(getAppealPathForRole('admin'), '/appeal/staff')
+describe('Unified suspension appeals with automatic role detection', () => {
+  it('routes all roles (staff, admin, user) to unified /appeal path', () => {
+    assert.equal(getAppealPathForRole('staff'), '/appeal')
+    assert.equal(getAppealPathForRole('admin'), '/appeal')
     assert.equal(getAppealPathForRole('user'), '/appeal')
     assert.equal(getAppealPathForRole(null), '/appeal')
 
     const staffUrl = buildAppealUrl('tok_123', 'staff', 'https://www.dermaspaceng.com')
-    assert.equal(staffUrl, 'https://www.dermaspaceng.com/appeal/staff?token=tok_123')
+    assert.equal(staffUrl, 'https://www.dermaspaceng.com/appeal?token=tok_123')
 
     const adminUrl = buildAppealUrl('tok_456', 'admin', 'https://www.dermaspaceng.com')
-    assert.equal(adminUrl, 'https://www.dermaspaceng.com/appeal/staff?token=tok_456')
+    assert.equal(adminUrl, 'https://www.dermaspaceng.com/appeal?token=tok_456')
 
     const clientUrl = buildAppealUrl('tok_789', 'user', 'https://www.dermaspaceng.com')
     assert.equal(clientUrl, 'https://www.dermaspaceng.com/appeal?token=tok_789')
@@ -112,7 +112,8 @@ describe('Dedicated Staff vs. Client suspension appeals', () => {
     assert.match(built.subject, /Staff Access Has Been Suspended/i)
     assert.match(built.html, /<title>Dermaspace Team Security<\/title>/)
     assert.match(built.html, /Submit Staff Appeal/)
-    assert.match(built.html, /\/appeal\/staff\?token=staff_tok/)
+    assert.match(built.html, /\/appeal\?token=staff_tok/)
+    assert.doesNotMatch(built.html, /\/appeal\/staff/)
     assert.match(built.html, /#7B2D8E/i)
     assert.doesNotMatch(built.html, /background-color:\s*#3E104B/i)
     assert.doesNotMatch(built.html, /\bclinic\b|\bhospital\b/i)

@@ -46,7 +46,7 @@ function CrystalGlyph({ size, color }: { size: number; color: string }) {
  * and zero Sparkles/Zap icons.
  */
 export function ChristmasHeroIllustration({ active = true }: ChristmasHeroIllustrationProps) {
-  const snowflakes = useMemo(() => generateFestiveSnowflakes(16, 20261225), [])
+  const snowflakes = useMemo(() => generateFestiveSnowflakes(8, 20261225), [])
 
   return (
     <div

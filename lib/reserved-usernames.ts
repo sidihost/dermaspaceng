@@ -150,6 +150,21 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'feed',
   'rss',
 
+  // Legacy regional / country slugs (Dermaspace operates in Lagos, Nigeria)
+  'uk',
+  'gb',
+  'us',
+  'usa',
+  'ca',
+  'canada',
+  'ae',
+  'uae',
+  'gh',
+  'ghana',
+  'za',
+  'united-kingdom',
+  'united-states',
+
   // Brand identifiers.
   'dermaspace',
   'dermaspaceng',
@@ -193,6 +208,21 @@ export const ROUTE_ALIASES: Readonly<Record<string, string>> = {
   download: '/desktop',
   downloads: '/desktop',
   apps: '/desktop',
+
+  // Legacy international / country landing slugs → redirect to main site
+  uk: '/',
+  gb: '/',
+  us: '/',
+  usa: '/',
+  ca: '/',
+  canada: '/',
+  ae: '/',
+  uae: '/',
+  gh: '/',
+  ghana: '/',
+  za: '/',
+  'united-kingdom': '/',
+  'united-states': '/',
 
   // Misc convenience
   home: '/',

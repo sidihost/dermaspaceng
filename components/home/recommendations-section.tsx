@@ -253,6 +253,7 @@ function Rail({
   // doesn't need to trigger a re-render, and the interval reads
   // the latest value on every tick.
   const pausedRef = useRef(false)
+  const inViewRef = useRef(false)
 
   useEffect(() => {
     // Don't bother scheduling a tick until we actually have cards
@@ -267,15 +268,29 @@ function Rail({
       window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     if (prefersReducedMotion) return
 
+    const el = scrollerRef.current
+    let observer: IntersectionObserver | null = null
+    if (el && typeof IntersectionObserver !== 'undefined') {
+      observer = new IntersectionObserver(
+        ([entry]) => {
+          inViewRef.current = entry.isIntersecting
+        },
+        { threshold: 0.1 },
+      )
+      observer.observe(el)
+    } else {
+      inViewRef.current = true
+    }
+
     const id = window.setInterval(() => {
-      const el = scrollerRef.current
-      if (!el || pausedRef.current) return
+      const target = scrollerRef.current
+      if (!target || pausedRef.current || !inViewRef.current || document.hidden) return
 
       // The card width changes between mobile (160px) and sm+
       // (184px). Read the first child width at runtime so we always
       // step exactly one card forward, matching the snap-mandatory
       // points the browser will land on.
-      const firstCard = el.querySelector<HTMLElement>('[data-rec-card]')
+      const firstCard = target.querySelector<HTMLElement>('[data-rec-card]')
       const gap = 16 // matches the `gap-3 sm:gap-4` (12/16px) — round to 16
       const step = firstCard ? firstCard.offsetWidth + gap : 200
 
@@ -283,15 +298,18 @@ function Rail({
       // give the comparison a small tolerance because browsers can
       // snap to a position 1-2px short of `scrollWidth`.
       const atEnd =
-        el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
+        target.scrollLeft + target.clientWidth >= target.scrollWidth - 4
       if (atEnd) {
-        el.scrollTo({ left: 0, behavior: 'smooth' })
+        target.scrollTo({ left: 0, behavior: 'smooth' })
       } else {
-        el.scrollBy({ left: step, behavior: 'smooth' })
+        target.scrollBy({ left: step, behavior: 'smooth' })
       }
     }, 4000)
 
-    return () => window.clearInterval(id)
+    return () => {
+      window.clearInterval(id)
+      observer?.disconnect()
+    }
   }, [hasItems])
 
   // Pause on any interaction. We intentionally keep it paused for

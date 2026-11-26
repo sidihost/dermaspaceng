@@ -11,24 +11,37 @@ const stats = [
 ]
 
 function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: string; decimal?: boolean }) {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(value)
   const ref = useRef<HTMLDivElement>(null)
-  const [hasAnimated, setHasAnimated] = useState(false)
+  const hasAnimatedRef = useRef(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+
+    let timer: ReturnType<typeof setInterval> | null = null
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          setHasAnimated(true)
+        if (entry.isIntersecting && !hasAnimatedRef.current) {
+          hasAnimatedRef.current = true
+          // Only animate when a user has scrolled down to the stats section;
+          // initial loads and crawlers with tall viewports keep the final value.
+          if (window.scrollY <= 0) {
+            setCount(value)
+            return
+          }
           const duration = 2000
           const steps = 60
           const stepValue = value / steps
           let current = 0
-          const timer = setInterval(() => {
+          setCount(0)
+          timer = setInterval(() => {
             current += stepValue
             if (current >= value) {
               setCount(value)
-              clearInterval(timer)
+              if (timer) clearInterval(timer)
+              timer = null
             } else {
               setCount(current)
             }
@@ -39,8 +52,11 @@ function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: str
     )
 
     if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [value, hasAnimated])
+    return () => {
+      observer.disconnect()
+      if (timer) clearInterval(timer)
+    }
+  }, [value])
 
   return (
     <div ref={ref} className="text-2xl md:text-3xl font-bold text-white">

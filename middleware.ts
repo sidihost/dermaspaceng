@@ -290,6 +290,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Legacy /appeal/staff links → unified /appeal portal (the backend
+  // automatically detects staff/admin/client roles from the token or DB).
+  if (pathname === '/appeal/staff' || pathname.startsWith('/appeal/staff/')) {
+    const url = new URL('/appeal', request.url)
+    url.search = request.nextUrl.search
+    return NextResponse.redirect(url, 308)
+  }
+
   // Redirect well-known aliases to their canonical routes BEFORE the
   // catch-all `app/[username]/page.tsx` gets a chance to swallow them.
   // Example: `/register` → `/signup`, `/login` → `/signin`. We use 308
