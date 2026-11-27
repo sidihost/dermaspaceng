@@ -7,6 +7,7 @@ import {
   readCachedUser,
   commitAuthenticatedUser,
   clearCachedUser,
+  hasClientAuthChangedSinceLoad,
 } from './auth-cache'
 
 describe('parseAuthUidCookie', () => {
@@ -71,6 +72,23 @@ describe('resolveValidCachedUser', () => {
     })
 
     const res = resolveValidCachedUser(adminCache, 'client-123', now)
+    assert.equal(res.user, null)
+    assert.equal(res.shouldPurge, true)
+  })
+
+  it('purges stale cache immediately when ds_auth_uid cookie is absent (logged out)', () => {
+    const staleCache = JSON.stringify({
+      savedAt: now - 500,
+      user: {
+        id: 'client-123',
+        firstName: 'Ada',
+        lastName: 'Obi',
+        avatarUrl: '/avatars/f1.jpg',
+        role: 'user',
+      },
+    })
+
+    const res = resolveValidCachedUser(staleCache, null, now)
     assert.equal(res.user, null)
     assert.equal(res.shouldPurge, true)
   })
@@ -152,11 +170,15 @@ describe('commitAuthenticatedUser & readCachedUser browser integration', () => {
     assert.equal(cached?.avatarUrl, '/avatars/f2.jpg')
     assert.equal('email' in (cached as unknown as Record<string, unknown>), false)
 
+    assert.equal(hasClientAuthChangedSinceLoad(), true)
+
     // Switch ds_auth_uid cookie to a different account — cached entry must purge synchronously
     cookieJar.cookie = `${AUTH_UID_COOKIE}=admin-1`
     assert.equal(readCachedUser(), null)
     assert.equal(store.has('dermaspace.auth.user.v2'), false)
 
     clearCachedUser()
+    assert.equal(hasClientAuthChangedSinceLoad(), false)
+    assert.equal(parseAuthUidCookie(cookieJar.cookie), null)
   })
 })

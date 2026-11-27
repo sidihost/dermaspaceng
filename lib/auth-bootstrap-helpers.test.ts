@@ -45,7 +45,7 @@ describe('shouldRevalidateAuthOnMount', () => {
     )
   })
 
-  it('revalidates when SSR resolved guest but browser carries a ds_auth_uid cookie', () => {
+  it('skips revalidation when SSR resolved guest despite a stale ds_auth_uid cookie', () => {
     assert.equal(
       shouldRevalidateAuthOnMount({
         initialResolved: true,
@@ -53,6 +53,21 @@ describe('shouldRevalidateAuthOnMount', () => {
         hasSessionCookie: false,
         hasCookieUid: true,
         cookieUidMismatch: false,
+        clientAuthChanged: false,
+      }),
+      false,
+    )
+  })
+
+  it('revalidates when an in-tab SPA sign-in occurred after a guest SSR load', () => {
+    assert.equal(
+      shouldRevalidateAuthOnMount({
+        initialResolved: true,
+        hasInitialUser: false,
+        hasSessionCookie: false,
+        hasCookieUid: true,
+        cookieUidMismatch: false,
+        clientAuthChanged: true,
       }),
       true,
     )

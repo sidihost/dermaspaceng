@@ -101,6 +101,33 @@ export function getCookieAuthUid(): string | null {
 }
 
 /**
+ * Expire the non-sensitive `ds_auth_uid` cookie directly in `document.cookie`
+ * so a stale UID cookie can never survive logout or session expiry even if
+ * the user closes the tab before `/api/auth/logout` responds.
+ */
+export function clearClientAuthUidCookie(): void {
+  if (typeof document === 'undefined') return
+  try {
+    const expired = `${AUTH_UID_COOKIE}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+    document.cookie = expired
+    if (typeof window !== 'undefined' && window.location?.protocol === 'https:') {
+      document.cookie = `${expired}; Secure`
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+// Tracks whether an in-tab sign-in or profile commit occurred AFTER this
+// browser document loaded. Lets `useAuth()` distinguish a brand-new SPA
+// sign-in from a stale `ds_auth_uid` cookie left behind after logout/expiry.
+let clientAuthCommittedInTab = false
+
+export function hasClientAuthChangedSinceLoad(): boolean {
+  return clientAuthCommittedInTab
+}
+
+/**
  * Display-only fields that are safe to keep in localStorage.
  *
  * Adding a new field here is a security-relevant decision — it
@@ -247,11 +274,11 @@ export function resolveValidCachedUser(
     if (!safe) {
       return { user: null, shouldPurge: true }
     }
-    // Session-owner mismatch guard: if the server's active `ds_auth_uid`
-    // cookie belongs to a different user (e.g. admin impersonated a client,
-    // or the visitor signed in as another account via OAuth), never expose
-    // the previous account's avatar/role even for a single frame.
-    if (cookieAuthUid && safe.id !== cookieAuthUid) {
+    // Session-owner guard: require a live `ds_auth_uid` cookie matching the
+    // cached user ID. If the cookie is absent (user logged out) or belongs to
+    // a different account (account switch / impersonation), purge the cached
+    // entry immediately so the previous user never flashes for a single frame.
+    if (!cookieAuthUid || safe.id !== cookieAuthUid) {
       return { user: null, shouldPurge: true }
     }
     return { user: safe, shouldPurge: false }
@@ -323,6 +350,8 @@ export function writeCachedUser(
  * read could have cleaned them up.
  */
 export function clearCachedUser(): void {
+  clientAuthCommittedInTab = false
+  clearClientAuthUidCookie()
   if (!isBrowser()) return
   try { window.localStorage.removeItem(STORAGE_KEY) } catch {}
   for (const legacy of LEGACY_STORAGE_KEYS) {
@@ -335,6 +364,7 @@ export function clearCachedUser(): void {
  * signed-in user payload changed (login, account switch, avatar/profile edit).
  */
 export function broadcastUserUpdated(): void {
+  clientAuthCommittedInTab = true
   if (typeof window === 'undefined') return
   try {
     window.dispatchEvent(new Event('user-updated'))

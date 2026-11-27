@@ -7,6 +7,7 @@ import {
   writeCachedUser,
   clearCachedUser,
   getCookieAuthUid,
+  hasClientAuthChangedSinceLoad,
 } from '@/lib/auth-cache'
 import { useAuthBootstrap } from '@/components/auth/auth-provider'
 import {
@@ -93,12 +94,17 @@ export function useAuth(): AuthState {
       bootstrap.user.id !== cookieUid,
   )
 
+  const clientAuthChanged = hasMounted ? hasClientAuthChangedSinceLoad() : false
+  const isConfirmedSsrGuest =
+    bootstrap.resolved && !bootstrap.user && !bootstrap.hasSessionCookie
+
   const revalidateOnMount = shouldRevalidateAuthOnMount({
     initialResolved: bootstrap.resolved,
     hasInitialUser: Boolean(bootstrap.user),
     hasSessionCookie: bootstrap.hasSessionCookie,
     hasCookieUid: Boolean(cookieUid),
     cookieUidMismatch: initialUidMismatch,
+    clientAuthChanged,
   })
 
   const { data, isLoading, mutate } = useSWR<AuthMePayload>(
@@ -120,12 +126,28 @@ export function useAuth(): AuthState {
   const hasUidMismatch = Boolean(
     hasMounted && cookieUid && swrUser?.id && swrUser.id !== cookieUid,
   )
+  // Only treat `cookieUid` without `swrUser` as a newly-established session
+  // when SSR didn't already confirm the visitor is signed out on this load
+  // (or an explicit in-tab sign-in occurred since page load). Otherwise the
+  // cookie is a stale leftover from an expired/logged-out session and must be
+  // purged silently without ever flashing a logged-in profile state.
+  const hasStaleCookieForConfirmedGuest = Boolean(
+    hasMounted && cookieUid && isConfirmedSsrGuest && !clientAuthChanged && !swrUser,
+  )
   const hasNewSessionMissingFromSwr = Boolean(
-    hasMounted && cookieUid && data !== undefined && !swrUser,
+    hasMounted &&
+      cookieUid &&
+      data !== undefined &&
+      !swrUser &&
+      !hasStaleCookieForConfirmedGuest,
   )
 
   useEffect(() => {
     if (!hasMounted) return
+    if (hasStaleCookieForConfirmedGuest) {
+      clearCachedUser()
+      return
+    }
     if (hasUidMismatch || hasNewSessionMissingFromSwr) {
       const freshCached = readCachedUser()
       void mutate(
@@ -135,7 +157,13 @@ export function useAuth(): AuthState {
         { revalidate: true },
       )
     }
-  }, [hasMounted, hasUidMismatch, hasNewSessionMissingFromSwr, mutate])
+  }, [
+    hasMounted,
+    hasStaleCookieForConfirmedGuest,
+    hasUidMismatch,
+    hasNewSessionMissingFromSwr,
+    mutate,
+  ])
 
   useEffect(() => {
     const onUpdate = () => {
@@ -164,7 +192,13 @@ export function useAuth(): AuthState {
       else onUpdate()
     }
     const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) onUpdate()
+      if (!e.persisted) return
+      if (!getCookieAuthUid()) {
+        clearCachedUser()
+        onLogout()
+      } else {
+        onUpdate()
+      }
     }
     window.addEventListener('user-updated', onUpdate)
     window.addEventListener('auth-logout', onLogout)

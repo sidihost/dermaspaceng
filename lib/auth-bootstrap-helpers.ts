@@ -77,10 +77,10 @@ export function parsePgStringArray(value: unknown): string[] {
  * - When the root Server Component already resolved auth (`initialResolved: true`):
  *   - If `hasInitialUser` is true and there is no UID mismatch, the server JUST
  *     validated the live session for this exact document -> skip redundant mount fetch.
- *   - If `hasInitialUser` is false and neither `hasSessionCookie` nor `hasCookieUid`
- *     is set, the visitor is a confirmed guest -> skip redundant 401 mount fetch.
- *   - If `hasCookieUid` is set while `hasInitialUser` is false (e.g. session changed
- *     in-browser or bfcache restored), revalidate immediately.
+ *   - If `hasInitialUser` is false and `hasSessionCookie` is false, the server
+ *     confirmed there is NO valid session on this load -> skip redundant 401 mount
+ *     fetch (any leftover `ds_auth_uid` cookie is stale and gets scrubbed) UNLESS
+ *     an in-tab client sign-in (`clientAuthChanged: true`) occurred after load.
  * - When rendered outside `<AuthProvider>` (`initialResolved: false`), always
  *   fetch `/api/auth/me` on mount as before.
  */
@@ -90,10 +90,12 @@ export function shouldRevalidateAuthOnMount(opts: {
   hasSessionCookie: boolean
   hasCookieUid: boolean
   cookieUidMismatch?: boolean
+  clientAuthChanged?: boolean
 }): boolean {
   if (!opts.initialResolved) return true
   if (opts.cookieUidMismatch) return true
   if (opts.hasInitialUser) return false
-  if (opts.hasSessionCookie || opts.hasCookieUid) return true
+  if (opts.hasSessionCookie) return true
+  if (opts.hasCookieUid && opts.clientAuthChanged) return true
   return false
 }

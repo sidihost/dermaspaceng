@@ -38,7 +38,6 @@ import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 import { UserAvatar } from '@/components/shared/user-avatar'
 import { logoutAndRedirect } from '@/lib/logout'
 import { formatAccountSubtitle } from '@/lib/auth-onboarding'
-import { getCookieAuthUid } from '@/lib/auth-cache'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
 // the desktop SemanticServiceSearch component uses — keeping them in
@@ -143,12 +142,7 @@ export default function MobileNav() {
   //   - listens for the cross-component `user-updated` event so an
   //     avatar change in /dashboard/settings updates this slot
   //     immediately without a page refresh.
-  const { user: authUser, isLoading: isAuthLoading } = useAuth()
-  const [hasCookieUid, setHasCookieUid] = useState(false)
-
-  useEffect(() => {
-    setHasCookieUid(Boolean(getCookieAuthUid()))
-  }, [authUser])
+  const { user: authUser } = useAuth()
 
   // Adapter — keep the rest of this file's `user` references working
   // with the same shape the local UserData interface had. The hook
@@ -308,6 +302,7 @@ export default function MobileNav() {
   const authPages = [
     '/signin',
     '/signup',
+    '/logout',
     '/forgot-password',
     '/reset-password',
     '/complete-profile',
@@ -961,10 +956,9 @@ export default function MobileNav() {
               <span className={`text-[10px] font-medium ${isActive('/booking') ? 'text-white' : 'text-white/70'}`}>Book</span>
             </Link>
 
-            {/* Profile slot — three states:
+            {/* Profile slot — two clean server-hydrated states:
                 • signed in → avatar with brand-purple ring.
-                • ds_auth_uid cookie present while still fetching → quiet placeholder.
-                • signed out → Sign in glyph immediately. */}
+                • signed out → Sign in glyph immediately (never flashes "Profile"). */}
             {user ? (
               <button
                 type="button"
@@ -995,14 +989,6 @@ export default function MobileNav() {
                 </span>
                 <span className="text-[10px] font-medium text-white/70">Profile</span>
               </button>
-            ) : hasCookieUid && isAuthLoading ? (
-              <div
-                aria-label="Loading profile"
-                className="flex flex-col items-center gap-1 py-1.5 px-2"
-              >
-                <div className="w-7 h-7 rounded-full bg-white/20 animate-pulse" />
-                <span className="text-[10px] font-medium text-white/50">Profile</span>
-              </div>
             ) : (
               <button
                 type="button"
