@@ -42,7 +42,8 @@ export async function GET() {
         const r = (await sql`
           SELECT COUNT(*)::int AS count
             FROM users
-           WHERE role = 'user'
+           WHERE COALESCE(role, 'user') = 'user'
+             AND deleted_at IS NULL
         `) as Array<{ count: number }>
         clients = Number(r[0]?.count ?? 0)
       } catch {

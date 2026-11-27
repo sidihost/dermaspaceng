@@ -32,6 +32,8 @@ import {
   CircleSlash,
 } from 'lucide-react'
 
+import { formatCronRunSummary } from '@/lib/birthday-cron'
+
 type ManifestEntry = {
   id: string
   path: string
@@ -56,7 +58,7 @@ type Orphan = {
 
 type ApiResp = { manifest: ManifestEntry[]; orphans: Orphan[]; error?: string }
 
-const fetcher = (u: string) => fetch(u).then((r) => r.json())
+const fetcher = (u: string) => fetch(u, { cache: 'no-store' }).then((r) => r.json())
 
 // Friendly relative-time formatter. We don't need full i18n here —
 // admins read English and want a quick "registered 3 days ago" feel.
@@ -89,7 +91,7 @@ export default function QStashSchedulesPage() {
 
   const flash = (kind: 'ok' | 'err', msg: string) => {
     setToast({ kind, msg })
-    setTimeout(() => setToast(null), 4000)
+    setTimeout(() => setToast(null), 7000)
   }
 
   const sync = async () => {
@@ -114,19 +116,10 @@ export default function QStashSchedulesPage() {
   const runNow = async (path: string) => {
     setRunningPath(path)
     try {
-      // The admin trigger uses GET + bearer; in the browser we don't
-      // have CRON_SECRET, so this falls through to the dev-mode allow
-      // path. In production, we don't actually want admins firing jobs
-      // straight from the browser — but on staging it's invaluable.
-      const r = await fetch(path)
+      const r = await fetch(path, { cache: 'no-store' })
       const j = await r.json()
       if (r.ok) {
-        flash(
-          'ok',
-          j.sent !== undefined
-            ? `Ran ${path} — sent ${j.sent}, failed ${j.failed ?? 0}`
-            : `Ran ${path} — ${JSON.stringify(j).slice(0, 80)}`,
-        )
+        flash('ok', formatCronRunSummary(path, j))
       } else {
         flash('err', `Run failed (${r.status}): ${j.error ?? 'unknown'}`)
       }

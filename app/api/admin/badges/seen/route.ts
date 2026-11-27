@@ -55,7 +55,10 @@ export async function GET() {
   }
 
   const baselines = await readBaselines(admin.id)
-  return NextResponse.json({ baselines })
+  return NextResponse.json(
+    { baselines },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
 
 export async function POST(req: NextRequest) {
@@ -108,5 +111,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save baseline' }, { status: 500 })
   }
 
-  return NextResponse.json({ baselines: next })
+  return NextResponse.json(
+    { baselines: next },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }

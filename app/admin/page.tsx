@@ -180,7 +180,7 @@ export default function AdminDashboard() {
     let isMounted = true
     const fetchStats = async () => {
       try {
-        const res = await fetch('/api/admin/stats')
+        const res = await fetch('/api/admin/stats', { cache: 'no-store' })
         if (res.ok && isMounted) {
           const data = await res.json()
           setStats(data.stats)
@@ -194,8 +194,20 @@ export default function AdminDashboard() {
       }
     }
     fetchStats()
+    const onFocus = () => {
+      void fetchStats()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchStats()
+      }
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
     return () => {
       isMounted = false
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [])
 

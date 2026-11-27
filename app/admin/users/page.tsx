@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { mutate as globalMutate } from 'swr'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -179,7 +180,10 @@ export default function UsersPage() {
         if (!res.ok) return
         const body = await res.json()
         const todayNew = Number(body?.stats?.users?.todayNew) || 0
-        if (!cancelled) markSurfaceSeen('users', todayNew)
+        if (!cancelled) {
+          markSurfaceSeen('users', todayNew)
+          void globalMutate('/api/admin/stats', body, { revalidate: false })
+        }
       } catch {
         /* non-critical — badge simply clears on next poll */
       }

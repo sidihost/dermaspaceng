@@ -11,6 +11,8 @@ import { getAppOrigin, xPlaceholderEmail } from '@/lib/x-oauth'
 import { buildXCallbackHtml } from '@/lib/x-callback-html'
 import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-onboarding'
 import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
+import { notifyAdmins } from '@/lib/notifications'
 
 /**
  * X (Twitter) OAuth 2.0 — step 2: exchange the authorization code,
@@ -297,6 +299,18 @@ export async function GET(request: NextRequest) {
       profileComplete = Boolean(row.profile_complete)
       userRole = row.role || 'user'
       userEmail = row.email || userEmail
+
+      await invalidateAfterSignup().catch(() => {})
+      void notifyAdmins({
+        title: 'New user registered',
+        message: `${firstName || xUser.username || 'A new client'} (@${xUser.username}) signed up with X.`,
+        type: 'system',
+        referenceType: 'user',
+        referenceId: userId,
+        actionUrl: `/admin/users/${userId}`,
+        roles: ['admin'],
+        push: false,
+      }).catch(() => {})
     }
 
     const userAgent = request.headers.get('user-agent') || 'Unknown device'

@@ -7,6 +7,7 @@ import { createSession } from '@/lib/auth'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
 
 // ---------------------------------------------------------------------------
 // Email verification — OTP flow.
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
     // Welcome email — best-effort, only on the FIRST verification so a
     // re-submitted code doesn't spam a duplicate.
     if (!wasAlreadyVerified) {
+      await invalidateAfterSignup().catch(() => {})
       try {
         await sendWelcomeEmail({
           email: user.email,

@@ -8,6 +8,8 @@ import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-o
 import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
+import { notifyAdmins } from '@/lib/notifications'
 
 interface MicrosoftTokenResponse {
   access_token: string
@@ -210,6 +212,18 @@ export async function GET(request: NextRequest) {
 
       userId = (newUserResult.rows[0] as { id: string }).id
       profileComplete = false
+
+      await invalidateAfterSignup().catch(() => {})
+      void notifyAdmins({
+        title: 'New user registered',
+        message: `${firstName || msUser.displayName || 'A new client'} (${email}) signed up with Microsoft.`,
+        type: 'system',
+        referenceType: 'user',
+        referenceId: userId,
+        actionUrl: `/admin/users/${userId}`,
+        roles: ['admin'],
+        push: false,
+      }).catch(() => {})
 
       // Microsoft has verified the email for us, so we skip our own
       // verification email and go straight to the welcome email — same

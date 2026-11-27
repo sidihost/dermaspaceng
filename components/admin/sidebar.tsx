@@ -40,6 +40,13 @@ import { NotificationBell } from '@/components/shared/notification-bell'
 import { ChristmasLogoHat } from '@/components/shared/christmas-logo-hat'
 import type { AdminPermissions } from '@/lib/admin-permissions'
 import { logoutAndRedirect } from '@/lib/logout'
+import {
+  DATED_ADMIN_SURFACES,
+  clampBaselineToCurrentCount,
+  computeUnseenBadgeCount,
+  getEffectiveSeenBaseline,
+  getLagosDateStamp,
+} from '@/lib/admin-badge-counts'
 
 // Brand logo — same asset used in the public header and footer so the admin
 // surface feels continuous with the rest of the product.
@@ -168,7 +175,7 @@ const adminNavItems: NavItem[] = [
 // otherwise larger but the fetcher only types the bits we read so
 // adding more counts later is a one-line change.
 const adminStatsFetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((res) => {
+  fetch(url, { credentials: 'include', cache: 'no-store' }).then((res) => {
     if (!res.ok) throw new Error('stats failed')
     return res.json() as Promise<{
       stats: {
@@ -222,7 +229,7 @@ const BASELINE_PREFIX = 'admin:badgeBaseline:'
 // day it was written (`YYYY-MM-DD:count`). On read, a baseline from an
 // earlier day is treated as 0 — otherwise yesterday's "seen 5 signups"
 // baseline would suppress today's genuinely-new signup (max(0, 1-5) = 0).
-const DATED_SURFACES = new Set(['users', 'newsletter'])
+const DATED_SURFACES = DATED_ADMIN_SURFACES
 
 // In-memory mirror hydrated from /api/admin/badges/seen (PostgreSQL app_settings)
 // with zero localStorage writes.
@@ -234,20 +241,21 @@ type ServerBaselinesResponse = {
 }
 
 const seenBaselinesFetcher = (url: string) =>
-  fetch(url, { credentials: 'include' }).then((res) => {
+  fetch(url, { credentials: 'include', cache: 'no-store' }).then((res) => {
     if (!res.ok) throw new Error('seen baselines failed')
     return res.json() as Promise<ServerBaselinesResponse>
   })
 
 function todayStamp(): string {
-  return new Date().toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
+  return getLagosDateStamp()
 }
 
 function readMemoryBaseline(surface: string): number {
-  const rec = memoryBaselines.get(surface)
-  if (!rec) return 0
-  if (DATED_SURFACES.has(surface) && rec.date !== todayStamp()) return 0
-  return rec.count
+  return getEffectiveSeenBaseline({
+    surface,
+    baseline: memoryBaselines.get(surface),
+    todayDate: todayStamp(),
+  })
 }
 
 function readBaseline(surface: string): number {
@@ -477,21 +485,95 @@ export default function AdminSidebar({ userRole, userName, userAvatar, userGende
   }, [])
   void seenTick
 
+  // Clamp any stale high-watermark baseline down to the current live count
+  // (e.g. if a user registered today was archived/deleted, or a ticket was
+  // resolved) so the very next new registration/item lights up the badge.
+  useEffect(() => {
+    if (!statsData) return
+    const today = todayStamp()
+    const pairs: Array<[string, number]> = [
+      ['users', newUsersToday],
+      ['newsletter', newNewsletterToday],
+      ['tickets', openTickets],
+      ['consultations', pendingConsultations],
+      ['bookings', pendingBookings],
+      ['feedback', newFeedback],
+    ]
+    let changed = false
+    for (const [surface, currentCount] of pairs) {
+      const existing = memoryBaselines.get(surface)
+      if (!existing) continue
+      const clamped = clampBaselineToCurrentCount({
+        surface,
+        currentCount,
+        baseline: existing,
+        todayDate: today,
+      })
+      if (!clamped) {
+        memoryBaselines.delete(surface)
+        changed = true
+      } else if (clamped.count !== existing.count || clamped.date !== existing.date) {
+        memoryBaselines.set(surface, clamped)
+        changed = true
+      }
+    }
+    if (changed) setSeenTick((t) => t + 1)
+  }, [
+    statsData,
+    newUsersToday,
+    newNewsletterToday,
+    openTickets,
+    pendingConsultations,
+    pendingBookings,
+    newFeedback,
+  ])
+
   const getCount = (href: string): number => {
+    const today = todayStamp()
     if (href === '/admin/complaints')
-      return Math.max(0, openTickets - readBaseline('tickets'))
+      return computeUnseenBadgeCount({
+        surface: 'tickets',
+        currentCount: openTickets,
+        baseline: memoryBaselines.get('tickets'),
+        todayDate: today,
+      })
     if (href === '/admin/consultations')
-      return Math.max(0, pendingConsultations - readBaseline('consultations'))
+      return computeUnseenBadgeCount({
+        surface: 'consultations',
+        currentCount: pendingConsultations,
+        baseline: memoryBaselines.get('consultations'),
+        todayDate: today,
+      })
     if (href === '/admin/live-chat')
       return Math.max(0, waitingLiveChats)
     if (href === '/admin/users')
-      return Math.max(0, newUsersToday - readBaseline('users'))
+      return computeUnseenBadgeCount({
+        surface: 'users',
+        currentCount: newUsersToday,
+        baseline: memoryBaselines.get('users'),
+        todayDate: today,
+      })
     if (href === '/admin/bookings')
-      return Math.max(0, pendingBookings - readBaseline('bookings'))
+      return computeUnseenBadgeCount({
+        surface: 'bookings',
+        currentCount: pendingBookings,
+        baseline: memoryBaselines.get('bookings'),
+        todayDate: today,
+      })
     if (href === '/admin/feedback')
-      return Math.max(0, newFeedback - readBaseline('feedback'))
+      return computeUnseenBadgeCount({
+        surface: 'feedback',
+        currentCount: newFeedback,
+        baseline: memoryBaselines.get('feedback'),
+        todayDate: today,
+      })
     if (href === '/admin/newsletter')
-      return Math.max(0, newNewsletterToday - readBaseline('newsletter'))
+      return computeUnseenBadgeCount({
+        surface: 'newsletter',
+        currentCount: newNewsletterToday,
+        baseline: memoryBaselines.get('newsletter'),
+        todayDate: today,
+      })
     if (href === '/admin/appeals')
       return Math.max(0, pendingAppeals - readBaseline('appeals'))
     return 0

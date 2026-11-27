@@ -40,6 +40,11 @@
 
 import { Client, Receiver } from "@upstash/qstash"
 import { getCanonicalAppOrigin } from "./push-origin"
+import {
+  findMatchingSchedulesForPath,
+  getAllowedQStashVerifyUrls,
+  normalizeSchedulePath,
+} from "./qstash-reconcile"
 
 let _client: Client | null = null
 let _receiver: Receiver | null = null
@@ -76,8 +81,12 @@ function getReceiver(): Receiver {
 // explicit NEXT_PUBLIC_SITE_URL (so localhost devs can use a tunnel /
 // staging URL) and fall back to the Vercel-provided VERCEL_URL.
 
-function publicBaseUrl(): string {
+export function getCanonicalQStashOrigin(): string {
   return getCanonicalAppOrigin()
+}
+
+function publicBaseUrl(): string {
+  return getCanonicalQStashOrigin()
 }
 
 /**
@@ -177,8 +186,9 @@ export async function cancelMessage(messageId: string | null | undefined): Promi
 // We prefer URL-based identity over QStash's auto-generated scheduleId
 // because the URL is stable across redeploys and human-readable in the
 // Upstash dashboard. `upsertSchedule()` therefore lists existing
-// schedules, deletes any that point at the same destination, then
-// creates a fresh one — equivalent to PUT semantics.
+// schedules, deletes any that point at the same pathname (even across
+// `www.` vs apex or older deploy origins), then creates a fresh one —
+// equivalent to PUT semantics.
 
 export type QStashScheduleSummary = {
   scheduleId: string
@@ -219,18 +229,19 @@ export async function upsertSchedule(args: {
   body?: unknown
 }): Promise<string> {
   const qstash = getQStash()
-  const destination = `${publicBaseUrl()}${args.path}`
+  const normPath = normalizeSchedulePath(args.path)
+  const destination = `${publicBaseUrl()}${normPath}`
 
-  // Wipe any existing schedule pointing at the same destination —
-  // including duplicates from previous deploys that may have crept in.
+  // Wipe EVERY existing schedule targeting the same pathname — even if it
+  // was registered under a prior origin (e.g. `www.` vs apex) or left over
+  // as a duplicate from an earlier deploy.
   const existing = await listSchedules()
-  for (const s of existing) {
-    if (s.destination === destination) {
-      try {
-        await qstash.schedules.delete(s.scheduleId)
-      } catch (err) {
-        console.warn(`[qstash] failed to delete stale schedule ${s.scheduleId}:`, err)
-      }
+  const staleMatches = findMatchingSchedulesForPath(existing, normPath)
+  for (const s of staleMatches) {
+    try {
+      await qstash.schedules.delete(s.scheduleId)
+    } catch (err) {
+      console.warn(`[qstash] failed to delete stale schedule ${s.scheduleId}:`, err)
     }
   }
 
@@ -265,21 +276,31 @@ export async function deleteSchedule(scheduleId: string): Promise<void> {
  * Verify a QStash webhook. Reads the `Upstash-Signature` header and the
  * raw body; returns true on valid signatures, false otherwise.
  *
- * Use this at the top of every route that QStash calls into so attackers
- * can't trigger "publish this post" by guessing the URL.
+ * Verifies cryptographically against our canonical origin URL (and its
+ * apex/`www.` production counterpart when applicable) so domain-prefix
+ * differences between QStash schedules and `NEXT_PUBLIC_APP_URL` never
+ * silently drop legitimate scheduled jobs.
  */
 export async function verifyQStash(req: Request, rawBody: string): Promise<boolean> {
   const signature = req.headers.get("upstash-signature")
   if (!signature) return false
   try {
     const receiver = getReceiver()
-    return await receiver.verify({
-      signature,
-      body: rawBody,
-      // Optional but tightens security: the URL the message was sent to
-      // must match where we're verifying it.
-      url: `${publicBaseUrl()}${new URL(req.url).pathname}`,
-    })
+    const pathname = new URL(req.url).pathname
+    const allowedUrls = getAllowedQStashVerifyUrls(publicBaseUrl(), pathname)
+    for (const url of allowedUrls) {
+      try {
+        const ok = await receiver.verify({
+          signature,
+          body: rawBody,
+          url,
+        })
+        if (ok) return true
+      } catch {
+        // Try the next canonical allowlisted URL before failing closed.
+      }
+    }
+    return false
   } catch (err) {
     console.warn("[qstash] verify failed:", err)
     return false

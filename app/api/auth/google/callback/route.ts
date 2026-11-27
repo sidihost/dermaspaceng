@@ -8,6 +8,8 @@ import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-o
 import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
+import { notifyAdmins } from '@/lib/notifications'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -127,6 +129,18 @@ export async function GET(request: NextRequest) {
 
       userId = newUserResult.rows[0].id
       profileComplete = false
+
+      await invalidateAfterSignup().catch(() => {})
+      void notifyAdmins({
+        title: 'New user registered',
+        message: `${googleUser.given_name || googleUser.name || 'A new client'} (${googleUser.email}) signed up with Google.`,
+        type: 'system',
+        referenceType: 'user',
+        referenceId: userId,
+        actionUrl: `/admin/users/${userId}`,
+        roles: ['admin'],
+        push: false,
+      }).catch(() => {})
 
       // Welcome email — Google signups bypass the email-verification
       // link entirely (Google has already verified ownership), so the

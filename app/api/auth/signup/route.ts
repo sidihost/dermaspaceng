@@ -10,6 +10,8 @@ import { isPasswordPwned } from '@/lib/password-breach'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { rateLimit } from '@/lib/redis'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
+import { notifyAdmins } from '@/lib/notifications'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -183,6 +185,21 @@ export async function POST(request: Request) {
         { status: 400 }
       )
     }
+
+    // Bust admin & home stats caches immediately so new-user counts update
+    // without waiting for the 60s Redis TTL. Also log an in-app bell item
+    // for admins (quiet, no OS push).
+    await invalidateAfterSignup().catch(() => {})
+    void notifyAdmins({
+      title: 'New user registered',
+      message: `${firstName} ${lastName}`.trim() + ` (${email.toLowerCase()}) created an account.`,
+      type: 'system',
+      referenceType: 'user',
+      referenceId: user.id,
+      actionUrl: `/admin/users/${user.id}`,
+      roles: ['admin'],
+      push: false,
+    }).catch(() => {})
 
     // Append the legal-acceptance audit row. Best-effort — if this
     // fails for any reason we don't roll back the signup; the user

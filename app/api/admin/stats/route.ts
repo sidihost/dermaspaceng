@@ -24,6 +24,7 @@ export async function GET() {
 
     return NextResponse.json(
       await cached(KEYS.adminStats, STATS_TTL_SECONDS, computeAdminStats),
+      { headers: { 'Cache-Control': 'no-store' } },
     )
   } catch (error) {
     console.error('Admin stats error:', error)
@@ -36,19 +37,23 @@ export async function GET() {
 
 async function computeAdminStats() {
     // Get total users count, recent (7d), this/last month for growth %,
-    // and "today" — the latter drives the green "new today" badge on
-    // the Users sidebar item, so admins see at a glance whether anyone
-    // signed up since they last looked. We compare against a calendar
-    // day in UTC, not "last 24 hours", so the count resets at midnight
-    // and matches what the Users page itself reports.
+    // and "today" — the latter drives the "new today" badge on the Users
+    // sidebar item, so admins see immediately when someone registers.
+    // We compare against the Africa/Lagos calendar day (matching all other
+    // "today" metrics and the sidebar's seen-baseline date stamp) and
+    // exclude soft-deleted accounts so totals match /admin/users.
     const usersResult = await sql`
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as recent,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as this_month,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days') as last_month,
-        COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('day', NOW())) as today_new
-      FROM users WHERE role = 'user'
+        COUNT(*) FILTER (
+          WHERE created_at >= (DATE_TRUNC('day', NOW() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos')
+        ) as today_new
+      FROM users
+      WHERE COALESCE(role, 'user') = 'user'
+        AND deleted_at IS NULL
     `
 
     // Get consultations stats
@@ -493,7 +498,7 @@ async function computeAdminStats() {
           )::int AS this_week,
           COUNT(*) FILTER (
             WHERE COALESCE(status, 'active') = 'active'
-              AND created_at >= DATE_TRUNC('day', NOW())
+              AND created_at >= (DATE_TRUNC('day', NOW() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos')
           )::int AS today_new
         FROM newsletter_subscribers
       `
@@ -526,7 +531,9 @@ async function computeAdminStats() {
           SELECT
             COUNT(*)::int AS total,
             COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS this_week,
-            COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('day', NOW()))::int AS today_new
+            COUNT(*) FILTER (
+              WHERE created_at >= (DATE_TRUNC('day', NOW() AT TIME ZONE 'Africa/Lagos') AT TIME ZONE 'Africa/Lagos')
+            )::int AS today_new
           FROM newsletter_subscribers
         `
         newsletterTotal = Number(nlFallback[0]?.total) || 0
@@ -663,6 +670,7 @@ async function computeAdminStats() {
         FROM users
         WHERE date_of_birth IS NOT NULL
           AND COALESCE(is_active, true) = true
+          AND deleted_at IS NULL
           AND (
             (
               EXTRACT(MONTH FROM date_of_birth) = EXTRACT(MONTH FROM (NOW() AT TIME ZONE 'Africa/Lagos'))

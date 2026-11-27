@@ -9,6 +9,7 @@ import {
 import { sendStaffPromotedEmail } from '@/lib/email'
 import { isPlaceholderEmail } from '@/lib/auth-onboarding'
 import { ensureStaffProfile } from '@/lib/live-chat'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -468,6 +469,7 @@ export async function PUT(request: NextRequest) {
       )
     ) {
       await invalidateUserMe(String(userId))
+      await invalidateAfterSignup().catch(() => {})
     }
 
     return NextResponse.json({ success: true })

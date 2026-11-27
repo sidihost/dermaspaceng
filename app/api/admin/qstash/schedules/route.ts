@@ -17,11 +17,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
 import {
+  getCanonicalQStashOrigin,
   listSchedules,
   upsertSchedule,
   deleteSchedule,
 } from '@/lib/qstash'
 import { QSTASH_SCHEDULES } from '@/lib/qstash-schedules'
+import { reconcileManifestWithLiveSchedules } from '@/lib/qstash-reconcile'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,52 +36,16 @@ export async function GET() {
 
   try {
     const live = await listSchedules()
+    const { manifest, orphans } = reconcileManifestWithLiveSchedules(
+      QSTASH_SCHEDULES,
+      live,
+      getCanonicalQStashOrigin(),
+    )
 
-    // Build a path-keyed lookup off the live data so we can mark each
-    // manifest entry as registered/missing in O(n).
-    const livePathMap = new Map<string, (typeof live)[number]>()
-    for (const s of live) {
-      try {
-        const u = new URL(s.destination)
-        livePathMap.set(u.pathname, s)
-      } catch {
-        // Skip malformed destinations rather than crashing the page.
-      }
-    }
-
-    const manifest = QSTASH_SCHEDULES.map((cfg) => {
-      const live = livePathMap.get(cfg.path)
-      return {
-        ...cfg,
-        registered: !!live,
-        scheduleId: live?.scheduleId ?? null,
-        liveCron: live?.cron ?? null,
-        cronInSync: live?.cron === cfg.cron,
-        paused: live?.paused ?? false,
-        createdAt: live?.createdAt ?? null,
-      }
-    })
-
-    // Anything live that ISN'T in the manifest is stale (e.g. a path was
-    // renamed in code). Surface it so admins can prune via DELETE.
-    const known = new Set(QSTASH_SCHEDULES.map((c) => c.path))
-    const orphans = live
-      .filter((s) => {
-        try {
-          return !known.has(new URL(s.destination).pathname)
-        } catch {
-          return true
-        }
-      })
-      .map((s) => ({
-        scheduleId: s.scheduleId,
-        destination: s.destination,
-        cron: s.cron,
-        paused: s.paused,
-        createdAt: s.createdAt,
-      }))
-
-    return NextResponse.json({ manifest, orphans })
+    return NextResponse.json(
+      { manifest, orphans },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (err) {
     console.error('[admin/qstash] list failed:', err)
     return NextResponse.json(
