@@ -100,6 +100,7 @@ export async function dispatchSuspensionNotification(args: {
 
 export async function dispatchReinstatementNotification(args: {
   userId: string
+  reason?: string | null
 }): Promise<boolean> {
   try {
     const rows = (await sql`
@@ -123,6 +124,7 @@ export async function dispatchReinstatementNotification(args: {
       email: target.email,
       firstName: target.first_name,
       role: normalizeAppealRole(target.role),
+      reason: args.reason ?? null,
     })
   } catch (err) {
     console.error('[suspension-appeals] failed to send reinstatement email:', err)

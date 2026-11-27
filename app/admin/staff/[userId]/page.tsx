@@ -203,7 +203,7 @@ export default function StaffProfilePage() {
           userId,
           action,
           value,
-          ...(action === 'toggle_active' && value === false && reason?.trim()
+          ...(action === 'toggle_active' && reason?.trim()
             ? { reason: reason.trim() }
             : {}),
         }),
@@ -784,11 +784,25 @@ export default function StaffProfilePage() {
           )
         }
         loading={acting}
-        optionalReason={
-          confirmAction?.action === 'toggle_active' && confirmAction.value === false
+        optionalReason={confirmAction?.action === 'toggle_active'}
+        enableAiComposer={confirmAction?.action === 'toggle_active'}
+        aiContext={
+          confirmAction?.action === 'toggle_active'
+            ? confirmAction.value === false
+              ? `Staff suspension notice note for ${fullName}`
+              : `Staff account reactivation note for ${fullName} whose Dermaspace staff workspace access is being restored`
+            : undefined
         }
-        reasonLabel="Administrative note (optional — shown in staff suspension email)"
-        reasonPlaceholder="Share a brief reason so the staff member knows why access was paused..."
+        reasonLabel={
+          confirmAction?.action === 'toggle_active' && confirmAction.value === true
+            ? 'Reactivation note (optional — shown in reactivation email)'
+            : 'Administrative note (optional — shown in staff suspension email)'
+        }
+        reasonPlaceholder={
+          confirmAction?.action === 'toggle_active' && confirmAction.value === true
+            ? 'Share a brief note for the reactivation email (e.g. Review completed, welcome back)...'
+            : 'Share a brief reason so the staff member knows why access was paused...'
+        }
         onConfirm={(reason) => {
           if (!confirmAction) return
           if (confirmAction.action === 'service_perm') {

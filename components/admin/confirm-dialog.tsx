@@ -17,6 +17,7 @@
 import * as React from 'react'
 import { createPortal } from 'react-dom'
 import { Loader2, Trash2, TriangleAlert, X } from 'lucide-react'
+import { AiTextToolbar } from '@/components/admin/ai-text-toolbar'
 
 type Variant = 'danger' | 'brand'
 type IconComponent = React.ComponentType<{ className?: string }>
@@ -42,6 +43,12 @@ export interface ConfirmDialogProps {
   reasonPlaceholder?: string
   reasonValue?: string
   onReasonChange?: (value: string) => void
+  /** Max characters allowed in the reason textarea (defaults to 500). */
+  reasonMaxLength?: number
+  /** When true (and a reason input is visible), renders the inline Derma AI composer toolbar. */
+  enableAiComposer?: boolean
+  /** Context passed to Derma AI when drafting or rewriting the reason. */
+  aiContext?: string
   /** Disables the confirm action + shows a spinner. */
   loading?: boolean
   /** Alias for `loading` used by some admin/staff callers. */
@@ -90,6 +97,9 @@ export function ConfirmDialog({
   reasonPlaceholder,
   reasonValue,
   onReasonChange,
+  reasonMaxLength = 500,
+  enableAiComposer = false,
+  aiContext,
   loading = false,
   busy = false,
   onConfirm,
@@ -139,6 +149,7 @@ export function ConfirmDialog({
 
   const isDanger = variant === 'danger'
   const showReason = requireReason || optionalReason
+  const showAiBar = showReason && enableAiComposer
   const disabled = isBusy || (requireReason && !currentReason.trim())
 
   const handleReasonInput = (val: string) => {
@@ -165,7 +176,11 @@ export function ConfirmDialog({
       />
 
       {/* Compact flat action prompt */}
-      <div className="relative z-10 w-full sm:max-w-[320px] bg-white rounded-t-3xl sm:rounded-2xl border border-gray-200">
+      <div
+        className={`relative z-10 w-full ${
+          showAiBar ? 'sm:max-w-[420px]' : 'sm:max-w-[320px]'
+        } bg-white rounded-t-3xl sm:rounded-2xl border border-gray-200 max-h-[90dvh] overflow-y-auto`}
+      >
         {/* Mobile grabber */}
         <div
           aria-hidden="true"
@@ -202,20 +217,47 @@ export function ConfirmDialog({
           </div>
 
           {showReason && (
-            <label className="mt-3 block">
-              <span className="text-[11px] font-semibold text-gray-700">
-                {reasonLabel}
-              </span>
-              <textarea
-                value={currentReason}
-                onChange={(e) => handleReasonInput(e.target.value)}
-                rows={2}
-                maxLength={500}
-                placeholder={reasonPlaceholder}
-                autoFocus
-                className="mt-1 w-full resize-none rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-2 text-base sm:text-[12.5px] text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E]"
-              />
-            </label>
+            <div className="mt-3 block">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] font-semibold text-gray-700">
+                  {reasonLabel}
+                </label>
+                <span className="text-[10.5px] text-gray-400 tabular-nums">
+                  {currentReason.length}/{reasonMaxLength}
+                </span>
+              </div>
+              {showAiBar ? (
+                <div className="mt-1.5 rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:border-[#7B2D8E] transition-colors">
+                  <textarea
+                    value={currentReason}
+                    onChange={(e) => handleReasonInput(e.target.value)}
+                    rows={3}
+                    maxLength={reasonMaxLength}
+                    placeholder={reasonPlaceholder}
+                    autoFocus
+                    className="block w-full resize-none bg-white px-3 py-2 text-base sm:text-[12.5px] text-gray-900 outline-none placeholder:text-gray-400 leading-relaxed"
+                  />
+                  <AiTextToolbar
+                    value={currentReason}
+                    onChange={handleReasonInput}
+                    context={aiContext || title}
+                    maxLength={reasonMaxLength}
+                    disabled={isBusy}
+                    compact
+                  />
+                </div>
+              ) : (
+                <textarea
+                  value={currentReason}
+                  onChange={(e) => handleReasonInput(e.target.value)}
+                  rows={2}
+                  maxLength={reasonMaxLength}
+                  placeholder={reasonPlaceholder}
+                  autoFocus
+                  className="mt-1 w-full resize-none rounded-xl border border-gray-200 bg-[#FBF9FC] px-3 py-2 text-base sm:text-[12.5px] text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:bg-white focus:border-[#7B2D8E]"
+                />
+              )}
+            </div>
           )}
 
           <div className="mt-3.5 flex flex-col gap-1.5">

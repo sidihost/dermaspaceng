@@ -274,6 +274,11 @@ export async function PUT(request: NextRequest) {
 
         const wasActive = target.is_active !== false
 
+        const safeReason =
+          typeof reason === 'string' && reason.trim()
+            ? reason.trim().slice(0, 500)
+            : null
+
         await sql`UPDATE users SET is_active = ${value}, updated_at = NOW() WHERE id = ${userId}`
         // Suspending a user must take effect immediately on THEIR
         // device — wipe every active session so the next request 401s.
@@ -281,10 +286,13 @@ export async function PUT(request: NextRequest) {
           await sql`DELETE FROM sessions WHERE user_id = ${userId}`
           await dispatchSuspensionNotification({
             userId: String(userId),
-            reason: typeof reason === 'string' && reason.trim() ? reason.trim() : null,
+            reason: safeReason,
           })
         } else if (value === true && !wasActive) {
-          await dispatchReinstatementNotification({ userId: String(userId) })
+          await dispatchReinstatementNotification({
+            userId: String(userId),
+            reason: safeReason,
+          })
         }
         break
       }

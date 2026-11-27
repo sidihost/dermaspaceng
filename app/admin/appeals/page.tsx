@@ -15,6 +15,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
+import { AiTextToolbar } from '@/components/admin/ai-text-toolbar'
 import { useNotify } from '@/components/shared/notify'
 
 interface AppealItem {
@@ -367,29 +368,49 @@ export default function AdminAppealsPage() {
                   {isPending ? (
                     <div className="space-y-3 pt-1">
                       <div>
-                        <label
-                          htmlFor={`appeal-note-${appeal.id}`}
-                          className="block text-xs font-medium text-gray-600 mb-1.5"
-                        >
-                          Decision note{' '}
-                          <span className="font-normal text-gray-400">
-                            (optional, included in decision email)
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <label
+                            htmlFor={`appeal-note-${appeal.id}`}
+                            className="block text-xs font-medium text-gray-600"
+                          >
+                            Decision note{' '}
+                            <span className="font-normal text-gray-400">
+                              (optional, included in decision email)
+                            </span>
+                          </label>
+                          <span className="text-[11px] text-gray-400 tabular-nums">
+                            {(notesById[appeal.id] || '').length}/500
                           </span>
-                        </label>
-                        <textarea
-                          id={`appeal-note-${appeal.id}`}
-                          rows={2}
-                          value={notesById[appeal.id] || ''}
-                          onChange={(e) =>
-                            setNotesById((prev) => ({
-                              ...prev,
-                              [appeal.id]: e.target.value,
-                            }))
-                          }
-                          placeholder="Add an optional note for the decision email..."
-                          maxLength={500}
-                          className="block w-full min-h-[68px] rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-base sm:text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/15 focus:outline-none resize-y"
-                        />
+                        </div>
+                        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:border-[#7B2D8E] transition-colors">
+                          <textarea
+                            id={`appeal-note-${appeal.id}`}
+                            rows={2}
+                            value={notesById[appeal.id] || ''}
+                            onChange={(e) =>
+                              setNotesById((prev) => ({
+                                ...prev,
+                                [appeal.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Add an optional note for the decision email..."
+                            maxLength={500}
+                            className="block w-full min-h-[68px] bg-white px-3.5 py-2.5 text-base sm:text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:outline-none resize-y"
+                          />
+                          <AiTextToolbar
+                            value={notesById[appeal.id] || ''}
+                            onChange={(nextVal) =>
+                              setNotesById((prev) => ({
+                                ...prev,
+                                [appeal.id]: nextVal,
+                              }))
+                            }
+                            context={`Appeal review decision note for ${role === 'staff' || role === 'admin' ? 'staff member' : 'client'} ${displayName}`}
+                            maxLength={500}
+                            disabled={busy}
+                            compact
+                          />
+                        </div>
                       </div>
                       <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
                         <button

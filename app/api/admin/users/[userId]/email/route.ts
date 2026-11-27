@@ -4,8 +4,57 @@ import { getCurrentUser } from '@/lib/auth'
 import { isPlaceholderEmail } from '@/lib/auth-onboarding'
 import { sendDirectUserEmail } from '@/lib/email'
 import { logStaffActivity } from '@/lib/activity-log'
+import {
+  listAdminClientEmails,
+  recordAdminClientEmail,
+} from '@/lib/admin-client-emails-db'
 
 export const dynamic = 'force-dynamic'
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  try {
+    const admin = await getCurrentUser()
+    if (!admin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (admin.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+
+    const { userId } = await params
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    }
+
+    const rows = (await sql`
+      SELECT id, email
+      FROM users
+      WHERE id = ${userId}
+      LIMIT 1
+    `) as Array<{ id: string; email: string | null }>
+
+    const target = rows[0]
+    if (!target) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const emails = await listAdminClientEmails(
+      String(target.id),
+      target.email || '',
+    )
+
+    return NextResponse.json({ emails })
+  } catch (error) {
+    console.error('[admin/users/email] GET error:', error)
+    return NextResponse.json(
+      { error: 'Failed to load sent emails' },
+      { status: 500 },
+    )
+  }
+}
 
 export async function POST(
   request: NextRequest,
@@ -93,18 +142,33 @@ export async function POST(
       )
     }
 
+    let savedEmail = null
+    try {
+      savedEmail = await recordAdminClientEmail({
+        userId: String(target.id),
+        recipientEmail: target.email,
+        subject,
+        message,
+        sentById: String(admin.id),
+        sentByName: senderName,
+      })
+    } catch (recordErr) {
+      console.error('[admin/users/email] failed to persist sent email history:', recordErr)
+    }
+
     await logStaffActivity({
       staffId: String(admin.id),
       userId: String(target.id),
       actionType: 'email_sent',
       entityType: 'email',
-      entityId: String(target.id),
+      entityId: savedEmail?.id ?? String(target.id),
       description: `Emailed ${recipientName}: ${subject}`,
     })
 
     return NextResponse.json({
       success: true,
       sentTo: target.email,
+      email: savedEmail,
     })
   } catch (error) {
     console.error('[admin/users/email] POST error:', error)

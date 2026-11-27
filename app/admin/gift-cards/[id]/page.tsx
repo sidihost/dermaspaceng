@@ -201,10 +201,10 @@ export default function GiftCardDetailPage() {
             buttonLabel="Verify This Card"
           />
           <Link
-            href={`/gift-cards/verify?code=${encodeURIComponent(verificationCode)}`}
+            href={`/admin/gift-cards/verify?code=${encodeURIComponent(verificationCode)}`}
             className="text-xs font-semibold text-[#7B2D8E] hover:underline"
           >
-            Open Gift Card Verifier
+            Open Admin Verifier
           </Link>
         </div>
       </div>

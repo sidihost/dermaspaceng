@@ -19,7 +19,7 @@ import { invalidateUserMe } from '@/lib/redis'
 import { dispatchReinstatementNotification } from '@/lib/suspension-appeals-db'
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ) {
   let admin
@@ -32,6 +32,12 @@ export async function POST(
   if (!userId) {
     return NextResponse.json({ error: 'userId required' }, { status: 400 })
   }
+
+  const body = (await req.json().catch(() => ({}))) as { reason?: unknown }
+  const safeReason =
+    typeof body?.reason === 'string' && body.reason.trim()
+      ? body.reason.trim().slice(0, 500)
+      : null
 
   const rows = (await sql`
     SELECT id, deleted_at FROM users WHERE id = ${userId} LIMIT 1
@@ -52,7 +58,10 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to reinstate user' }, { status: 500 })
   }
   await invalidateUserMe(String(userId))
-  await dispatchReinstatementNotification({ userId: String(userId) })
+  await dispatchReinstatementNotification({
+    userId: String(userId),
+    reason: safeReason,
+  })
   console.info(`[moderation] admin ${admin.id} reinstated user ${userId}`)
   return NextResponse.json({ ok: true })
 }

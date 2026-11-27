@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { neon } from '@neondatabase/serverless'
+import { sql } from '@/lib/db'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { ensureGiftCardSchema } from '@/lib/gift-cards'
 import { buildGiftCardVerificationCode } from '@/lib/gift-card-verification'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * Admin gift-card detail API.
@@ -10,11 +12,9 @@ import { buildGiftCardVerificationCode } from '@/lib/gift-card-verification'
  * Powers /admin/gift-cards/[id]. Status updates still go through the
  * existing PUT on /api/admin/gift-cards; this route is read-only.
  */
-const sql = neon(process.env.DATABASE_URL!)
-
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await requireAdminOrStaff()
@@ -24,23 +24,30 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid gift card ID' }, { status: 400 })
     }
     const numericId = Number(id)
-    const rows = await sql`
+    const rows = (await sql`
       SELECT
         gcr.*,
         u.first_name AS assigned_first_name,
         u.last_name AS assigned_last_name
       FROM gift_card_requests gcr
-      LEFT JOIN users u ON u.id = gcr.assigned_to
+      LEFT JOIN users u ON CAST(u.id AS TEXT) = CAST(gcr.assigned_to AS TEXT)
       WHERE gcr.id = ${numericId}
       LIMIT 1
-    `
+    `) as Array<Record<string, unknown>>
     if (rows.length === 0) {
       return NextResponse.json({ error: 'Gift card request not found' }, { status: 404 })
+    }
+    let verificationCode: string | null = null
+    try {
+      verificationCode = buildGiftCardVerificationCode(numericId)
+    } catch (err) {
+      console.warn('[admin/gift-cards/id] verification_code skipped:', err instanceof Error ? err.message : err)
     }
     return NextResponse.json({
       request: {
         ...rows[0],
-        verification_code: buildGiftCardVerificationCode(numericId),
+        amount: Number(rows[0].amount ?? 0),
+        verification_code: verificationCode,
       },
     })
   } catch (error) {

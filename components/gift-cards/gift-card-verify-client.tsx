@@ -7,10 +7,15 @@ import {
   ArrowRight,
   Camera,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
+  ExternalLink,
+  FileText,
+  History,
   Loader2,
   MapPin,
   QrCode,
+  RotateCcw,
   Search,
   ShieldAlert,
 } from 'lucide-react'
@@ -59,19 +64,33 @@ interface VerificationResult {
   card?: VerificationCardPayload
 }
 
+interface RecentCheckItem {
+  code: string
+  state: VerificationResult['state']
+  recipientName?: string
+  amount?: number
+  checkedAt: string
+}
+
 export function GiftCardVerifyClient({
   initialCode = '',
-  userRole,
+  userRole = 'staff',
   compact = false,
+  embedded = false,
 }: {
   initialCode?: string
   userRole?: 'admin' | 'staff'
   compact?: boolean
+  /** When true, omits full-page marketing outer padding and renders inside a console layout. */
+  embedded?: boolean
 }) {
   const [codeInput, setCodeInput] = useState(initialCode)
   const [loading, setLoading] = useState(Boolean(initialCode.trim()))
   const [scannerOpen, setScannerOpen] = useState(false)
   const [result, setResult] = useState<VerificationResult | null>(null)
+  const [recentChecks, setRecentChecks] = useState<RecentCheckItem[]>([])
+
+  const isAdmin = userRole === 'admin'
 
   const runVerification = useCallback(async (rawCode: string) => {
     const extracted = extractGiftCardCodeFromScan(rawCode)
@@ -90,6 +109,22 @@ export function GiftCardVerifyClient({
       )
       const data = (await res.json()) as VerificationResult
       setResult(data)
+      setRecentChecks((prev) => {
+        const nextItem: RecentCheckItem = {
+          code: data.card?.verificationCode || data.code || extracted,
+          state: data.state,
+          recipientName: data.card?.recipientName,
+          amount: data.card?.amount,
+          checkedAt: new Date().toLocaleTimeString('en-NG', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        }
+        return [
+          nextItem,
+          ...prev.filter((item) => item.code !== nextItem.code),
+        ].slice(0, 5)
+      })
     } catch {
       setResult({
         valid: false,
@@ -135,6 +170,16 @@ export function GiftCardVerifyClient({
     [compact, runVerification],
   )
 
+  const handleReset = () => {
+    setCodeInput('')
+    setResult(null)
+    if (!compact && typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('code')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }
+
   const card = result?.card
   const cardDesign = card
     ? findGiftCardDesignById(card.design || card.designName)
@@ -146,16 +191,18 @@ export function GiftCardVerifyClient({
       className={
         compact
           ? 'space-y-4'
-          : 'max-w-3xl mx-auto px-4 py-10 sm:py-14 space-y-6'
+          : embedded
+            ? 'space-y-5'
+            : 'max-w-3xl mx-auto px-4 py-10 sm:py-14 space-y-6'
       }
     >
-      {/* Page Header */}
-      {!compact && (
+      {/* Standalone Page Header (used only outside console layouts) */}
+      {!compact && !embedded && (
         <div className="text-center max-w-xl mx-auto space-y-2">
           <div className="inline-flex items-center gap-2 text-[#7B2D8E] text-xs font-bold uppercase tracking-[0.18em]">
             <QrCode className="w-4 h-4" aria-hidden="true" />
             <span>
-              {userRole === 'admin'
+              {isAdmin
                 ? 'Admin Gift Card Verification'
                 : 'Staff Gift Card Verification'}
             </span>
@@ -174,7 +221,10 @@ export function GiftCardVerifyClient({
         onSubmit={handleSubmit}
         className="rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 flex flex-col sm:flex-row gap-2.5"
       >
-        <label htmlFor={compact ? 'gift-card-modal-verify-input' : 'gift-card-verify-input'} className="sr-only">
+        <label
+          htmlFor={compact ? 'gift-card-modal-verify-input' : 'gift-card-verify-input'}
+          className="sr-only"
+        >
           Gift card verification code
         </label>
         <div className="relative flex-1 min-w-0">
@@ -288,11 +338,21 @@ export function GiftCardVerifyClient({
                 <h2 className="text-base sm:text-lg font-bold text-[#1a0d1f]">
                   {result.headline}
                 </h2>
-                {(card?.verificationCode || result.code) && (
-                  <code className="font-mono text-xs font-semibold text-[#5A1D6A] bg-white border border-gray-200 px-2.5 py-1 rounded-lg">
-                    {card?.verificationCode || result.code}
-                  </code>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  {(card?.verificationCode || result.code) && (
+                    <code className="font-mono text-xs font-semibold text-[#5A1D6A] bg-white border border-gray-200 px-2.5 py-1 rounded-lg">
+                      {card?.verificationCode || result.code}
+                    </code>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Check another
+                  </button>
+                </div>
               </div>
               <p className="text-sm text-gray-700 mt-1 leading-relaxed">
                 {result.summary}
@@ -302,8 +362,8 @@ export function GiftCardVerifyClient({
 
           {/* Authenticated Card Details */}
           {card && cardDesign && cardFont && (
-            <div className="p-5 sm:p-6 grid md:grid-cols-12 gap-6 items-center">
-              <div className="md:col-span-6">
+            <div className="p-5 sm:p-6 grid md:grid-cols-12 gap-6 items-start">
+              <div className="md:col-span-6 space-y-3">
                 <GiftCardPreview
                   design={cardDesign}
                   amountText={`₦${card.amount.toLocaleString('en-NG')}`}
@@ -313,6 +373,58 @@ export function GiftCardVerifyClient({
                   fontClassName={cardFont.className}
                   showStack={false}
                 />
+
+                {/* Role-Specific Footer Strip under Preview */}
+                {isAdmin ? (
+                  <div className="rounded-xl border border-[#7B2D8E]/20 bg-[#FAF6FB] p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#7B2D8E]">
+                        <FileText className="w-3.5 h-3.5" />
+                        Admin Order Audit
+                      </span>
+                      <span className="font-mono text-xs font-semibold text-gray-700">
+                        Order #{card.id}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500">
+                          Serial
+                        </p>
+                        <p className="font-mono font-medium text-gray-900 mt-0.5">
+                          {card.serial}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-gray-500">
+                          Invoice
+                        </p>
+                        <p className="font-mono font-medium text-gray-900 mt-0.5 truncate">
+                          {card.invoiceNumber || '—'}
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href={`/admin/gift-cards/${card.id}`}
+                      className="w-full inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white text-xs font-semibold transition-colors"
+                    >
+                      <span>Open Full Order &amp; Print Studio</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-gray-200 bg-[#FBF9FC] p-3.5 space-y-1.5">
+                    <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#7B2D8E]">
+                      <ClipboardCheck className="w-3.5 h-3.5" />
+                      Front-Desk Redemption Check
+                    </p>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {result.state === 'valid'
+                        ? 'Card is verified and paid. Confirm the guest name matches and update the request status in Gift Card Requests after redeeming.'
+                        : 'Do not redeem yet. Confirm payment or activation status in Gift Card Requests or escalate to an administrator.'}
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="md:col-span-6 space-y-4">
@@ -390,15 +502,73 @@ export function GiftCardVerifyClient({
         </div>
       )}
 
-      {/* Console return links */}
-      {!compact && userRole && (
+      {/* Session Check History (Staff desk convenience — stays in session) */}
+      {!compact && recentChecks.length > 0 && (
+        <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-900">
+              <History className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              Recent checks this session
+            </span>
+            <button
+              type="button"
+              onClick={() => setRecentChecks([])}
+              className="text-[11px] font-medium text-gray-500 hover:text-[#7B2D8E] cursor-pointer"
+            >
+              Clear
+            </button>
+          </div>
+          <ul className="divide-y divide-gray-100">
+            {recentChecks.map((item) => (
+              <li key={item.code}>
+                <button
+                  type="button"
+                  onClick={() => void runVerification(item.code)}
+                  className="w-full px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-[#FAF6FB] transition-colors cursor-pointer"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono text-xs font-semibold text-gray-900 truncate">
+                      {item.code}
+                    </p>
+                    <p className="text-[11px] text-gray-500 truncate">
+                      {item.recipientName
+                        ? `${item.recipientName}${typeof item.amount === 'number' ? ` · ₦${item.amount.toLocaleString('en-NG')}` : ''}`
+                        : 'Unverified / not found'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider border ${
+                        item.state === 'valid'
+                          ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
+                          : item.state === 'pending_activation' ||
+                              item.state === 'payment_required'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-gray-100 text-gray-600 border-gray-200'
+                      }`}
+                    >
+                      {item.state.replace('_', ' ')}
+                    </span>
+                    <span className="text-[11px] text-gray-400 tabular-nums">
+                      {item.checkedAt}
+                    </span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Console return links (only when standalone) */}
+      {!compact && !embedded && userRole && (
         <div className="text-center pt-2 flex flex-wrap items-center justify-center gap-4">
           <Link
-            href={userRole === 'admin' ? '/admin/gift-cards' : '/staff/gift-cards'}
+            href={isAdmin ? '/admin/gift-cards' : '/staff/gift-cards'}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#7B2D8E] hover:underline"
           >
             <span>
-              Back to {userRole === 'admin' ? 'Admin' : 'Staff'} Gift Cards Console
+              Back to {isAdmin ? 'Admin' : 'Staff'} Gift Cards Console
             </span>
             <ArrowRight className="w-4 h-4" />
           </Link>
@@ -407,4 +577,3 @@ export function GiftCardVerifyClient({
     </div>
   )
 }
-

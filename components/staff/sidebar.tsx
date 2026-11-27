@@ -72,7 +72,7 @@ const navItems = [
   { title: "Reports", href: "/staff/reports", icon: BarChart3 },
   { title: "Money", href: "/staff/money", icon: Wallet },
   { title: "Gift Card Requests", href: "/staff/gift-cards", icon: Gift },
-  { title: "Verify Gift Card", href: "/gift-cards/verify", icon: QrCode },
+  { title: "Verify Gift Card", href: "/staff/gift-cards/verify", icon: QrCode },
   { title: "Complaints", href: "/staff/complaints", icon: LifeBuoy },
   { title: "Consultations", href: "/staff/consultations", icon: Calendar },
   { title: "Feature Requests", href: "/staff/feature-requests", icon: Lightbulb },
@@ -282,9 +282,17 @@ export function StaffSidebar() {
           </div>
           <nav className="space-y-1">
             {navItems.map((item) => {
+              const hasMoreSpecificMatch = navItems.some(
+                (other) =>
+                  other.href !== item.href &&
+                  other.href.length > item.href.length &&
+                  (pathname === other.href || pathname.startsWith(`${other.href}/`)),
+              )
               const isActive =
                 pathname === item.href ||
-                (item.href !== "/staff" && pathname.startsWith(item.href))
+                (!hasMoreSpecificMatch &&
+                  item.href !== "/staff" &&
+                  pathname.startsWith(`${item.href}/`))
               return (
                 <Link
                   key={item.href}

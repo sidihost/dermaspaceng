@@ -335,7 +335,7 @@ export default function StaffPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action,
-          ...(action === 'suspend' && reason?.trim() ? { reason: reason.trim() } : {}),
+          ...(reason?.trim() ? { reason: reason.trim() } : {}),
         }),
       })
       const body = await res.json().catch(() => ({}))
@@ -1688,6 +1688,8 @@ export default function StaffPage() {
         let optionalReason = false
         let reasonLabel = 'Reason (optional — included in notification email)'
         let reasonPlaceholder = 'e.g. Temporary leave or rotation change'
+        let enableAiComposer = false
+        let aiContext: string | undefined = undefined
         let onConfirm: (reason?: string) => void = () => {}
 
         if (confirmModal.kind === 'suspend') {
@@ -1699,6 +1701,8 @@ export default function StaffPage() {
           icon = UserX
           busy = !!busyMember[confirmModal.member.id]
           optionalReason = true
+          enableAiComposer = true
+          aiContext = `Staff suspension notice note for ${getMemberDisplayName(confirmModal.member)}`
           onConfirm = (reason) =>
             void handleToggleSuspend(confirmModal.member, false, reason || '')
         } else if (confirmModal.kind === 'role') {
@@ -1734,7 +1738,13 @@ export default function StaffPage() {
           cancelLabel = 'Cancel'
           icon = RotateCcw
           busy = !!busyMember[confirmModal.member.id]
-          onConfirm = () => void handleToggleSuspend(confirmModal.member, true)
+          optionalReason = true
+          enableAiComposer = true
+          reasonLabel = 'Reactivation note (optional — shown in reactivation email)'
+          reasonPlaceholder = 'e.g. Review completed, welcome back to the team'
+          aiContext = `Staff account reactivation note for ${getMemberDisplayName(confirmModal.member)} whose Dermaspace staff workspace access is being restored`
+          onConfirm = (reason) =>
+            void handleToggleSuspend(confirmModal.member, true, reason || '')
         } else if (confirmModal.kind === 'service_perm') {
           title = confirmModal.next
             ? `Grant Service Editor access to ${getMemberDisplayName(confirmModal.member)}?`
@@ -1796,6 +1806,8 @@ export default function StaffPage() {
             icon={<IconComp className="h-[18px] w-[18px]" />}
             loading={busy}
             optionalReason={optionalReason}
+            enableAiComposer={enableAiComposer}
+            aiContext={aiContext}
             reasonLabel={reasonLabel}
             reasonPlaceholder={reasonPlaceholder}
             onConfirm={onConfirm}

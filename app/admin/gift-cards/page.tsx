@@ -66,25 +66,33 @@ export default function GiftCardsPage() {
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
 
   const fetchRequests = useCallback(async () => {
     setLoading(true)
+    setFetchError('')
     try {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        status: statusFilter,
       })
-      const res = await fetch(`/api/admin/gift-cards?${params}`)
+      if (statusFilter) {
+        params.set('status', statusFilter)
+      }
+      const res = await fetch(`/api/admin/gift-cards?${params}`, { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setRequests(data.requests)
+        setRequests(data.requests || [])
         setPagination(data.pagination)
-        setStatusCounts(data.statusCounts)
+        setStatusCounts(data.statusCounts || {})
+      } else {
+        const body = await res.json().catch(() => ({}))
+        setFetchError(body?.error || 'Could not load gift card requests.')
       }
     } catch (error) {
       console.error('Failed to fetch requests:', error)
+      setFetchError('Network error while loading gift card requests.')
     } finally {
       setLoading(false)
     }
@@ -109,14 +117,27 @@ export default function GiftCardsPage() {
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <GiftCardVerifyDialog userRole="admin" />
           <Link
-            href="/gift-cards/verify"
+            href="/admin/gift-cards/verify"
             className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-[#7B2D8E]/30 bg-white text-xs font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors whitespace-nowrap"
           >
             <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Full Verifier Page</span>
+            <span>Admin Verifier</span>
           </Link>
         </div>
       </div>
+
+      {fetchError && (
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-sm text-gray-700">{fetchError}</p>
+          <button
+            type="button"
+            onClick={() => void fetchRequests()}
+            className="text-xs font-semibold text-[#7B2D8E] hover:underline shrink-0 cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">

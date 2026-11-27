@@ -4751,11 +4751,23 @@ export async function sendAccountReinstatedEmail(data: {
   email: string
   firstName?: string | null
   role?: 'user' | 'staff' | 'admin' | string | null
+  reason?: string | null
 }): Promise<boolean> {
   const safeName = escapeHtml(data.firstName?.trim() || 'there')
   const isTeamMember = data.role === 'staff' || data.role === 'admin'
   const sender: EmailSenderCategory = isTeamMember ? 'team_security' : 'security'
   const signInUrl = `${PUBLIC_ORIGIN}/signin`
+  const cleanedReason =
+    typeof data.reason === 'string'
+      ? data.reason
+          .replace(/\r\n?/g, '\n')
+          .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+          .trim()
+          .slice(0, 500)
+      : ''
+  const safeNote = cleanedReason
+    ? escapeHtml(cleanedReason).replace(/\n/g, '<br />')
+    : null
 
   const content = `
     <h1 class="ds-h1" style="margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #1c1e21; line-height: 1.3;">
@@ -4773,6 +4785,21 @@ export async function sendAccountReinstatedEmail(data: {
           : 'Your Dermaspace account has been reactivated by our team. You can sign back in anytime.'
       }
     </p>
+
+    ${
+      safeNote
+        ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px; background-color: #FAF6FB; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 6px; font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 0.8px;">Note from Dermaspace</p>
+          <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.55;">${safeNote}</p>
+        </td>
+      </tr>
+    </table>
+    `
+        : ''
+    }
 
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
       <tr>

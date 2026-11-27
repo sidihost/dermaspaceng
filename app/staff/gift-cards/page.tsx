@@ -166,7 +166,8 @@ export default function StaffGiftCardsPage() {
       if (statusFilter) {
         params.set('status', statusFilter)
       }
-      const res = await fetch(`/api/admin/gift-cards?${params}`, { cache: "no-store" })
+      const qs = params.toString()
+      const res = await fetch(`/api/admin/gift-cards${qs ? `?${qs}` : ''}`, { cache: "no-store" })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setError(j.error || `HTTP ${res.status} — could not load gift card requests`)
@@ -294,11 +295,11 @@ export default function StaffGiftCardsPage() {
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
           <GiftCardVerifyDialog userRole="staff" />
           <Link
-            href="/gift-cards/verify"
+            href="/staff/gift-cards/verify"
             className="inline-flex items-center gap-2 h-9 px-3.5 rounded-lg border border-[#7B2D8E]/30 bg-white text-xs font-semibold text-[#7B2D8E] hover:bg-[#FAF6FB] transition-colors whitespace-nowrap"
           >
             <QrCode className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Full Verifier Page</span>
+            <span>Reception Verifier</span>
           </Link>
         </div>
       </header>

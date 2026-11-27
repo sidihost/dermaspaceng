@@ -361,6 +361,11 @@ export async function PATCH(
       )
     }
 
+    const safeReason =
+      typeof body.reason === 'string' && body.reason.trim()
+        ? body.reason.trim().slice(0, 500)
+        : null
+
     let emailSent = false
     if (action === 'suspend') {
       await sql`
@@ -373,7 +378,7 @@ export async function PATCH(
       await invalidateUserMe(String(userId))
       emailSent = await dispatchSuspensionNotification({
         userId: String(userId),
-        reason: typeof body.reason === 'string' && body.reason.trim() ? body.reason.trim() : null,
+        reason: safeReason,
       })
     } else {
       await sql`
@@ -383,7 +388,10 @@ export async function PATCH(
       `
       await invalidateUserMe(String(userId))
       if (!target.is_active) {
-        emailSent = await dispatchReinstatementNotification({ userId: String(userId) })
+        emailSent = await dispatchReinstatementNotification({
+          userId: String(userId),
+          reason: safeReason,
+        })
       }
     }
 

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
 import { IdentityAuditPanel } from '@/components/admin/identity-audit-panel'
+import { AiTextToolbar } from '@/components/admin/ai-text-toolbar'
 import { useNotify } from '@/components/shared/notify'
 import { isPlaceholderEmail } from '@/lib/auth-onboarding'
 import { clearCachedUser, commitAuthenticatedUser } from '@/lib/auth-cache'
@@ -311,6 +312,9 @@ export default function AdminUserDetailPage() {
   const [suspendPrompt, setSuspendPrompt] = useState(false)
   const [suspendReason, setSuspendReason] = useState('')
   const [suspendError, setSuspendError] = useState('')
+  const [reactivatePrompt, setReactivatePrompt] = useState(false)
+  const [reactivateReason, setReactivateReason] = useState('')
+  const [reactivateError, setReactivateError] = useState('')
 
   const handleAction = async (action: string, value: unknown, reason?: string) => {
     setActing(true)
@@ -326,7 +330,7 @@ export default function AdminUserDetailPage() {
           userId,
           action,
           value,
-          ...(action === 'toggle_active' && value === false && reason?.trim()
+          ...(action === 'toggle_active' && reason?.trim()
             ? { reason: reason.trim() }
             : {}),
         }),
@@ -337,6 +341,10 @@ export default function AdminUserDetailPage() {
           setSuspendPrompt(false)
           setSuspendReason('')
           setSuspendError('')
+        } else if (action === 'toggle_active' && value === true) {
+          setReactivatePrompt(false)
+          setReactivateReason('')
+          setReactivateError('')
         }
         await fetchUser()
         if (action === 'restore_user') {
@@ -373,12 +381,16 @@ export default function AdminUserDetailPage() {
         const errMsg = body?.error || 'Please try again.'
         if (action === 'toggle_active' && value === false) {
           setSuspendError(errMsg)
+        } else if (action === 'toggle_active' && value === true) {
+          setReactivateError(errMsg)
         }
         notify.error('Action failed', errMsg)
       }
     } catch {
       if (action === 'toggle_active' && value === false) {
         setSuspendError('Network error. Please try again.')
+      } else if (action === 'toggle_active' && value === true) {
+        setReactivateError('Network error. Please try again.')
       }
       notify.error('Network error', 'Could not reach the server. Please try again.')
     } finally {
@@ -992,8 +1004,12 @@ export default function AdminUserDetailPage() {
             ) : (
               <button
                 disabled={acting}
-                onClick={() => handleAction('toggle_active', true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
+                onClick={() => {
+                  setReactivateError('')
+                  setReactivateReason('')
+                  setReactivatePrompt(true)
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-[#7B2D8E]/30 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50 cursor-pointer"
               >
                 <Shield className="w-4 h-4" />
                 Reactivate
@@ -1183,7 +1199,7 @@ export default function AdminUserDetailPage() {
 
       {suspendPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 max-h-[90dvh] overflow-y-auto">
             <div className="flex items-start gap-3">
               <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20">
                 <ShieldOff className="h-5 w-5 text-[#7B2D8E]" />
@@ -1200,17 +1216,36 @@ export default function AdminUserDetailPage() {
               </div>
             </div>
 
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.1em] text-gray-500">
-              Reason (optional, included in suspension email)
-            </label>
-            <textarea
-              value={suspendReason}
-              onChange={(e) => setSuspendReason(e.target.value)}
-              rows={3}
-              maxLength={300}
-              placeholder="e.g. Policy review, unusual account activity..."
-              className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
-            />
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <label
+                htmlFor="suspend-account-reason"
+                className="block text-xs font-semibold uppercase tracking-[0.1em] text-gray-500"
+              >
+                Reason (optional, included in suspension email)
+              </label>
+              <span className="text-[11px] text-gray-400 tabular-nums">
+                {suspendReason.length}/500
+              </span>
+            </div>
+            <div className="mt-1.5 rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:border-[#7B2D8E] transition-colors">
+              <textarea
+                id="suspend-account-reason"
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="e.g. Policy review, unusual account activity..."
+                className="block w-full px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none resize-none leading-relaxed"
+              />
+              <AiTextToolbar
+                value={suspendReason}
+                onChange={setSuspendReason}
+                context={`Account suspension notice note for ${user.role === 'staff' || user.role === 'admin' ? 'staff member' : 'client'} ${user.first_name || ''} ${user.last_name || ''}`.trim()}
+                maxLength={500}
+                disabled={acting}
+                compact
+              />
+            </div>
 
             {suspendError && (
               <p className="mt-3 text-sm text-[#5A1D6A]" role="alert">
@@ -1227,7 +1262,7 @@ export default function AdminUserDetailPage() {
                   setSuspendReason('')
                   setSuspendError('')
                 }}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -1235,7 +1270,7 @@ export default function AdminUserDetailPage() {
                 type="button"
                 disabled={acting}
                 onClick={() => void handleAction('toggle_active', false, suspendReason)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50 cursor-pointer"
               >
                 {acting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1243,6 +1278,93 @@ export default function AdminUserDetailPage() {
                   <ShieldOff className="w-4 h-4" />
                 )}
                 Suspend account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reactivatePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 max-h-[90dvh] overflow-y-auto">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full bg-[#FAF6FB] border border-[#7B2D8E]/20">
+                <UserCheck className="h-5 w-5 text-[#7B2D8E]" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-semibold text-gray-900">
+                  Reactivate {user.first_name} {user.last_name}?
+                </h3>
+                <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+                  {user.role === 'staff' || user.role === 'admin'
+                    ? 'Their staff access will be restored immediately and they will receive a reactivation email.'
+                    : 'Their client account will be restored immediately so they can sign back in, and they will receive a confirmation email.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-2">
+              <label
+                htmlFor="reactivate-account-reason"
+                className="block text-xs font-semibold uppercase tracking-[0.1em] text-gray-500"
+              >
+                Reason / note (optional, included in email)
+              </label>
+              <span className="text-[11px] text-gray-400 tabular-nums">
+                {reactivateReason.length}/500
+              </span>
+            </div>
+            <div className="mt-1.5 rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:border-[#7B2D8E] transition-colors">
+              <textarea
+                id="reactivate-account-reason"
+                value={reactivateReason}
+                onChange={(e) => setReactivateReason(e.target.value)}
+                rows={3}
+                maxLength={500}
+                placeholder="e.g. Account review completed, welcome back to Dermaspace..."
+                className="block w-full px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none resize-none leading-relaxed"
+              />
+              <AiTextToolbar
+                value={reactivateReason}
+                onChange={setReactivateReason}
+                context={`Account reactivation welcome note for ${user.role === 'staff' || user.role === 'admin' ? 'staff member' : 'client'} ${user.first_name || ''} ${user.last_name || ''} whose Dermaspace account is being reinstated`.trim()}
+                maxLength={500}
+                disabled={acting}
+                compact
+              />
+            </div>
+
+            {reactivateError && (
+              <p className="mt-3 text-sm text-[#5A1D6A]" role="alert">
+                {reactivateError}
+              </p>
+            )}
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => {
+                  setReactivatePrompt(false)
+                  setReactivateReason('')
+                  setReactivateError('')
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => void handleAction('toggle_active', true, reactivateReason)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50 cursor-pointer"
+              >
+                {acting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <UserCheck className="w-4 h-4" />
+                )}
+                Reactivate account
               </button>
             </div>
           </div>

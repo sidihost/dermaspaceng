@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  LogOut,
   Mail,
   ShieldAlert,
   UserCheck,
@@ -19,7 +20,18 @@ import {
   extractEmailHintFromAppealToken,
   normalizePrefillEmail,
 } from '@/lib/suspension-appeal-constants'
+import {
+  resolveActiveAccountDashboardHref,
+  resolveActiveAccountDashboardLabel,
+} from '@/lib/admin-email-history'
+import { clearCachedUser } from '@/lib/auth-cache'
 import { useNotify } from '@/components/shared/notify'
+
+export interface SignedInAppealVisitor {
+  firstName: string | null
+  email: string
+  role: string
+}
 
 type VerifyResponse = {
   valid: boolean
@@ -76,13 +88,21 @@ function BrandSidePanel({
   )
 }
 
-function AppealPortalContent() {
+function AppealPortalContent({
+  signedInUser: initialSignedInUser = null,
+}: {
+  signedInUser?: SignedInAppealVisitor | null
+}) {
   const searchParams = useSearchParams()
   const notify = useNotify()
   const token = (searchParams.get('token') || '').trim()
   const queryEmail = normalizePrefillEmail(searchParams.get('email'))
   const fallbackEmail = queryEmail || extractEmailHintFromAppealToken(token)
 
+  const [signedInUser, setSignedInUser] = useState<SignedInAppealVisitor | null>(
+    initialSignedInUser,
+  )
+  const [signingOut, setSigningOut] = useState(false)
   const [verifying, setVerifying] = useState(Boolean(token))
   const [tokenInfo, setTokenInfo] = useState<VerifyResponse | null>(null)
 
@@ -93,6 +113,20 @@ function AppealPortalContent() {
   const [error, setError] = useState('')
   const [submittedAppealId, setSubmittedAppealId] = useState<string | null>(null)
   const [submittedGenericMessage, setSubmittedGenericMessage] = useState<string | null>(null)
+
+  const handleSignOutToAppeal = async () => {
+    setSigningOut(true)
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      clearCachedUser()
+      setSignedInUser(null)
+      notify.info('Signed out', 'You can now submit an appeal for a suspended account.')
+    } catch {
+      notify.error('Could not sign out', 'Please try again.')
+    } finally {
+      setSigningOut(false)
+    }
+  }
 
   useEffect(() => {
     if (fallbackEmail) {
@@ -213,6 +247,73 @@ function AppealPortalContent() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (signedInUser && !token) {
+    const dashboardHref = resolveActiveAccountDashboardHref(signedInUser.role)
+    const dashboardLabel = resolveActiveAccountDashboardLabel(signedInUser.role)
+    return (
+      <div className="min-h-screen bg-white lg:flex lg:flex-row">
+        <BrandSidePanel
+          eyebrow={eyebrow}
+          title="Account Active"
+          description="You are already signed in to an active Dermaspace account, so you do not need to submit a suspension appeal."
+          points={sidePoints}
+        />
+        <div className="flex-1 flex items-center justify-center px-6 pt-12 pb-24 lg:p-8">
+          <div className="w-full max-w-md text-center mx-auto">
+            <Link href="/" className="inline-block mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={DERMASPACE_LOGO}
+                alt="Dermaspace"
+                className="h-9 w-auto mx-auto"
+              />
+            </Link>
+            <div className="w-14 h-14 bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserCheck className="w-7 h-7 text-[#7B2D8E]" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">
+              Your Account Is Active
+            </h1>
+            <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+              You are currently signed in{signedInUser.firstName ? ` as ${signedInUser.firstName}` : ''} and your Dermaspace account is in good standing. No suspension appeal is needed.
+            </p>
+            {signedInUser.email && (
+              <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] px-4 py-3 mb-6 text-left">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                  Signed-in account
+                </p>
+                <p className="mt-0.5 text-sm font-medium text-gray-900 break-all">
+                  {signedInUser.email}
+                </p>
+              </div>
+            )}
+            <div className="space-y-2.5">
+              <Link
+                href={dashboardHref}
+                className="block w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
+              >
+                {dashboardLabel}
+              </Link>
+              <button
+                type="button"
+                disabled={signingOut}
+                onClick={handleSignOutToAppeal}
+                className="w-full py-2.5 px-4 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-[#FAF6FB] hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors inline-flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {signingOut ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <LogOut className="w-4 h-4" />
+                )}
+                Sign out to appeal another account
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (verifying) {
@@ -533,7 +634,11 @@ function AppealPortalContent() {
   )
 }
 
-export function AppealPortal() {
+export function AppealPortal({
+  signedInUser = null,
+}: {
+  signedInUser?: SignedInAppealVisitor | null
+}) {
   return (
     <Suspense
       fallback={
@@ -542,7 +647,7 @@ export function AppealPortal() {
         </div>
       }
     >
-      <AppealPortalContent />
+      <AppealPortalContent signedInUser={signedInUser} />
     </Suspense>
   )
 }

@@ -73,7 +73,7 @@ export async function ensureGiftCardSchema(): Promise<void> {
       await query(`
         CREATE TABLE IF NOT EXISTS gift_card_requests (
           id SERIAL PRIMARY KEY,
-          user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+          user_id TEXT,
           amount INTEGER NOT NULL,
           design VARCHAR(50),
           design_name VARCHAR(100),
@@ -90,27 +90,32 @@ export async function ensureGiftCardSchema(): Promise<void> {
           delivery_method VARCHAR(50) DEFAULT 'email',
           delivery_date DATE,
           status VARCHAR(50) DEFAULT 'pending',
-          assigned_to VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+          assigned_to TEXT,
           notes TEXT,
           created_at TIMESTAMP DEFAULT NOW(),
           updated_at TIMESTAMP DEFAULT NOW()
         )
       `)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(36)`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS notes TEXT`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS user_id VARCHAR(36)`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(120)`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unpaid'`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100)`)
-      await query(`ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS recipient_notified_at TIMESTAMP`)
-      await query(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_gift_card_requests_payment_ref
-        ON gift_card_requests(payment_reference)
-        WHERE payment_reference IS NOT NULL
-      `)
+      const alterStatements = [
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'pending'`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS assigned_to TEXT`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS notes TEXT`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS user_id TEXT`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(120)`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unpaid'`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100)`,
+        `ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS recipient_notified_at TIMESTAMP`,
+        `CREATE UNIQUE INDEX IF NOT EXISTS idx_gift_card_requests_payment_ref ON gift_card_requests(payment_reference) WHERE payment_reference IS NOT NULL`,
+      ]
+      for (const stmt of alterStatements) {
+        try {
+          await query(stmt)
+        } catch (stmtErr) {
+          console.warn('[ensureGiftCardSchema] non-fatal schema step skipped:', stmt, stmtErr)
+        }
+      }
     } catch (err) {
       schemaReadyPromise = null
       throw err
