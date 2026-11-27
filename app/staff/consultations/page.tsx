@@ -42,6 +42,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { useNotify } from "@/components/shared/notify"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { cn } from "@/lib/utils"
 
 interface Consultation {
@@ -62,6 +63,9 @@ interface Consultation {
   appointment_time?: string | null
   admin_notes?: string | null
   notes?: string | null
+  customer_avatar_url?: string | null
+  customer_role?: string | null
+  customer_gender?: string | null
 }
 
 interface ApiResponse {
@@ -326,14 +330,35 @@ export default function StaffConsultationsPage() {
                 const cfg = statusConfig[c.status] || statusConfig.pending
                 const concerns = displayConcerns(c)
                 const when = displayWhen(c)
+                const nameLabel = displayName(c)
+                const initials = nameLabel
+                  .split(/\s+/)
+                  .map((p) => p[0] || "")
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase() || "C"
                 return (
                   <li
                     key={c.id}
                     className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-[#7B2D8E]/[0.03] sm:flex-row sm:items-start sm:justify-between"
                   >
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-gray-900">{displayName(c)}</span>
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-xs font-bold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+                        <UserAvatar
+                          avatarUrl={c.customer_avatar_url}
+                          firstName={c.first_name}
+                          lastName={c.last_name}
+                          role={c.customer_role}
+                          gender={c.customer_gender}
+                          sizePx={80}
+                          alt={nameLabel}
+                          fallback={initials}
+                          imgClassName="h-full w-full object-cover"
+                        />
+                      </span>
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-semibold text-gray-900">{nameLabel}</span>
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1",
@@ -388,6 +413,7 @@ export default function StaffConsultationsPage() {
                       <p className="text-[10.5px] text-gray-400">
                         Submitted {formatDate(c.created_at)}
                       </p>
+                      </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <Button

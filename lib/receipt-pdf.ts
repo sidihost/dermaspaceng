@@ -1,7 +1,10 @@
 import {
   findGiftCardDesignById,
+  findGiftCardFontById,
   getDesignMedallionHex,
   getGiftCardOccasionMeta,
+  resolveOccasionMotif,
+  type GiftCardOccasionMotif,
 } from './gift-card-templates'
 import {
   classifyStatusTone,
@@ -53,7 +56,9 @@ export interface ReceiptGiftCardVisual {
   amountFormatted: string
   occasion: string
   editionLabel: string
+  designId?: string
   designName: string
+  motif?: GiftCardOccasionMotif
   fontName?: string | null
   surfaceHex: string
   accentHex: string
@@ -307,6 +312,47 @@ function statusDisplay(status: TransactionReceiptInput['status']): string {
   }
 }
 
+export type ResolvedTransactionGiftCard = NonNullable<
+  TransactionReceiptInput['giftCard']
+>
+
+/**
+ * Resolves gift card details from `tx.giftCard` (joined from `gift_card_requests`)
+ * or falls back to `tx.metadata.itemDetails` when viewing/exporting a transaction
+ * row loaded from `/api/wallet/transactions` without the full detail join.
+ */
+export function resolveTransactionGiftCard(
+  tx: Pick<TransactionReceiptInput, 'giftCard' | 'metadata' | 'invoice'>,
+): ResolvedTransactionGiftCard | null {
+  if (tx.giftCard) return tx.giftCard
+  const meta = tx.metadata as {
+    type?: string
+    itemDetails?: Record<string, unknown>
+  } | null
+  if (meta?.type === 'gift_card' && meta.itemDetails) {
+    const d = meta.itemDetails
+    return {
+      recipient_name: d.recipientName ? String(d.recipientName) : 'Recipient',
+      recipient_email: d.recipientEmail ? String(d.recipientEmail) : null,
+      sender_name: d.senderName ? String(d.senderName) : null,
+      occasion: d.occasion ? String(d.occasion) : null,
+      design: d.design ? String(d.design) : null,
+      design_name: d.designName
+        ? String(d.designName)
+        : d.design
+          ? String(d.design)
+          : null,
+      font: d.font ? String(d.font) : null,
+      font_name: d.fontName ? String(d.fontName) : null,
+      personal_message: d.personalMessage ? String(d.personalMessage) : null,
+      delivery_method: d.deliveryMethod ? String(d.deliveryMethod) : null,
+      delivery_date: d.deliveryDate ? String(d.deliveryDate) : null,
+      invoice_number: tx.invoice?.invoice_number ?? null,
+    }
+  }
+  return null
+}
+
 export function buildTransactionReceiptData(
   tx: TransactionReceiptInput,
 ): ReceiptDocumentData {
@@ -314,12 +360,14 @@ export function buildTransactionReceiptData(
   const currency = tx.currency || 'NGN'
   const amountFormatted = formatNairaPlain(Number(tx.amount) || 0, currency)
   const isIncoming = tx.type === 'credit' || tx.type === 'refund'
-  const invoiceNo = tx.invoice?.invoice_number || tx.giftCard?.invoice_number || null
+  const effectiveGiftCard = resolveTransactionGiftCard(tx)
+  const invoiceNo =
+    tx.invoice?.invoice_number || effectiveGiftCard?.invoice_number || null
 
   const title =
     tx.description ||
-    (tx.giftCard
-      ? `Gift Card for ${tx.giftCard.recipient_name || 'Recipient'}`
+    (effectiveGiftCard
+      ? `Gift Card for ${effectiveGiftCard.recipient_name || 'Recipient'}`
       : tx.booking
         ? `Spa Booking ${tx.booking.booking_reference}`
         : tx.type === 'credit'
@@ -331,7 +379,7 @@ export function buildTransactionReceiptData(
   const summaryRows: ReceiptDetailRow[] = [
     {
       label: 'Transaction Type',
-      value: tx.giftCard
+      value: effectiveGiftCard
         ? 'Gift Card Purchase'
         : tx.booking
           ? 'Appointment Booking'
@@ -353,28 +401,32 @@ export function buildTransactionReceiptData(
   let lineItems: ReceiptLineItem[] | undefined
   let giftCardVisual: ReceiptGiftCardVisual | null = null
   let note: string | null = null
-  let headline: string | null = tx.giftCard ? null : title
+  let headline: string | null = effectiveGiftCard ? null : title
 
-  if (tx.giftCard) {
-    const occasionMeta = getGiftCardOccasionMeta(tx.giftCard.occasion)
+  if (effectiveGiftCard) {
+    const occasionMeta = getGiftCardOccasionMeta(effectiveGiftCard.occasion)
     const resolvedDesign = findGiftCardDesignById(
-      tx.giftCard.design || tx.giftCard.design_name,
+      effectiveGiftCard.design || effectiveGiftCard.design_name,
+    )
+    const resolvedFont = findGiftCardFontById(
+      effectiveGiftCard.font || effectiveGiftCard.font_name,
     )
     const metaDetails = (tx.metadata as { itemDetails?: Record<string, unknown> } | null)
       ?.itemDetails
     const senderName =
-      tx.giftCard.sender_name ||
+      effectiveGiftCard.sender_name ||
       (metaDetails?.senderName ? String(metaDetails.senderName) : null)
-    const resolvedDesignName = tx.giftCard.design_name || resolvedDesign.name
+    const resolvedDesignName = effectiveGiftCard.design_name || resolvedDesign.name
+    const occasionValue = effectiveGiftCard.occasion || 'Gift Card'
 
     summaryRows.push({
       label: 'Recipient',
-      value: tx.giftCard.recipient_name || 'Recipient',
+      value: effectiveGiftCard.recipient_name || 'Recipient',
     })
-    if (tx.giftCard.recipient_email) {
+    if (effectiveGiftCard.recipient_email) {
       summaryRows.push({
         label: 'Recipient Email',
-        value: tx.giftCard.recipient_email,
+        value: effectiveGiftCard.recipient_email,
       })
     }
     if (senderName) {
@@ -383,34 +435,36 @@ export function buildTransactionReceiptData(
         value: senderName,
       })
     }
-    if (tx.giftCard.occasion) {
+    if (effectiveGiftCard.occasion) {
       summaryRows.push({
         label: 'Occasion',
-        value: tx.giftCard.occasion,
+        value: effectiveGiftCard.occasion,
       })
     }
-    if (tx.giftCard.delivery_method) {
+    if (effectiveGiftCard.delivery_method) {
       summaryRows.push({
         label: 'Delivery',
-        value: tx.giftCard.delivery_date
-          ? `${tx.giftCard.delivery_method} (${tx.giftCard.delivery_date})`
-          : tx.giftCard.delivery_method,
+        value: effectiveGiftCard.delivery_date
+          ? `${effectiveGiftCard.delivery_method} (${effectiveGiftCard.delivery_date})`
+          : effectiveGiftCard.delivery_method,
       })
     }
     giftCardVisual = {
-      recipientName: tx.giftCard.recipient_name || 'Recipient',
+      recipientName: effectiveGiftCard.recipient_name || 'Recipient',
       senderName,
       amountFormatted,
-      occasion: tx.giftCard.occasion || 'Gift Card',
+      occasion: occasionValue,
       editionLabel: occasionMeta.editionLabel,
+      designId: resolvedDesign.id,
       designName: resolvedDesignName,
-      fontName: tx.giftCard.font_name || 'Elegant',
+      motif: resolveOccasionMotif(occasionValue, resolvedDesign.id),
+      fontName: effectiveGiftCard.font_name || resolvedFont.name,
       surfaceHex: resolvedDesign.surfaceHex,
       accentHex: resolvedDesign.accentHex,
       medallionHex: getDesignMedallionHex(resolvedDesign),
-      deliveryMethod: tx.giftCard.delivery_method || 'Email',
+      deliveryMethod: effectiveGiftCard.delivery_method || 'Email',
     }
-    note = tx.giftCard.personal_message || null
+    note = effectiveGiftCard.personal_message || null
   } else if (tx.booking) {
     headline = null
     summaryRows.push({
@@ -512,7 +566,9 @@ export function buildGiftCardReceiptData(
       amountFormatted: amountText,
       occasion: input.occasion,
       editionLabel: occasionMeta.editionLabel,
+      designId: resolvedDesign.id,
       designName: resolvedDesignName,
+      motif: resolveOccasionMotif(input.occasion, resolvedDesign.id),
       fontName: input.fontName || 'Elegant',
       surfaceHex: resolvedDesign.surfaceHex,
       accentHex: resolvedDesign.accentHex,
@@ -702,10 +758,14 @@ async function fetchImageBlobWithTimeout(
 
 async function loadLogoAssets(): Promise<{
   dataUrl: string | null
+  whiteDataUrl: string | null
+  whiteCanvas: HTMLCanvasElement | null
   bitmap: ImageBitmap | null
   aspect: number
 }> {
   let logoDataUrl: string | null = null
+  let whiteDataUrl: string | null = null
+  let whiteCanvas: HTMLCanvasElement | null = null
   let bitmap: ImageBitmap | null = null
   let aspect = 1024 / 209
   try {
@@ -717,7 +777,7 @@ async function loadLogoAssets(): Promise<{
       aspect = bitmap.width / bitmap.height
       const canvas = document.createElement('canvas')
       const targetW = Math.min(bitmap.width, 900)
-      const targetH = Math.round((bitmap.height / bitmap.width) * targetW)
+      const targetH = Math.max(1, Math.round((bitmap.height / bitmap.width) * targetW))
       canvas.width = targetW
       canvas.height = targetH
       const ctx = canvas.getContext('2d')
@@ -725,11 +785,352 @@ async function loadLogoAssets(): Promise<{
         ctx.drawImage(bitmap, 0, 0, targetW, targetH)
         logoDataUrl = canvas.toDataURL('image/png')
       }
+
+      const wCanvas = document.createElement('canvas')
+      wCanvas.width = targetW
+      wCanvas.height = targetH
+      const wCtx = wCanvas.getContext('2d')
+      if (wCtx) {
+        wCtx.drawImage(bitmap, 0, 0, targetW, targetH)
+        wCtx.globalCompositeOperation = 'source-in'
+        wCtx.fillStyle = '#FFFFFF'
+        wCtx.fillRect(0, 0, targetW, targetH)
+        whiteCanvas = wCanvas
+        whiteDataUrl = wCanvas.toDataURL('image/png')
+      }
     }
   } catch {
     // Graceful fallback to typeset wordmark
   }
-  return { dataUrl: logoDataUrl, bitmap, aspect }
+  return { dataUrl: logoDataUrl, whiteDataUrl, whiteCanvas, bitmap, aspect }
+}
+
+/**
+ * Draws the exact Dermaspace Gift Card occasion medallion motif in jsPDF
+ * (pt coordinate space), matching GiftCardPreview & gift-card-print-pdf.
+ */
+function drawPdfGiftCardMotif(
+  doc: import('jspdf').jsPDF,
+  cx: number,
+  cy: number,
+  radius: number,
+  motif: GiftCardOccasionMotif,
+  medallionRgb: [number, number, number],
+  accentRgb: [number, number, number],
+): void {
+  const s = radius / 10.2
+  const lavender: [number, number, number] = [233, 213, 255]
+  const cream: [number, number, number] = [248, 240, 252]
+  const blush: [number, number, number] = [249, 213, 229]
+  const sage: [number, number, number] = [167, 215, 197]
+
+  doc.setFillColor(...medallionRgb)
+  doc.setDrawColor(...lavender)
+  doc.setLineWidth(0.95)
+  doc.circle(cx, cy, 10.2 * s, 'FD')
+
+  doc.setDrawColor(...cream)
+  doc.setLineWidth(0.45)
+  doc.circle(cx, cy, 8.2 * s, 'S')
+
+  switch (motif) {
+    case 'christmas': {
+      doc.setDrawColor(...cream)
+      doc.setLineWidth(1.0)
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * Math.PI) / 3
+        const dx = Math.cos(angle) * 5.4 * s
+        const dy = Math.sin(angle) * 5.4 * s
+        doc.line(cx - dx, cy - dy, cx + dx, cy + dy)
+      }
+      doc.setFillColor(...lavender)
+      doc.circle(cx, cy, 1.3 * s, 'F')
+      break
+    }
+    case 'birthday': {
+      doc.setFillColor(...cream)
+      doc.roundedRect(cx - 5 * s, cy + 0.5 * s, 10 * s, 3.6 * s, 1.5, 1.5, 'F')
+      doc.setFillColor(...blush)
+      doc.roundedRect(cx - 3.5 * s, cy - 2.6 * s, 7 * s, 3.1 * s, 1.2, 1.2, 'F')
+      doc.setFillColor(...lavender)
+      doc.rect(cx - 5 * s, cy + 4.3 * s, 10 * s, 0.8 * s, 'F')
+      for (const offset of [-2, 0, 2]) {
+        doc.setFillColor(...cream)
+        doc.rect(cx + (offset - 0.3) * s, cy - 4.7 * s, 0.6 * s, 2.1 * s, 'F')
+        doc.setFillColor(...lavender)
+        doc.circle(cx + offset * s, cy - 5.4 * s, 0.6 * s, 'F')
+      }
+      break
+    }
+    case 'anniversary':
+    case 'wedding': {
+      doc.setDrawColor(...lavender)
+      doc.setLineWidth(1.5)
+      doc.circle(cx - 2.1 * s, cy + 0.4 * s, 3.6 * s, 'S')
+      doc.setDrawColor(...cream)
+      doc.setLineWidth(1.5)
+      doc.circle(cx + 2.1 * s, cy + 0.4 * s, 3.6 * s, 'S')
+      doc.setFillColor(...cream)
+      doc.triangle(cx, cy - 6.2 * s, cx - 1.5 * s, cy - 4.5 * s, cx + 1.5 * s, cy - 4.5 * s, 'F')
+      doc.triangle(cx, cy - 2.8 * s, cx - 1.5 * s, cy - 4.5 * s, cx + 1.5 * s, cy - 4.5 * s, 'F')
+      break
+    }
+    case 'valentines': {
+      doc.setFillColor(212, 87, 122)
+      doc.circle(cx - 2.0 * s, cy - 1.2 * s, 2.3 * s, 'F')
+      doc.circle(cx + 2.0 * s, cy - 1.2 * s, 2.3 * s, 'F')
+      doc.triangle(cx - 4.2 * s, cy - 0.4 * s, cx + 4.2 * s, cy - 0.4 * s, cx, cy + 4.8 * s, 'F')
+      doc.setFillColor(...lavender)
+      doc.circle(cx - 1.8 * s, cy - 1.5 * s, 0.6 * s, 'F')
+      break
+    }
+    case 'self-care': {
+      doc.setFillColor(...sage)
+      doc.ellipse(cx - 2.8 * s, cy + 1.2 * s, 3.1 * s, 1.4 * s, 'F')
+      doc.ellipse(cx + 2.8 * s, cy + 1.2 * s, 3.1 * s, 1.4 * s, 'F')
+      doc.setFillColor(...cream)
+      doc.ellipse(cx, cy - 1.0 * s, 2.1 * s, 4.3 * s, 'F')
+      doc.setFillColor(...lavender)
+      doc.circle(cx, cy - 1.0 * s, 1.0 * s, 'F')
+      break
+    }
+    case 'thank-you':
+    case 'mothers-day': {
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3
+        const px = cx + Math.cos(angle) * 3.1 * s
+        const py = cy + Math.sin(angle) * 3.1 * s
+        doc.setFillColor(...(i % 2 === 0 ? blush : cream))
+        doc.circle(px, py, 1.85 * s, 'F')
+      }
+      doc.setFillColor(...lavender)
+      doc.circle(cx, cy, 1.6 * s, 'F')
+      break
+    }
+    case 'just-because': {
+      doc.setFillColor(...cream)
+      doc.roundedRect(cx - 4.2 * s, cy - 1.2 * s, 8.4 * s, 6 * s, 1.6, 1.6, 'F')
+      doc.setFillColor(...lavender)
+      doc.rect(cx - 0.7 * s, cy - 2.3 * s, 1.4 * s, 7.1 * s, 'F')
+      doc.setFillColor(...accentRgb)
+      doc.rect(cx - 4.2 * s, cy + 1.4 * s, 8.4 * s, 1.1 * s, 'F')
+      doc.setFillColor(...lavender)
+      doc.circle(cx - 1.7 * s, cy - 3.3 * s, 1.2 * s, 'F')
+      doc.circle(cx + 1.7 * s, cy - 3.3 * s, 1.2 * s, 'F')
+      break
+    }
+    case 'classic':
+    default: {
+      doc.setFillColor(...lavender)
+      doc.triangle(cx, cy - 5.8 * s, cx - 1.5 * s, cy, cx + 1.5 * s, cy, 'F')
+      doc.triangle(cx, cy + 5.8 * s, cx - 1.5 * s, cy, cx + 1.5 * s, cy, 'F')
+      doc.setFillColor(...cream)
+      doc.triangle(cx - 5.8 * s, cy, cx, cy - 1.5 * s, cx, cy + 1.5 * s, 'F')
+      doc.triangle(cx + 5.8 * s, cy, cx, cy - 1.5 * s, cx, cy + 1.5 * s, 'F')
+      doc.setFillColor(...lavender)
+      doc.circle(cx, cy, 1.0 * s, 'F')
+      break
+    }
+  }
+}
+
+/**
+ * Draws the exact Dermaspace Gift Card occasion medallion motif on Canvas 2D
+ * for PNG receipt downloads, matching GiftCardPreview & gift-card-print-pdf.
+ */
+function drawCanvasGiftCardMotif(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  motif: GiftCardOccasionMotif,
+  medallionHex: string,
+  accentHex: string,
+): void {
+  const s = radius / 10.2
+  const lavender = '#E9D5FF'
+  const cream = '#F8F0FC'
+  const blush = '#F9D5E5'
+  const sage = '#A7D7C5'
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, 10.2 * s, 0, Math.PI * 2)
+  ctx.fillStyle = medallionHex
+  ctx.fill()
+  ctx.strokeStyle = lavender
+  ctx.lineWidth = 1.4
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(cx, cy, 8.2 * s, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(248,240,252,0.55)'
+  ctx.lineWidth = 0.85
+  ctx.stroke()
+
+  switch (motif) {
+    case 'christmas': {
+      ctx.strokeStyle = cream
+      ctx.lineWidth = 1.5
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * Math.PI) / 3
+        const dx = Math.cos(angle) * 5.4 * s
+        const dy = Math.sin(angle) * 5.4 * s
+        ctx.beginPath()
+        ctx.moveTo(cx - dx, cy - dy)
+        ctx.lineTo(cx + dx, cy + dy)
+        ctx.stroke()
+      }
+      ctx.beginPath()
+      ctx.arc(cx, cy, 1.3 * s, 0, Math.PI * 2)
+      ctx.fillStyle = lavender
+      ctx.fill()
+      break
+    }
+    case 'birthday': {
+      drawRoundedRectPath(ctx, cx - 5 * s, cy + 0.5 * s, 10 * s, 3.6 * s, 2)
+      ctx.fillStyle = cream
+      ctx.fill()
+      drawRoundedRectPath(ctx, cx - 3.5 * s, cy - 2.6 * s, 7 * s, 3.1 * s, 1.8)
+      ctx.fillStyle = blush
+      ctx.fill()
+      ctx.fillStyle = lavender
+      ctx.fillRect(cx - 5 * s, cy + 4.3 * s, 10 * s, 0.8 * s)
+      for (const offset of [-2, 0, 2]) {
+        ctx.fillStyle = cream
+        ctx.fillRect(cx + (offset - 0.3) * s, cy - 4.7 * s, 0.6 * s, 2.1 * s)
+        ctx.beginPath()
+        ctx.arc(cx + offset * s, cy - 5.4 * s, 0.6 * s, 0, Math.PI * 2)
+        ctx.fillStyle = lavender
+        ctx.fill()
+      }
+      break
+    }
+    case 'anniversary':
+    case 'wedding': {
+      ctx.lineWidth = 2.1
+      ctx.beginPath()
+      ctx.arc(cx - 2.1 * s, cy + 0.4 * s, 3.6 * s, 0, Math.PI * 2)
+      ctx.strokeStyle = lavender
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(cx + 2.1 * s, cy + 0.4 * s, 3.6 * s, 0, Math.PI * 2)
+      ctx.strokeStyle = cream
+      ctx.stroke()
+      ctx.fillStyle = cream
+      ctx.beginPath()
+      ctx.moveTo(cx, cy - 6.2 * s)
+      ctx.lineTo(cx - 1.5 * s, cy - 4.5 * s)
+      ctx.lineTo(cx, cy - 2.8 * s)
+      ctx.lineTo(cx + 1.5 * s, cy - 4.5 * s)
+      ctx.closePath()
+      ctx.fill()
+      break
+    }
+    case 'valentines': {
+      ctx.fillStyle = '#D4577A'
+      ctx.beginPath()
+      ctx.arc(cx - 2.0 * s, cy - 1.2 * s, 2.3 * s, 0, Math.PI * 2)
+      ctx.arc(cx + 2.0 * s, cy - 1.2 * s, 2.3 * s, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(cx - 4.2 * s, cy - 0.4 * s)
+      ctx.lineTo(cx + 4.2 * s, cy - 0.4 * s)
+      ctx.lineTo(cx, cy + 4.8 * s)
+      ctx.closePath()
+      ctx.fill()
+      ctx.beginPath()
+      ctx.arc(cx - 1.8 * s, cy - 1.5 * s, 0.6 * s, 0, Math.PI * 2)
+      ctx.fillStyle = lavender
+      ctx.fill()
+      break
+    }
+    case 'self-care': {
+      ctx.fillStyle = sage
+      ctx.beginPath()
+      ctx.ellipse(cx - 2.8 * s, cy + 1.2 * s, 3.1 * s, 1.4 * s, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.beginPath()
+      ctx.ellipse(cx + 2.8 * s, cy + 1.2 * s, 3.1 * s, 1.4 * s, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = cream
+      ctx.beginPath()
+      ctx.ellipse(cx, cy - 1.0 * s, 2.1 * s, 4.3 * s, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = lavender
+      ctx.beginPath()
+      ctx.arc(cx, cy - 1.0 * s, 1.0 * s, 0, Math.PI * 2)
+      ctx.fill()
+      break
+    }
+    case 'thank-you':
+    case 'mothers-day': {
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3
+        const px = cx + Math.cos(angle) * 3.1 * s
+        const py = cy + Math.sin(angle) * 3.1 * s
+        ctx.beginPath()
+        ctx.arc(px, py, 1.85 * s, 0, Math.PI * 2)
+        ctx.fillStyle = i % 2 === 0 ? blush : cream
+        ctx.fill()
+      }
+      ctx.beginPath()
+      ctx.arc(cx, cy, 1.6 * s, 0, Math.PI * 2)
+      ctx.fillStyle = lavender
+      ctx.fill()
+      break
+    }
+    case 'just-because': {
+      drawRoundedRectPath(ctx, cx - 4.2 * s, cy - 1.2 * s, 8.4 * s, 6 * s, 2)
+      ctx.fillStyle = cream
+      ctx.fill()
+      ctx.fillStyle = lavender
+      ctx.fillRect(cx - 0.7 * s, cy - 2.3 * s, 1.4 * s, 7.1 * s)
+      ctx.fillStyle = accentHex
+      ctx.fillRect(cx - 4.2 * s, cy + 1.4 * s, 8.4 * s, 1.1 * s)
+      ctx.fillStyle = lavender
+      ctx.beginPath()
+      ctx.arc(cx - 1.7 * s, cy - 3.3 * s, 1.2 * s, 0, Math.PI * 2)
+      ctx.arc(cx + 1.7 * s, cy - 3.3 * s, 1.2 * s, 0, Math.PI * 2)
+      ctx.fill()
+      break
+    }
+    case 'classic':
+    default: {
+      ctx.fillStyle = lavender
+      ctx.beginPath()
+      ctx.moveTo(cx, cy - 5.8 * s)
+      ctx.lineTo(cx - 1.5 * s, cy)
+      ctx.lineTo(cx + 1.5 * s, cy)
+      ctx.closePath()
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(cx, cy + 5.8 * s)
+      ctx.lineTo(cx - 1.5 * s, cy)
+      ctx.lineTo(cx + 1.5 * s, cy)
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillStyle = cream
+      ctx.beginPath()
+      ctx.moveTo(cx - 5.8 * s, cy)
+      ctx.lineTo(cx, cy - 1.5 * s)
+      ctx.lineTo(cx, cy + 1.5 * s)
+      ctx.closePath()
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(cx + 5.8 * s, cy)
+      ctx.lineTo(cx, cy - 1.5 * s)
+      ctx.lineTo(cx, cy + 1.5 * s)
+      ctx.closePath()
+      ctx.fill()
+      ctx.fillStyle = lavender
+      ctx.beginPath()
+      ctx.arc(cx, cy, 1.0 * s, 0, Math.PI * 2)
+      ctx.fill()
+      break
+    }
+  }
+  ctx.restore()
 }
 
 function pdfFontFamilyForGiftCard(
@@ -1105,7 +1506,11 @@ export async function downloadReceiptPdf(
     return currentY
   }
 
-  const { dataUrl: logoDataUrl, aspect: logoAspect } = await loadLogoAssets()
+  const {
+    dataUrl: logoDataUrl,
+    whiteDataUrl: whiteLogoDataUrl,
+    aspect: logoAspect,
+  } = await loadLogoAssets()
 
   drawPdfPageBackdropAndWatermark(doc, {
     pageWidth,
@@ -1219,95 +1624,129 @@ export async function downloadReceiptPdf(
     y += 10
   }
 
-  // 4. Optional Gift Card Specimen Card (Unboxed metadata line underneath)
+  // 4. Optional Exact Gift Card Specimen Card (CR80 1.586:1 layout matching GiftCardPreview)
   if (data.giftCardVisual) {
     const gc = data.giftCardVisual
-    const cardVisualH = 108
+    const gcW = Math.min(260, innerW)
+    const cardVisualH = Math.round(gcW / 1.586)
     const specLineH = 18
-    y = ensureSpace(cardVisualH + specLineH + 8, y)
+    y = ensureSpace(cardVisualH + specLineH + 10, y)
 
-    const gcW = Math.min(266, innerW)
     const gcX = centerX - gcW / 2
     const surfaceRgb = hexToRgb(gc.surfaceHex, brandPurple)
     const accentRgb = hexToRgb(gc.accentHex, brandPurple)
     const medallionRgb = hexToRgb(gc.medallionHex, brandPurple)
+    const lightLavender: [number, number, number] = [233, 213, 255]
     const gcFont = pdfFontFamilyForGiftCard(gc.fontName)
+    const motif = gc.motif ?? resolveOccasionMotif(gc.occasion, gc.designId)
 
+    // Base card fill
     doc.setFillColor(...surfaceRgb)
-    doc.roundedRect(gcX, y, gcW, cardVisualH, 8, 8, 'F')
+    doc.roundedRect(gcX, y, gcW, cardVisualH, 10, 10, 'F')
 
+    // Right architectural wing (56% accent + 65% deeper medallion inlay)
+    const rightWingX = gcX + gcW * 0.56
+    const rightWingW = gcW - gcW * 0.56
     doc.setFillColor(...accentRgb)
-    doc.roundedRect(
-      gcX + gcW * 0.62,
-      y + 8,
-      gcW * 0.34,
-      cardVisualH - 16,
-      6,
-      6,
-      'F',
+    doc.roundedRect(rightWingX, y, rightWingW, cardVisualH, 10, 10, 'F')
+    doc.rect(rightWingX, y, 10, cardVisualH, 'F')
+
+    const innerWingX = gcX + gcW * 0.65
+    const innerWingW = gcW - gcW * 0.65
+    doc.setFillColor(...medallionRgb)
+    doc.roundedRect(innerWingX, y, innerWingW, cardVisualH, 10, 10, 'F')
+    doc.rect(innerWingX, y, 10, cardVisualH, 'F')
+
+    // Vertical lavender divider + clean architectural inset frame
+    doc.setDrawColor(...lightLavender)
+    doc.setLineWidth(0.55)
+    doc.line(rightWingX, y + 8, rightWingX, y + cardVisualH - 8)
+    doc.setLineWidth(0.6)
+    doc.roundedRect(gcX + 6, y + 6, gcW - 12, cardVisualH - 12, 6, 6, 'S')
+
+    // Exact occasion medallion artwork in the right wing
+    drawPdfGiftCardMotif(
+      doc,
+      gcX + gcW * 0.785,
+      y + cardVisualH * 0.51,
+      27,
+      motif,
+      medallionRgb,
+      accentRgb,
     )
 
-    doc.setDrawColor(255, 255, 255)
-    doc.setLineWidth(0.55)
-    doc.roundedRect(gcX + 6, y + 6, gcW - 12, cardVisualH - 12, 5, 5, 'S')
-
-    // Concentric Monogram Medallion ("DS", zero sparkles)
-    const medX = gcX + gcW - 42
-    const medY = y + cardVisualH / 2 + 1
-    doc.setFillColor(...medallionRgb)
-    doc.setDrawColor(245, 236, 248)
-    doc.setLineWidth(0.85)
-    doc.circle(medX, medY, 17.5, 'FD')
-    doc.setLineWidth(0.45)
-    doc.circle(medX, medY, 13.5, 'S')
-
-    doc.setFont('times', 'bold')
-    doc.setFontSize(9.5)
-    doc.setTextColor(255, 255, 255)
-    doc.text('DS', medX, medY + 3.2, { align: 'center' })
-
+    // Top row: real white Dermaspace logo (left) + GIFT CARD (right)
+    const safeLeft = gcX + 15
+    const safeRight = gcX + gcW - 15
+    const leftZoneMaxW = rightWingX - safeLeft - 8
+    if (whiteLogoDataUrl) {
+      const cardLogoH = 15
+      const cardLogoW = Math.min(cardLogoH * logoAspect, 78)
+      doc.addImage(
+        whiteLogoDataUrl,
+        'PNG',
+        safeLeft,
+        y + 13,
+        cardLogoW,
+        cardLogoH,
+        undefined,
+        'FAST',
+      )
+    } else {
+      doc.setFont('times', 'bold')
+      doc.setFontSize(10.5)
+      doc.setTextColor(255, 255, 255)
+      doc.text('DERMASPACE', safeLeft, y + 23)
+    }
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.8)
-    doc.setTextColor(255, 255, 255)
-    doc.text('DERMASPACE', gcX + 14, y + 19)
-    doc.setFontSize(6)
-    doc.text('GIFT CARD', gcX + gcW - 14, y + 19, { align: 'right' })
+    doc.setFontSize(6.2)
+    doc.setTextColor(...lightLavender)
+    doc.text('GIFT CARD', safeRight, y + 22, { align: 'right' })
 
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6)
-    doc.setTextColor(235, 228, 242)
-    doc.text('FOR', gcX + 14, y + 36)
+    // Center-left: PRESENTED TO + recipient, CARD VALUE + amount
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(5.8)
+    doc.setTextColor(...lightLavender)
+    doc.text('PRESENTED TO', safeLeft, y + 52)
 
     doc.setFont(gcFont, 'bold')
-    doc.setFontSize(10.5)
+    doc.setFontSize(11.5)
     doc.setTextColor(255, 255, 255)
     const recLines = wrapTextLines(
       gc.recipientName,
       (t) => doc.getTextWidth(t),
-      140,
+      leftZoneMaxW,
     ).slice(0, 2)
-    doc.text(recLines, gcX + 14, y + 47)
+    doc.text(recLines, safeLeft, y + 65)
 
+    const valLabelY = recLines.length > 1 ? y + 92 : y + 87
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(5.8)
     doc.setTextColor(235, 228, 242)
-    doc.text('VALUE', gcX + 14, y + 67)
+    doc.text('CARD VALUE', safeLeft, valLabelY)
+
     doc.setFont(gcFont, 'bold')
-    doc.setFontSize(14)
+    doc.setFontSize(15.5)
     doc.setTextColor(255, 255, 255)
-    doc.text(gc.amountFormatted, gcX + 14, y + 81)
+    doc.text(gc.amountFormatted, safeLeft, valLabelY + 16)
+
+    // Bottom hairline rule + edition label + sender
+    const bottomRuleY = y + cardVisualH - 25
+    doc.setDrawColor(...lightLavender)
+    doc.setLineWidth(0.45)
+    doc.line(safeLeft, bottomRuleY, safeRight, bottomRuleY)
 
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(6.8)
+    doc.setFontSize(7.2)
     doc.setTextColor(245, 238, 250)
-    doc.text(gc.editionLabel, gcX + 14, y + cardVisualH - 12)
+    doc.text(gc.editionLabel, safeLeft, y + cardVisualH - 12)
     if (gc.senderName) {
       const fromText = wrapTextLines(
         `From: ${gc.senderName}`,
         (t) => doc.getTextWidth(t),
-        92,
+        104,
       )[0]
-      doc.text(fromText || '', gcX + gcW - 14, y + cardVisualH - 12, {
+      doc.text(fromText || '', safeRight, y + cardVisualH - 12, {
         align: 'right',
       })
     }
@@ -1837,7 +2276,11 @@ export async function downloadReceiptImage(
   const textBody = '#3F3F46'
   const textMuted = '#71717A'
 
-  const { bitmap: logoBitmap } = await loadLogoAssets()
+  const {
+    bitmap: logoBitmap,
+    whiteCanvas: whiteLogoCanvas,
+    aspect: logoAspect,
+  } = await loadLogoAssets()
 
   const measureCanvas = document.createElement('canvas')
   const mctx = measureCanvas.getContext('2d')!
@@ -1869,8 +2312,10 @@ export async function downloadReceiptImage(
         6
       : 0
 
-  // Measure Gift Card Visual (if present — unboxed metadata line beneath)
-  const giftVisualH = data.giftCardVisual ? 164 + 16 + 14 : 0
+  // Measure Gift Card Visual (true CR80 1.586:1 proportion + unboxed metadata line beneath)
+  const gcCardWMeasure = Math.min(360, innerW)
+  const gcCardHMeasure = Math.round(gcCardWMeasure / 1.586)
+  const giftVisualH = data.giftCardVisual ? gcCardHMeasure + 16 + 14 : 0
 
   // Measure Left-Label / Right-Value Ledger
   const measuredLedger = measureLedgerRows(
@@ -2101,98 +2546,130 @@ export async function downloadReceiptImage(
     ctx.textAlign = 'left'
   }
 
-  // 4. Optional Gift Card Specimen Card (Unboxed metadata line underneath)
+  // 4. Optional Exact Gift Card Specimen Card (CR80 1.586:1 layout matching GiftCardPreview)
   if (data.giftCardVisual) {
     y += headlineLines.length > 0 ? 14 : 10
     const gc = data.giftCardVisual
-    const gcCardW = Math.min(340, innerW)
-    const gcCardH = 164
+    const gcCardW = gcCardWMeasure
+    const gcCardH = gcCardHMeasure
     const gcX = centerX - gcCardW / 2
     const gcFont = canvasFontFamilyForGiftCard(gc.fontName, siteFonts)
+    const motif = gc.motif ?? resolveOccasionMotif(gc.occasion, gc.designId)
+    const rightWingX = gcX + gcCardW * 0.56
+    const innerWingX = gcX + gcCardW * 0.65
 
-    drawRoundedRectPath(ctx, gcX, y, gcCardW, gcCardH, 10)
+    // Clip card surface cleanly to rounded CR80 corners
+    ctx.save()
+    drawRoundedRectPath(ctx, gcX, y, gcCardW, gcCardH, 14)
+    ctx.clip()
+
+    // Base flat surface
     ctx.fillStyle = gc.surfaceHex || brandHex
-    ctx.fill()
+    ctx.fillRect(gcX, y, gcCardW, gcCardH)
 
-    drawRoundedRectPath(
-      ctx,
-      gcX + gcCardW * 0.62,
-      y + 11,
-      gcCardW * 0.33,
-      gcCardH - 22,
-      8,
-    )
+    // Right architectural wing (56% accent + 65% deeper medallion inlay)
     ctx.fillStyle = gc.accentHex || brandHex
-    ctx.fill()
+    ctx.fillRect(rightWingX, y, gcCardW - gcCardW * 0.56, gcCardH)
+    ctx.fillStyle = gc.medallionHex || brandHex
+    ctx.fillRect(innerWingX, y, gcCardW - gcCardW * 0.65, gcCardH)
 
-    drawRoundedRectPath(ctx, gcX + 8, y + 8, gcCardW - 16, gcCardH - 16, 7)
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)'
+    // Vertical lavender accent divider
+    ctx.strokeStyle = 'rgba(233,213,255,0.65)'
     ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(rightWingX, y + 10)
+    ctx.lineTo(rightWingX, y + gcCardH - 10)
     ctx.stroke()
 
-    const medX = gcX + gcCardW - 55
-    const medY = y + gcCardH / 2 + 2
-    ctx.beginPath()
-    ctx.arc(medX, medY, 22, 0, Math.PI * 2)
-    ctx.fillStyle = gc.medallionHex || brandHex
-    ctx.fill()
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)'
+    ctx.restore()
+
+    // Outer card hairline border + inner architectural frame
+    drawRoundedRectPath(ctx, gcX, y, gcCardW, gcCardH, 14)
+    ctx.strokeStyle = 'rgba(233,213,255,0.45)'
     ctx.lineWidth = 1.1
     ctx.stroke()
 
-    ctx.beginPath()
-    ctx.arc(medX, medY, 16.5, 0, Math.PI * 2)
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)'
-    ctx.lineWidth = 0.8
+    drawRoundedRectPath(ctx, gcX + 8, y + 8, gcCardW - 16, gcCardH - 16, 9)
+    ctx.strokeStyle = 'rgba(233,213,255,0.45)'
+    ctx.lineWidth = 0.85
     ctx.stroke()
 
-    ctx.textAlign = 'center'
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = `700 12.5px ${serifFont}`
-    ctx.fillText('DS', medX, medY + 4.5)
-    ctx.textAlign = 'left'
+    // Exact occasion medallion artwork in the right wing
+    drawCanvasGiftCardMotif(
+      ctx,
+      gcX + gcCardW * 0.785,
+      y + gcCardH * 0.5,
+      36,
+      motif,
+      gc.medallionHex || brandHex,
+      gc.accentHex || brandHex,
+    )
 
-    ctx.fillStyle = '#FFFFFF'
-    ctx.font = `700 10px ${sansFont}`
-    ctx.fillText('DERMASPACE', gcX + 18, y + 28)
+    // Top Row: real white Dermaspace logo mark (left) + GIFT CARD (right)
+    const safeLeft = gcX + 20
+    const safeRight = gcX + gcCardW - 20
+    const leftMaxW = rightWingX - safeLeft - 10
+    if (whiteLogoCanvas) {
+      const cardLogoH = 20
+      const cardLogoW = Math.min(cardLogoH * logoAspect, 108)
+      ctx.drawImage(whiteLogoCanvas, safeLeft, y + 17, cardLogoW, cardLogoH)
+    } else {
+      ctx.fillStyle = '#FFFFFF'
+      ctx.font = `700 13px ${serifFont}`
+      ctx.fillText('DERMASPACE', safeLeft, y + 31)
+    }
     ctx.textAlign = 'right'
-    ctx.font = `700 8px ${sansFont}`
-    ctx.fillText('GIFT CARD', gcX + gcCardW - 18, y + 28)
+    ctx.fillStyle = '#E9D5FF'
+    ctx.font = `700 9px ${sansFont}`
+    ctx.fillText('GIFT CARD', safeRight, y + 30)
     ctx.textAlign = 'left'
 
-    ctx.fillStyle = 'rgba(245,238,250,0.85)'
-    ctx.font = `400 8.5px ${sansFont}`
-    ctx.fillText('FOR', gcX + 18, y + 52)
+    // Center Left: PRESENTED TO + recipient, CARD VALUE + formatted amount
+    ctx.fillStyle = '#E9D5FF'
+    ctx.font = `700 8.5px ${sansFont}`
+    ctx.fillText('PRESENTED TO', safeLeft, y + 72)
+
     ctx.fillStyle = '#FFFFFF'
     const recLines = wrapTextLines(
       gc.recipientName,
-      measureWithFont(`700 14px ${gcFont}`),
-      168,
+      measureWithFont(`700 15.5px ${gcFont}`),
+      leftMaxW,
     ).slice(0, 2)
-    ctx.font = `700 14px ${gcFont}`
+    ctx.font = `700 15.5px ${gcFont}`
     recLines.forEach((line, idx) => {
-      ctx.fillText(line, gcX + 18, y + 69 + idx * 17)
+      ctx.fillText(line, safeLeft, y + 91 + idx * 19)
     })
 
-    ctx.fillStyle = 'rgba(245,238,250,0.85)'
-    ctx.font = `700 8px ${sansFont}`
-    ctx.fillText('VALUE', gcX + 18, y + 102)
+    const valueLabelY = recLines.length > 1 ? y + 129 : y + 123
+    ctx.fillStyle = 'rgba(245,238,250,0.82)'
+    ctx.font = `700 8.5px ${sansFont}`
+    ctx.fillText('CARD VALUE', safeLeft, valueLabelY)
     ctx.fillStyle = '#FFFFFF'
-    ctx.font = `700 19px ${gcFont}`
-    ctx.fillText(gc.amountFormatted, gcX + 18, y + 123)
+    ctx.font = `700 22px ${gcFont}`
+    ctx.fillText(gc.amountFormatted, safeLeft, valueLabelY + 23)
 
-    ctx.fillStyle = 'rgba(245,238,250,0.92)'
-    ctx.font = `400 9.5px ${sansFont}`
-    ctx.fillText(gc.editionLabel, gcX + 18, y + gcCardH - 18)
+    // Bottom Row: hairline divider + edition label + sender
+    const bottomRuleY = y + gcCardH - 34
+    ctx.strokeStyle = 'rgba(233,213,255,0.4)'
+    ctx.lineWidth = 0.9
+    ctx.beginPath()
+    ctx.moveTo(safeLeft, bottomRuleY)
+    ctx.lineTo(safeRight, bottomRuleY)
+    ctx.stroke()
+
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'
+    ctx.font = `500 10.5px ${sansFont}`
+    ctx.fillText(gc.editionLabel, safeLeft, y + gcCardH - 16)
     if (gc.senderName) {
       const fromText = wrapTextLines(
         `From: ${gc.senderName}`,
-        measureWithFont(`400 9px ${sansFont}`),
-        118,
+        measureWithFont(`500 10.5px ${sansFont}`),
+        142,
       )[0]
       ctx.textAlign = 'right'
-      ctx.font = `400 9px ${sansFont}`
-      ctx.fillText(fromText || '', gcX + gcCardW - 18, y + gcCardH - 18)
+      ctx.fillStyle = '#E9D5FF'
+      ctx.font = `500 10.5px ${sansFont}`
+      ctx.fillText(fromText || '', safeRight, y + gcCardH - 16)
       ctx.textAlign = 'left'
     }
 

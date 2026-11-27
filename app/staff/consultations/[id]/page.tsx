@@ -36,6 +36,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useNotify } from "@/components/shared/notify"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { cn } from "@/lib/utils"
 
 interface Consultation {
@@ -56,6 +57,8 @@ interface Consultation {
   appointment_time: string | null
   created_at: string
   customer_avatar_url?: string | null
+  customer_role?: string | null
+  customer_gender?: string | null
 }
 
 const fetcher = (u: string) =>
@@ -253,17 +256,16 @@ export default function StaffConsultationDetailPage({
         <div className="absolute inset-y-0 left-0 w-1.5 bg-[#7B2D8E]" aria-hidden />
         <div className="flex items-start gap-4">
           <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-base font-bold uppercase text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
-            {consultation.customer_avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={consultation.customer_avatar_url}
-                alt=""
-                aria-hidden="true"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              initialsFor(name)
-            )}
+            <UserAvatar
+              avatarUrl={consultation.customer_avatar_url}
+              firstName={consultation.first_name}
+              lastName={consultation.last_name}
+              role={consultation.customer_role}
+              gender={consultation.customer_gender}
+              sizePx={112}
+              fallback={initialsFor(name)}
+              imgClassName="h-full w-full object-cover"
+            />
           </span>
           <div className="min-w-0 flex-1 space-y-1">
             <span className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">

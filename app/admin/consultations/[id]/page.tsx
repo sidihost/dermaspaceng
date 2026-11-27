@@ -72,6 +72,7 @@ import {
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { AttachmentList } from '@/components/shared/attachment-list'
+import { UserAvatar } from '@/components/shared/user-avatar'
 import type { ReplyAttachment } from '@/lib/attachments'
 import { useAuth } from '@/hooks/use-auth'
 import { useNotify } from '@/components/shared/notify'
@@ -94,6 +95,8 @@ interface Consultation {
   scheduled_at: string | null
   created_at: string
   customer_avatar_url?: string | null
+  customer_role?: string | null
+  customer_gender?: string | null
   // Device / submission metadata (see migration 670). All nullable —
   // older rows predate this capture and stay undefined.
   is_anonymous?: boolean | null
@@ -120,6 +123,7 @@ interface Reply {
   // The customer-facing display name set on the reply (Admin / Franca /
   // Itunu / custom). Optional — falls back to the real staff name.
   sender_display_name?: string | null
+  author_avatar_url?: string | null
   /** File attachments uploaded with the reply (images / PDFs). */
   attachments?: ReplyAttachment[] | null
   // marked true for optimistic rows so we can dim them while the POST
@@ -550,17 +554,14 @@ export default function ConsultationDetailPage() {
             <div className="relative bg-[#7B2D8E] px-5 sm:px-7 py-5 text-white">
               <div className="flex items-start gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0 overflow-hidden">
-                  {consultation.customer_avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={consultation.customer_avatar_url}
-                      alt=""
-                      aria-hidden="true"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    initials
-                  )}
+                  <UserAvatar
+                    avatarUrl={consultation.customer_avatar_url}
+                    role={consultation.customer_role}
+                    gender={consultation.customer_gender}
+                    sizePx={112}
+                    fallback={initials}
+                    imgClassName="h-full w-full object-cover"
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
@@ -768,6 +769,9 @@ export default function ConsultationDetailPage() {
                       key={r.id}
                       reply={r}
                       customerFallbackName={displayName}
+                      customerAvatarUrl={consultation.customer_avatar_url}
+                      customerRole={consultation.customer_role}
+                      customerGender={consultation.customer_gender}
                     />
                   ))}
                 </ol>
@@ -1114,9 +1118,15 @@ function MetaRow({
 function ConversationBubble({
   reply,
   customerFallbackName,
+  customerAvatarUrl,
+  customerRole,
+  customerGender,
 }: {
   reply: Reply
   customerFallbackName?: string
+  customerAvatarUrl?: string | null
+  customerRole?: string | null
+  customerGender?: string | null
 }) {
   const realName =
     [reply.staff_first_name, reply.staff_last_name].filter(Boolean).join(' ') ||
@@ -1141,6 +1151,17 @@ function ConversationBubble({
     return (
       <li className={`max-w-[88%] ${reply._pending ? 'opacity-60' : ''}`}>
         <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-500">
+          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-amber-100 text-[9px] font-semibold text-amber-800 ring-1 ring-amber-200">
+            <UserAvatar
+              avatarUrl={reply.author_avatar_url}
+              firstName={reply.staff_first_name}
+              lastName={reply.staff_last_name}
+              role="staff"
+              sizePx={40}
+              fallback="DS"
+              imgClassName="h-full w-full object-cover"
+            />
+          </span>
           <Lock className="w-3 h-3 text-amber-600" />
           <span className="font-medium text-gray-700">{realName}</span>
           <span className="font-semibold uppercase tracking-wide text-[9px] text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5">
@@ -1173,6 +1194,18 @@ function ConversationBubble({
     return (
       <li className={`max-w-[88%] ${reply._pending ? 'opacity-60' : ''}`}>
         <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-500">
+          <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-[9px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+            <UserAvatar
+              avatarUrl={reply.author_avatar_url || customerAvatarUrl}
+              firstName={reply.customer_first_name || customerName}
+              lastName={reply.customer_last_name}
+              role={customerRole}
+              gender={customerGender}
+              sizePx={40}
+              fallback={customerName.slice(0, 2).toUpperCase()}
+              imgClassName="h-full w-full object-cover"
+            />
+          </span>
           <span className="font-medium text-gray-700">{customerName}</span>
           <span className="font-semibold uppercase tracking-wide text-[9px] text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-1.5 py-0.5">
             Customer
@@ -1202,6 +1235,17 @@ function ConversationBubble({
         )}
         <span className="text-gray-300">·</span>
         <span>{reply._pending ? 'Sending…' : time}</span>
+        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-[9px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+          <UserAvatar
+            avatarUrl={reply.author_avatar_url}
+            firstName={reply.staff_first_name}
+            lastName={reply.staff_last_name}
+            role="staff"
+            sizePx={40}
+            fallback="DS"
+            imgClassName="h-full w-full object-cover"
+          />
+        </span>
       </div>
       <div className="rounded-2xl rounded-tr-md bg-[#7B2D8E] text-white px-4 py-3">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">

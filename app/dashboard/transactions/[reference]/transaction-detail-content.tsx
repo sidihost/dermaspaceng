@@ -32,6 +32,7 @@ import type { TransactionDetail } from '@/components/wallet/transaction-detail-s
 import {
   downloadTransactionReceiptImage,
   downloadTransactionReceiptPdf,
+  resolveTransactionGiftCard,
 } from '@/lib/receipt-pdf'
 import {
   RECEIPT_MASTHEAD_PATTERN_STYLE,
@@ -41,7 +42,12 @@ import {
   ReceiptCrownBand,
   ReceiptTearDivider,
 } from '@/components/receipt/receipt-chrome'
-import { getGiftCardOccasionMeta } from '@/lib/gift-card-templates'
+import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
+import {
+  findGiftCardDesignById,
+  findGiftCardFontById,
+  getGiftCardOccasionMeta,
+} from '@/lib/gift-card-templates'
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
@@ -165,7 +171,7 @@ function methodLabel(method: TransactionDetail['payment_method']) {
 
 function categoryLabel(tx: TransactionDetail) {
   if (tx.booking) return 'Booking'
-  if (tx.giftCard) return 'Gift Card'
+  if (resolveTransactionGiftCard(tx)) return 'Gift Card'
   const desc = (tx.description ?? '').toLowerCase()
   if (desc.includes('wallet funding')) return 'Deposit'
   if (desc.includes('gift card')) return 'Gift Card'
@@ -340,6 +346,17 @@ export default function TransactionDetailContent({
   }
 
   const tx = loadedTx
+  const effectiveGiftCard = resolveTransactionGiftCard(tx)
+  const resolvedGiftCardDesign = effectiveGiftCard
+    ? findGiftCardDesignById(
+        effectiveGiftCard.design || effectiveGiftCard.design_name,
+      )
+    : null
+  const resolvedGiftCardFont = effectiveGiftCard
+    ? findGiftCardFontById(
+        effectiveGiftCard.font || effectiveGiftCard.font_name,
+      )
+    : null
   const txReference = tx.payment_reference || tx.reference || ''
   const status = STATUS_META[tx.status] ?? STATUS_META.pending
   const StatusIcon = status.Icon
@@ -651,51 +668,91 @@ export default function TransactionDetailContent({
           </div>
 
           {/* Gift Card block if present */}
-          {tx.giftCard && (
+          {effectiveGiftCard && resolvedGiftCardDesign && resolvedGiftCardFont && (
             <div className="mx-5 mt-3 rounded-xl border border-[#7B2D8E]/15 overflow-hidden">
               <div className="px-3.5 py-2 bg-[#F7F2FA] border-b border-[#7B2D8E]/15 flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#7B2D8E]">
                   Gift Card
                 </span>
                 <span className="text-[10px] font-semibold uppercase text-[#7B2D8E]">
-                  {tx.giftCard.status || 'Confirmed'}
+                  {effectiveGiftCard.status || 'Confirmed'}
                 </span>
               </div>
+              <div className="p-3.5 bg-[#FBF9FC] border-b border-[#7B2D8E]/10">
+                <GiftCardPreview
+                  design={resolvedGiftCardDesign}
+                  amountText={
+                    tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)
+                  }
+                  recipientName={effectiveGiftCard.recipient_name}
+                  senderName={
+                    effectiveGiftCard.sender_name || tx.customer?.name || null
+                  }
+                  occasion={effectiveGiftCard.occasion}
+                  fontClassName={resolvedGiftCardFont.className}
+                  showStack={false}
+                />
+              </div>
               <div className="px-3.5 divide-y divide-gray-100">
-                {tx.giftCard.recipient_name && (
+                {effectiveGiftCard.recipient_name && (
                   <DetailRow label="Recipient">
-                    <span className="font-medium">{tx.giftCard.recipient_name}</span>
+                    <span className="font-medium">
+                      {effectiveGiftCard.recipient_name}
+                    </span>
                   </DetailRow>
                 )}
-                {tx.giftCard.recipient_email && (
+                {effectiveGiftCard.recipient_email && (
                   <DetailRow label="Recipient email">
-                    <span className="break-all">{tx.giftCard.recipient_email}</span>
+                    <span className="break-all">
+                      {effectiveGiftCard.recipient_email}
+                    </span>
                   </DetailRow>
                 )}
-                {tx.giftCard.occasion && (
+                {effectiveGiftCard.sender_name && (
+                  <DetailRow label="From">
+                    <span className="font-medium">
+                      {effectiveGiftCard.sender_name}
+                    </span>
+                  </DetailRow>
+                )}
+                {effectiveGiftCard.occasion && (
                   <DetailRow label="Occasion">
                     <span>
-                      {tx.giftCard.occasion} (
-                      {getGiftCardOccasionMeta(tx.giftCard.occasion).editionLabel})
+                      {effectiveGiftCard.occasion} (
+                      {getGiftCardOccasionMeta(effectiveGiftCard.occasion).editionLabel})
                     </span>
                   </DetailRow>
                 )}
-                {(tx.giftCard.design_name || tx.giftCard.design || tx.giftCard.font_name) && (
-                  <DetailRow label="Card style">
+                <DetailRow label="Card style">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span
+                      className="inline-block h-2 w-2 rounded-full border border-black/15 shrink-0"
+                      style={{
+                        backgroundColor: resolvedGiftCardDesign.surfaceHex,
+                      }}
+                    />
                     <span>
                       {[
-                        tx.giftCard.design_name || tx.giftCard.design,
-                        tx.giftCard.font_name ? `${tx.giftCard.font_name} font` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
+                        effectiveGiftCard.design_name ||
+                          resolvedGiftCardDesign.name,
+                        `${effectiveGiftCard.font_name || resolvedGiftCardFont.name} font`,
+                      ].join(' · ')}
+                    </span>
+                  </span>
+                </DetailRow>
+                {effectiveGiftCard.delivery_method && (
+                  <DetailRow label="Delivery">
+                    <span className="capitalize">
+                      {effectiveGiftCard.delivery_date
+                        ? `${effectiveGiftCard.delivery_method} (${effectiveGiftCard.delivery_date})`
+                        : effectiveGiftCard.delivery_method}
                     </span>
                   </DetailRow>
                 )}
-                {tx.giftCard.personal_message && (
+                {effectiveGiftCard.personal_message && (
                   <DetailRow label="Message">
                     <span className="italic text-gray-600">
-                      &ldquo;{tx.giftCard.personal_message}&rdquo;
+                      &ldquo;{effectiveGiftCard.personal_message}&rdquo;
                     </span>
                   </DetailRow>
                 )}

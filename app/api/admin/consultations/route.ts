@@ -54,11 +54,25 @@ export async function GET(request: NextRequest) {
         END AS scheduled_at,
         u.first_name as assigned_first_name,
         u.last_name as assigned_last_name,
+        u.avatar_url as assigned_avatar_url,
+        u.role as assigned_role,
+        u.gender as assigned_gender,
         cu.avatar_url as customer_avatar_url,
+        cu.role as customer_role,
+        cu.gender as customer_gender,
         cu.id as customer_user_id
       FROM consultations c
-      LEFT JOIN users u ON u.id = c.assigned_to
-      LEFT JOIN users cu ON LOWER(cu.email) = LOWER(c.email)
+      LEFT JOIN users u ON CAST(u.id AS TEXT) = CAST(c.assigned_to AS TEXT)
+      LEFT JOIN LATERAL (
+        SELECT id, avatar_url, role, gender
+        FROM users
+        WHERE (c.user_id IS NOT NULL AND CAST(id AS TEXT) = CAST(c.user_id AS TEXT))
+           OR (c.email IS NOT NULL AND TRIM(LOWER(email)) = TRIM(LOWER(c.email)))
+        ORDER BY
+          CASE WHEN c.user_id IS NOT NULL AND CAST(id AS TEXT) = CAST(c.user_id AS TEXT) THEN 0 ELSE 1 END,
+          CASE WHEN avatar_url IS NOT NULL AND TRIM(avatar_url) <> '' THEN 0 ELSE 1 END
+        LIMIT 1
+      ) cu ON TRUE
       WHERE (${status} = '' OR c.status = ${status || 'pending'})
       ORDER BY c.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -89,6 +103,9 @@ export async function GET(request: NextRequest) {
       }, {} as Record<string, number>)
     })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     console.error('Get consultations error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch consultations' },
@@ -261,6 +278,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     console.error('Update consultation error:', error)
     return NextResponse.json(
       { error: 'Failed to update consultation' },

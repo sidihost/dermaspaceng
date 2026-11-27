@@ -7,6 +7,7 @@ import {
   buildMembershipReceiptData,
   buildTransactionReceiptData,
   hexToRgb,
+  resolveTransactionGiftCard,
   sanitizeReceiptFilename,
   sanitizeReceiptImageFilename,
 } from './receipt-pdf'
@@ -83,6 +84,8 @@ test('buildTransactionReceiptData maps gift card style, visual colors, occasion,
   assert.equal(receipt.imageFilename, 'Dermaspace-Receipt-GC-2026-8841.png')
   assert.equal(receipt.note, 'Enjoy a relaxing spa afternoon!')
   assert.ok(receipt.giftCardVisual)
+  assert.equal(receipt.giftCardVisual?.designId, 'emerald')
+  assert.equal(receipt.giftCardVisual?.motif, 'birthday')
   assert.equal(receipt.giftCardVisual?.surfaceHex, '#184E3F')
   assert.equal(receipt.giftCardVisual?.accentHex, '#2A6F5B')
   assert.equal(receipt.giftCardVisual?.senderName, 'Chidinma')
@@ -131,6 +134,8 @@ test('buildGiftCardReceiptData formats gift card confirmation receipt and visual
   assert.equal(receipt.filename, 'Dermaspace-Receipt-DS_GIFT_881.pdf')
   assert.equal(receipt.imageFilename, 'Dermaspace-Receipt-DS_GIFT_881.png')
   assert.ok(receipt.giftCardVisual)
+  assert.equal(receipt.giftCardVisual?.designId, 'sapphire')
+  assert.equal(receipt.giftCardVisual?.motif, 'christmas')
   assert.equal(receipt.giftCardVisual?.surfaceHex, '#1D335B')
   assert.equal(receipt.giftCardVisual?.accentHex, '#314F85')
   assert.equal(receipt.giftCardVisual?.editionLabel, 'Christmas Edition')
@@ -149,6 +154,52 @@ test('buildGiftCardReceiptData formats gift card confirmation receipt and visual
     false,
   )
   assert.equal(receipt.lineItems, undefined)
+})
+
+test('resolveTransactionGiftCard hydrates exact design and motif from metadata.itemDetails when giftCard join is absent', () => {
+  const tx = {
+    id: 99,
+    type: 'debit' as const,
+    amount: 35000,
+    currency: 'NGN',
+    status: 'completed' as const,
+    payment_method: 'paystack' as const,
+    payment_reference: 'DS_GC_META_99',
+    description: 'Dermaspace Gift Card',
+    created_at: '2026-11-20T14:30:00Z',
+    metadata: {
+      type: 'gift_card',
+      itemDetails: {
+        recipientName: 'Zainab Bello',
+        recipientEmail: 'zainab@example.com',
+        senderName: 'Tunde',
+        occasion: "Valentine's",
+        design: 'burgundy',
+        designName: 'Velvet Rose',
+        font: 'playful',
+        fontName: 'Playful',
+        deliveryMethod: 'whatsapp',
+        personalMessage: 'Treat yourself to a serene spa afternoon!',
+      },
+    },
+  }
+
+  const resolved = resolveTransactionGiftCard(tx)
+  assert.ok(resolved)
+  assert.equal(resolved?.recipient_name, 'Zainab Bello')
+  assert.equal(resolved?.sender_name, 'Tunde')
+  assert.equal(resolved?.design, 'burgundy')
+  assert.equal(resolved?.occasion, "Valentine's")
+
+  const receipt = buildTransactionReceiptData(tx)
+  assert.ok(receipt.giftCardVisual)
+  assert.equal(receipt.giftCardVisual?.designId, 'burgundy')
+  assert.equal(receipt.giftCardVisual?.motif, 'valentines')
+  assert.equal(receipt.giftCardVisual?.surfaceHex, '#7D2248')
+  assert.equal(receipt.giftCardVisual?.accentHex, '#A13662')
+  assert.equal(receipt.giftCardVisual?.fontName, 'Playful')
+  assert.equal(receipt.giftCardVisual?.editionLabel, "Valentine's Edition")
+  assert.equal(receipt.note, 'Treat yourself to a serene spa afternoon!')
 })
 
 test('buildBookingReceiptData formats booking treatments, voucher discount, and filenames', () => {

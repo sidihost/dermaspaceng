@@ -32,6 +32,7 @@ import {
 } from "lucide-react"
 import { ConsultationResponsesSummary } from "@/components/consultation/consultation-responses-summary"
 import type { ConsultationConversationReply } from "@/components/consultation/consultation-conversation"
+import { UserAvatar } from "@/components/shared/user-avatar"
 import { getRecommendationsEyebrow } from "@/lib/recommendations-label"
 
 interface ConsultationAnalysis {
@@ -61,6 +62,7 @@ interface ConsultationDetail {
   aiGeneratedAt?: string | null
   createdAt: string
   updatedAt: string | null
+  customerAvatarUrl?: string | null
   replies?: ConsultationConversationReply[]
 }
 
@@ -191,8 +193,16 @@ export default function ConsultationDetailPage() {
             <div className="relative p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">
-                  <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-2xl bg-[#7B2D8E] text-sm font-bold text-white">
-                    {(fullName(c) || "U").charAt(0).toUpperCase()}
+                  <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#7B2D8E] text-sm font-bold text-white ring-1 ring-[#7B2D8E]/15">
+                    <UserAvatar
+                      avatarUrl={c.customerAvatarUrl}
+                      firstName={c.firstName}
+                      lastName={c.lastName}
+                      sizePx={88}
+                      alt={fullName(c)}
+                      fallback={(fullName(c) || "U").charAt(0).toUpperCase()}
+                      imgClassName="h-full w-full object-cover"
+                    />
                   </span>
                   <div className="min-w-0">
                     <h1 className="truncate text-xl font-semibold tracking-tight text-gray-900">

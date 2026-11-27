@@ -110,9 +110,21 @@ export async function listPublicConsultationReplies(
       u.last_name AS staff_last_name,
       u.avatar_url AS staff_avatar_url,
       u.role AS staff_role,
-      u.gender AS staff_gender
+      u.gender AS staff_gender,
+      cu.avatar_url AS customer_avatar_url
     FROM admin_replies ar
     LEFT JOIN users u ON u.id::text = ar.staff_id::text
+    LEFT JOIN consultations c ON c.id::text = ar.request_id::text
+    LEFT JOIN LATERAL (
+      SELECT avatar_url
+      FROM users
+      WHERE (c.user_id IS NOT NULL AND id::text = c.user_id::text)
+         OR (c.email IS NOT NULL AND TRIM(LOWER(email)) = TRIM(LOWER(c.email)))
+      ORDER BY
+        CASE WHEN c.user_id IS NOT NULL AND id::text = c.user_id::text THEN 0 ELSE 1 END,
+        CASE WHEN avatar_url IS NOT NULL AND TRIM(avatar_url) <> '' THEN 0 ELSE 1 END
+      LIMIT 1
+    ) cu ON TRUE
     WHERE ar.request_type = 'consultation'
       AND ar.request_id = ${String(consultationId)}
       AND COALESCE(ar.is_internal, FALSE) = FALSE
@@ -129,6 +141,7 @@ export async function listPublicConsultationReplies(
     staff_avatar_url: string | null
     staff_role: string | null
     staff_gender: string | null
+    customer_avatar_url: string | null
   }>
 
   return rows.map((row) => {
@@ -140,7 +153,7 @@ export async function listPublicConsultationReplies(
     const senderAvatarUrl = isStaff
       ? resolveAdminAvatar(row.staff_avatar_url, row.staff_role, row.staff_gender) ??
         STAFF_DEFAULT_AVATAR
-      : null
+      : row.customer_avatar_url?.trim() || null
 
     let parsedAttachments: ReplyAttachment[] = []
     if (Array.isArray(row.attachments)) {

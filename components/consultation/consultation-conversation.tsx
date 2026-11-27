@@ -193,6 +193,14 @@ export function ConsultationConversation({
                   {formattedTime && (
                     <span className="text-gray-400">· {formattedTime}</span>
                   )}
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-[10px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+                    <UserAvatar
+                      avatarUrl={reply.senderAvatarUrl}
+                      sizePx={40}
+                      fallback={initialsOf(reply.senderName || customerLabel)}
+                      imgClassName="h-full w-full object-cover"
+                    />
+                  </span>
                 </div>
                 <div className="max-w-full rounded-2xl rounded-tr-md bg-[#7B2D8E] px-4 py-3 text-white">
                   {reply.message && (

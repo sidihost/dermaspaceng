@@ -106,6 +106,7 @@ export async function GET(
       aiGeneratedAt: r.ai_generated_at ?? null,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
+      customerAvatarUrl: me.avatar_url ?? null,
       replies,
     },
   })

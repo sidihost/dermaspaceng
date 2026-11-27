@@ -83,6 +83,7 @@ export async function GET() {
       notes: r.notes,
       status: r.status,
       createdAt: r.created_at,
+      customerAvatarUrl: me.avatar_url ?? null,
       replyCount: Number(r.reply_count ?? 0),
       teamReplyCount: Number(r.team_reply_count ?? 0),
     })),

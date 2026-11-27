@@ -26,6 +26,7 @@ import {
   MailOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { UserAvatar } from "@/components/shared/user-avatar"
 
 interface UserConsultation {
   id: string
@@ -40,6 +41,7 @@ interface UserConsultation {
   notes: string | null
   status: string
   createdAt: string
+  customerAvatarUrl?: string | null
   replyCount?: number
   teamReplyCount?: number
 }
@@ -195,18 +197,30 @@ export default function DashboardConsultationsPage() {
                 className="block rounded-2xl border border-gray-100 bg-white p-4 transition-colors hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02] sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-gray-900">
-                        {fullName(c)}
-                      </p>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${cfg.cls}`}
-                      >
-                        <cfg.Icon className="h-2.5 w-2.5" />
-                        {cfg.label}
-                      </span>
-                    </div>
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-xs font-bold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+                      <UserAvatar
+                        avatarUrl={c.customerAvatarUrl}
+                        firstName={c.firstName}
+                        lastName={c.lastName}
+                        sizePx={80}
+                        alt={fullName(c)}
+                        fallback={(fullName(c) || "U").charAt(0).toUpperCase()}
+                        imgClassName="h-full w-full object-cover"
+                      />
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-gray-900">
+                          {fullName(c)}
+                        </p>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${cfg.cls}`}
+                        >
+                          <cfg.Icon className="h-2.5 w-2.5" />
+                          {cfg.label}
+                        </span>
+                      </div>
                     <p className="inline-flex items-center gap-1 text-sm font-semibold text-[#7B2D8E]">
                       <Calendar className="h-3.5 w-3.5" />
                       {formatLong(c.appointmentDate, c.appointmentTime)}
@@ -254,6 +268,7 @@ export default function DashboardConsultationsPage() {
                         {c.notes}
                       </p>
                     )}
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2 text-[10.5px] text-gray-400">

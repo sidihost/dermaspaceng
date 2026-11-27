@@ -44,10 +44,25 @@ export async function GET(
         END AS scheduled_at,
         u.first_name AS assigned_first_name,
         u.last_name AS assigned_last_name,
-        cu.avatar_url AS customer_avatar_url
+        u.avatar_url AS assigned_avatar_url,
+        u.role AS assigned_role,
+        u.gender AS assigned_gender,
+        cu.avatar_url AS customer_avatar_url,
+        cu.role AS customer_role,
+        cu.gender AS customer_gender,
+        cu.id AS customer_user_id
       FROM consultations c
-      LEFT JOIN users u ON u.id = c.assigned_to
-      LEFT JOIN users cu ON LOWER(cu.email) = LOWER(c.email)
+      LEFT JOIN users u ON CAST(u.id AS TEXT) = CAST(c.assigned_to AS TEXT)
+      LEFT JOIN LATERAL (
+        SELECT id, avatar_url, role, gender
+        FROM users
+        WHERE (c.user_id IS NOT NULL AND CAST(id AS TEXT) = CAST(c.user_id AS TEXT))
+           OR (c.email IS NOT NULL AND TRIM(LOWER(email)) = TRIM(LOWER(c.email)))
+        ORDER BY
+          CASE WHEN c.user_id IS NOT NULL AND CAST(id AS TEXT) = CAST(c.user_id AS TEXT) THEN 0 ELSE 1 END,
+          CASE WHEN avatar_url IS NOT NULL AND TRIM(avatar_url) <> '' THEN 0 ELSE 1 END
+        LIMIT 1
+      ) cu ON TRUE
       WHERE c.id = ${id}
       LIMIT 1
     `
@@ -56,6 +71,9 @@ export async function GET(
     }
     return NextResponse.json({ consultation: rows[0] })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     console.error('Get consultation detail error:', error)
     const message = error instanceof Error ? error.message : 'Failed to fetch consultation'
     return NextResponse.json({ error: message }, { status: 500 })
@@ -109,6 +127,9 @@ export async function DELETE(
     await invalidateAfterQueueWrite()
     return NextResponse.json({ ok: true })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Unauthorized')) {
+      return NextResponse.json({ error: error.message }, { status: 401 })
+    }
     console.error('Delete consultation error:', error)
     const message = error instanceof Error ? error.message : 'Failed to delete'
     return NextResponse.json({ error: message }, { status: 500 })

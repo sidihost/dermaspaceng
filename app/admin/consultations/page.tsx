@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
+import { UserAvatar } from '@/components/shared/user-avatar'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -42,6 +43,8 @@ interface Consultation {
   // can show the customer's real avatar (same one rendered on
   // /admin/users) whenever a registered account exists.
   customer_avatar_url: string | null
+  customer_role?: string | null
+  customer_gender?: string | null
   customer_user_id: string | null
 }
 
@@ -254,8 +257,8 @@ export default function ConsultationsPage() {
           }}
           className={`group relative overflow-hidden rounded-xl border bg-white p-3 text-left transition-all ${
             statusFilter === ''
-              ? 'border-[#7B2D8E] shadow-sm ring-2 ring-[#7B2D8E]/15'
-              : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+              ? 'border-[#7B2D8E] ring-2 ring-[#7B2D8E]/15'
+              : 'border-gray-200 hover:border-gray-300'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -288,8 +291,8 @@ export default function ConsultationsPage() {
               }}
               className={`group relative overflow-hidden rounded-xl border bg-white p-3 text-left transition-all ${
                 active
-                  ? 'border-[#7B2D8E] shadow-sm ring-2 ring-[#7B2D8E]/15'
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  ? 'border-[#7B2D8E] ring-2 ring-[#7B2D8E]/15'
+                  : 'border-gray-200 hover:border-gray-300'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -388,19 +391,16 @@ export default function ConsultationsPage() {
                     >
                       {/* ─── Avatar (same visual language as /admin/users) ─── */}
                       <div className="relative flex-shrink-0">
-                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-2 ring-white">
-                          {c.customer_avatar_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={c.customer_avatar_url}
-                              alt={c.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-sm font-semibold text-[#7B2D8E]">
-                              {initialsFrom(c.name, c.email)}
-                            </span>
-                          )}
+                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-sm font-semibold text-[#7B2D8E] ring-2 ring-white">
+                          <UserAvatar
+                            avatarUrl={c.customer_avatar_url}
+                            role={c.customer_role}
+                            gender={c.customer_gender}
+                            sizePx={96}
+                            alt={c.name}
+                            fallback={initialsFrom(c.name, c.email)}
+                            imgClassName="h-full w-full object-cover"
+                          />
                         </div>
                         {/* Tiny status dot in the corner — matches the
                             chip color so the row reads at a glance even

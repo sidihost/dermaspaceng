@@ -42,8 +42,14 @@ import { cn } from '@/lib/utils'
 import {
   downloadTransactionReceiptImage,
   downloadTransactionReceiptPdf,
+  resolveTransactionGiftCard,
 } from '@/lib/receipt-pdf'
 import { ReceiptCrownBand } from '@/components/receipt/receipt-chrome'
+import { GiftCardPreview } from '@/components/gift-cards/gift-card-preview'
+import {
+  findGiftCardDesignById,
+  findGiftCardFontById,
+} from '@/lib/gift-card-templates'
 
 export interface TransactionDetail {
   id: number | string
@@ -190,8 +196,9 @@ function MethodIcon({
 
 function TypeIcon({ tx }: { tx: TransactionDetail }) {
   const desc = (tx.description ?? '').toLowerCase()
+  if (resolveTransactionGiftCard(tx) || desc.includes('gift card'))
+    return <Gift className="h-5 w-5" />
   if (desc.includes('wallet funding')) return <Wallet className="h-5 w-5" />
-  if (desc.includes('gift card')) return <Gift className="h-5 w-5" />
   if (desc.includes('booking') || desc.includes('appointment'))
     return <Calendar className="h-5 w-5" />
   if (tx.type === 'credit') return <ArrowDownLeft className="h-5 w-5" />
@@ -210,6 +217,17 @@ export function TransactionDetailSheet({
 
   if (!tx) return null
 
+  const effectiveGiftCard = resolveTransactionGiftCard(tx)
+  const resolvedGiftCardDesign = effectiveGiftCard
+    ? findGiftCardDesignById(
+        effectiveGiftCard.design || effectiveGiftCard.design_name,
+      )
+    : null
+  const resolvedGiftCardFont = effectiveGiftCard
+    ? findGiftCardFontById(
+        effectiveGiftCard.font || effectiveGiftCard.font_name,
+      )
+    : null
   const reference = tx.payment_reference || tx.reference || ''
   const status = STATUS_META[tx.status]
   const isIncoming = tx.type === 'credit' || tx.type === 'refund'
@@ -307,6 +325,24 @@ export function TransactionDetailSheet({
               </div>
             </DrawerHeader>
 
+            {effectiveGiftCard &&
+              resolvedGiftCardDesign &&
+              resolvedGiftCardFont && (
+                <div className="p-3.5 bg-[#FBF9FC] border-b border-gray-100">
+                  <GiftCardPreview
+                    design={resolvedGiftCardDesign}
+                    amountText={
+                      tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)
+                    }
+                    recipientName={effectiveGiftCard.recipient_name}
+                    senderName={effectiveGiftCard.sender_name}
+                    occasion={effectiveGiftCard.occasion}
+                    fontClassName={resolvedGiftCardFont.className}
+                    showStack={false}
+                  />
+                </div>
+              )}
+
             {/* Details */}
             <div className="divide-y divide-gray-100">
               <Row label="Payment method">
@@ -378,11 +414,13 @@ export function TransactionDetailSheet({
                   </button>
                 </Row>
               )}
-              {tx.giftCard?.recipient_name && (
+              {effectiveGiftCard?.recipient_name && (
                 <Row label="Recipient">
                   <span className="text-gray-900 text-right truncate max-w-[180px]">
-                    {tx.giftCard.recipient_name}
-                    {tx.giftCard.occasion ? ` · ${tx.giftCard.occasion}` : ''}
+                    {effectiveGiftCard.recipient_name}
+                    {effectiveGiftCard.occasion
+                      ? ` · ${effectiveGiftCard.occasion}`
+                      : ''}
                   </span>
                 </Row>
               )}
