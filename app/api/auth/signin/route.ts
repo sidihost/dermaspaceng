@@ -90,11 +90,16 @@ const body = await request.json()
         console.error('signin_failed audit append failed:', auditErr)
       }
       if (suspendedUser && suspendedUser.email) {
-        const appealToken = createAppealToken({
-          userId: suspendedUser.id,
-          email: suspendedUser.email,
-          role: suspendedUser.role,
-        })
+        let appealToken: string | undefined
+        try {
+          appealToken = createAppealToken({
+            userId: suspendedUser.id,
+            email: suspendedUser.email,
+            role: suspendedUser.role,
+          })
+        } catch (tokenErr) {
+          console.error('[signin] failed to create appeal token:', tokenErr)
+        }
         return NextResponse.json(
           {
             error: error || 'Your account has been suspended. Please contact support.',

@@ -16,6 +16,8 @@ import {
 import {
   APPEAL_MAX_LENGTH,
   APPEAL_MIN_LENGTH,
+  extractEmailHintFromAppealToken,
+  normalizePrefillEmail,
 } from '@/lib/suspension-appeal-constants'
 import { useNotify } from '@/components/shared/notify'
 
@@ -77,13 +79,14 @@ function BrandSidePanel({
 function AppealPortalContent() {
   const searchParams = useSearchParams()
   const notify = useNotify()
-  const token = searchParams.get('token') || ''
-  const queryEmail = (searchParams.get('email') || '').trim()
+  const token = (searchParams.get('token') || '').trim()
+  const queryEmail = normalizePrefillEmail(searchParams.get('email'))
+  const fallbackEmail = queryEmail || extractEmailHintFromAppealToken(token)
 
   const [verifying, setVerifying] = useState(Boolean(token))
   const [tokenInfo, setTokenInfo] = useState<VerifyResponse | null>(null)
 
-  const [email, setEmail] = useState(queryEmail)
+  const [email, setEmail] = useState(fallbackEmail)
   const [appealMessage, setAppealMessage] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -92,10 +95,10 @@ function AppealPortalContent() {
   const [submittedGenericMessage, setSubmittedGenericMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    if (queryEmail) {
-      setEmail((prev) => prev || queryEmail)
+    if (fallbackEmail) {
+      setEmail((prev) => prev || fallbackEmail)
     }
-  }, [queryEmail])
+  }, [fallbackEmail])
 
   useEffect(() => {
     let cancelled = false
@@ -114,6 +117,8 @@ function AppealPortalContent() {
           setTokenInfo(data)
           if (data.valid && data.email) {
             setEmail(data.email)
+          } else if (fallbackEmail) {
+            setEmail((prev) => prev || fallbackEmail)
           }
           if (!data.valid && data.error) {
             setError(data.error)
@@ -122,6 +127,9 @@ function AppealPortalContent() {
       })
       .catch(() => {
         if (!cancelled) {
+          if (fallbackEmail) {
+            setEmail((prev) => prev || fallbackEmail)
+          }
           setTokenInfo({
             valid: false,
             error: 'Could not verify your link. Please enter your account email below.',
@@ -134,7 +142,7 @@ function AppealPortalContent() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, fallbackEmail])
 
   const hasValidToken = Boolean(token && tokenInfo?.valid)
   const isStaff = Boolean(
@@ -430,7 +438,8 @@ function AppealPortalContent() {
                 >
                   Suspended Account Email
                 </label>
-                {hasValidToken && (tokenInfo?.email || tokenInfo?.maskedEmail) && (
+                {((hasValidToken && (tokenInfo?.email || tokenInfo?.maskedEmail || email)) ||
+                  (Boolean(fallbackEmail) && email.trim().toLowerCase() === fallbackEmail)) && (
                   <span className="text-[11px] font-medium text-[#7B2D8E]">
                     Auto-filled
                   </span>

@@ -11,6 +11,7 @@ import Header from '@/components/layout/header'
 import { XAuthButton } from '@/components/auth/x-auth-button'
 import { resolvePostAuthRedirect, sanitizeSafeInternalPath } from '@/lib/auth-onboarding'
 import { clearCachedUser, commitAuthenticatedUser, writeCachedUser } from '@/lib/auth-cache'
+import { buildAppealHref, normalizePrefillEmail } from '@/lib/suspension-appeal-constants'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -120,7 +121,7 @@ function SignInForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl shadow-lg border border-[#7B2D8E]/20 mb-4">
+          <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl border border-[#7B2D8E]/20 mb-4">
             <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
               <Check className="w-5 h-5 text-[#7B2D8E]" />
             </div>
@@ -288,6 +289,18 @@ function SignInForm() {
     }
   }
 
+  const urlIsSuspended = searchParams.get('error') === 'account_suspended'
+  const effectiveAppealToken =
+    appealToken || (urlIsSuspended ? searchParams.get('appeal_token') || '' : '')
+  const effectiveSuspendedEmail =
+    suspendedEmail ||
+    (urlIsSuspended ? normalizePrefillEmail(searchParams.get('email')) : '') ||
+    normalizePrefillEmail(formData.email)
+  const appealHref = buildAppealHref({
+    token: effectiveAppealToken,
+    email: effectiveSuspendedEmail,
+  })
+
   return (
     <>
     {/* Marketing header — desktop only on auth pages. Mobile keeps
@@ -301,7 +314,7 @@ function SignInForm() {
         for thumbs). Desktop: a two-column layout — form on the left,
         brand panel on the right — sitting under the marketing header. */}
     <main className="min-h-screen lg:min-h-[calc(100vh-68px)] bg-white lg:grid lg:grid-cols-2">
-      <section className="flex flex-col items-center sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white lg:bg-white lg:bg-none px-4 pt-8 pb-16 sm:pt-16 sm:pb-24 lg:px-12 lg:py-16 lg:justify-center">
+      <section className="flex flex-col items-center bg-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24 lg:px-12 lg:py-16 lg:justify-center">
       <div className="w-full max-w-sm">
         {/* Inline logo — only on mobile/tablet. Desktop already has
             the full marketing header above, so a second logo in the
@@ -318,11 +331,8 @@ function SignInForm() {
           />
         </Link>
 
-        {/* Card shell. On mobile it's a naked div (no border, no
-            padding) so the form feels native; on sm+ it becomes a
-            subtle rounded card with a thin border and faint shadow.
-            This gives the desktop page a "surface" without shouting. */}
-        <div className="sm:bg-white sm:border sm:border-gray-200/80 sm:rounded-2xl sm:p-8 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(123,45,142,0.15)]">
+        {/* Flat bordered card shell on sm+; borderless native flow on mobile. */}
+        <div className="sm:bg-white sm:border sm:border-gray-200 sm:rounded-2xl sm:p-8">
         <div className="text-center mb-6">
           <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">Sign in</h1>
           <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
@@ -335,15 +345,7 @@ function SignInForm() {
             <p>{error}</p>
             {/suspended/i.test(error) && (
               <Link
-                href={
-                  appealToken
-                    ? `/appeal?token=${encodeURIComponent(appealToken)}`
-                    : suspendedEmail
-                      ? `/appeal?email=${encodeURIComponent(suspendedEmail)}`
-                      : formData.email.trim().includes('@')
-                        ? `/appeal?email=${encodeURIComponent(formData.email.trim())}`
-                        : '/appeal'
-                }
+                href={appealHref}
                 className="mt-2 inline-block text-xs font-semibold text-[#7B2D8E] underline underline-offset-2 hover:text-[#5A1D6A]"
               >
                 Submit an account appeal
@@ -385,7 +387,15 @@ function SignInForm() {
 
           {/* Sign in with X — opens X OAuth 2.0 PKCE popup handled by
               /api/auth/x → /api/auth/x/callback → /api/auth/x/handoff. */}
-          <XAuthButton mode="signin" redirectTo={redirectTo} onError={setError} />
+          <XAuthButton
+            mode="signin"
+            redirectTo={redirectTo}
+            onError={setError}
+            onSuspended={({ appealToken: tok, email: mail }) => {
+              if (tok) setAppealToken(tok)
+              if (mail) setSuspendedEmail(mail)
+            }}
+          />
 
           {/* Sign in with Microsoft — uses the standard OAuth 2.0 /
               OIDC flow against login.microsoftonline.com. Supports both
@@ -536,7 +546,7 @@ function SignInForm() {
           aria-hidden="true"
         />
         <div
-          className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/85 via-[#5A1D6A]/80 to-[#3F1349]/95"
+          className="absolute inset-0 bg-[#7B2D8E]/88"
           aria-hidden="true"
         />
         {/* Floating brand orbs — soft animated decoration so the

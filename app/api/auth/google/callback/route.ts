@@ -11,6 +11,7 @@ import { getAuthCookieOptions } from '@/lib/cookie-options'
 import { invalidateAfterSignup } from '@/lib/stats-cache'
 import { notifyAdmins } from '@/lib/notifications'
 import { createAppealToken } from '@/lib/suspension-appeals'
+import { buildSuspendedSignInPath } from '@/lib/suspension-appeal-constants'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -77,13 +78,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=user_info_failed`)
     }
     
-    // Check if user exists by google_id or email
+    // Check if user exists by google_id or email (case-insensitive)
     const existingUserResult = await query(
-      `SELECT id, email, first_name, google_id, profile_complete, role, is_active 
-       FROM users 
-       WHERE google_id = $1 OR email = $2 
+      `SELECT id, email, first_name, google_id, profile_complete, role, is_active
+       FROM users
+       WHERE google_id = $1 OR LOWER(email) = LOWER($2)
        LIMIT 1`,
-      [googleUser.id, googleUser.email]
+      [googleUser.id, googleUser.email.trim()]
     )
     
     let userId: string
@@ -97,14 +98,22 @@ export async function GET(request: NextRequest) {
       
       // Check if account is active
       if (!existingUser.is_active) {
-        const suspendedEmail = existingUser.email || googleUser.email
-        const appealToken = createAppealToken({
-          userId: String(existingUser.id),
-          email: suspendedEmail,
-          role: existingUser.role || 'user',
-        })
+        const suspendedEmail = String(existingUser.email || googleUser.email || '').trim().toLowerCase()
+        let appealToken: string | null = null
+        try {
+          if (suspendedEmail) {
+            appealToken = createAppealToken({
+              userId: String(existingUser.id),
+              email: suspendedEmail,
+              role: existingUser.role || 'user',
+            })
+          }
+        } catch (tokenErr) {
+          console.error('[google-auth] failed to create appeal token:', tokenErr)
+        }
+        const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/+$/, '')
         return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_APP_URL}/signin?error=account_suspended&appeal_token=${encodeURIComponent(appealToken)}`,
+          `${appOrigin}${buildSuspendedSignInPath({ token: appealToken, email: suspendedEmail })}`,
         )
       }
       

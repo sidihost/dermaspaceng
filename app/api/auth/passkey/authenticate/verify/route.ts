@@ -70,13 +70,18 @@ export async function POST(request: Request) {
     const user = userResult[0]
     if (user.is_active === false) {
       const userEmail = String(user.email || '')
-      const appealToken = userEmail
-        ? createAppealToken({
+      let appealToken: string | undefined
+      try {
+        if (userEmail) {
+          appealToken = createAppealToken({
             userId: String(user.id),
             email: userEmail,
             role: String(user.role || 'user'),
           })
-        : undefined
+        }
+      } catch (tokenErr) {
+        console.error('[passkey-auth] failed to create appeal token:', tokenErr)
+      }
       return NextResponse.json(
         {
           error: 'Your account has been suspended. Please contact support.',

@@ -177,9 +177,9 @@ export async function authenticateUser(
     
     let users
     if (isEmail) {
-      users = await sql`SELECT * FROM users WHERE email = ${identifier.toLowerCase()}`
+      users = await sql`SELECT * FROM users WHERE LOWER(email) = LOWER(${identifier.trim()})`
     } else {
-      users = await sql`SELECT * FROM users WHERE LOWER(username) = ${identifier.toLowerCase()}`
+      users = await sql`SELECT * FROM users WHERE LOWER(username) = LOWER(${identifier.trim()})`
     }
     
     if (users.length === 0) {
@@ -187,6 +187,9 @@ export async function authenticateUser(
     }
 
     const user = users[0]
+    if (!user.password_hash) {
+      return { user: null, error: 'Invalid email/username or password' }
+    }
     const isValid = await verifyPassword(password, user.password_hash)
     
     if (!isValid) {

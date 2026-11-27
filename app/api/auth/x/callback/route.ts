@@ -13,6 +13,8 @@ import { isPlaceholderEmail, shouldRequireProfileCompletion } from '@/lib/auth-o
 import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { invalidateAfterSignup } from '@/lib/stats-cache'
 import { notifyAdmins } from '@/lib/notifications'
+import { createAppealToken } from '@/lib/suspension-appeals'
+import { normalizePrefillEmail } from '@/lib/suspension-appeal-constants'
 
 /**
  * X (Twitter) OAuth 2.0 — step 2: exchange the authorization code,
@@ -69,7 +71,14 @@ export async function GET(request: NextRequest) {
   const publishPoll = async (
     data:
       | { status: 'success'; handoff: string; redirectTo: string }
-      | { status: 'error'; error: string; reason?: string; detail?: string },
+      | {
+          status: 'error'
+          error: string
+          reason?: string
+          detail?: string
+          appealToken?: string
+          email?: string
+        },
   ) => {
     if (!serverState?.pollToken) return
     await setJson(`x_poll:${serverState.pollToken}`, data, 120)
@@ -89,18 +98,22 @@ export async function GET(request: NextRequest) {
 
   const errorResponse = async (
     errorCode: string,
-    extra?: { reason?: string; detail?: string },
+    extra?: { reason?: string; detail?: string; appealToken?: string; email?: string },
   ) => {
     await publishPoll({
       status: 'error',
       error: errorCode,
       reason: extra?.reason,
       detail: extra?.detail,
+      appealToken: extra?.appealToken,
+      email: extra?.email,
     })
 
     const params = new URLSearchParams({ error: errorCode })
     if (extra?.reason) params.set('reason', extra.reason)
     if (extra?.detail) params.set('detail', extra.detail)
+    if (extra?.appealToken) params.set('appeal_token', extra.appealToken)
+    if (extra?.email) params.set('email', extra.email)
     const redirectTo = `${appUrl}/signin?${params.toString()}`
     const html = buildXCallbackHtml({
       type: 'X_OAUTH_ERROR',
@@ -109,6 +122,8 @@ export async function GET(request: NextRequest) {
       error: errorCode,
       reason: extra?.reason,
       detail: extra?.detail,
+      appealToken: extra?.appealToken,
+      email: extra?.email,
       title: 'Could not complete X sign-in',
       subtitle: 'You can close this window and try again on Dermaspace.',
     })
@@ -249,7 +264,23 @@ export async function GET(request: NextRequest) {
         deleted_at: string | null
       }
       if (row.is_active === false || row.deleted_at != null) {
-        return errorResponse('account_suspended')
+        const suspendedEmail = normalizePrefillEmail(row.email)
+        let appealToken: string | undefined
+        if (row.deleted_at == null && row.email) {
+          try {
+            appealToken = createAppealToken({
+              userId: String(row.id),
+              email: row.email,
+              role: row.role || 'user',
+            })
+          } catch (tokenErr) {
+            console.error('[x-auth] failed to create appeal token:', tokenErr)
+          }
+        }
+        return errorResponse('account_suspended', {
+          appealToken,
+          email: suspendedEmail || undefined,
+        })
       }
       userId = row.id
       profileComplete = Boolean(row.profile_complete)

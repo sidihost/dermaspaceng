@@ -6,6 +6,7 @@ import {
   createAppealToken,
   normalizeAppealRole,
 } from './suspension-appeals'
+import { buildAppealHref } from './suspension-appeal-constants'
 import {
   sendAccountReinstatedEmail,
   sendAccountSuspendedEmail,
@@ -80,8 +81,8 @@ export async function dispatchSuspensionNotification(args: {
       })
       appealUrl = buildAppealUrl(token, role)
     } catch (tokenErr) {
-      console.error('[suspension-appeals] appeal token signing failed, using contact fallback:', tokenErr)
-      appealUrl = buildEmailUrl('/appeal')
+      console.error('[suspension-appeals] appeal token signing failed, using email fallback:', tokenErr)
+      appealUrl = buildEmailUrl(buildAppealHref({ email: target.email }))
     }
 
     return await sendAccountSuspendedEmail({

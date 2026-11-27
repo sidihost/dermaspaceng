@@ -13,6 +13,12 @@ import {
   validateAppealSubmission,
   verifyAppealToken,
 } from './suspension-appeals'
+import {
+  buildAppealHref,
+  buildSuspendedSignInPath,
+  extractEmailHintFromAppealToken,
+  normalizePrefillEmail,
+} from './suspension-appeal-constants'
 
 describe('suspension-appeals pure helpers', () => {
   it('signs and verifies client and staff appeal tokens', () => {
@@ -135,5 +141,79 @@ describe('suspension-appeals pure helpers', () => {
   it('masks email addresses cleanly', () => {
     assert.equal(maskEmail('deborah@dermaspaceng.com'), 'de*****@dermaspaceng.com')
     assert.equal(maskEmail('ab@test.com'), 'a*@test.com')
+  })
+
+  it('normalizes prefill emails and filters out placeholders or invalid strings', () => {
+    assert.equal(normalizePrefillEmail('  User@Gmail.COM '), 'user@gmail.com')
+    assert.equal(normalizePrefillEmail('x_12345@users.dermaspaceng.com'), '')
+    assert.equal(normalizePrefillEmail('pending+abc@dermaspaceng.invalid'), '')
+    assert.equal(normalizePrefillEmail('not-an-email'), '')
+    assert.equal(normalizePrefillEmail(''), '')
+  })
+
+  it('builds /appeal and suspended /signin URLs with both token and email', () => {
+    assert.equal(
+      buildAppealHref({ token: 'tok_abc', email: 'Maki@Gmail.com' }),
+      '/appeal?token=tok_abc&email=maki%40gmail.com',
+    )
+    assert.equal(
+      buildAppealHref({ token: '', email: 'Maki@Gmail.com' }),
+      '/appeal?email=maki%40gmail.com',
+    )
+    assert.equal(
+      buildAppealHref({ token: 'tok_abc', email: 'x_99@users.dermaspaceng.com' }),
+      '/appeal?token=tok_abc',
+    )
+    assert.equal(buildAppealHref({}), '/appeal')
+
+    assert.equal(
+      buildSuspendedSignInPath({ token: 'tok_abc', email: 'Maki@Gmail.com' }),
+      '/signin?error=account_suspended&appeal_token=tok_abc&email=maki%40gmail.com',
+    )
+    assert.equal(
+      buildSuspendedSignInPath({ token: null, email: 'Maki@Gmail.com' }),
+      '/signin?error=account_suspended&email=maki%40gmail.com',
+    )
+  })
+
+  it('extracts a UI prefill email hint from valid or expired appeal JWTs only', () => {
+    const token = createAppealToken({
+      userId: 'user-1',
+      email: 'MakiDass@Gmail.com',
+      role: 'user',
+    })
+    assert.equal(extractEmailHintFromAppealToken(token), 'makidass@gmail.com')
+
+    const expiredHeader = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
+    const expiredPayload = Buffer.from(
+      JSON.stringify({
+        purpose: 'suspension_appeal',
+        userId: 'user-1',
+        email: 'ExpiredUser@Gmail.com',
+        exp: 1,
+      }),
+    ).toString('base64url')
+    assert.equal(
+      extractEmailHintFromAppealToken(`${expiredHeader}.${expiredPayload}.sig`),
+      'expireduser@gmail.com',
+    )
+
+    const placeholderPayload = Buffer.from(
+      JSON.stringify({
+        purpose: 'suspension_appeal',
+        userId: 'user-1',
+        email: 'x_42@users.dermaspaceng.com',
+      }),
+    ).toString('base64url')
+    assert.equal(extractEmailHintFromAppealToken(`${expiredHeader}.${placeholderPayload}.sig`), '')
+
+    const wrongPurposePayload = Buffer.from(
+      JSON.stringify({
+        purpose: 'password_reset',
+        email: 'other@gmail.com',
+      }),
+    ).toString('base64url')
+    assert.equal(extractEmailHintFromAppealToken(`${expiredHeader}.${wrongPurposePayload}.sig`), '')
+    assert.equal(extractEmailHintFromAppealToken('not-a-jwt'), '')
   })
 })

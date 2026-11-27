@@ -13,6 +13,7 @@ interface XAuthButtonProps {
   mode: 'signin' | 'signup'
   redirectTo?: string
   onError: (message: string) => void
+  onSuspended?: (info: { appealToken?: string; email?: string }) => void
 }
 
 interface XCompletionPayload {
@@ -23,12 +24,15 @@ interface XCompletionPayload {
   error?: string
   reason?: string
   detail?: string
+  appealToken?: string
+  email?: string
 }
 
 export function XAuthButton({
   mode,
   redirectTo = '/dashboard',
   onError,
+  onSuspended,
 }: XAuthButtonProps) {
   const [loading, setLoading] = useState(false)
   const popupRef = useRef<Window | null>(null)
@@ -36,10 +40,15 @@ export function XAuthButton({
   const completingRef = useRef(false)
   const activePollTokenRef = useRef<string | null>(null)
   const onErrorRef = useRef(onError)
+  const onSuspendedRef = useRef(onSuspended)
 
   useEffect(() => {
     onErrorRef.current = onError
   }, [onError])
+
+  useEffect(() => {
+    onSuspendedRef.current = onSuspended
+  }, [onSuspended])
 
   const stopPolling = useCallback(() => {
     if (statusPollRef.current !== null) {
@@ -122,6 +131,12 @@ export function XAuthButton({
       stopPolling()
       closePopup()
       setLoading(false)
+      if (data.error === 'account_suspended') {
+        onSuspendedRef.current?.({
+          appealToken: data.appealToken,
+          email: data.email,
+        })
+      }
       onErrorRef.current(formatXError(data.error, data.reason, data.detail))
     },
     [closePopup, stopPolling],

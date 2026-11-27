@@ -32,6 +32,7 @@ import Link from 'next/link'
 import { Loader2, Eye, EyeOff, X, AlertCircle, Lock } from 'lucide-react'
 import { mutate as globalMutate } from 'swr'
 import { commitAuthenticatedUser } from '@/lib/auth-cache'
+import { buildAppealHref, normalizePrefillEmail } from '@/lib/suspension-appeal-constants'
 
 interface SignInModalProps {
   /**
@@ -77,6 +78,8 @@ export function SignInModal({
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [appealToken, setAppealToken] = useState('')
+  const [suspendedEmail, setSuspendedEmail] = useState('')
 
   const titleId = useId()
   const descId = useId()
@@ -93,6 +96,8 @@ export function SignInModal({
       setShowPassword(false)
       setSubmitting(false)
       setError(null)
+      setAppealToken('')
+      setSuspendedEmail('')
     }
   }, [open])
 
@@ -133,6 +138,8 @@ export function SignInModal({
     e.preventDefault()
     if (submitting) return
     setError(null)
+    setAppealToken('')
+    setSuspendedEmail('')
 
     const trimmedId = identifier.trim()
     if (!trimmedId || !password) {
@@ -162,8 +169,19 @@ export function SignInModal({
       }
 
       if (!res.ok) {
+        const payload = json as {
+          error?: string
+          appealToken?: string
+          suspendedEmail?: string
+        }
+        if (typeof payload.appealToken === 'string' && payload.appealToken) {
+          setAppealToken(payload.appealToken)
+        }
+        if (typeof payload.suspendedEmail === 'string' && payload.suspendedEmail) {
+          setSuspendedEmail(payload.suspendedEmail)
+        }
         setError(
-          (json as { error?: string }).error ||
+          payload.error ||
             'Could not sign you in. Please check your details and try again.',
         )
         return
@@ -295,10 +313,24 @@ export function SignInModal({
           {error ? (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-xl bg-red-50 p-2.5 text-[12px] leading-relaxed text-red-700"
+              className="flex items-start gap-2 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 p-3 text-[12px] leading-relaxed text-[#7B2D8E]"
             >
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{error}</span>
+              <div>
+                <p>{error}</p>
+                {/suspended/i.test(error) && (
+                  <Link
+                    href={buildAppealHref({
+                      token: appealToken,
+                      email: suspendedEmail || normalizePrefillEmail(identifier),
+                    })}
+                    onClick={onClose}
+                    className="mt-1.5 inline-block text-xs font-semibold text-[#7B2D8E] underline underline-offset-2 hover:text-[#5A1D6A]"
+                  >
+                    Submit an account appeal
+                  </Link>
+                )}
+              </div>
             </div>
           ) : null}
 

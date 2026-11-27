@@ -18,6 +18,8 @@ export interface XCallbackHtmlPayload {
   error?: string
   reason?: string
   detail?: string
+  appealToken?: string
+  email?: string
   title: string
   subtitle: string
   xUsername?: string | null
