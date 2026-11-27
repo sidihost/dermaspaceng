@@ -1,6 +1,5 @@
-import { sendMailWithRetry } from './smtp-transport'
+import { sendTransactionalEmail } from './email-transport'
 
-const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
 const FROM_EMAIL = 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
 // Brand color
@@ -79,11 +78,15 @@ function getEmailTemplate(content: string) {
 }
 
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
-  return sendMailWithRetry({
-    password: SMTP_PASSWORD,
+  const safeSubject = String(subject ?? '')
+    .replace(/[\r\n\0\u2028\u2029]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 300)
+  return sendTransactionalEmail({
     from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
     to,
-    subject,
+    subject: safeSubject,
     html,
   })
 }

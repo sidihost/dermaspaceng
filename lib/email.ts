@@ -1,4 +1,4 @@
-import { sendMailWithRetry } from './smtp-transport'
+import { sendTransactionalEmail } from './email-transport'
 import {
   findGiftCardDesignById,
   getGiftCardOccasionMeta,
@@ -7,8 +7,6 @@ import {
   resolveEmailSender,
   type EmailSenderCategory,
 } from './email-senders'
-
-const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
 
 interface EmailOptions {
   to: string
@@ -448,7 +446,7 @@ export async function sendNewsletterCampaign(input: {
   })
 }
 
-// Send email via Zepto Mail SMTP with bounded timeouts and transient retry
+// Send email via configured provider (Zepto Mail by default, with optional Resend or Auto failover)
 async function sendEmail({ to, subject, html, sender = 'general' }: EmailOptions): Promise<boolean> {
   const safeSubject = String(subject ?? '')
     .replace(/[\r\n\0\u2028\u2029]+/g, ' ')
@@ -456,8 +454,7 @@ async function sendEmail({ to, subject, html, sender = 'general' }: EmailOptions
     .trim()
     .slice(0, 300)
   const resolved = resolveEmailSender(sender)
-  return sendMailWithRetry({
-    password: SMTP_PASSWORD,
+  return sendTransactionalEmail({
     from: resolved.from,
     to,
     subject: safeSubject,
