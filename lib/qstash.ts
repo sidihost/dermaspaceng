@@ -227,15 +227,16 @@ export async function upsertSchedule(args: {
   path: string
   cron: string
   body?: unknown
+  existingSchedules?: QStashScheduleSummary[]
 }): Promise<string> {
   const qstash = getQStash()
   const normPath = normalizeSchedulePath(args.path)
   const destination = `${publicBaseUrl()}${normPath}`
 
   // Wipe EVERY existing schedule targeting the same pathname — even if it
-  // was registered under a prior origin (e.g. `www.` vs apex) or left over
-  // as a duplicate from an earlier deploy.
-  const existing = await listSchedules()
+  // was registered under a prior origin (e.g. `www.` vs apex or a legacy
+  // `*.vercel.app` preview URL) or left over as a duplicate.
+  const existing = args.existingSchedules ?? (await listSchedules())
   const staleMatches = findMatchingSchedulesForPath(existing, normPath)
   for (const s of staleMatches) {
     try {
@@ -270,6 +271,40 @@ export async function deleteSchedule(scheduleId: string): Promise<void> {
   } catch (err) {
     console.warn(`[qstash] deleteSchedule(${scheduleId}) ignored:`, err)
   }
+}
+
+/**
+ * Delete multiple QStash schedules in small concurrent batches (size 4)
+ * so bulk orphan pruning completes quickly without tripping API rate limits.
+ */
+export async function deleteSchedulesBatch(
+  scheduleIds: string[],
+): Promise<{ deleted: number; failed: number }> {
+  const qstash = getQStash()
+  const uniqueIds = Array.from(new Set(scheduleIds.filter(Boolean)))
+  let deleted = 0
+  let failed = 0
+  const BATCH_SIZE = 4
+
+  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+    const chunk = uniqueIds.slice(i, i + BATCH_SIZE)
+    const settled = await Promise.allSettled(
+      chunk.map((id) => qstash.schedules.delete(id)),
+    )
+    for (let j = 0; j < settled.length; j++) {
+      if (settled[j].status === 'fulfilled') {
+        deleted++
+      } else {
+        failed++
+        console.warn(
+          `[qstash] batch delete failed for ${chunk[j]}:`,
+          (settled[j] as PromiseRejectedResult).reason,
+        )
+      }
+    }
+  }
+
+  return { deleted, failed }
 }
 
 /**

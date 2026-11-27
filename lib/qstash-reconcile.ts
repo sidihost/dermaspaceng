@@ -1,4 +1,7 @@
-import { CANONICAL_PRODUCTION_HOSTS } from './push-origin'
+import {
+  CANONICAL_PRODUCTION_HOSTS,
+  isPreviewOrVercelDeploymentHost,
+} from './push-origin'
 
 export interface LiveScheduleLike {
   scheduleId: string
@@ -97,6 +100,10 @@ export interface ReconciledManifestEntry<M extends ManifestScheduleLike>
 /**
  * Join the declarative schedule manifest against live QStash schedules.
  *
+ * Schedules targeting preview deployment domains (`*.vercel.app`, etc.) are
+ * always classified as orphans — they are never treated as a healthy match
+ * for a production manifest entry.
+ *
  * When multiple live schedules point at the same pathname (for example, an old
  * `www.` schedule and a newer apex schedule), pick the best primary entry
  * (preferring canonical origin + matching cron + newest `createdAt`) and surface
@@ -120,7 +127,11 @@ export function reconcileManifestWithLiveSchedules<
 
   for (const s of live) {
     const pathname = extractSchedulePathname(s.destination)
-    if (!pathname || !knownPaths.has(pathname)) {
+    if (
+      !pathname ||
+      !knownPaths.has(pathname) ||
+      isPreviewOrVercelDeploymentHost(s.destination)
+    ) {
       orphans.push(s)
       continue
     }
@@ -186,4 +197,20 @@ export function reconcileManifestWithLiveSchedules<
   })
 
   return { manifest: reconciled, orphans }
+}
+
+/**
+ * Collect every orphan scheduleId (unknown routes, preview-deployment URLs,
+ * and duplicate schedules for manifest paths) for bulk cleanup.
+ */
+export function collectOrphanScheduleIds<
+  M extends ManifestScheduleLike,
+  L extends LiveScheduleLike,
+>(manifest: M[], live: L[], canonicalOrigin: string): string[] {
+  const { orphans } = reconcileManifestWithLiveSchedules(
+    manifest,
+    live,
+    canonicalOrigin,
+  )
+  return Array.from(new Set(orphans.map((o) => o.scheduleId).filter(Boolean)))
 }

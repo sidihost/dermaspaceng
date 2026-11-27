@@ -21,9 +21,14 @@ import {
   listSchedules,
   upsertSchedule,
   deleteSchedule,
+  deleteSchedulesBatch,
 } from '@/lib/qstash'
 import { QSTASH_SCHEDULES } from '@/lib/qstash-schedules'
-import { reconcileManifestWithLiveSchedules } from '@/lib/qstash-reconcile'
+import {
+  collectOrphanScheduleIds,
+  reconcileManifestWithLiveSchedules,
+} from '@/lib/qstash-reconcile'
+import { isPreviewDeploymentEnv } from '@/lib/push-origin'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,12 +70,34 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  if (isPreviewDeploymentEnv()) {
+    return NextResponse.json(
+      { error: 'Schedule sync is disabled on preview deployments.' },
+      { status: 400 },
+    )
+  }
+
+  const canonicalOrigin = getCanonicalQStashOrigin()
+  let existing
+  try {
+    existing = await listSchedules()
+  } catch (err) {
+    console.error('[admin/qstash] sync list failed:', err)
+    return NextResponse.json(
+      { error: 'Failed to reach QStash. Check QSTASH_TOKEN and try again.' },
+      { status: 500 },
+    )
+  }
+
+  // Step 1: Upsert every manifest schedule (wipes all stale/drifted/preview
+  // schedules sharing the same pathname before creating the canonical one).
   const results: Array<{ id: string; scheduleId?: string; error?: string }> = []
   for (const cfg of QSTASH_SCHEDULES) {
     try {
       const scheduleId = await upsertSchedule({
         path: cfg.path,
         cron: cfg.cron,
+        existingSchedules: existing,
       })
       results.push({ id: cfg.id, scheduleId })
     } catch (err: any) {
@@ -78,7 +105,31 @@ export async function POST() {
       results.push({ id: cfg.id, error: err?.message ?? 'unknown' })
     }
   }
-  return NextResponse.json({ results })
+
+  // Step 2: Automatically prune any remaining orphan/preview/duplicate
+  // schedules (such as legacy *.vercel.app schedules from older deploys).
+  let prunedOrphans = 0
+  let prunedFailed = 0
+  try {
+    const afterUpsert = await listSchedules()
+    const orphanIds = collectOrphanScheduleIds(
+      QSTASH_SCHEDULES,
+      afterUpsert,
+      canonicalOrigin,
+    )
+    if (orphanIds.length > 0) {
+      const pruneRes = await deleteSchedulesBatch(orphanIds)
+      prunedOrphans = pruneRes.deleted
+      prunedFailed = pruneRes.failed
+    }
+  } catch (err) {
+    console.warn('[admin/qstash] orphan prune after sync failed:', err)
+  }
+
+  return NextResponse.json(
+    { results, prunedOrphans, prunedFailed },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }
 
 export async function DELETE(req: NextRequest) {
@@ -87,10 +138,39 @@ export async function DELETE(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  const scheduleId = new URL(req.url).searchParams.get('scheduleId')
+
+  const params = new URL(req.url).searchParams
+  const allOrphans = params.get('allOrphans') === '1'
+
+  if (allOrphans) {
+    try {
+      const live = await listSchedules()
+      const orphanIds = collectOrphanScheduleIds(
+        QSTASH_SCHEDULES,
+        live,
+        getCanonicalQStashOrigin(),
+      )
+      const { deleted, failed } = await deleteSchedulesBatch(orphanIds)
+      return NextResponse.json(
+        { ok: true, deleted, failed },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
+    } catch (err) {
+      console.error('[admin/qstash] bulk orphan delete failed:', err)
+      return NextResponse.json(
+        { error: 'Failed to remove orphan schedules' },
+        { status: 500 },
+      )
+    }
+  }
+
+  const scheduleId = params.get('scheduleId')
   if (!scheduleId) {
     return NextResponse.json({ error: 'scheduleId is required' }, { status: 400 })
   }
   await deleteSchedule(scheduleId)
-  return NextResponse.json({ ok: true })
+  return NextResponse.json(
+    { ok: true },
+    { headers: { 'Cache-Control': 'no-store' } },
+  )
 }

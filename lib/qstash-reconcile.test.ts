@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  collectOrphanScheduleIds,
   extractSchedulePathname,
   findMatchingSchedulesForPath,
   getAllowedQStashVerifyUrls,
@@ -81,6 +82,59 @@ test('reconcileManifestWithLiveSchedules picks canonical schedule and flags drif
   assert.deepEqual(
     orphans.map((o) => o.scheduleId),
     ['scd_drifted_old'],
+  )
+})
+
+test('preview deployment schedules (*.vercel.app) are always classified as orphans and collected', () => {
+  const manifest = [
+    {
+      id: 'birthday-wishes',
+      path: '/api/cron/birthday-wishes',
+      cron: '5 23 * * *',
+      label: 'Birthday wishes',
+      description: 'Daily birthday emails',
+    },
+  ]
+
+  const live = [
+    {
+      scheduleId: 'scd_preview_1',
+      destination: 'https://dermaspace-6wqt123.vercel.app/api/cron/birthday-wishes',
+      cron: '0 6 * * *',
+      createdAt: 1000,
+      paused: false,
+    },
+    {
+      scheduleId: 'scd_preview_2',
+      destination: 'https://dermaspace-74oh456.vercel.app/api/cron/old-job',
+      cron: '0 6 * * *',
+      createdAt: 1200,
+      paused: false,
+    },
+    {
+      scheduleId: 'scd_prod',
+      destination: 'https://dermaspaceng.com/api/cron/birthday-wishes',
+      cron: '5 23 * * *',
+      createdAt: 2000,
+      paused: false,
+    },
+  ]
+
+  const { manifest: out, orphans } = reconcileManifestWithLiveSchedules(
+    manifest,
+    live,
+    'https://dermaspaceng.com',
+  )
+
+  assert.equal(out[0].scheduleId, 'scd_prod')
+  assert.equal(out[0].cronInSync, true)
+  assert.deepEqual(
+    orphans.map((o) => o.scheduleId).sort(),
+    ['scd_preview_1', 'scd_preview_2'],
+  )
+  assert.deepEqual(
+    collectOrphanScheduleIds(manifest, live, 'https://dermaspaceng.com').sort(),
+    ['scd_preview_1', 'scd_preview_2'],
   )
 })
 

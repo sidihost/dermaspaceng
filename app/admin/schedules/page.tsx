@@ -84,6 +84,7 @@ export default function QStashSchedulesPage() {
   const [syncing, setSyncing] = useState(false)
   const [runningPath, setRunningPath] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [droppingAll, setDroppingAll] = useState(false)
   const [toast, setToast] = useState<{
     kind: 'ok' | 'err'
     msg: string
@@ -99,14 +100,24 @@ export default function QStashSchedulesPage() {
     try {
       const r = await fetch('/api/admin/qstash/schedules', { method: 'POST' })
       const j = await r.json()
+      if (!r.ok) {
+        flash('err', j.error ?? 'Sync failed')
+        return
+      }
       const failed = (j.results ?? []).filter((x: any) => x.error)
+      const pruned = Number(j.prunedOrphans ?? 0)
       if (failed.length === 0) {
-        flash('ok', `Synced ${j.results.length} schedules`)
+        flash(
+          'ok',
+          pruned > 0
+            ? `Synced ${j.results.length} schedules and removed ${pruned} orphan schedule${pruned === 1 ? '' : 's'}`
+            : `Synced ${j.results.length} schedules`,
+        )
       } else {
         flash('err', `${failed.length} of ${j.results.length} failed — check logs`)
       }
       mutate()
-    } catch (err) {
+    } catch {
       flash('err', 'Sync failed — see console')
     } finally {
       setSyncing(false)
@@ -123,7 +134,7 @@ export default function QStashSchedulesPage() {
       } else {
         flash('err', `Run failed (${r.status}): ${j.error ?? 'unknown'}`)
       }
-    } catch (err) {
+    } catch {
       flash('err', 'Run failed — see console')
     } finally {
       setRunningPath(null)
@@ -131,19 +142,51 @@ export default function QStashSchedulesPage() {
   }
 
   const dropOrphan = async (scheduleId: string) => {
-    if (!confirm('Drop this orphan schedule?')) return
     setDeletingId(scheduleId)
     try {
-      await fetch(
+      const r = await fetch(
         `/api/admin/qstash/schedules?scheduleId=${encodeURIComponent(scheduleId)}`,
         { method: 'DELETE' },
       )
+      if (!r.ok) {
+        flash('err', 'Delete failed')
+        return
+      }
       flash('ok', 'Schedule removed')
       mutate()
     } catch {
       flash('err', 'Delete failed')
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  const dropAllOrphans = async () => {
+    setDroppingAll(true)
+    try {
+      const r = await fetch('/api/admin/qstash/schedules?allOrphans=1', {
+        method: 'DELETE',
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        flash('err', j.error ?? 'Failed to drop orphan schedules')
+        return
+      }
+      const deleted = Number(j.deleted ?? 0)
+      const failed = Number(j.failed ?? 0)
+      if (failed > 0) {
+        flash('err', `Removed ${deleted} orphan schedules (${failed} failed)`)
+      } else {
+        flash(
+          'ok',
+          `Removed ${deleted} orphan schedule${deleted === 1 ? '' : 's'}`,
+        )
+      }
+      mutate()
+    } catch {
+      flash('err', 'Failed to drop orphan schedules')
+    } finally {
+      setDroppingAll(false)
     }
   }
 
@@ -288,23 +331,39 @@ export default function QStashSchedulesPage() {
       {/* Orphan schedules */}
       {data?.orphans && data.orphans.length > 0 && (
         <section className="mt-6 rounded-xl border border-amber-200 bg-amber-50/40 overflow-hidden">
-          <header className="px-5 py-3 border-b border-amber-200 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            <h2 className="text-sm font-semibold text-amber-900">
-              Orphan schedules ({data.orphans.length})
-            </h2>
-            <span className="text-xs text-amber-700/80 ml-2">
-              Live in QStash but no longer in the manifest
-            </span>
+          <header className="px-5 py-3.5 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <h2 className="text-sm font-semibold text-amber-900">
+                  Orphan schedules ({data.orphans.length})
+                </h2>
+              </div>
+              <p className="text-xs text-amber-700/80 mt-0.5">
+                Live in QStash but no longer in the manifest or pointing at preview URLs
+              </p>
+            </div>
+            <button
+              onClick={dropAllOrphans}
+              disabled={droppingAll || syncing}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 active:scale-[0.98] transition disabled:opacity-60 shrink-0"
+            >
+              {droppingAll ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5" />
+              )}
+              Drop all ({data.orphans.length})
+            </button>
           </header>
           <ul className="divide-y divide-amber-200">
             {data.orphans.map((o) => (
               <li key={o.scheduleId} className="p-5 flex items-center gap-4">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-amber-900 truncate">
+                  <p className="text-sm font-medium text-amber-900 truncate" title={o.destination}>
                     {o.destination}
                   </p>
-                  <p className="text-xs text-amber-700/80 mt-1 font-mono">
+                  <p className="text-xs text-amber-700/80 mt-1 font-mono break-all">
                     cron <span className="font-semibold">{o.cron}</span>
                     {' • '}
                     id <span className="font-semibold">{o.scheduleId}</span>
@@ -312,8 +371,8 @@ export default function QStashSchedulesPage() {
                 </div>
                 <button
                   onClick={() => dropOrphan(o.scheduleId)}
-                  disabled={deletingId === o.scheduleId}
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-amber-300 text-sm text-amber-800 hover:bg-amber-100 transition disabled:opacity-60"
+                  disabled={deletingId === o.scheduleId || droppingAll}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-amber-300 text-sm text-amber-800 hover:bg-amber-100 transition disabled:opacity-60 shrink-0"
                 >
                   {deletingId === o.scheduleId ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
