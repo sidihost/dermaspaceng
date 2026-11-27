@@ -214,14 +214,14 @@ export default function AdminAppealsPage() {
             })}
           </div>
 
-          <div className="relative w-full lg:max-w-xs">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full lg:max-w-xs min-w-0">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, or reference"
-              className="w-full h-9 pl-9 pr-8 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none"
+              placeholder="Search name, email, or ID"
+              className="w-full h-10 pl-9 pr-8 rounded-lg border border-gray-200 text-base sm:text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none"
             />
             {search && (
               <button
@@ -279,7 +279,7 @@ export default function AdminAppealsPage() {
               const isPending = appeal.status === 'pending'
 
               return (
-                <article key={appeal.id} className="p-5 sm:p-6 space-y-4">
+                <article key={appeal.id} className="p-4 sm:p-6 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0">
                       {appeal.avatar_url ? (
@@ -326,12 +326,12 @@ export default function AdminAppealsPage() {
                           <span className="font-mono text-[#7B2D8E] font-medium">
                             {appeal.id}
                           </span>
-                          <span className="inline-flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {appeal.user_email}
+                          <span className="inline-flex items-center gap-1 min-w-0 break-all">
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span>{appeal.user_email}</span>
                           </span>
                           {appeal.contact_email && appeal.contact_email !== appeal.user_email && (
-                            <span>Reply to: {appeal.contact_email}</span>
+                            <span className="break-all">Reply to: {appeal.contact_email}</span>
                           )}
                           <span>Submitted {formatDateTime(appeal.created_at)}</span>
                         </div>
@@ -349,7 +349,7 @@ export default function AdminAppealsPage() {
                   </div>
 
                   {appeal.suspension_reason && (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-700">
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-700 break-words">
                       <span className="font-semibold text-gray-900">Suspension reason: </span>
                       {appeal.suspension_reason}
                     </div>
@@ -359,32 +359,44 @@ export default function AdminAppealsPage() {
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E] mb-1.5">
                       Appeal Explanation
                     </p>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
                       {appeal.appeal_message}
                     </p>
                   </div>
 
                   {isPending ? (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
-                      <input
-                        type="text"
-                        value={notesById[appeal.id] || ''}
-                        onChange={(e) =>
-                          setNotesById((prev) => ({
-                            ...prev,
-                            [appeal.id]: e.target.value,
-                          }))
-                        }
-                        placeholder="Optional note to include in the decision email..."
-                        maxLength={500}
-                        className="flex-1 h-9 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:outline-none"
-                      />
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="space-y-3 pt-1">
+                      <div>
+                        <label
+                          htmlFor={`appeal-note-${appeal.id}`}
+                          className="block text-xs font-medium text-gray-600 mb-1.5"
+                        >
+                          Decision note{' '}
+                          <span className="font-normal text-gray-400">
+                            (optional, included in decision email)
+                          </span>
+                        </label>
+                        <textarea
+                          id={`appeal-note-${appeal.id}`}
+                          rows={2}
+                          value={notesById[appeal.id] || ''}
+                          onChange={(e) =>
+                            setNotesById((prev) => ({
+                              ...prev,
+                              [appeal.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Add an optional note for the decision email..."
+                          maxLength={500}
+                          className="block w-full min-h-[68px] rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-base sm:text-sm leading-relaxed text-gray-900 placeholder:text-gray-400 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/15 focus:outline-none resize-y"
+                        />
+                      </div>
+                      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2">
                         <button
                           type="button"
                           disabled={busy}
                           onClick={() => handleDecision(appeal.id, 'rejected')}
-                          className="h-9 px-3.5 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 inline-flex items-center gap-1.5"
+                          className="w-full sm:w-auto h-10 px-4 rounded-xl border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           {busy ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -397,7 +409,7 @@ export default function AdminAppealsPage() {
                           type="button"
                           disabled={busy}
                           onClick={() => handleDecision(appeal.id, 'approved')}
-                          className="h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center gap-1.5"
+                          className="w-full sm:w-auto h-10 px-4 rounded-xl bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 inline-flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           {busy ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -409,15 +421,16 @@ export default function AdminAppealsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 pt-1">
-                      <span>
+                    <div className="space-y-2 pt-1 text-xs text-gray-500">
+                      <p>
                         Reviewed {formatDateTime(appeal.reviewed_at)}
                         {appeal.reviewer_name ? ` by ${appeal.reviewer_name.trim()}` : ''}
-                      </span>
+                      </p>
                       {appeal.review_note && (
-                        <span className="text-gray-700">
-                          <strong className="font-medium">Note:</strong> {appeal.review_note}
-                        </span>
+                        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-xs text-gray-700 whitespace-pre-wrap break-words">
+                          <span className="font-semibold text-gray-900">Decision note: </span>
+                          {appeal.review_note}
+                        </div>
                       )}
                     </div>
                   )}

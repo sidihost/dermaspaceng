@@ -1217,25 +1217,25 @@ function CampaignComposer({ campaignId, onClose, notify }: ComposerProps) {
         {/* Footer actions */}
         {!loading && !isReadOnly && (
           <footer className="sticky bottom-0 bg-white border-t border-gray-200 px-4 sm:px-5 py-3 flex flex-col sm:flex-row gap-2">
-            <div className="flex flex-1 gap-2">
+            <div className="flex w-full sm:flex-1 min-w-0 gap-2">
               <input
                 type="email"
                 value={testEmail}
                 onChange={e => setTestEmail(e.target.value)}
                 placeholder="Test email address"
-                className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:border-transparent"
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-gray-200 text-base sm:text-[13px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:border-transparent"
               />
               <button
                 type="button"
                 onClick={sendTest}
                 disabled={testing || saving || sending}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[12.5px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-[12.5px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               >
                 {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
                 Send test
               </button>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2">
               <button
                 type="button"
                 onClick={() => save()}

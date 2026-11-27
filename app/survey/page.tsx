@@ -554,13 +554,13 @@ export default function SurveyPage() {
               <>
                 <Link
                   href="/"
-                  className="flex-1 inline-flex items-center justify-center px-5 py-2.5 border border-gray-200 text-gray-800 text-sm font-semibold rounded-full hover:bg-gray-50 transition-colors"
+                  className="w-full sm:flex-1 inline-flex items-center justify-center px-5 py-2.5 border border-gray-200 text-gray-800 text-sm font-semibold rounded-full hover:bg-gray-50 transition-colors"
                 >
                   Back to Home
                 </Link>
                 <button
                   onClick={startFresh}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                  className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Retake Survey

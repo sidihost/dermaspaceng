@@ -248,15 +248,25 @@ function AppealPortalContent() {
                 'Thank you for reaching out. Our team is reviewing your request and will send an update to your email address.'}
             </p>
             {submittedAppealId && (
-              <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] p-4 mb-6 text-left">
+              <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] p-4 mb-4 text-left">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   Appeal Reference
                 </p>
-                <p className="mt-1 font-mono text-sm font-semibold text-[#7B2D8E]">
+                <p className="mt-1 font-mono text-sm font-semibold text-[#7B2D8E] break-all">
                   {submittedAppealId}
                 </p>
               </div>
             )}
+            <div className="rounded-xl border border-gray-200 bg-white p-4 mb-6 text-left space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                What happens next
+              </p>
+              <ul className="space-y-1.5 text-xs text-gray-600 leading-relaxed">
+                <li>1. Our admin team reviews your explanation and account details.</li>
+                <li>2. If approved, your account is automatically reinstated and you&apos;ll receive an email to sign back in.</li>
+                <li>3. No need to submit another form while this appeal is pending.</li>
+              </ul>
+            </div>
             <Link
               href="/signin"
               className="block w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
@@ -321,11 +331,11 @@ function AppealPortalContent() {
             <p className="text-sm text-gray-600 mb-5 leading-relaxed">
               We already have an open appeal for your account and will notify you by email once our team finishes reviewing it.
             </p>
-            <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] p-4 mb-6 text-left space-y-1">
+            <div className="rounded-xl border border-gray-200 bg-[#FAF6FB] p-4 mb-4 text-left space-y-1">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                 Reference ID
               </p>
-              <p className="font-mono text-sm font-semibold text-[#7B2D8E]">
+              <p className="font-mono text-sm font-semibold text-[#7B2D8E] break-all">
                 {tokenInfo.appeal.id}
               </p>
               <p className="text-xs text-gray-500">
@@ -336,6 +346,16 @@ function AppealPortalContent() {
                   year: 'numeric',
                 })}
               </p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-4 mb-6 text-left space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                What happens next
+              </p>
+              <ul className="space-y-1.5 text-xs text-gray-600 leading-relaxed">
+                <li>1. You don&apos;t need to submit another appeal — your request is already in our review queue.</li>
+                <li>2. As soon as an admin makes a decision, we&apos;ll email you automatically.</li>
+                <li>3. If approved, your access is restored immediately and you can sign back in.</li>
+              </ul>
             </div>
             <Link
               href="/signin"
@@ -389,7 +409,7 @@ function AppealPortalContent() {
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E]">
                 {isStaff ? 'Administrative Note' : 'Suspension Note'}
               </p>
-              <p className="mt-0.5 text-xs text-gray-700 leading-relaxed">
+              <p className="mt-0.5 text-xs text-gray-700 leading-relaxed break-words">
                 {tokenInfo.reason}
               </p>
             </div>
@@ -428,7 +448,7 @@ function AppealPortalContent() {
                     if (!hasValidToken) setEmail(e.target.value)
                   }}
                   placeholder="you@email.com"
-                  className={`w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none ${
+                  className={`w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-base sm:text-sm focus:outline-none ${
                     hasValidToken
                       ? 'bg-[#FAF6FB] text-gray-700 cursor-default'
                       : 'bg-white text-gray-900 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]'
@@ -438,14 +458,14 @@ function AppealPortalContent() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between gap-2 mb-1">
                 <label
                   htmlFor="appeal-message"
                   className="block text-xs font-medium text-gray-700"
                 >
                   Why should your account be reinstated?
                 </label>
-                <span className="text-[11px] text-gray-400 tabular-nums">
+                <span className="text-[11px] text-gray-400 tabular-nums shrink-0">
                   {appealMessage.trim().length}/{APPEAL_MAX_LENGTH}
                 </span>
               </div>
@@ -458,7 +478,7 @@ function AppealPortalContent() {
                 value={appealMessage}
                 onChange={(e) => setAppealMessage(e.target.value)}
                 placeholder="Explain what happened or share any context that helps us review your account..."
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-y"
+                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-base sm:text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-y"
               />
               <p className="mt-1 text-[11px] text-gray-500">
                 Minimum {APPEAL_MIN_LENGTH} characters.
@@ -478,8 +498,8 @@ function AppealPortalContent() {
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="Leave blank to receive updates on your account email"
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                placeholder="Defaults to your account email"
+                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
               />
             </div>
 
