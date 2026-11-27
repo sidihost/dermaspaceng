@@ -10,6 +10,7 @@ import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 import { invalidateAfterSignup } from '@/lib/stats-cache'
 import { notifyAdmins } from '@/lib/notifications'
+import { createAppealToken } from '@/lib/suspension-appeals'
 
 interface MicrosoftTokenResponse {
   access_token: string
@@ -163,8 +164,14 @@ export async function GET(request: NextRequest) {
       }
 
       if (!existingUser.is_active) {
+        const suspendedEmail = existingUser.email || email
+        const appealToken = createAppealToken({
+          userId: String(existingUser.id),
+          email: suspendedEmail,
+          role: existingUser.role || 'user',
+        })
         return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_APP_URL}/signin?error=account_suspended`
+          `${process.env.NEXT_PUBLIC_APP_URL}/signin?error=account_suspended&appeal_token=${encodeURIComponent(appealToken)}`,
         )
       }
 

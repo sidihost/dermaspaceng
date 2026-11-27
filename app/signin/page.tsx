@@ -23,6 +23,8 @@ function SignInForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [error, setError] = useState('')
+  const [appealToken, setAppealToken] = useState('')
+  const [suspendedEmail, setSuspendedEmail] = useState('')
   const [showToast, setShowToast] = useState(false)
   const [toastSubtitle, setToastSubtitle] = useState('Redirecting to dashboard...')
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
@@ -69,6 +71,12 @@ function SignInForm() {
     if (code === 'token_exchange_failed' && (reason || detail)) {
       const xMsg = [reason, detail].filter(Boolean).join(': ')
       msg += ` (X said: ${xMsg})`
+    }
+    if (code === 'account_suspended') {
+      const tokenParam = searchParams.get('appeal_token')
+      const emailParam = searchParams.get('email')
+      if (tokenParam) setAppealToken(tokenParam)
+      if (emailParam) setSuspendedEmail(emailParam)
     }
     setError(msg)
   }, [searchParams])
@@ -130,6 +138,8 @@ function SignInForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setAppealToken('')
+    setSuspendedEmail('')
 
     if (!captchaToken) {
       setError('Please complete the captcha')
@@ -151,6 +161,12 @@ function SignInForm() {
       const data = await res.json()
 
       if (!res.ok) {
+        if (typeof data.appealToken === 'string' && data.appealToken) {
+          setAppealToken(data.appealToken)
+        }
+        if (typeof data.suspendedEmail === 'string' && data.suspendedEmail) {
+          setSuspendedEmail(data.suspendedEmail)
+        }
         setError(data.error || 'Invalid email or password')
         // Reset captcha so user can try again
         setCaptchaToken('')
@@ -226,6 +242,12 @@ function SignInForm() {
       const verifyData = await verifyRes.json()
 
       if (!verifyRes.ok) {
+        if (typeof verifyData.appealToken === 'string' && verifyData.appealToken) {
+          setAppealToken(verifyData.appealToken)
+        }
+        if (typeof verifyData.suspendedEmail === 'string' && verifyData.suspendedEmail) {
+          setSuspendedEmail(verifyData.suspendedEmail)
+        }
         throw new Error(verifyData.error || 'Authentication failed')
       }
 
@@ -313,7 +335,15 @@ function SignInForm() {
             <p>{error}</p>
             {/suspended/i.test(error) && (
               <Link
-                href="/appeal"
+                href={
+                  appealToken
+                    ? `/appeal?token=${encodeURIComponent(appealToken)}`
+                    : suspendedEmail
+                      ? `/appeal?email=${encodeURIComponent(suspendedEmail)}`
+                      : formData.email.trim().includes('@')
+                        ? `/appeal?email=${encodeURIComponent(formData.email.trim())}`
+                        : '/appeal'
+                }
                 className="mt-2 inline-block text-xs font-semibold text-[#7B2D8E] underline underline-offset-2 hover:text-[#5A1D6A]"
               >
                 Submit an account appeal

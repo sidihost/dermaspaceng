@@ -10,6 +10,7 @@ import { getSigningSecret } from '@/lib/server-secrets'
 import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { createAppealToken } from '@/lib/suspension-appeals'
 
 export async function POST(request: Request) {
   try {
@@ -68,8 +69,20 @@ export async function POST(request: Request) {
 
     const user = userResult[0]
     if (user.is_active === false) {
+      const userEmail = String(user.email || '')
+      const appealToken = userEmail
+        ? createAppealToken({
+            userId: String(user.id),
+            email: userEmail,
+            role: String(user.role || 'user'),
+          })
+        : undefined
       return NextResponse.json(
-        { error: 'Your account has been suspended. Please contact support.' },
+        {
+          error: 'Your account has been suspended. Please contact support.',
+          appealToken,
+          suspendedEmail: userEmail && !isPlaceholderEmail(userEmail) ? userEmail : undefined,
+        },
         { status: 403 },
       )
     }

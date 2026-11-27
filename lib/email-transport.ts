@@ -11,6 +11,11 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function cleanEnvValue(value?: string | null): string {
+  if (typeof value !== 'string') return ''
+  return value.trim().replace(/^["']|["']$/g, '').trim()
+}
+
 export interface ResendSendOptions {
   apiKey?: string
   from: string
@@ -24,21 +29,42 @@ export interface ResendSendOptions {
 }
 
 /**
- * Resolve the `from` header for Resend. Uses `RESEND_FROM_EMAIL` if explicitly
- * configured in the server environment (preserving the display name if the
- * override is a bare email address), otherwise keeps the exact verified `from`
- * address already built for Dermaspace.
+ * Strip double quotes around RFC5322 display names because Resend's API
+ * strictly validates `from` as `Name <email@domain.com>` or `email@domain.com`
+ * and returns HTTP 422 on quoted display names like `"Dermaspace" <...>`.
+ */
+function stripQuotesFromSender(raw: string): string {
+  const trimmed = cleanEnvValue(raw)
+  const angleMatch = trimmed.match(/^\s*"?([^"<]+?)"?\s*<\s*([^>\s]+)\s*>\s*$/)
+  if (angleMatch) {
+    const name = angleMatch[1].replace(/["<>]/g, '').trim()
+    const email = angleMatch[2].trim()
+    return name ? `${name} <${email}>` : email
+  }
+  return trimmed
+}
+
+/**
+ * Resolve the `from` header for Resend.
+ *
+ * - Always normalizes away double quotes around the display name so Resend
+ *   does not reject `"Dermaspace" <noreply@dermaspaceng.com>` with HTTP 422.
+ * - Uses `RESEND_FROM_EMAIL` (or `RESEND_FROM`) if configured in the server
+ *   environment, preserving the sender display name when given a bare address.
  */
 export function resolveResendFrom(
   defaultFrom: string,
   resendFromOverride?: string | null,
 ): string {
-  const override = resendFromOverride?.trim()
-  if (!override) return defaultFrom
+  const normalizedDefault = stripQuotesFromSender(defaultFrom)
+  const override = cleanEnvValue(resendFromOverride)
+  if (!override) return normalizedDefault
+
   if (override.includes('<') && override.includes('>')) {
-    return override
+    return stripQuotesFromSender(override)
   }
-  const nameMatch = defaultFrom.match(/^\s*"?([^"<]+?)"?\s*<[^>]+>\s*$/)
+
+  const nameMatch = normalizedDefault.match(/^([^<]+?)\s*<[^>]+>$/)
   if (nameMatch && nameMatch[1]?.trim()) {
     return `${nameMatch[1].trim()} <${override}>`
   }
@@ -46,13 +72,30 @@ export function resolveResendFrom(
 }
 
 /**
+ * Normalize one or more comma-separated email recipients into the string array
+ * format expected by Resend's `to` field.
+ */
+export function normalizeResendRecipients(to: string): string[] {
+  return String(to ?? '')
+    .split(',')
+    .map((addr) => addr.trim())
+    .filter(Boolean)
+}
+
+/**
  * Send a transactional email via the Resend HTTPS API with bounded timeout
  * and one automatic retry on transient 5xx / 429 / network failures.
  */
 export async function sendViaResend(opts: ResendSendOptions): Promise<boolean> {
-  const apiKey = opts.apiKey?.trim()
+  const apiKey = cleanEnvValue(opts.apiKey)
   if (!apiKey) {
     console.error('[resend-transport] RESEND_API_KEY not configured')
+    return false
+  }
+
+  const recipients = normalizeResendRecipients(opts.to)
+  if (recipients.length === 0) {
+    console.error('[resend-transport] No valid recipient provided')
     return false
   }
 
@@ -60,6 +103,7 @@ export async function sendViaResend(opts: ResendSendOptions): Promise<boolean> {
   const retryDelayMs = Math.max(0, opts.retryDelayMs ?? 250)
   const timeoutMs = Math.max(1_000, opts.timeoutMs ?? 12_000)
   const fetchFn = opts.fetchImpl ?? fetch
+  const fromAddress = stripQuotesFromSender(opts.from)
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const controller = new AbortController()
@@ -72,8 +116,8 @@ export async function sendViaResend(opts: ResendSendOptions): Promise<boolean> {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: opts.from,
-          to: [opts.to],
+          from: fromAddress,
+          to: recipients,
           subject: opts.subject,
           html: opts.html,
         }),
@@ -87,8 +131,8 @@ export async function sendViaResend(opts: ResendSendOptions): Promise<boolean> {
       const retryable = res.status >= 500 || res.status === 429
       const errText = await res.text().catch(() => '')
       console.error(
-        `[resend-transport] send failed (status ${res.status}, attempt ${attempt}/${maxAttempts}) for ${opts.subject}:`,
-        errText.slice(0, 300),
+        `[resend-transport] send failed (status ${res.status}, attempt ${attempt}/${maxAttempts}, from=${fromAddress}) for ${opts.subject}:`,
+        errText.slice(0, 500),
       )
 
       if (!retryable) {
@@ -137,9 +181,11 @@ export interface TransactionalEmailRequest {
  * Unified outbound email dispatcher.
  *
  * Controlled exclusively via server environment variables (`EMAIL_PROVIDER`):
- * - unset or `zeptomail` (default): Zepto Mail SMTP only (untouched legacy behavior)
+ * - unset or `auto` (default): Zepto Mail primary (untouched when healthy),
+ *   automatic Resend failover if Zepto Mail fails or is unconfigured
+ * - `zeptomail`: Zepto Mail SMTP only
  * - `resend`: Resend HTTPS API using `RESEND_API_KEY` (and optional `RESEND_FROM_EMAIL`)
- * - `auto`: Zepto Mail first with automatic failover to Resend
+ * - `resend_first`: Resend primary with automatic Zepto Mail failover
  */
 export async function sendTransactionalEmail(
   req: TransactionalEmailRequest,
@@ -156,11 +202,11 @@ export async function sendTransactionalEmail(
   const resendFromOverride =
     req.resendFromOverride !== undefined
       ? req.resendFromOverride
-      : process.env.RESEND_FROM_EMAIL
+      : process.env.RESEND_FROM_EMAIL || process.env.RESEND_FROM
 
   const order = resolveDeliveryOrder(mode, {
-    hasZepto: Boolean(zeptoPassword?.trim()),
-    hasResend: Boolean(resendApiKey?.trim()),
+    hasZepto: Boolean(cleanEnvValue(zeptoPassword)),
+    hasResend: Boolean(cleanEnvValue(resendApiKey)),
   })
 
   if (order.length === 0) {

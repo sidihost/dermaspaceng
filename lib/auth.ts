@@ -163,7 +163,14 @@ export async function createUser(data: {
 }
 
 // Authenticate user (supports email or username)
-export async function authenticateUser(identifier: string, password: string): Promise<{ user: User | null; error: string | null }> {
+export async function authenticateUser(
+  identifier: string,
+  password: string,
+): Promise<{
+  user: User | null
+  error: string | null
+  suspendedUser?: { id: string; email: string; role: string }
+}> {
   try {
     // Check if identifier is an email or username
     const isEmail = identifier.includes('@')
@@ -186,9 +193,17 @@ export async function authenticateUser(identifier: string, password: string): Pr
       return { user: null, error: 'Invalid email/username or password' }
     }
 
-    // Check if account is active
+    // Check if account is active (only reached after valid password verification)
     if (user.is_active === false) {
-      return { user: null, error: 'Your account has been suspended. Please contact support.' }
+      return {
+        user: null,
+        error: 'Your account has been suspended. Please contact support.',
+        suspendedUser: {
+          id: String(user.id),
+          email: String(user.email || ''),
+          role: String(user.role || 'user'),
+        },
+      }
     }
 
     return { 

@@ -10,6 +10,7 @@ import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
 import { invalidateAfterSignup } from '@/lib/stats-cache'
 import { notifyAdmins } from '@/lib/notifications'
+import { createAppealToken } from '@/lib/suspension-appeals'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -96,7 +97,15 @@ export async function GET(request: NextRequest) {
       
       // Check if account is active
       if (!existingUser.is_active) {
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=account_suspended`)
+        const suspendedEmail = existingUser.email || googleUser.email
+        const appealToken = createAppealToken({
+          userId: String(existingUser.id),
+          email: suspendedEmail,
+          role: existingUser.role || 'user',
+        })
+        return NextResponse.redirect(
+          `${process.env.NEXT_PUBLIC_APP_URL}/signin?error=account_suspended&appeal_token=${encodeURIComponent(appealToken)}`,
+        )
       }
       
       userId = existingUser.id

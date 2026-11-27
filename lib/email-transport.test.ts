@@ -7,35 +7,39 @@ import {
   resolveDeliveryOrder,
 } from './email-provider'
 import {
+  normalizeResendRecipients,
   resolveResendFrom,
   sendTransactionalEmail,
   sendViaResend,
 } from './email-transport'
 
-test('default email provider remains zeptomail and invalid values coerce safely', () => {
-  assert.equal(DEFAULT_EMAIL_PROVIDER, 'zeptomail')
-  assert.equal(normalizeEmailProvider(undefined), 'zeptomail')
-  assert.equal(normalizeEmailProvider(''), 'zeptomail')
-  assert.equal(normalizeEmailProvider('unknown'), 'zeptomail')
-  assert.equal(normalizeEmailProvider('RESEND'), 'resend')
-  assert.equal(normalizeEmailProvider('auto'), 'auto')
+test('default email provider is auto (Zepto primary with Resend fallback) and aliases normalize cleanly', () => {
+  assert.equal(DEFAULT_EMAIL_PROVIDER, 'auto')
+  assert.equal(normalizeEmailProvider(undefined), 'auto')
+  assert.equal(normalizeEmailProvider(''), 'auto')
+  assert.equal(normalizeEmailProvider('unknown'), 'auto')
+  assert.equal(normalizeEmailProvider('zeptomail'), 'zeptomail')
+  assert.equal(normalizeEmailProvider('zepto'), 'zeptomail')
+  assert.equal(normalizeEmailProvider('"RESEND"'), 'resend')
+  assert.equal(normalizeEmailProvider('resend-first'), 'resend_first')
 })
 
-test('getActiveEmailProvider reads EMAIL_PROVIDER env var and defaults to zeptomail', () => {
-  assert.equal(getActiveEmailProvider({}), 'zeptomail')
-  assert.equal(getActiveEmailProvider({ EMAIL_PROVIDER: 'invalid' }), 'zeptomail')
+test('getActiveEmailProvider reads EMAIL_PROVIDER env var and defaults to auto', () => {
+  assert.equal(getActiveEmailProvider({}), 'auto')
+  assert.equal(getActiveEmailProvider({ EMAIL_PROVIDER: 'invalid' }), 'auto')
   assert.equal(getActiveEmailProvider({ EMAIL_PROVIDER: 'zeptomail' }), 'zeptomail')
   assert.equal(getActiveEmailProvider({ EMAIL_PROVIDER: 'resend' }), 'resend')
   assert.equal(getActiveEmailProvider({ EMAIL_PROVIDER: 'auto' }), 'auto')
+  assert.equal(getActiveEmailProvider({ EMAIL_PROVIDER: 'resend_first' }), 'resend_first')
 })
 
-test('resolveDeliveryOrder routes zeptomail, resend, and auto modes accurately', () => {
+test('resolveDeliveryOrder routes auto, zeptomail, resend, and resend_first accurately', () => {
   assert.deepEqual(
-    resolveDeliveryOrder('zeptomail', { hasZepto: true, hasResend: true }),
+    resolveDeliveryOrder('auto', { hasZepto: true, hasResend: false }),
     ['zeptomail'],
   )
   assert.deepEqual(
-    resolveDeliveryOrder('resend', { hasZepto: true, hasResend: true }),
+    resolveDeliveryOrder('auto', { hasZepto: false, hasResend: true }),
     ['resend'],
   )
   assert.deepEqual(
@@ -43,27 +47,46 @@ test('resolveDeliveryOrder routes zeptomail, resend, and auto modes accurately',
     ['zeptomail', 'resend'],
   )
   assert.deepEqual(
-    resolveDeliveryOrder('auto', { hasZepto: false, hasResend: true }),
-    ['resend'],
+    resolveDeliveryOrder('zeptomail', { hasZepto: true, hasResend: true }),
+    ['zeptomail'],
   )
   assert.deepEqual(
     resolveDeliveryOrder('zeptomail', { hasZepto: false, hasResend: true }),
     [],
   )
+  assert.deepEqual(
+    resolveDeliveryOrder('resend', { hasZepto: true, hasResend: true }),
+    ['resend'],
+  )
+  assert.deepEqual(
+    resolveDeliveryOrder('resend_first', { hasZepto: true, hasResend: true }),
+    ['resend', 'zeptomail'],
+  )
 })
 
-test('resolveResendFrom preserves display name when bare override email is set', () => {
+test('resolveResendFrom always strips double quotes from display names to prevent Resend 422 errors', () => {
   assert.equal(
     resolveResendFrom('"Dermaspace" <hello@dermaspaceng.com>', undefined),
-    '"Dermaspace" <hello@dermaspaceng.com>',
+    'Dermaspace <hello@dermaspaceng.com>',
   )
   assert.equal(
     resolveResendFrom('"Dermaspace Security" <security@dermaspaceng.com>', 'onboarding@resend.dev'),
     'Dermaspace Security <onboarding@resend.dev>',
   )
   assert.equal(
-    resolveResendFrom('"Dermaspace" <hello@dermaspaceng.com>', 'Custom Name <mail@dermaspaceng.com>'),
+    resolveResendFrom('"Dermaspace" <hello@dermaspaceng.com>', '"Custom Name" <mail@dermaspaceng.com>'),
     'Custom Name <mail@dermaspaceng.com>',
+  )
+  assert.equal(
+    resolveResendFrom('hello@dermaspaceng.com', undefined),
+    'hello@dermaspaceng.com',
+  )
+})
+
+test('normalizeResendRecipients splits comma-separated lists and trims whitespace', () => {
+  assert.deepEqual(
+    normalizeResendRecipients(' client@example.com , team@dermaspaceng.com '),
+    ['client@example.com', 'team@dermaspaceng.com'],
   )
 })
 
@@ -93,6 +116,7 @@ test('sendTransactionalEmail leaves zeptomail unaffected when mode is zeptomail'
 
 test('sendTransactionalEmail sends via resend only when mode is resend', async () => {
   const calls: string[] = []
+  let receivedFrom = ''
   const ok = await sendTransactionalEmail({
     providerMode: 'resend',
     zeptoPassword: 'z-key',
@@ -105,14 +129,16 @@ test('sendTransactionalEmail sends via resend only when mode is resend', async (
       calls.push('zeptomail')
       return true
     },
-    sendResend: async () => {
+    sendResend: async (opts) => {
       calls.push('resend')
+      receivedFrom = opts.from
       return true
     },
   })
 
   assert.equal(ok, true)
   assert.deepEqual(calls, ['resend'])
+  assert.equal(receivedFrom, 'Dermaspace <info@dermaspaceng.com>')
 })
 
 test('sendTransactionalEmail in auto mode tries zeptomail first and falls back to resend on failure', async () => {
@@ -139,7 +165,7 @@ test('sendTransactionalEmail in auto mode tries zeptomail first and falls back t
   assert.deepEqual(calls, ['zeptomail', 'resend'])
 })
 
-test('sendViaResend posts valid payload and retries once on 5xx', async () => {
+test('sendViaResend strips quotes from key/from, posts valid payload, and retries once on 5xx', async () => {
   let attempts = 0
   let capturedAuth = ''
   let capturedBody: Record<string, unknown> | null = null
@@ -155,9 +181,9 @@ test('sendViaResend posts valid payload and retries once on 5xx', async () => {
   }) as unknown as typeof fetch
 
   const ok = await sendViaResend({
-    apiKey: 're_test_key',
-    from: 'Dermaspace <info@dermaspaceng.com>',
-    to: 'client@example.com',
+    apiKey: ' "re_test_key" ',
+    from: '"Dermaspace" <info@dermaspaceng.com>',
+    to: ' client@example.com ',
     subject: 'Welcome',
     html: '<p>Hi</p>',
     retryDelayMs: 0,

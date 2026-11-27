@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { rateLimit } from '@/lib/redis'
 import { ensureAccountAppealsTable } from '@/lib/suspension-appeals-db'
+import { isPlaceholderEmail } from '@/lib/auth-onboarding'
 import {
   maskEmail,
   normalizeAppealRole,
@@ -76,12 +77,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const resolvedEmail = (user.email || verified.payload.email || '').trim().toLowerCase()
+    const visibleEmail = resolvedEmail && !isPlaceholderEmail(resolvedEmail) ? resolvedEmail : null
+
     if (user.is_active !== false) {
       return NextResponse.json({
         valid: true,
         status: 'reinstated',
         firstName: user.first_name || null,
-        maskedEmail: maskEmail(user.email || verified.payload.email),
+        email: visibleEmail,
+        maskedEmail: maskEmail(resolvedEmail),
         role: normalizeAppealRole(user.role),
       })
     }
@@ -100,7 +105,8 @@ export async function GET(request: NextRequest) {
         valid: true,
         status: 'already_pending',
         firstName: user.first_name || null,
-        maskedEmail: maskEmail(user.email || verified.payload.email),
+        email: visibleEmail,
+        maskedEmail: maskEmail(resolvedEmail),
         role: normalizeAppealRole(user.role),
         reason: verified.payload.reason,
         appeal: {
@@ -114,7 +120,8 @@ export async function GET(request: NextRequest) {
       valid: true,
       status: 'eligible',
       firstName: user.first_name || null,
-      maskedEmail: maskEmail(user.email || verified.payload.email),
+      email: visibleEmail,
+      maskedEmail: maskEmail(resolvedEmail),
       role: normalizeAppealRole(user.role),
       reason: verified.payload.reason,
     })

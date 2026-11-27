@@ -25,6 +25,7 @@ type VerifyResponse = {
   error?: string
   status?: 'eligible' | 'already_pending' | 'reinstated'
   firstName?: string | null
+  email?: string | null
   maskedEmail?: string | null
   role?: 'user' | 'staff' | 'admin'
   reason?: string | null
@@ -77,17 +78,24 @@ function AppealPortalContent() {
   const searchParams = useSearchParams()
   const notify = useNotify()
   const token = searchParams.get('token') || ''
+  const queryEmail = (searchParams.get('email') || '').trim()
 
   const [verifying, setVerifying] = useState(Boolean(token))
   const [tokenInfo, setTokenInfo] = useState<VerifyResponse | null>(null)
 
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(queryEmail)
   const [appealMessage, setAppealMessage] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [submittedAppealId, setSubmittedAppealId] = useState<string | null>(null)
   const [submittedGenericMessage, setSubmittedGenericMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (queryEmail) {
+      setEmail((prev) => prev || queryEmail)
+    }
+  }, [queryEmail])
 
   useEffect(() => {
     let cancelled = false
@@ -104,6 +112,9 @@ function AppealPortalContent() {
       .then((data: VerifyResponse) => {
         if (!cancelled) {
           setTokenInfo(data)
+          if (data.valid && data.email) {
+            setEmail(data.email)
+          }
           if (!data.valid && data.error) {
             setError(data.error)
           }
@@ -373,24 +384,14 @@ function AppealPortalContent() {
             Tell our team why your account should be reinstated. Every appeal is reviewed personally.
           </p>
 
-          {hasValidToken && tokenInfo && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-[#FAF6FB] p-3.5 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-gray-500">Account</span>
-                <span className="text-xs font-semibold text-gray-900">
-                  {tokenInfo.maskedEmail}
-                </span>
-              </div>
-              {tokenInfo.reason && (
-                <div className="pt-1.5 border-t border-gray-200/80">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E]">
-                    {isStaff ? 'Administrative Note' : 'Suspension Note'}
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-700 leading-relaxed">
-                    {tokenInfo.reason}
-                  </p>
-                </div>
-              )}
+          {hasValidToken && tokenInfo?.reason && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-[#FAF6FB] p-3.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E]">
+                {isStaff ? 'Administrative Note' : 'Suspension Note'}
+              </p>
+              <p className="mt-0.5 text-xs text-gray-700 leading-relaxed">
+                {tokenInfo.reason}
+              </p>
             </div>
           )}
 
@@ -401,28 +402,40 @@ function AppealPortalContent() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!hasValidToken && (
-              <div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
                 <label
                   htmlFor="appeal-email"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700"
                 >
                   Suspended Account Email
                 </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    id="appeal-email"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@email.com"
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                  />
-                </div>
+                {hasValidToken && (tokenInfo?.email || tokenInfo?.maskedEmail) && (
+                  <span className="text-[11px] font-medium text-[#7B2D8E]">
+                    Auto-filled
+                  </span>
+                )}
               </div>
-            )}
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  id="appeal-email"
+                  type={hasValidToken ? 'text' : 'email'}
+                  required={!hasValidToken}
+                  readOnly={hasValidToken}
+                  value={hasValidToken ? (tokenInfo?.email || tokenInfo?.maskedEmail || email) : email}
+                  onChange={(e) => {
+                    if (!hasValidToken) setEmail(e.target.value)
+                  }}
+                  placeholder="you@email.com"
+                  className={`w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none ${
+                    hasValidToken
+                      ? 'bg-[#FAF6FB] text-gray-700 cursor-default'
+                      : 'bg-white text-gray-900 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]'
+                  }`}
+                />
+              </div>
+            </div>
 
             <div>
               <div className="flex items-center justify-between mb-1">

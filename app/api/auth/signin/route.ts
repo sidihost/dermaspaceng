@@ -11,6 +11,7 @@ import { getSigningSecret } from '@/lib/server-secrets'
 import { extractClientIpFromHeaders, resolveLoginLocation } from '@/lib/geolocation'
 import { applyAuthUidCookie } from '@/lib/auth-cache-cookie'
 import { getAuthCookieOptions } from '@/lib/cookie-options'
+import { createAppealToken } from '@/lib/suspension-appeals'
 
 export async function POST(request: Request) {
   try {
@@ -70,7 +71,7 @@ const body = await request.json()
     const ipAddress = extractClientIpFromHeaders(headersList) || 'Unknown'
 
     // Authenticate user (supports email or username)
-    const { user, error } = await authenticateUser(identifier, password)
+    const { user, error, suspendedUser } = await authenticateUser(identifier, password)
 
     if (error || !user) {
       // Append a `signin_failed` event so brute-force attempts show
@@ -87,6 +88,23 @@ const body = await request.json()
         })
       } catch (auditErr) {
         console.error('signin_failed audit append failed:', auditErr)
+      }
+      if (suspendedUser && suspendedUser.email) {
+        const appealToken = createAppealToken({
+          userId: suspendedUser.id,
+          email: suspendedUser.email,
+          role: suspendedUser.role,
+        })
+        return NextResponse.json(
+          {
+            error: error || 'Your account has been suspended. Please contact support.',
+            appealToken,
+            suspendedEmail: !isPlaceholderEmail(suspendedUser.email)
+              ? suspendedUser.email
+              : undefined,
+          },
+          { status: 401 },
+        )
       }
       return NextResponse.json(
         { error: error || 'Invalid credentials' },
